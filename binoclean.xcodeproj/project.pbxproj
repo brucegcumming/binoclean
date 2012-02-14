@@ -401,6 +401,9 @@
 /* Begin PBXProject section */
 		419DCDFB13A133B2004E8464 /* Project object */ = {
 			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0420;
+			};
 			buildConfigurationList = 419DCDFE13A133B2004E8464 /* Build configuration list for PBXProject "binoclean" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = English;
