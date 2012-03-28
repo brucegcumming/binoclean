@@ -276,6 +276,8 @@ void notify(char * s)
     if (outPipe!=0) {
         close(outPipe);
     }
+    unlink(IN_PIPE);
+    unlink(OUT_PIPE);
     NSLog(@"Gone!");
     return NSTerminateNow;
 }
