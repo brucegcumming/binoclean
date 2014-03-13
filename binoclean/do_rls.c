@@ -1008,8 +1008,8 @@ void calc_rls_polys(Stimulus *st, Substim *sst)
                 for(xp = -xstart; xp <= xstart; xp +=  xstep){
                     xvals[nrects++] = xp;
                 }
-                xvals[nrects++] = xp+xstep;
                 if (expt.stimmode == RLS_TERMINATOR){
+                    xvals[nrects++] = xp+xstep;
                     nrects = 0;
                     xvals[nrects++] = -xstart;
                     for (j = 0; j < nboundary; j++){
@@ -1031,6 +1031,10 @@ void calc_rls_polys(Stimulus *st, Substim *sst)
  */
                     if (xvals[nrects-1] < 0)
                         xvals[nrects++] = 0;
+                    xvals[nrects] = xstart;
+                }
+                else{
+//                    xvals[nrects++] = xstart;
                     xvals[nrects] = xstart;
                 }
                 nrect = 0;

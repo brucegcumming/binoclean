@@ -2134,7 +2134,7 @@ function DATA = InitInterface(DATA)
     uimenu(hm,'Label','pipelog','Callback',{@MenuHit, 'pipelog'});
     uimenu(hm,'Label','freereward','Callback',{@MenuHit, 'freereward'},'accelerator','R');
     uimenu(hm,'Label','Run One Trial','Callback',{@MenuHit, 'onetrial'},'accelerator','1');
-    hm = uimenu(cntrl_box,'Label','Mark');
+%    hm = uimenu(cntrl_box,'Label','Mark');
 
     
     hm = uimenu(cntrl_box,'Label','Help','Tag','HelpMenu');
@@ -2459,7 +2459,7 @@ function CheckForUpdate(DATA)
         yn = questdlg(sprintf('%s is newer. Copy to %s?',src,tgt),'Update Check','Yes','No','Yes');
         if strcmp(yn,'Yes')
             try  %This will produce and error becuase verg.m is in use. But the copy succeeds
-                copyfile(src,tgt);
+                [a,b,c] = copyfile(src,tgt);
             catch ME
                 cprintf('errors',ME.message);
                 fprintf('possible error copying %s\n',tgt);
@@ -3151,6 +3151,7 @@ function DATA = RunButton(a,b, type)
                 DATA.optionflags.do = 1;
                 DATA.exptstoppedbyuser = 0;
                 DATA = ReadFromBinoc(DATA);
+                CheckExptIsGood(DATA);
                 %            DATA = GetState(DATA);
             else
                 DATA.rptexpts = 0;
@@ -3222,6 +3223,8 @@ function ElectrodePopup(a,b, fcn, varargin)
   end
   
 
+function CheckExptIsGood(DATA)
+        
  
 function PenLogPopup(a,b)
   DATA = GetDataFromFig(a);
@@ -3375,6 +3378,8 @@ cntrl_box = figure('Position', DATA.winpos{9},...
         'units', 'norm', 'position',bp,'value',1,'Tag','PlotPen','callback',@OpenPenLog);
     hm = uimenu(gcf,'label','Mark');
     uimenu(hm,'label','Entered Brain','callback',{@MarkComment 'Entered Brain'});
+    uimenu(hm,'label','Entered GM','callback',{@MarkComment 'GM'});
+    uimenu(hm,'label','Entered WM','callback',{@MarkComment 'WM'});
    
     
 set(gcf,'CloseRequestFcn',{@CloseWindow, 9});
@@ -3449,6 +3454,7 @@ function CodesPopup(a,b, type)
          if ~ischar(outname) %user cancelled
              return;
          end
+         outname = [path outname];
          it = findobj(F,'tag','CodeListString');
          txt = get(it,'String');
          fid = fopen(outname,'w');
@@ -3462,6 +3468,7 @@ function CodesPopup(a,b, type)
              end
          end
          fclose(fid);
+         fprintf('Codes writted to %s\n',outname);
          return;
       elseif strcmp(type,'bycode')
           set(lst,'string','Alphabetical by code.  :* = more help with mouse click');
