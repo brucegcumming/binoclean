@@ -1,0 +1,14 @@
+mo=more
+st=rls
+wi=3
+hi=1
+dd=100
+mo=back
+st=rls
+wi=3
+hi=3
+dd=100
+mo=fore
+dw=0.1
+op=+exm+sq+pb
+!mat=Table2Expt('/local/expts/RLSendstop/table');

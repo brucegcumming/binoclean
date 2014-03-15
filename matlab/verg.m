@@ -3133,7 +3133,7 @@ function DATA = RunButton(a,b, type)
                 if DATA.optionflags.exm && ~isempty(DATA.matexpt)
                     fprintf('Running %s\n',DATA.matexpt);
                     DATA.matexpres = eval(DATA.matexpt);
-                    SendCode(DATA,'exp');
+                    SendManualExpt(DATA);
                 end
                 if DATA.listmodified(1)
                     SendManualVals(DATA,'Expt1StimList');
@@ -3836,7 +3836,7 @@ for j = line:length(str)
             DATA.matexpres = [];
             DATA.matexpres = eval(DATA.matexpt);
             DATA.matlabwasrun = 1;
-            SendCode(DATA,'exp');
+            SendManualExpt(DATA);
         end
         myprintf(DATA.cmdfid,'!expt line %d',j);
         DATA.nexpts = DATA.nexpts+1;
@@ -3854,6 +3854,42 @@ for j = line:length(str)
     end
     DATA = LogCommand(DATA, str{j});
 end
+
+function SendManualExpt(DATA)
+    
+    SendCode(DATA,'exp');
+    X = DATA.matexpres;
+    if isfield(X,'binocstrs')
+        for j = 1:length(X.binocstrs)
+            fprintf(DATA.outid,'%s\n',X.binocstrs{j});
+        end
+    end
+        
+    if isfield(X,'exvals')
+        a = unique(X.exvals(:,1));
+        DATA.nstim(1) = length(a);
+        SendCode(DATA,'nt');
+        for j = 1:length(a)
+            fprintf(DATA.outid,'EA%d=%s\n',j-1,num2str(a(j)));
+        end
+        if size(X.exvals,2) > 1
+            a = unique(X.exvals(:,2));
+            DATA.nstim(2) = length(a);
+            SendCode(DATA,'n2');
+            for j = 1:length(a)
+                fprintf(DATA.outid,'EB%d=%s\n',j-1,num2str(a(j)));
+            end
+        end
+        if size(X.exvals,2) > 2
+            a = unique(X.exvals(:,3));
+            DATA.nstim(3) = length(a);
+            SendCode(DATA,'n3');
+            for j = 1:length(a)
+                fprintf(DATA.outid,'EC%d=%s\n',j-1,num2str(a(j)));
+            end
+        end
+    end
+    fprintf(DATA.outid,'EDONE\n');
 
 function uipause(start, secs, msg)
 
