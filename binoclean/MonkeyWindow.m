@@ -49,7 +49,7 @@
 {
     [super resetCursorRects ];
     [self discardCursorRects];
-    [self addCursorRect:[self frame] cursor:[self crossCursor]];
+    [self.contentView addCursorRect:[self frame] cursor:[self crossCursor]];
 }
 
 @end

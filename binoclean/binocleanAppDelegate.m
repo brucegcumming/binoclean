@@ -70,7 +70,7 @@ void displayOnMonkeyView(char *s, int x, int y)
        textBGColor = [NSColor colorWithCalibratedRed:0.5f green:0.0f blue:0.5f alpha:1.0f];
 
     if (!bold12Attribs) {
-        bold12Attribs = [[NSMutableDictionary dictionary] retain];
+        bold12Attribs = [NSMutableDictionary dictionary] ;
         [bold12Attribs setObject: [NSFont fontWithName: @"Helvetica" size: 20.0f] forKey: NSFontAttributeName];
         [bold12Attribs setObject:textColor  forKey: NSForegroundColorAttributeName];
     }
@@ -83,7 +83,6 @@ void displayOnMonkeyView(char *s, int x, int y)
         [messageTexture drawAtPoint:NSMakePoint(x, y)];        
     else
         [messageTexture drawAtPoint:NSMakePoint(-500, -450)];
-    [messageTexture release];
 }
 
 
@@ -112,7 +111,7 @@ void sendNotification()
         if (expt.verbose)
         NSLog(@"%d : %@", strlen([outputPipeBuffer UTF8String]), outputPipeBuffer);
         WriteToOutputPipe([NSString stringWithFormat:@"%@%@", s, outputPipeBuffer]);
-        outputPipeBuffer = [[[NSString alloc] init] retain];
+        outputPipeBuffer = [[NSString alloc] init] ;
     }
     else
         WriteToOutputPipe(s);
@@ -172,7 +171,7 @@ void notify(char * s)
     if (!outputPipeBuffer) {
         outputPipeBuffer = [[NSString alloc] init];
     }
-    outputPipeBuffer = [[NSString stringWithFormat:@"%@%s", outputPipeBuffer, s] retain];
+    outputPipeBuffer = [NSString stringWithFormat:@"%@%s", outputPipeBuffer, s] ;
 }
 
 
@@ -213,11 +212,11 @@ int  processUIEvents()
     // should not return 3 but if it does it means some other event!
     //in future versions we may want to keep the time everytime it is called and return only the new events
     int result = 0; // 0 for nothing new happend
-    NSDate * now = [[NSDate date] retain];
-    NSEvent * e = [[[NSApplication sharedApplication] nextEventMatchingMask:NSLeftMouseDownMask | NSRightMouseDownMask
+    NSDate * now = [NSDate date] ;
+    NSEvent * e = [[NSApplication sharedApplication] nextEventMatchingMask:NSLeftMouseDownMask | NSRightMouseDownMask
                                                                  untilDate:now
                                                                     inMode:NSEventTrackingRunLoopMode
-                                                                   dequeue:YES] retain];
+                                                                   dequeue:YES];
     if (e)
         if ([e type]==NSLeftMouseUp | [e type]==NSLeftMouseDown) {
             result = Button1; // left mouse event (up or down)
@@ -226,9 +225,6 @@ int  processUIEvents()
         }
         else
             result = 4; // something else happend
-
-    [e release];
-    [now release];
     return result;
 
     //    [[[NSApplication sharedApplication] delegate] performSelectorOnMainThread:@selector(testselector) // no trailing :
@@ -304,11 +300,11 @@ int  processUIEvents()
 
         open(IN_PIPE, O_RDWR);
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(dataReadyToRead:) name:NSFileHandleReadCompletionNotification object:nil];
-        inputPipe = [[NSFileHandle fileHandleForReadingAtPath:@IN_PIPE] retain];
+        inputPipe = [NSFileHandle fileHandleForReadingAtPath:@IN_PIPE] ;
         [inputPipe readInBackgroundAndNotify];
 
         open(OUT_PIPE, O_RDWR);
-        outputPipe = [[NSFileHandle fileHandleForWritingAtPath:@IN_PIPE] retain];
+        outputPipe = [NSFileHandle fileHandleForWritingAtPath:@IN_PIPE];
         [outputPipe writeData:[@"binocstart" dataUsingEncoding:NSASCIIStringEncoding]];
     }
     // if wisize read from binoc.setup is 0,0 then do a fullscreen otherwise use the winsize

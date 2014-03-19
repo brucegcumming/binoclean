@@ -5185,10 +5185,10 @@ enum GCDAsyncSocketConfig
 - (void)writeData:(NSData *)data withTimeout:(NSTimeInterval)timeout tag:(long)tag
 {
 	if ([data length] == 0) return;
-	
-    __strong __block NSData * bdata = data;
-    [bdata retain] ;
-	GCDAsyncWritePacket *packet = [[GCDAsyncWritePacket alloc] initWithData:bdata timeout:timeout tag:tag];
+
+	//Ali added this bdata variable in order to fix crash
+    //__strong __block NSData * bdata = data;
+	GCDAsyncWritePacket *packet = [[GCDAsyncWritePacket alloc] initWithData:data timeout:timeout tag:tag];
 	
 	dispatch_async(socketQueue, ^{ {
 		
@@ -5199,7 +5199,7 @@ enum GCDAsyncSocketConfig
 			[writeQueue addObject:packet];
 			[self maybeDequeueWrite];
 		}
-        [bdata release];
+
 	}});
 	
 	// Do not rely on the block being run in order to release the packet,

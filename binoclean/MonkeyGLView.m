@@ -135,7 +135,7 @@ GLenum glReportError (void)
         NSOpenGLPFAAlphaSize, (NSOpenGLPixelFormatAttribute)8, 
         (NSOpenGLPixelFormatAttribute)nil
     };
-    return [[[NSOpenGLPixelFormat alloc] initWithAttributes:attributes] autorelease];
+    return [[NSOpenGLPixelFormat alloc] initWithAttributes:attributes] ;
 }
 
 // ---------------------------------
@@ -152,9 +152,10 @@ GLenum glReportError (void)
 			return;
 		else {
 			// if we are not rotating with trackball in this window
-			if (!gTrackball || (gTrackingViewInfo != self)) {
-				[self updateObjectRotationForTimeDelta: deltaTime]; // update object rotation
-			}
+            //Ali commented this out during migration to ARC
+//			if (!gTrackball || (gTrackingViewInfo != self)) {
+//				[self updateObjectRotationForTimeDelta: deltaTime]; // update object rotation
+//			}
 			shouldDraw = YES; // force redraw
 		}
 	}
@@ -553,11 +554,10 @@ GLenum glReportError (void)
     
 	// init fonts for use with strings
 	NSFont * font =[NSFont fontWithName:@"Helvetica" size:12.0];
-	stanStringAttrib = [[NSMutableDictionary dictionary] retain];
+	stanStringAttrib = [NSMutableDictionary dictionary] ;
 	[stanStringAttrib setObject:font forKey:NSFontAttributeName];
 	[stanStringAttrib setObject:[NSColor whiteColor] forKey:NSForegroundColorAttributeName];
-	[font release];
-	
+
 	// ensure strings are created
 	//[self createHelpString];
 	//[self createMessageString];

@@ -1361,7 +1361,9 @@ function DATA = GetState(DATA)
         str = [DATA.ip 'getstate'];
         ts = now;
         [bstr, status] = urlread(str);
+        mytoc(ts);
          DATA = InterpretLine(DATA, bstr);
+         mytoc(ts);
     else
         outprintf(DATA,'QueryState\n');
         tic; DATA = ReadFromBinoc(DATA);toc

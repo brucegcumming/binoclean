@@ -66,7 +66,7 @@ int GetLastPen(){
 {
     self = [super initWithWindow:window];
     if (self) {
-        self.userList = [[NSArray arrayWithObjects:@"Ali", @"Bruce", @"Adrian", @"Guest", nil] retain];
+        self.userList = [NSArray arrayWithObjects:@"Ali", @"Bruce", @"Adrian", @"Guest", nil] ;
         NSMutableString * s = [NSMutableString stringWithString:@""];
         int i = 0;
         while (electrodestrings[i] != NULL) {
@@ -78,7 +78,7 @@ int GetLastPen(){
  
         self.penNumber = [NSString stringWithFormat:@"%d", GetLastPen()];
         
-        self.monkeyNames = [[NSArray arrayWithObjects:@"UnKnown", @"Icarus", @"Daedalus", @"JBE", @"Lemieux", @"BigGuy", nil] retain];
+        self.monkeyNames = [NSArray arrayWithObjects:@"UnKnown", @"Icarus", @"Daedalus", @"JBE", @"Lemieux", @"BigGuy", nil] ;
         
         self.monkeyValue = @"UnKnown";
         if ([[NSUserDefaults standardUserDefaults] valueForKey:@"monkeyname"]) {
@@ -89,7 +89,7 @@ int GetLastPen(){
         if ([[NSUserDefaults standardUserDefaults] valueForKey:@"udrivex"]) { self.uDriveX = [[NSUserDefaults standardUserDefaults] valueForKey:@"udrivex"]; }
         self.uDriveY = 0;
         if ([[NSUserDefaults standardUserDefaults] valueForKey:@"udrivey"]) { self.uDriveY = [[NSUserDefaults standardUserDefaults] valueForKey:@"udrivey"]; }
-        self.hemisphereS = [[NSArray arrayWithObjects:@"UnKnown", @"Right", @"Left", nil] retain];
+        self.hemisphereS = [NSArray arrayWithObjects:@"UnKnown", @"Right", @"Left", nil] ;
         self.hemisphere = @"UnKnown";
         if ([[NSUserDefaults standardUserDefaults] valueForKey:@"hemisphere"]) { self.hemisphere = [[NSUserDefaults standardUserDefaults] valueForKey:@"hemisphere"]; }
         self.electrodeValue = @"Not Set";

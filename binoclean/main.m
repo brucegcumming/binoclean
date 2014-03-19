@@ -45,8 +45,6 @@ int main(int argc, char *argv[])
     
     return NSApplicationMain(argc, (const char **)argv);
     
-    [version release];
-    
     CFRunLoopTimerInvalidate(caffeineTimer);
     CFRelease(caffeineTimer);
 }

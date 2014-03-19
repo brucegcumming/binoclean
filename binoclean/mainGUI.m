@@ -99,7 +99,7 @@ Expt expt;
 
 - (IBAction) brucesNumbers:(id)sender
 {
-    if ([[(NSTextField *)sender text] isEqualToString:@"Run"]) {
+    if ([[(NSTextField *)sender stringValue] isEqualToString:@"Run"]) {
         NSLog(@"RUN");
     }
     else

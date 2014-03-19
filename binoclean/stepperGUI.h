@@ -25,7 +25,7 @@
 @property (nonatomic, retain) IBOutlet NSButton * upButton;
 @property (nonatomic, retain) IBOutlet NSButton * downButton;
 @property (nonatomic, retain) IBOutlet NSTextField * electrodePosition;
-@property (nonatomic, retain) IBOutlet NSTextField * newPositionTextField;
+@property (nonatomic, retain) IBOutlet NSTextField * PositionTextField;
 
 
 - (void) enableNewMovements;

@@ -85,7 +85,7 @@ static const int httpLogLevel = HTTP_LOG_LEVEL_WARN; // | HTTP_LOG_FLAG_TRACE;
             }
         }
     }
-    [outputdata retain];
+    //[outputdata retain];
     return [[HTTPDataResponse alloc] initWithData:outputdata];
     //	return [super httpResponseForMethod:method URI:path];
 }

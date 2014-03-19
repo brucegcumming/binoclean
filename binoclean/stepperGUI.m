@@ -20,7 +20,7 @@ extern char stepperport[256];
 @synthesize upButton;
 @synthesize downButton;
 @synthesize electrodePosition;
-@synthesize newPositionTextField;
+@synthesize PositionTextField;
 
 - (id)initWithWindow:(NSWindow *)window
 {
@@ -89,15 +89,16 @@ extern char stepperport[256];
     }
 }
 
-- (void) alertDidEnd:(NSAlert *)alert returnCode:(NSInteger)returnCode contextInfo:(void *)contextInfo
-{
-    if (returnCode==0) {
-        NSInteger i =  [contextInfo intValue];
-        NewPosition(electrodeDepth + i);
-    } else {
-        //Nothing!
-    }
-}
+// Ali commented this out during migration to ARC
+//- (void) alertDidEnd:(NSAlert *)alert returnCode:(NSInteger)returnCode contextInfo:(void *)contextInfo
+//{
+//    if (returnCode==0) {
+//        NSInteger i =  [contextInfo intValue];
+//        NewPosition(electrodeDepth + i);
+//    } else {
+//        //Nothing!
+//    }
+//}
 
 - (void) disableNewMovements
 {
