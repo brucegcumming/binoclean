@@ -2135,7 +2135,7 @@ function DATA = InitInterface(DATA)
     uimenu(hm,'Label','pipelog','Callback',{@MenuHit, 'pipelog'});
     uimenu(hm,'Label','freereward','Callback',{@MenuHit, 'freereward'},'accelerator','R');
     uimenu(hm,'Label','Run One Trial','Callback',{@MenuHit, 'onetrial'},'accelerator','1');
-    hm = uimenu(cntrl_box,'Label','Mark');
+%    hm = uimenu(cntrl_box,'Label','Mark');
 
     
     hm = uimenu(cntrl_box,'Label','Help','Tag','HelpMenu');
@@ -2465,7 +2465,7 @@ function CheckForUpdate(DATA)
         yn = questdlg(sprintf('%s is newer. Copy to %s?',src,tgt),'Update Check','Yes','No','Yes');
         if strcmp(yn,'Yes')
             try  %This will produce and error becuase verg.m is in use. But the copy succeeds
-                copyfile(src,tgt);
+                [a,b,c] = copyfile(src,tgt);
             catch ME
                 cprintf('errors',ME.message);
                 fprintf('possible error copying %s\n',tgt);
@@ -3177,7 +3177,7 @@ function DATA = RunButton(a,b, type)
                 if DATA.optionflags.exm && ~isempty(DATA.matexpt)
                     fprintf('Running %s\n',DATA.matexpt);
                     DATA.matexpres = eval(DATA.matexpt);
-                    SendCode(DATA,'exp');
+                    SendManualExpt(DATA);
                 end
                 if DATA.listmodified(1)
                     SendManualVals(DATA,'Expt1StimList');
@@ -3195,6 +3195,7 @@ function DATA = RunButton(a,b, type)
                 DATA.optionflags.do = 1;
                 DATA.exptstoppedbyuser = 0;
                 DATA = ReadFromBinoc(DATA);
+                CheckExptIsGood(DATA);
                 %            DATA = GetState(DATA);
             else
                 DATA.rptexpts = 0;
@@ -3266,6 +3267,8 @@ function ElectrodePopup(a,b, fcn, varargin)
   end
   
 
+function CheckExptIsGood(DATA)
+        
  
 function PenLogPopup(a,b)
   DATA = GetDataFromFig(a);
@@ -3419,6 +3422,8 @@ cntrl_box = figure('Position', DATA.winpos{9},...
         'units', 'norm', 'position',bp,'value',1,'Tag','PlotPen','callback',@OpenPenLog);
     hm = uimenu(gcf,'label','Mark');
     uimenu(hm,'label','Entered Brain','callback',{@MarkComment 'Entered Brain'});
+    uimenu(hm,'label','Entered GM','callback',{@MarkComment 'GM'});
+    uimenu(hm,'label','Entered WM','callback',{@MarkComment 'WM'});
    
     
 set(gcf,'CloseRequestFcn',{@CloseWindow, 9});
@@ -3493,6 +3498,7 @@ function CodesPopup(a,b, type)
          if ~ischar(outname) %user cancelled
              return;
          end
+         outname = [path outname];
          it = findobj(F,'tag','CodeListString');
          txt = get(it,'String');
          fid = fopen(outname,'w');
@@ -3506,6 +3512,7 @@ function CodesPopup(a,b, type)
              end
          end
          fclose(fid);
+         fprintf('Codes writted to %s\n',outname);
          return;
       elseif strcmp(type,'bycode')
           set(lst,'string','Alphabetical by code.  :* = more help with mouse click');
@@ -3873,7 +3880,7 @@ for j = line:length(str)
             DATA.matexpres = [];
             DATA.matexpres = eval(DATA.matexpt);
             DATA.matlabwasrun = 1;
-            SendCode(DATA,'exp');
+            SendManualExpt(DATA);
         end
         myprintf(DATA.cmdfid,'!expt line %d',j);
         DATA.nexpts = DATA.nexpts+1;
@@ -3889,6 +3896,42 @@ for j = line:length(str)
     end
     DATA = LogCommand(DATA, str{j});
 end
+
+function SendManualExpt(DATA)
+    
+    SendCode(DATA,'exp');
+    X = DATA.matexpres;
+    if isfield(X,'binocstrs')
+        for j = 1:length(X.binocstrs)
+            fprintf(DATA.outid,'%s\n',X.binocstrs{j});
+        end
+    end
+        
+    if isfield(X,'exvals')
+        a = unique(X.exvals(:,1));
+        DATA.nstim(1) = length(a);
+        SendCode(DATA,'nt');
+        for j = 1:length(a)
+            fprintf(DATA.outid,'EA%d=%s\n',j-1,num2str(a(j)));
+        end
+        if size(X.exvals,2) > 1
+            a = unique(X.exvals(:,2));
+            DATA.nstim(2) = length(a);
+            SendCode(DATA,'n2');
+            for j = 1:length(a)
+                fprintf(DATA.outid,'EB%d=%s\n',j-1,num2str(a(j)));
+            end
+        end
+        if size(X.exvals,2) > 2
+            a = unique(X.exvals(:,3));
+            DATA.nstim(3) = length(a);
+            SendCode(DATA,'n3');
+            for j = 1:length(a)
+                fprintf(DATA.outid,'EC%d=%s\n',j-1,num2str(a(j)));
+            end
+        end
+    end
+    fprintf(DATA.outid,'EDONE\n');
 
 function uipause(start, secs, msg)
 

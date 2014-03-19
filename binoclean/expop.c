@@ -2510,8 +2510,10 @@ int OpenNetworkFile(Expt expt)
     time_t tval,nowtime;
 
     
+    if (netoutfile != NULL)
+        fclose(netoutfile);
     netoutfile= NULL;
-    if (expt.strings[NETWORK_PREFIX] == NULL || ~strcmp(expt.strings[NETWORK_PREFIX],"NotSet"))
+    if (expt.strings[NETWORK_PREFIX] == NULL || !strcmp(expt.strings[NETWORK_PREFIX],"NotSet"))
     {
         sprintf(buf,"No prefix Name for network parameter file");
         fprintf(stderr,"%s\n",buf);
@@ -6965,6 +6967,7 @@ int confirm_yes(char *s, char *yescmd, char *nocmd, char *help)
 void runexpt(int w, Stimulus *st, int *cbs)
 {
     int oldflag = optionflag,old2flag = option2flag;
+    char buf[BUFSIZ];
     if(expt.st->mode & EXPTPENDING)
     {
         expt_over(CANCEL_EXPT);
@@ -7035,6 +7038,10 @@ void runexpt(int w, Stimulus *st, int *cbs)
         fprintf(netoutfile,"#Start Expt at %.2f %sx%s %d%c%d (%d)\n",
                 ufftime(&now),serial_strings[expt.mode],serial_strings[expt.type2],
                 expt.nstim[0],(expt.flag & TIMES_EXPT2) ? 'x' : '+',expt.nstim[1],expt.nstim[4]);
+    if(optionflags[MANUAL_EXPT] && netoutfile == NULL && (optionflag & STORE_WURTZ_BIT)){
+        sprintf(buf,"Remote (PC) file for stim record not open. Check \"netpref=\"");
+        acknowledge(buf,NULL);
+    }
     InitExpt();
 }
 
@@ -13744,7 +13751,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     }
     else if(line[0] == 'E' && line[1] == 'B' && isdigit(line[2]))
     {
-        sscanf(&line[2],"%f",&i);
+        sscanf(&line[2],"%d",&i);
         s = strchr(line,'=');
         if(i < expt.nstim[1] && s != NULL)
         {

@@ -1,3 +1,4 @@
++sw If checked, stimulus is only presented during trials. IF off, stimulus is left up in ISI, when not fixating etc.
 +bac make RLS background the contrast inverse of foreground
 +cB  Badfix trials take reward size back to r1, just like incorrect trials.
 +co  Plot conjugate eye position as a cross in the overlay plane on the display screen
@@ -8,6 +9,8 @@
 +sR Fixation point changes with reward bias + if neutral, offcolor if < 0 oncolor if > 0. If +afc is not set, then color is offcolor except when fixation is in window
 +vn nonius lines for checking vertical vergence (human psych)
 +x2 All combinations of expt1 and expt2 values are used
++Rcd Choice saccade is to correct icon, but position flips at random 
++bf Normally change foreground position/contrast/correlation also changes the background to follow. +bf prevents this. 
 a2 when > 0, turns grating into plaid, and RLS into noise plaid. 
 #Sets angle difference between components, so changes in or rotate both.
 ac Sets correlation (ce) to -1 and sets disparity orthogonal to RF (dO) to the value given. Just for Conveneice - doesn't change other variables. See also ce #binocular disparity
