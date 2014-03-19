@@ -5186,7 +5186,7 @@ enum GCDAsyncSocketConfig
 {
 	if ([data length] == 0) return;
 	
-    __strong NSData * bdata = data;
+    __strong __block NSData * bdata = data;
     [bdata retain] ;
 	GCDAsyncWritePacket *packet = [[GCDAsyncWritePacket alloc] initWithData:bdata timeout:timeout tag:tag];
 	
@@ -5199,6 +5199,7 @@ enum GCDAsyncSocketConfig
 			[writeQueue addObject:packet];
 			[self maybeDequeueWrite];
 		}
+        [bdata release];
 	}});
 	
 	// Do not rely on the block being run in order to release the packet,

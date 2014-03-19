@@ -2119,30 +2119,90 @@ int ReadHelpDir(char *dir)
 }
 
 
-void ListQuickExpts()
+void ListQuickExpts(char *s)
 {
     int i = 0;
     char buf[BUFSIZ];
     
     for (i = 0; i < nquickexpts; i++){
         sprintf(buf,"qe=%s\n",quicknames[i]);
-        notify(buf);
+        if (s)
+            strcat(s,buf);
+        else
+            notify(buf);
     }
     if (expt.showflags != NULL){  // in case added by a quickexpt ? do this in verg
         sprintf(buf,"pf=%s\n",expt.showflags);
-        notify(buf);
+        if (s)
+            strcat(s,buf);
+        else
+            notify(buf);
     }
             
+}
+
+
+
+char *DescribeExpStims()
+{
+    int i;
+    char buf[256],cbuf[256],c;
+    static char *ebuf = NULL;
+    
+    if (ebuf == NULL)
+        ebuf = (char *)(malloc(sizeof(char) * 10240));
+    
+    
+    if (optionflags[CUSTOM_EXPVAL])
+        sprintf(ebuf,"EACLEAR*\n");
+    else
+        sprintf(ebuf,"EACLEAR\n");
+    
+    for(i = 0; i < (expt.nstim[0]+expt.nstim[2]); i++)
+    {
+        MakePlotLabel(&expt, cbuf, i, 0);
+        sprintf(buf, "EA%d=%s\n",i-expt.nstim[2],cbuf);
+        strcat(ebuf,buf);
+    }
+    
+    if (optionflags[CUSTOM_EXPVALB])
+        strcat(ebuf,"EBCLEAR*\n");
+    else
+        strcat(ebuf,"EBCLEAR\n");
+    for(i = expt.nstim[0]+expt.nstim[2]; i < (expt.nstim[0]+expt.nstim[2]+expt.nstim[1]) ; i++)
+    {
+        MakePlotLabel(&expt, cbuf, i, 0);
+        sprintf(buf, "EB%d=%s\n",i-(expt.nstim[0]+expt.nstim[2]),cbuf);
+        strcat(ebuf,buf);
+        
+    }
+    
+    if (optionflags[CUSTOM_EXPVALC])
+        strcat(ebuf,"ECCLEAR*\n");
+    else
+        strcat(ebuf,"ECCLEAR\n");
+    for(i = 0; i < expt.nstim[4]; i++){
+        sprintf(buf,"EC%d=%.2f\n",i,expt.exp3vals[i]);
+        strcat(ebuf,buf);
+    }
+    strcat(ebuf,"EDONE\n");
+    return(ebuf);
 }
 
 void ListExpStims(int w)
 {
     int i;
-    char buf[256],cbuf[256],c;
+    char buf[256],cbuf[256],c,*s;
 
     if(!(mode & RUNNING) || freeToGo == 0)
         return;
 
+    s = DescribeExpStims();
+    notify(s);
+    return;
+    
+    
+    
     if (optionflags[CUSTOM_EXPVAL])
         notify("EACLEAR*\n");
     else

@@ -34,6 +34,8 @@ while j <= length(varargin)
         autoquit = 1;
     elseif strcmp(varargin{j},'new')
         checkforrestart = 0;
+    elseif strcmp(varargin{j},'record')
+        DATA.frombinocfid = fopen('/local/frombinoc.txt','a');
     elseif strcmp(varargin{j},'verbose')
         if length(varargin) > j && isnumeric(varargin{j+1})
             j = j+1;
@@ -61,9 +63,9 @@ if isempty(it)
     tt = TimeMark([], 'Start');
     DATA.tag.top = 'vergwindow';
     ts = now; 
+    DATA.starttime = now;
     DATA = SetDefaults(DATA);
     DATA.name = strrep(DATA.vergversion,'verg.','Verg Ver ');
-
 %open pipes to binoc 
 % if a file is named in teh command line, then take all setting from there.
 % Otherwise read from binoc
@@ -230,6 +232,9 @@ for j = 1:length(strs{1})
     end
     if DATA.verbose(2) && strcmp(src,'frombinoc')
             fprintf('%s**\n',strs{1}{j});
+    end
+    if DATA.savestrs > 0
+        fprintf(savestrs,'%s%s\n',strs{1}{j},src);
     end
     if sendtobinoc && DATA.outid > 0
         tline = CheckLineForBinoc(strs{1}{j});
@@ -423,7 +428,6 @@ for j = 1:length(strs{1})
             DATA.optionflags.do = 0;
         end
         DATA.inexpt = 0;
-        DATA.matlabwasrun = 0;
         if DATA.nexpts > 0  %may be 0 here if verg is fired up after a crash
         DATA.Expts{DATA.nexpts}.End = now;
         DATA.Expts{DATA.nexpts}.last = length(DATA.Trials);
@@ -451,6 +455,7 @@ for j = 1:length(strs{1})
             uipause(now, DATA.binoc{1}.seqpause, 'Fixed Delay for repeats');
             DATA = RunButton(DATA,[],1);
         end
+        DATA.matlabwasrun = 0;
     elseif strncmp(s,'Expts1',6)
         DATA.extypes{1} = sscanf(s(8:end),'%d');
         DATA.extypes{1} = DATA.extypes{1}+1;
@@ -968,7 +973,7 @@ function DATA = ReadExptLines(DATA, strs, src)
         end
         [DATA, type] = InterpretLine(DATA,tline, src);
         if DATA.perfmonitor
-            myprintf(DATA.frombinocfid,'%s file %s\n',datestr(now),tline);
+            myprintf(DATA.frombinocfid,'%.3f file %s\n',mytoc(DATA.starttime),tline);
         end
   %if filename set before monkey, set monkeyname first
         if strncmp(tline,'uf=',3) && strcmp(DATA.binoc{1}.monkey,'none')
@@ -1176,7 +1181,7 @@ function SendState(DATA, varargin)
         end
     end
     end
-    SendChoiceTargets(DATA.outid,DATA);
+    SendChoiceTargets(0,DATA);
     outprintf(DATA,'mo=fore\n');
     outprintf(DATA,'st=%s\n',DATA.stimulusnames{DATA.stimtype(1)});
     f = fields(DATA.binoc{1});
@@ -1213,28 +1218,37 @@ function SendState(DATA, varargin)
     
     outprintf(DATA,'\neventcontinue\n');
 
+function WriteStr(DATA, fid, varargin)
+    str = sprintf(varargin{:});
+    if fid <= 0
+        outprintf(DATA, str);
+    else
+        fprintf(fid, str);
+    end
+    
+    
     
 function SendChoiceTargets(fid, DATA)
     if length(DATA.stimtype) < 3
         return;
     end
     if DATA.stimtype(3)
-        fprintf(fid,'mo=ChoiceU\n');
-        fprintf(fid,'st=%s\n',DATA.stimulusnames{DATA.stimtype(3)});
+        WriteStr(DATA, fid,'mo=ChoiceU\n');
+        WriteStr(DATA, fid,'st=%s\n',DATA.stimulusnames{DATA.stimtype(3)});
         f = fields(DATA.binoc{3});
         for j = 1:length(f)
             [s, lbl] = CodeText(DATA, f{j},'ChoiceU');
-            fprintf(fid,'%s\t#ChoiceU %s\n',s,lbl);
+            WriteStr(DATA, fid,'%s\t#ChoiceU %s\n',s,lbl);
         end
 %        StimToggleString(DATA,3);
     end
     if DATA.stimtype(4)
-        fprintf(fid,'mo=ChoiceD\n');
-        fprintf(fid,'st=%s\n',DATA.stimulusnames{DATA.stimtype(4)});
+        WriteStr(DATA, fid,'mo=ChoiceD\n');
+        WriteStr(DATA, fid,'st=%s\n',DATA.stimulusnames{DATA.stimtype(4)});
         f = fields(DATA.binoc{4});
         for j = 1:length(f)
             [s, lbl] = CodeText(DATA, f{j},'ChoiceD');
-            fprintf(fid,'%s\t#ChoiceD %s\n',s,lbl);
+            WriteStr(DATA, fid,'%s\t#ChoiceD %s\n',s,lbl);
         end
  %       StimToggleString(DATA,3);
     end
@@ -1334,17 +1348,24 @@ else
 end
 end
 outprintf(DATA,'NewMatlab\n');
+pause(0.01);
 DATA = ReadFromBinoc(DATA,'reset','expect');
 if readflag
-outprintf(DATA,'QueryState\n');
-DATA = ReadFromBinoc(DATA,'expect');
+    DATA = GetState(DATA);
 end
 SetGui(DATA,'set');
  
     
 function DATA = GetState(DATA)
-    outprintf(DATA,'QueryState\n');
-    tic; DATA = ReadFromBinoc(DATA);toc
+    if DATA.network
+        str = [DATA.ip 'getstate'];
+        ts = now;
+        [bstr, status] = urlread(str);
+         DATA = InterpretLine(DATA, bstr);
+    else
+        outprintf(DATA,'QueryState\n');
+        tic; DATA = ReadFromBinoc(DATA);toc
+    end
 
 function DATA = SetTrial(DATA, T)
     Trial = T;
@@ -1405,6 +1426,7 @@ scrsz = get(0,'Screensize');
 DATA.ip = 'http://localhost:1110/';
 DATA.network = 1;
 DATA.binocisup = 0;
+DATA.savestrs = 0;
 DATA.vergversion=vergversion();
 DATA.matlabwasrun=0;
 DATA.matexpres = [];
@@ -2144,7 +2166,7 @@ function DATA = InitInterface(DATA)
     BuildHelpMenu(DATA, hm);
 
     if DATA.network
-        period = 0.01;
+        period = 0.005;
     else
         period = 1;
     end
@@ -2786,8 +2808,10 @@ function MenuGui(a,b)
 
      
      if flag == 2
-         outprintf(DATA,'QueryState\n');
-        DATA = ReadFromBinoc(DATA);   
+         tic;
+         DATA = GetState(DATA);
+         set(DATA.toplevel,'UserData',DATA);
+        toc
         SetGui(DATA);
      elseif flag == 3
          stop(DATA.timerobj)
@@ -3009,14 +3033,40 @@ function CheckInput(a,b, fig, varargin)
     
     
 function DATA = ReadHttp(DATA, varargin)
-    ts = now;
+j = 1;
+expecting= 0;
+
+    while j <= length(varargin)
+         if strncmpi(varargin{j},'verbose',5)
+             verbose(1) = 1;
+         elseif strncmpi(varargin{j},'expecting',5)
+            expecting = 1;
+         end
+         j = j+1;
+     end
+     
+     ts = now;
     [str, status] = urlread([DATA.ip 'whatsup']);
+    if expecting
+        fprintf('%d bytes\n',length(str));
+    end
+    if expecting && strncmp(str,'SENDING000000',13)
+        fprintf('0 Bytes, but expect input. Trying again.\n');
+        [str, status] = urlread([DATA.ip 'whatsup']);
+        if strncmp(str,'SENDING000000',13)
+            fprintf('Still Nothing. I give up\n');
+        else
+            fprintf('Second Try got %s\n',str(1:13));
+        end
+     end
+
     took = mytoc(ts);
     DATA = InterpretLine(DATA,str,'frombinoc');
     if DATA.verbose(4)
         fprintf('Binoc status%d:%s\n',status,str);
         fprintf('Read took %.3f,%.3f\n',took,mytoc(ts));
     end
+%    myprintf(DATA.frombinocfid,'ReadBinoc%s:  %s',datestr(now),str);
     if ~isfield(DATA,'trialcounts')
     end
 
@@ -3075,7 +3125,7 @@ end
      if verbose(2)
      fprintf('%s:',datestr(now,'HH:MM:SS.FFF'))
      end
-     myprintf(DATA.frombinocfid,'ReadBinoc%s\n',datestr(now));
+     myprintf(DATA.frombinocfid,'ReadBinoc %.3f\n',mytoc(DATA.starttime));
      outprintf(DATA,'whatsup\n');
      a = fread(DATA.inid,14);
      if verbose(2)

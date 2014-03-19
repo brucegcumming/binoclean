@@ -1207,6 +1207,12 @@ char *DescribeState()
             strcat(str,buf);
     }
     i =0;
+    if(!(expt.st->mode & EXPTPENDING)){ //if not in expt make sure verg knows
+        strcat(str,"\nEXPTOVER\n");
+    }
+    else
+        strcat(str,"\nEXPTSTART\n");
+
     /*
      if(expt.st->imprefix != NULL){
      sprintf(buf,"impref=%s\n",expt.st->imprefix);
@@ -1222,8 +1228,10 @@ char *DescribeState()
      }
      */
 //    ListExpStims(NULL);
-//    ListQuickExpts();
-    return(str);
+    strcat(str,DescribeExpStims());
+     ListQuickExpts(str);
+    i = strlen(str);
+        return(str);
 
 }
 
@@ -1287,7 +1295,7 @@ void SendAllToGui()
     }
 */
     ListExpStims(NULL);
-    ListQuickExpts();
+    ListQuickExpts(NULL);
 }
 
 
