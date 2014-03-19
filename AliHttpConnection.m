@@ -13,9 +13,10 @@
 #import "HTTPLogging.h"
 
 Expt expt;
-static NSMutableArray * inputPipeBuffer;
+extern NSMutableArray * inputPipeBuffer;
 NSString * outputPipeBuffer;
 BOOL dataReadyInInputPipe;
+char *DescribeState();
 
 
 // Log levels : off, error, warn, info, verbose
@@ -49,23 +50,33 @@ static const int httpLogLevel = HTTP_LOG_LEVEL_WARN; // | HTTP_LOG_FLAG_TRACE;
 - (NSObject<HTTPResponse> *)httpResponseForMethod:(NSString *)method URI:(NSString *)path
 {
     NSData *outputdata = [@"" dataUsingEncoding:NSASCIIStringEncoding];
+    NSString * s = @"";
+
     if ([method isEqualToString:@"GET"]) {
         if (request.url){
             if (request.url.pathComponents){
                 if ([request.url.pathComponents count]>1){
                     //NSString * pq = [request.url.pathComponents[1] componentsSeparatedByString:@"="][1];
-                    NSString * command =request.url.pathComponents[1];
+                    NSString * command = [[request.url.relativeString substringFromIndex:1] stringByReplacingPercentEscapesUsingEncoding:NSASCIIStringEncoding]; //request.url.pathComponents[1];
                     if (expt.verbose){
                         NSLog(@"Input Pipe: %@", command);
                     }
                     NSArray * sLines = [command componentsSeparatedByCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"\r\n"]];
                     for (int i = 0; i < [sLines count]; i++) {
-                        if (strncmp([sLines objectAtIndex:i], "whatsup", 7) == 0){
-                            NSString * s = [NSString stringWithFormat:@"SENDING%06d\n%@", [outputPipeBuffer length], outputPipeBuffer];
-                            NSData *outputdata = [s dataUsingEncoding:NSASCIIStringEncoding];
+                        if (strncmp([[sLines objectAtIndex:i] UTF8String], "whatsup", 7) == 0){
+                            s = [NSString stringWithFormat:@"SENDING%06d\n%@", [outputPipeBuffer length], outputPipeBuffer];
+                            outputdata = [s dataUsingEncoding:NSASCIIStringEncoding];
                             outputPipeBuffer = @"";
                         }
+                        else if (strncmp([[sLines objectAtIndex:i] UTF8String], "getstate", 8) == 0){
+                            char * cs =DescribeState();
+                            s = [NSString stringWithUTF8String:cs];
+                            outputdata = [s dataUsingEncoding:NSASCIIStringEncoding];
+                        }
                         else{
+                            if (!inputPipeBuffer) {
+                                inputPipeBuffer = [[NSMutableArray alloc] init];
+                            }
                             [inputPipeBuffer addObject:[sLines objectAtIndex:i]];
                         }
                     }
@@ -74,6 +85,7 @@ static const int httpLogLevel = HTTP_LOG_LEVEL_WARN; // | HTTP_LOG_FLAG_TRACE;
             }
         }
     }
+    [outputdata retain];
     return [[HTTPDataResponse alloc] initWithData:outputdata];
     //	return [super httpResponseForMethod:method URI:path];
 }

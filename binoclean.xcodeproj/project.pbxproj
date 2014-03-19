@@ -195,6 +195,7 @@
 		C969F91F150D233B00D7A5A7 /* rdssineor in Resources */ = {isa = PBXBuildFile; fileRef = C969F888150D233B00D7A5A7 /* rdssineor */; };
 		C969F920150D233B00D7A5A7 /* rdsopos in Resources */ = {isa = PBXBuildFile; fileRef = C969F889150D233B00D7A5A7 /* rdsopos */; };
 		C969F921150D233B00D7A5A7 /* rdssine in Resources */ = {isa = PBXBuildFile; fileRef = C969F88A150D233B00D7A5A7 /* rdssine */; };
+		C98E0B3418D9C1010027D45A /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C98E0B3318D9C1010027D45A /* Security.framework */; };
 		C9AA959E1773855F003E9841 /* binoc.c in Sources */ = {isa = PBXBuildFile; fileRef = 41BF8DEC13A174FE00C8B6BA /* binoc.c */; };
 		C9E0BD621778F7BD003B1BEB /* stepper.c in Sources */ = {isa = PBXBuildFile; fileRef = 41BF8DF013A174FE00C8B6BA /* stepper.c */; };
 		C9FE34881799BFFC0088ED4C /* MTRandom64.m in Sources */ = {isa = PBXBuildFile; fileRef = C9FE34871799BFFC0088ED4C /* MTRandom64.m */; };
@@ -470,6 +471,7 @@
 		C969F888150D233B00D7A5A7 /* rdssineor */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = rdssineor; sourceTree = "<group>"; };
 		C969F889150D233B00D7A5A7 /* rdsopos */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = rdsopos; sourceTree = "<group>"; };
 		C969F88A150D233B00D7A5A7 /* rdssine */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = rdssine; sourceTree = "<group>"; };
+		C98E0B3318D9C1010027D45A /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		C9AA959F177385D0003E9841 /* servostepper.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = servostepper.c; sourceTree = "<group>"; };
 		C9FE34861799BFFC0088ED4C /* MTRandom64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MTRandom64.h; sourceTree = "<group>"; };
 		C9FE34871799BFFC0088ED4C /* MTRandom64.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MTRandom64.m; sourceTree = "<group>"; };
@@ -480,6 +482,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C98E0B3418D9C1010027D45A /* Security.framework in Frameworks */,
 				41DB130B14F7F06100418C95 /* OpenGL.framework in Frameworks */,
 				419DCE4613A145D1004E8464 /* Foundation.framework in Frameworks */,
 				419DCE0913A133B3004E8464 /* Cocoa.framework in Frameworks */,
@@ -657,6 +660,7 @@
 		419DCE0713A133B3004E8464 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				C98E0B3318D9C1010027D45A /* Security.framework */,
 				41DB130A14F7F06100418C95 /* OpenGL.framework */,
 				419DCE0813A133B3004E8464 /* Cocoa.framework */,
 				419DCE2613A133B3004E8464 /* SenTestingKit.framework */,

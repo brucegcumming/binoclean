@@ -23,7 +23,7 @@ static NSColor * textColor;
 static NSColor * textBGColor;
 
 int outPipe = 0;
-static NSMutableArray * inputPipeBuffer;
+NSMutableArray * inputPipeBuffer;
 NSString * outputPipeBuffer;
 NSMutableDictionary *bold12Attribs;
 

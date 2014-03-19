@@ -1157,6 +1157,76 @@ void SendToGui(int code)
     
 }
 
+char *DescribeState()
+{
+    int i,j;
+    time_t tval;
+    char buf[BUFSIZ];
+    static char *str = NULL;
+    
+    
+    if(str == NULL)
+        str = (char *)(malloc(sizeof(char) * 102400));
+    
+    sprintf(str,"STATE\n");
+    if(ChoiceStima->type != STIM_NONE){
+        notify("mo=ChoiceU\n");
+        for(i = 0; i <= expt.laststimcode; i++)
+        {
+            buf[0] = '=';
+            buf[1] = 0;
+            if((j = MakeString(valstrings[i].icode, buf, &expt, ChoiceStima,TO_GUI)) >= 0)
+                strcat(str,buf);
+        }
+    }
+    if(ChoiceStimb->type != STIM_NONE){
+        notify("mo=ChoiceD\n");
+        for(i = 0; i <= expt.laststimcode; i++)
+        {
+            buf[0] = '=';
+            buf[1] = 0;
+            if((j = MakeString(valstrings[i].icode, buf, &expt, ChoiceStimb,TO_GUI)) >= 0)
+                strcat(str,buf);
+        }
+    }
+    
+    if(expt.st->next != NULL){
+        notify("mo=back\n");
+        for (i = 0; i < expt.laststimcode;  i++)
+        {
+            MakeString(valstrings[i].icode, buf, &expt, expt.st->next,TO_GUI);
+            strcat(str,buf);
+        }
+        MakeString(STIMULUS_FLAG, buf, &expt, expt.st->next,TO_GUI);
+        strcat(str,buf);
+        
+    }
+    strcat(str, "mo=fore\n");
+    for(i = 0; i < expt.totalcodes; i++){
+        if((j=MakeString(valstrings[i].icode, buf, &expt, expt.st,TO_GUI))>=0)
+            strcat(str,buf);
+    }
+    i =0;
+    /*
+     if(expt.st->imprefix != NULL){
+     sprintf(buf,"impref=%s\n",expt.st->imprefix);
+     notify(buf);
+     if(expt.st->immode == IMAGEMODE_ORBW)
+     notify("immode=orbw\n");
+     else if(expt.st->immode == BINOCULAR_PLAIN_IMAGES)
+     notify("immode=binocular\n");
+     if(expt.st->preload)
+     notify("imload=preload\n");
+     else
+     notify("imload=load\n");
+     }
+     */
+//    ListExpStims(NULL);
+//    ListQuickExpts();
+    return(str);
+
+}
+
 void SendAllToGui()
 {
     int i,j;
