@@ -559,6 +559,7 @@ for j = 1:length(strs{1})
             elseif id(k+1) < id(k)+2
                 fprintf('Code too short %s\n',s(id(k):end));
             elseif isempty(code) && DATA.togglecodesreceived == 0
+
                 DATA.showflags.(newcode) = 1;
                 if ~isshown
                     DATA.showflagseq{nflag} = newcode;
@@ -2110,6 +2111,7 @@ function DATA = InitInterface(DATA)
     uimenu(subm,'Label','GetState','Callback',{@ReadIO, 2});
     uimenu(subm,'Label','NewStart','Callback',{@ReadIO, 3});
     uimenu(subm,'Label','Stop Timer','Callback',{@ReadIO, 4});
+    sm = uimenu(subm,'Label','Check Timer','Callback',{@CheckTimerHit, 0});
     sm = uimenu(subm,'Label','Start Timer','Callback',{@ReadIO, 5},'foregroundcolor',[0 0 0.5]);
     sm = uimenu(subm,'Label','Verbose');
     xm = uimenu(sm,'Label','To Binoc', 'Callback', {@SetVerbose, 1});
@@ -2747,12 +2749,14 @@ function MenuGui(a,b)
      for j = 1:length(strs)
          if ~isempty(strs{j})
              str = [DATA.ip strs{j}];
-             fprintf('%s\n',str);
+             if DATA.verbose(4)
+                 fprintf('%s\n',str);
+             end
              ts = now;
              [bstr, status] = urlread(str);
              if ~isempty(bstr)
                  fprintf('Binoc replied with %s\n',bstr);
-             else
+             elseif DATA.verbose(4)
                  fprintf('Binoc returned in %.3f\n',mytoc(ts));
              end
          end
@@ -2773,7 +2777,10 @@ function MenuGui(a,b)
      DATA = ReadFromBinoc(DATA);
      SetGui(DATA);
     
-     
+ function CheckTimerHit(a,b, flag)
+     DATA = GetDataFromFig(a);
+     CheckTimer(DATA);
+    
  function ReadIO(a,b, flag)
      DATA = GetDataFromFig(a);
 
@@ -3004,10 +3011,12 @@ function CheckInput(a,b, fig, varargin)
 function DATA = ReadHttp(DATA, varargin)
     ts = now;
     [str, status] = urlread([DATA.ip 'whatsup']);
-    fprintf('Binoc status%d:%s\n',status,str);
     took = mytoc(ts);
     DATA = InterpretLine(DATA,str,'frombinoc');
-    fprintf('Read took %.3f,%.3f\n',took,mytoc(ts));
+    if DATA.verbose(4)
+        fprintf('Binoc status%d:%s\n',status,str);
+        fprintf('Read took %.3f,%.3f\n',took,mytoc(ts));
+    end
     if ~isfield(DATA,'trialcounts')
     end
 
@@ -5394,6 +5403,10 @@ function DATA = CheckTimer(DATA)
     
     global rbusy;
     
+    if isfield(DATA,'timerobj') && isobject(DATA.timerobj)
+        on = get(DATA.timerobj,'Running');
+    end
+
     DATA.pipeerror = 0;
     c = get(DATA.toplevel,'color');
     if rbusy > 0
