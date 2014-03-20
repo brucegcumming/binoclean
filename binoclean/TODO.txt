@@ -97,3 +97,4 @@ aknowlegde before window up is just fprintf.  ? keep track and report later?
 Expt restart - get penlog info 
 Parse Stim durations in Verg, to look into frame dropping
 Check out Grating AA. ? Draw Lines Twice? 
+Spped up interpret line. Have case/ifelse by first letter?  Force use of = sign so that can always have exact code? 
