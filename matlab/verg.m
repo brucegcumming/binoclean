@@ -32,6 +32,9 @@ while j <= length(varargin)
 
     elseif strcmp(varargin{j},'autoquit')
         autoquit = 1;
+    elseif strcmp(varargin{j},'host')
+        j = j+1;
+        DATA.ip = ['http://' varargin{j} ':1110/'];
     elseif strcmp(varargin{j},'getstate')
     elseif strcmp(varargin{j},'new')
         checkforrestart = 0;
@@ -877,7 +880,7 @@ for j = 1:length(strs{1})
 %set in verg.setup before binoc has been started. 
             code = s(1:id(1)-1);
             code = strrep(code, 'electrode','Electrode');
-            if isempty(find(strcmp(code, {'1t' '2t' '3t' '4t'}))) %illegal names
+            if isempty(find(strcmp(code, {'1t' '2t' '3t' '4t' ''}))) %illegal names
                 if sum(strcmp(code,{'ereset'}))
                     bid = DATA.currentstim;
                 else
@@ -1442,7 +1445,7 @@ end
 function DATA = SetDefaults(DATA)
 
 scrsz = get(0,'Screensize');
-DATA.ip = 'http://localhost:1110/';
+DATA = SetField(DATA,'ip','http://localhost:1110/');
 DATA.network = 1;
 DATA.binocisup = 0;
 DATA.savestrs = 0;
@@ -2794,7 +2797,7 @@ function MenuGui(a,b)
                  fprintf('%s\n',str);
              end
              ts = now;
-             [bstr, status] = urlread(str);
+             [bstr, status] = urlread(str,'Timeout',2);
              if ~isempty(bstr)
                  fprintf('Binoc replied with %s\n',bstr);
              elseif DATA.verbose(4)
