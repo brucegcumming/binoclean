@@ -245,7 +245,7 @@ for j = 1:length(strs{1})
     if DATA.savestrs > 0
         fprintf(savestrs,'%s%s\n',strs{1}{j},src);
     end
-    if sendtobinoc && DATA.outid > 0
+    if sendtobinoc 
         tline = CheckLineForBinoc(strs{1}{j});
         outprintf(DATA,'%s\n',tline);
     end
