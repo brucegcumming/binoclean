@@ -1352,7 +1352,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = YES;
 				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
-				CONFIGURATION_BUILD_DIR = build/Debug;
+				CONFIGURATION_BUILD_DIR = /local/bin;
 				COPY_PHASE_STRIP = NO;
 				GCC_C_LANGUAGE_STANDARD = gnu99;
 				GCC_DYNAMIC_NO_PIC = NO;
@@ -1380,6 +1380,7 @@
 					"-lusb-1.0",
 				);
 				SDKROOT = macosx;
+				SYMROOT = /local/bin;
 			};
 			name = Debug;
 		};
@@ -1412,6 +1413,7 @@
 					"-lusb-1.0",
 				);
 				SDKROOT = macosx;
+				SYMROOT = /local/bin;
 			};
 			name = Release;
 		};

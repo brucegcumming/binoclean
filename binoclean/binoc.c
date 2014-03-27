@@ -1138,7 +1138,7 @@ int SendTrialCount()
     if (stimstate == POSTTRIAL)
         stim = stimno;
     else if (stimstate == WAIT_FOR_RESPONSE)
-        stim = stimno+1;
+        stim = stimno; //was stimno+1. ? just for psych expts? 
     else
         stim = stimno;
     
@@ -6309,7 +6309,10 @@ int next_frame(Stimulus *st)
                     (t2 = timediff(&now, &goodfixtime)) > expt.vals[INTERTRIAL_MIN] &&
                     (demomode == 0 || (TheStim->mode & EXPTPENDING)))
             {
-                stimstate=PREFIXATION;
+                if (mode & ANIMATE_BIT)
+                    stimstate=PREFIXATION;
+                else
+                    stimstate=STIMSTOPPED;
                 break;
             }
             if (demomode && mode & ANIMATE_BIT){
@@ -6560,7 +6563,7 @@ int next_frame(Stimulus *st)
                         mimic_fixation &= (~MIMIC_FIXATION);
                     }
                     
-                    if(!(option2flag & PSYCHOPHYSICS_BIT) && !(optionflag & FIXATION_CHECK)){
+                    if(!(option2flag & PSYCHOPHYSICS_BIT) && !(optionflag & FIXATION_CHECK) && stimstate != INTERTRIAL){
                         if (demomode == 0)
                             fixstate = RESPONDED;
                         stimstate = WAIT_FOR_RESPONSE;
@@ -6585,6 +6588,9 @@ int next_frame(Stimulus *st)
                 }
                 else if(testflags[PLAYING_EXPT]){
                     ReplayExpt(NULL);
+                }
+                else{ //Not Running Expt, No animate bit, shouldn't be in PRESTIM
+                    stimstate = INTERTRIAL;
                 }
             }
             else if(optionflag & BACKGROUND_IN_PREPERIOD)
@@ -10972,6 +10978,10 @@ void expt_over(int flag)
     if(stimstate == WAIT_FOR_RESPONSE && flag != CANCEL_EXPT){
         TheStim->mode |= EXPT_OVER; // make sure this is called again after response
         return;
+    }
+    else if (flag == CANCEL_EXPT){
+        GotChar(WURTZ_STOPPED); // tell runexptstim to stop
+        stimstate = INTERTRIAL;
     }
     stimstate = INTERTRIAL;
     TrialOver();

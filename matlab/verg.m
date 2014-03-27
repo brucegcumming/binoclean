@@ -219,6 +219,9 @@ end
 if nargin < 2 || isempty(line)
         return;
 end
+
+PauseRead(DATA, 1);
+
 strs = textscan(line,'%s','delimiter','\n');
 
 if DATA.verbose(1) && length(strs{1}) > 1
@@ -435,6 +438,7 @@ for j = 1:length(strs{1})
             DATA.inexpt = 1;
             tic; PsychMenu(DATA); 
             tic; SetGui(DATA,'set'); 
+            if DATA.verbose(4) fprintf('%s\n',s); end
         elseif strncmp(s,'EXPTOVER',8) %called at end or cancel
             if DATA.inexpt %in case reopen pipes mied expt
                 DATA.optionflags.do = 0;
@@ -468,6 +472,7 @@ for j = 1:length(strs{1})
                 DATA = RunButton(DATA,[],1);
             end
             DATA.matlabwasrun = 0;
+            if DATA.verbose(4) fprintf('%s:%d\n',s,DATA.inexpt); end
         elseif strncmp(s,'Expts1',6)
             DATA.extypes{1} = sscanf(s(8:end),'%d');
             DATA.extypes{1} = DATA.extypes{1}+1;
@@ -898,6 +903,7 @@ for j = 1:length(strs{1})
         end
     end
 end
+PauseRead(DATA,0);
 
 
 
@@ -1447,6 +1453,7 @@ function DATA = SetDefaults(DATA)
 scrsz = get(0,'Screensize');
 DATA = SetField(DATA,'ip','http://localhost:1110/');
 DATA.network = 1;
+DATA.pausereading = 0;  %stop timer driven reads when want to control
 DATA.binocisup = 0;
 DATA.savestrs = 0;
 DATA.vergversion=vergversion();
@@ -1511,7 +1518,7 @@ DATA.stimflags{1}.nc = 1;
 DATA.stimflagnames.nc = 'Black Dots';
 DATA.stimflagnames.pc = 'White Dots';
 if ~isfield(DATA,'verbose')
-    DATA.verbose = [0 0 0 0];
+    DATA.verbose = [0 0 0 0 0];
 end
 DATA = SetField(DATA,'matexpt','');
 DATA = SetField(DATA,'perfmonitor',0);
@@ -2166,6 +2173,8 @@ function DATA = InitInterface(DATA)
     SetMenuCheck(xm, DATA.verbose(3));
     xm = uimenu(sm,'Label','verg', 'Callback',{@SetVerbose, 4});
     SetMenuCheck(xm, DATA.verbose(4));
+    xm = uimenu(sm,'Label','IOTiming', 'Callback',{@SetVerbose, 5});
+    SetMenuCheck(xm, DATA.verbose(5));
     xm = uimenu(sm,'Label', 'All Off', 'Callback', {@SetVerbose, 0});
 
     sm = uimenu(subm,'Label','Try Pipes','Callback',{@ReadIO, 8},'foregroundcolor','r');
@@ -2189,6 +2198,7 @@ function DATA = InitInterface(DATA)
 
     if DATA.network
         period = 0.005;
+        period = 0.05;  %don't need 10ms reads yet
     else
         period = 1;
     end
@@ -2793,14 +2803,14 @@ function MenuGui(a,b)
      for j = 1:length(strs)
          if ~isempty(strs{j})
              str = [DATA.ip strs{j}];
-             if DATA.verbose(4)
+             if DATA.verbose(1)
                  fprintf('%s\n',str);
              end
              ts = now;
              [bstr, status] = urlread(str,'Timeout',2);
              if ~isempty(bstr)
                  fprintf('Binoc replied with %s\n',bstr);
-             elseif DATA.verbose(4)
+             elseif DATA.verbose(5)
                  fprintf('Binoc returned in %.3f\n',mytoc(ts));
              end
          end
@@ -2916,6 +2926,16 @@ function SetVerbose(a,b, flag)
 if new
     set(DATA.toplevel,'UserData',DATA);
 end
+
+function onoff = PauseRead(DATA, onoff)
+
+if isfield(DATA,'toplevel') && isfigure(DATA.toplevel)
+    if nargin == 2
+        setappdata(DATA.toplevel,'PauseReading',onoff);
+    else
+        onoff = getappdata(DATA.toplevel,'PauseReading');
+    end
+end
         
  function SetGui(DATA,varargin)
      if ~isfield(DATA,'toplevel')
@@ -2928,6 +2948,7 @@ end
          end
          j = j+1;
      end
+     PauseRead(DATA,1);
     DATA= CheckExptMenus(DATA);
     SetTextItem(DATA.toplevel,'Expt1Nstim',DATA.nstim(1));
     SetTextItem(DATA.toplevel,'Expt2Nstim',DATA.nstim(2));
@@ -3006,6 +3027,11 @@ end
         end
     end
     
+    if DATA.verbose(4)
+        fprintf('SetGUI: Ex%d\n',DATA.inexpt);
+    end
+    PauseRead(DATA,0);
+
     
     
 
@@ -3045,6 +3071,15 @@ end
 
 function CheckInput(a,b, fig, varargin)
     DATA = get(fig,'UserData');
+    
+    pauseread = getappdata(DATA.toplevel, 'PauseReading');
+    if pauseread
+        if DATA.verbose(1)
+            fprintf('Paused...');
+        end
+        return;
+    end
+    
     if DATA.servofig
         ServoDrive('readposition','quiet');
     end
@@ -3054,7 +3089,7 @@ function CheckInput(a,b, fig, varargin)
     end
     
     
-function DATA = ReadHttp(DATA, varargin)
+function [DATA, str] = ReadHttp(DATA, varargin)
 j = 1;
 expecting= 0;
 
@@ -3072,19 +3107,23 @@ expecting= 0;
     if expecting
         fprintf('%d bytes\n',length(str));
     end
-    if expecting && strncmp(str,'SENDING000000',13)
+    while expecting && strncmp(str,'SENDING000000',13)
         fprintf('0 Bytes, but expect input. Trying again.\n');
         [str, status] = urlread([DATA.ip 'whatsup']);
         if strncmp(str,'SENDING000000',13)
-            fprintf('Still Nothing. I give up\n');
+            fprintf('Nothing after %.2f\n',mytoc(ts));
         else
             fprintf('Second Try got %s\n',str(1:13));
+        end
+        if mytoc(ts) > 2
+            expecting = 0;
+            fprintf('Still Nothing. I give up\n');
         end
      end
 
     took = mytoc(ts);
     DATA = InterpretLine(DATA,str,'frombinoc');
-    if DATA.verbose(4)
+    if DATA.verbose(5)
         fprintf('Binoc status%d:%s\n',status,str);
         fprintf('Read took %.3f,%.3f\n',took,mytoc(ts));
     end
@@ -3093,7 +3132,7 @@ expecting= 0;
     end
 
  
- function DATA = ReadFromBinoc(DATA, varargin)
+ function [DATA, str] = ReadFromBinoc(DATA, varargin)
      global rbusy;
      persistent lastts;
      persistent lasttnone;
@@ -3105,10 +3144,11 @@ expecting= 0;
      verbose = DATA.verbose;
      autocall = 0;
      expecting = 0;
+     str = [];
 
 if DATA.network 
     if DATA.binocisup
-        DATA = ReadHttp(DATA, varargin{:});
+        [DATA, str] = ReadHttp(DATA, varargin{:});
     if isfield(DATA,'toplevel')
         set(DATA.toplevel,'UserData',DATA);
     end
@@ -3251,6 +3291,8 @@ function Expt = ExptSummary(DATA)
 function DATA = RunButton(a,b, type)
         DATA = GetDataFromFig(a);
         fprintf('Run Hit Inexpt %d, type %d\n',DATA.inexpt,type);
+        PauseRead(DATA,1);
+
         DATA.newexptdef = 0;
         DATA.matexpres = [];
         if type == 1
@@ -3280,7 +3322,14 @@ function DATA = RunButton(a,b, type)
                 %            DATA = GetState(DATA);
             else
                 DATA.rptexpts = 0;
+                if DATA.verbose(4)
+                    fprintf('Before Cancel: Inexpt %d\n',DATA.inexpt);
+                end
                 outprintf(DATA,'\\ecancel\n');
+                [DATA, str] = ReadFromBinoc(DATA,'expect');
+                if DATA.verbose(4)
+                    fprintf('Cancel: Inexpt %d %s\n',DATA.inexpt,str);
+                end
                 DATA = AddTextToGui(DATA,'Cancelled','norec');
                 if DATA.nexpts > 0
                 DATA.Expts{DATA.nexpts}.last = DATA.Trial.Trial;
@@ -3291,6 +3340,7 @@ function DATA = RunButton(a,b, type)
             end
         elseif type == 2
             outprintf(DATA,'\\estop\n');
+            DATA = ReadFromBinoc(DATA,'expect');
             DATA.rptexpts = 0;
             DATA.Expts{DATA.nexpts}.last = DATA.Trial.Trial;
             DATA.Expts{DATA.nexpts}.End = now;
@@ -3302,9 +3352,13 @@ function DATA = RunButton(a,b, type)
 %if expt is over, EXPTOVER should be received. - query state then
 %    DATA = GetState(DATA);
 %    DATA = ReadFromBinoc(DATA);
-    set(DATA.toplevel,'UserData',DATA);
-    
+    if DATA.verbose(4)
+        fprintf('RunButton: Inexpt %d\n',DATA.inexpt);
+    end
+    set(DATA.toplevel,'UserData',DATA);    
     SetGui(DATA);
+    PauseRead(DATA,0);
+
     CheckTimer(DATA);
      
     function TestIO(a,b)
@@ -3984,7 +4038,7 @@ function SendManualExpt(DATA)
     X = DATA.matexpres;
     if isfield(X,'binocstrs')
         for j = 1:length(X.binocstrs)
-            fprintf(DATA.outid,'%s\n',X.binocstrs{j});
+            outprintf(DATA,'%s\n',X.binocstrs{j});
         end
     end
         
@@ -3993,14 +4047,14 @@ function SendManualExpt(DATA)
         DATA.nstim(1) = length(a);
         SendCode(DATA,'nt');
         for j = 1:length(a)
-            fprintf(DATA.outid,'EA%d=%s\n',j-1,num2str(a(j)));
+            outprintf(DATA,'EA%d=%s\n',j-1,num2str(a(j)));
         end
         if size(X.exvals,2) > 1
             a = unique(X.exvals(:,2));
             DATA.nstim(2) = length(a);
             SendCode(DATA,'n2');
             for j = 1:length(a)
-                fprintf(DATA.outid,'EB%d=%s\n',j-1,num2str(a(j)));
+                outprintf(DATA,'EB%d=%s\n',j-1,num2str(a(j)));
             end
         end
         if size(X.exvals,2) > 2
@@ -4008,11 +4062,11 @@ function SendManualExpt(DATA)
             DATA.nstim(3) = length(a);
             SendCode(DATA,'n3');
             for j = 1:length(a)
-                fprintf(DATA.outid,'EC%d=%s\n',j-1,num2str(a(j)));
+                outprintf(DATA,'EC%d=%s\n',j-1,num2str(a(j)));
             end
         end
     end
-    fprintf(DATA.outid,'EDONE\n');
+    outprintf(DATA,'EDONE\n');
 
 function uipause(start, secs, msg)
 

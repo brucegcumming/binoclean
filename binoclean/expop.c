@@ -7298,6 +7298,8 @@ void InitExpt()
 
     if(!(mode & SERIAL_OK))
         MakeConnection(4);
+    if (optionflags[MANUAL_EXPT])
+        OpenNetworkFile(expt);
     expt.cramp = expt.ramp;
     expt.expseed = 1;
     
@@ -11438,6 +11440,13 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
                             fprintf(seroutfile,"#Bad on last frame\n");
                         }
                     }
+                }
+                if (stimstate == INTERTRIAL || stimstate == STIMSTOPPED){ // stopped readinput
+                    retval = BAD_TRIAL;
+                    fixstate = BADFIX_STATE;
+                    finished = 2;
+                    fprintf(seroutfile,"#Stopped by ReadInput\n");
+                    stimstate = INTERTRIAL;
                 }
             }
             ReadInputPipe();
