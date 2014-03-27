@@ -11658,8 +11658,8 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
             }
             else
                 sprintf(tmp," op-CN to stop Checking");
-                sprintf(buf,"Only completed %d/%d frames (stim %d at %s). %s",framesdone,n,stimno,binocTimeString(),tmp);
-                acknowledge(buf,NULL);
+            sprintf(buf,"Only completed %d/%d frames (stim %d at %s). %s",framesdone,n,stimno,binocTimeString(),tmp);
+            acknowledge(buf,NULL);
             statusline(buf);
         }
     }
@@ -12876,15 +12876,6 @@ int ChangeFlag(char *s)
     {
         if(c == '+'){
             optionflags[togglestrings[i].icode] = 1;
-            /*
-             * framecounts are either checked for every stim (-CF), or only for first 
-             * of expt (+CF). When variable is 0  gets reset to 1. So setting to 2 keeps
-             * it on check expt first only.
-             */
-            if(togglestrings[i].icode == CHECK_FRAMECOUNTS){
-                optionflags[CHECK_FRAMECOUNTS] = 2;
-                printf("Frame Checking First stim of expt only\n");
-            }
         }
         else
             optionflags[togglestrings[i].icode] = 0;
