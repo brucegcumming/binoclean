@@ -2602,10 +2602,13 @@ int OpenNetworkFile(Expt expt)
     if (netoutfile != NULL){
         fprintf(netoutfile,"Reopened %s by binoc Version %s",ctime(&tval),VERSION_NUMBER);
         if (seroutfile != NULL)
-            fprintf(seroutfile,"Network Record to %d\n",name);
+            fprintf(seroutfile,"Network Record to %s\n",name);
     }
     else{
         sprintf(buf,"Can't open Network parameter record file\n %s\t or\n%s",nbuf,name);
+        if (seroutfile != NULL)
+            fprintf(seroutfile,"%s\n",buf);
+        
         acknowledge(buf,0);
     }
 }
@@ -14118,6 +14121,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
                 // if seting optionflag to 0, set all flags to 0.
                 if(optionflag == 0){
                     option2flag = 0;
+                    expt.st->flag &= (~(STIMULUS_IS_SQUARE));
                     for(i = 0; i <= MAXALLFLAGS; i++){
                         oldoptionflags[i] = optionflags[i];
                         optionflags[i] = 0;

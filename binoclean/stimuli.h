@@ -242,7 +242,8 @@ struct STIMULUS{
     Locator pos;
     float lastangle;
     Wurtz fix;
-    int mode,type,flag,lasttype;
+    int mode,type,lasttype;
+    unsigned int flag;
     float background,fixcolor, gammaback;
     int colormode;
     float disp,origdisp,phasedisp[2],f,incr,angleinc,vdisp,length,width;

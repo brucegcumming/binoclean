@@ -154,6 +154,7 @@ void paint_bar(Stimulus *st, Substim *sst, int mode)
     /*
      * if SQUARE, have constant velocity sweeps in one direction. Sign reversal 
      * is so that direction matches sines/rds
+     * phase 180 is center.
      */
     
     if(st->type == STIM_RECT){
