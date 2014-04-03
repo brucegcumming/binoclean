@@ -197,6 +197,7 @@
 		C969F921150D233B00D7A5A7 /* rdssine in Resources */ = {isa = PBXBuildFile; fileRef = C969F88A150D233B00D7A5A7 /* rdssine */; };
 		C98E0B3418D9C1010027D45A /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C98E0B3318D9C1010027D45A /* Security.framework */; };
 		C9AA959E1773855F003E9841 /* binoc.c in Sources */ = {isa = PBXBuildFile; fileRef = 41BF8DEC13A174FE00C8B6BA /* binoc.c */; };
+		C9D6FA2118ECD2C900031646 /* helpstrings.txt in Resources */ = {isa = PBXBuildFile; fileRef = C9D6FA2018ECD2C900031646 /* helpstrings.txt */; };
 		C9E0BD621778F7BD003B1BEB /* stepper.c in Sources */ = {isa = PBXBuildFile; fileRef = 41BF8DF013A174FE00C8B6BA /* stepper.c */; };
 		C9FE34881799BFFC0088ED4C /* MTRandom64.m in Sources */ = {isa = PBXBuildFile; fileRef = C9FE34871799BFFC0088ED4C /* MTRandom64.m */; };
 /* End PBXBuildFile section */
@@ -473,6 +474,7 @@
 		C969F88A150D233B00D7A5A7 /* rdssine */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = rdssine; sourceTree = "<group>"; };
 		C98E0B3318D9C1010027D45A /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		C9AA959F177385D0003E9841 /* servostepper.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = servostepper.c; sourceTree = "<group>"; };
+		C9D6FA2018ECD2C900031646 /* helpstrings.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = helpstrings.txt; path = matlab/helpstrings.txt; sourceTree = SOURCE_ROOT; };
 		C9FE34861799BFFC0088ED4C /* MTRandom64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MTRandom64.h; sourceTree = "<group>"; };
 		C9FE34871799BFFC0088ED4C /* MTRandom64.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MTRandom64.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -597,6 +599,7 @@
 		4156A61613C5FDDB002DC9AA /* Matlab */ = {
 			isa = PBXGroup;
 			children = (
+				C9D6FA2018ECD2C900031646 /* helpstrings.txt */,
 				C940330517EC687D00F125BA /* ServoDrive.m */,
 				C940330317EC684A00F125BA /* verg.m */,
 			);
@@ -1124,6 +1127,7 @@
 				41A8E00F18D0D8A500511F72 /* About.txt in Resources */,
 				C969F8F8150D233B00D7A5A7 /* twodce in Resources */,
 				C969F8F9150D233B00D7A5A7 /* rdssinels in Resources */,
+				C9D6FA2118ECD2C900031646 /* helpstrings.txt in Resources */,
 				C969F8FA150D233B00D7A5A7 /* rdsdir in Resources */,
 				C969F8FB150D233B00D7A5A7 /* imsfbw in Resources */,
 				C969F8FC150D233B00D7A5A7 /* oposrc in Resources */,
