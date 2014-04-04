@@ -5,16 +5,24 @@ expname = [];
 basedir = [];
 lines = [];    
 nrpt = 0;
+targettrials = 80;
+
 matexp.binocstrs = {};
 
 j = 1;
 while j <= length(varargin)
-    if strcmp(varargin{j},'basedir',7)
+    if strncmp(varargin{j},'basedir',7)
         j = j+1;
         basedir = varargin{j};
-    elseif strcmp(varargin{j},'expname',7)
+    elseif strncmp(varargin{j},'expname',7)
         j = j+1;
         expname = varargin{j};
+    elseif strncmp(varargin{j},'nrpt',4)
+        j = j+1;
+        nrpt = varargin{j};
+    elseif strncmp(varargin{j},'ntrials',4)
+        j = j+1;
+        targettrials = varargin{j};
     end
     j = j+1;
 end
@@ -99,7 +107,7 @@ for j = 1:ns
 end
 
 if nrpt == 0  %set nr automatically to get ~ 80 trials
-nrpt = round(80./ns);
+nrpt = round(targettrials./ns);
 end
 
 if isempty(teststim)

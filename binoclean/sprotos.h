@@ -166,6 +166,7 @@ void setstimuli(int flag);
 void LoadBackgrounds();
 int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag);
 char *SerialSend(int code);
+char *SendBoth(int code, int flag);
 void InitExpt();
 Thisstim *getexpval(int stimi);
 void ShuffleStimulus(int state);

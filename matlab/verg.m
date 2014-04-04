@@ -93,7 +93,7 @@ if isempty(it)
             DATA = LoadLastSettings(DATA,'interactive');
         end
         outprintf(DATA,'QueryState\n');
-        DATA = ReadFromBinoc(DATA);
+        DATA = ReadFromBinoc(DATA,'expect');
         tt = TimeMark(tt, 'FromBinoc');
 
         j = 2;
@@ -1341,7 +1341,7 @@ function DATA = OpenPipes(DATA, readflag)
 DATA.outpipe = '/tmp/binocinputpipe';
 DATA.inpipe = '/tmp/binocoutputpipe';
 
-
+rbusy = 0;
 if DATA.network
     DATA.binocisup = 1;
     warning('off','MATLAB:urlread:ReplacingSpaces');
@@ -1685,7 +1685,8 @@ function [strs, Keys] = ReadHelp(DATA)
     lastcode = code;
     for j = 1:length(txt)
         code = regexprep(txt{j},'\s.*','');
-        if code(1) == '+'  %optionflag help
+        if isempty(code)
+        elseif code(1) == '+'  %optionflag help
             str = regexprep(txt{j},code,'');
             code = code(2:end);
             Keys.options.(code) = str;
@@ -3092,30 +3093,47 @@ function CheckInput(a,b, fig, varargin)
 function [DATA, str] = ReadHttp(DATA, varargin)
 j = 1;
 expecting= 0;
+expecttime = 1;
+silent = 0;
+str = [];
+persistent httpbusy;
 
+if isempty(httpbusy)
+    httpbusy = 0;
+end
     while j <= length(varargin)
          if strncmpi(varargin{j},'verbose',5)
              verbose(1) = 1;
          elseif strncmpi(varargin{j},'expecting',5)
             expecting = 1;
+            if length(varargin) > j && isnumeric(varargin{j+1})
+                silent = 1;
+                expecttime = varargin{j};
+            end
          end
          j = j+1;
+    end
+
+     if httpbusy
+         return;
      end
-     
      ts = now;
     [str, status] = urlread([DATA.ip 'whatsup']);
     if expecting
         fprintf('%d bytes\n',length(str));
     end
     while expecting && strncmp(str,'SENDING000000',13)
-        fprintf('0 Bytes, but expect input. Trying again.\n');
+        httpbusy = 1;
         [str, status] = urlread([DATA.ip 'whatsup']);
+        if silent == 0
+        fprintf('0 Bytes, but expect input. Trying again.\n');
         if strncmp(str,'SENDING000000',13)
             fprintf('Nothing after %.2f\n',mytoc(ts));
         else
             fprintf('Second Try got %s\n',str(1:13));
         end
-        if mytoc(ts) > 2
+        end
+        if mytoc(ts) > expecttime
             expecting = 0;
             fprintf('Still Nothing. I give up\n');
         end
@@ -3130,7 +3148,7 @@ expecting= 0;
 %    myprintf(DATA.frombinocfid,'ReadBinoc%s:  %s',datestr(now),str);
     if ~isfield(DATA,'trialcounts')
     end
-
+httpbusy = 0;
  
  function [DATA, str] = ReadFromBinoc(DATA, varargin)
      global rbusy;
@@ -3146,12 +3164,12 @@ expecting= 0;
      expecting = 0;
      str = [];
 
-if DATA.network 
+if DATA.network
     if DATA.binocisup
         [DATA, str] = ReadHttp(DATA, varargin{:});
-    if isfield(DATA,'toplevel')
-        set(DATA.toplevel,'UserData',DATA);
-    end
+        if isfield(DATA,'toplevel')
+            set(DATA.toplevel,'UserData',DATA);
+        end
     end
     return;
 end
@@ -3317,7 +3335,7 @@ function DATA = RunButton(a,b, type)
                 DATA.Expts{DATA.nexpts} = ExptSummary(DATA);
                 DATA.optionflags.do = 1;
                 DATA.exptstoppedbyuser = 0;
-                DATA = ReadFromBinoc(DATA);
+                DATA = ReadFromBinoc(DATA,'expect');
                 CheckExptIsGood(DATA);
                 %            DATA = GetState(DATA);
             else
@@ -3326,7 +3344,7 @@ function DATA = RunButton(a,b, type)
                     fprintf('Before Cancel: Inexpt %d\n',DATA.inexpt);
                 end
                 outprintf(DATA,'\\ecancel\n');
-                [DATA, str] = ReadFromBinoc(DATA,'expect');
+                [DATA, str] = ReadFromBinoc(DATA,'expect', 4);
                 if DATA.verbose(4)
                     fprintf('Cancel: Inexpt %d %s\n',DATA.inexpt,str);
                 end
@@ -3340,7 +3358,7 @@ function DATA = RunButton(a,b, type)
             end
         elseif type == 2
             outprintf(DATA,'\\estop\n');
-            DATA = ReadFromBinoc(DATA,'expect');
+            DATA = ReadFromBinoc(DATA,'expect',4);
             DATA.rptexpts = 0;
             DATA.Expts{DATA.nexpts}.last = DATA.Trial.Trial;
             DATA.Expts{DATA.nexpts}.End = now;
@@ -5357,6 +5375,14 @@ function ChoosePsych(a,b, mode)
         DATA.psych.(mode) = ~DATA.psych.(mode);
         set(a,'Checked',onoff{DATA.psych.(mode)+1});
         PlotPsych(DATA);
+    elseif strcmp(mode,'savetrials');
+        [outname, pathname] = uiputfile(['/local/' DATA.binoc{1}.monkey '/PsychDat.mat']);
+        if outname
+            outname = [pathname '/' outname];
+            Data = rmfields(DATA,{'timerobj' 'txtui'})'
+            save(outname,'Data');
+            fprintf('Trials saved to %s\n',outname);
+        end
     end
     set(DATA.toplevel,'UserData',DATA);
 
@@ -5376,6 +5402,7 @@ function DATA = SetFigure(tag, DATA)
                 'checked',onoff{DATA.psych.crosshairs+1});
             sm = uimenu(hm,'Label','Just Show Trial outcomes','callback', {@ChoosePsych, 'trialresult'},...
                 'checked',onoff{DATA.psych.trialresult+1});
+            sm = uimenu(hm,'Label','Save Trial Data','callback', {@ChoosePsych, 'savetrials'});
             set(a,'UserData',DATA.toplevel);
             set(a,'DefaultUIControlFontSize',DATA.font.FontSize);
             set(a,'DefaultUIControlFontName',DATA.font.FontName);

@@ -139,6 +139,7 @@ int seedoffsets[100] = {0};
 int covaryprop = -1;
 int maxseed = 0;
 int popup_confirmed = -1;
+int cancelflag = 0;
 extern int renderoff;
 
 #define MAXHELPFILES 200
@@ -4373,7 +4374,7 @@ int ReadCommand(char *s)
     }
     else if(!strncasecmp(s,"ecancel",7)){
         if(expt.st->mode & EXPTPENDING) // if verg sends cancel, but not in expt, ignore
-            expt_over(CANCEL_EXPT);
+            cancelflag = 1; // call canel when trial over
         else {
             notify("\nEXPTOVER\n");
         }
@@ -7312,6 +7313,7 @@ void InitExpt()
     setstimulusorder(1);
     stimdurn = 0;
     stimdursum = 0;
+    cancelflag = 0;
     /*
      * This list of properties is recorded fo the stimulus before an expt run
      * starts playing with it. expt.stimvals[i] can then be used to reset the 
@@ -8656,6 +8658,15 @@ int PreLoadImages()
 
 }
 
+char *SendBoth(int code, int flag)
+{
+    char *s;
+    s = SerialSend(code);
+    if (flag)
+        SendToGui(code);
+    return(s);
+}
+
 int PrepareExptStim(int show, int caller)
 {
     int i, stimres,cnt,j,nvals,nv,nstim[10],k,frpt,ncycles,drop,iperiod;
@@ -8710,9 +8721,15 @@ int PrepareExptStim(int show, int caller)
     }
     
     expt.st->preloaded = expt.st->next->preloaded = 0;
-    
+
+
     if (optionflags[MANUAL_EXPT]){
 
+        if(expt.vals[ONETARGET_P] > 0){
+            if ((drnd = mydrand()) < expt.vals[ONETARGET_P])
+                expt.vals[TARGET_RATIO] = 0;
+            SendBoth(TARGET_RATIO, 1);
+        }
         sprintf(ebuf,"%s/stim%d",expt.strings[EXPT_PREFIX],stimorder[stimno]);
         s = ReadManualStim(ebuf, stimorder[stimno]);
         val = afc_s.stimsign = expt.vals[PSYCH_VALUE];
@@ -11779,6 +11796,9 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
         sprintf(buf,"%d/%d Contrast Overflow!!",expt.noverflow,expt.ncalc);
         acknowledge(buf,"/bgc/bgc/c/binoc/help/overflow.1");
     }
+    if (cancelflag)
+        expt_over(CANCEL_EXPT);
+
     return(framecount);
 }
 
