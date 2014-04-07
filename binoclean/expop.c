@@ -2595,8 +2595,8 @@ int OpenNetworkFile(Expt expt)
         netoutfile = fopen(name,"a");
     
         if (netoutfile == NULL){
-            strcpy(nbuf,name);
-            sprintf(name,"/local/%s",sfile);
+            getcwd(path,BUFSIZ);
+            sprintf(name,"%s/%s.bnc",path,getfilename(sfile));
             netoutfile = fopen(name,"a");
         }
     }
@@ -7102,11 +7102,11 @@ void runexpt(int w, Stimulus *st, int *cbs)
         fprintf(netoutfile,"#Start Expt at %.2f %sx%s %d%c%d (%d)\n",
                 ufftime(&now),serial_strings[expt.mode],serial_strings[expt.type2],
                 expt.nstim[0],(expt.flag & TIMES_EXPT2) ? 'x' : '+',expt.nstim[1],expt.nstim[4]);
+    InitExpt();
     if(optionflags[MANUAL_EXPT] && netoutfile == NULL && (optionflag & STORE_WURTZ_BIT)){
         sprintf(buf,"Remote (PC) file for stim record not open. Check \"netpref=\"");
         acknowledge(buf,NULL);
     }
-    InitExpt();
 }
 
 

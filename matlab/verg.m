@@ -1286,6 +1286,7 @@ function SaveExpt(DATA, name)
     else
         bname = [name '.bstm'];
     end
+    BackupFile(name,'print');
     outprintf(DATA,'\\savefile=%s\n',bname);
     fid = fopen(name,'w');
 

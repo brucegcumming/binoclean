@@ -253,9 +253,10 @@ int  processUIEvents()
         printf("Starting DIO\n");
 	/* Try twice - it sometimes fails */
 	if(useDIO && DIOInit() < 0){
-        acknowledge("Can't Open DIO - Restart Binoc","/bgc/bgc/c/binoc/help/DIOerr");
+        acknowledge("Can't Open DIO - Restart Binoc\nUse binoc -noDIO to ignore error","/bgc/bgc/c/binoc/help/DIOerr");
         fprintf(stderr,"Use binoc -noDIO to ingore this error\n");
         DIOClose();
+        fsleep(5);
         exit(1);
 	}
     else if (useDIO)
