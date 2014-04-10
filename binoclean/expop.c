@@ -1879,7 +1879,7 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
 char *ReadManualStim(char *file, int stimid){
     struct stat statbuf;
     FILE *fin;
-    char *s,*t,inbuf[BUFSIZ*10];
+    char *s,*t,inbuf[BUFSIZ*10],msg[BUFSIZ],*r;
     int nprop = 0,j,i,nframes=0,modifier,pos;
     float val,imx[MAXFRAMES],imy[MAXFRAMES];
     Stimulus *st;
@@ -1946,8 +1946,16 @@ char *ReadManualStim(char *file, int stimid){
             inbuf[strlen(inbuf)-1] = 0; // remove '\n';
             expt.codesent = 0;
             i = InterpretLine(inbuf,&expt,3);
-            if (i == expt.mode)
+            if (i == expt.mode){
+                r = strchr(inbuf,'=');
                 expt.currentval[0] = GetProperty(&expt, expt.st, i);
+                if(r){
+                    sscanf(++r,"%f",&val);
+                    if (expt.currentval[0] != val){
+                        sprintf(msg,"%s->%.6f",inbuf,expt.currentval[0]);
+                    }
+                }
+            }
             if (i == expt.type2)
                 expt.currentval[1] = GetProperty(&expt, expt.st, i);
             if (i == expt.type3)
@@ -3530,6 +3538,7 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
             break;
         case CORRECTION_ENTRY_CRIT:
             afc_s.correction_entry = (int)val;
+            reset_afc_counters();//turn off any existing CorLoop
             break;
         case AFC_PROPORTION:
             afc_s.proportion = val;
@@ -5427,6 +5436,8 @@ int ReadStimOrder(char *file)
         fclose(fd);
     }
     expt.nstim[5] = imax;
+    sprintf(buf,"Manual Stimorder %d stim over %d trials\n",imax+1,nt);
+    statusline(buf);
     return(nt); // this is # of trials, not index of last trial.  But nt gets increment
 }
 
@@ -7957,6 +7968,14 @@ Thisstim *getexpval(int stimi)
     return(&stimret);
 }
 
+
+void acklog(char *s, int flag)
+{
+    acknowledge(s, flag);
+    if (seroutfile){
+        fprintf(seroutfile,"%s\n",s);
+    }
+}
 /*
  * if monkey does an indeterminate response in psychophysics
  * need to rerun that stimulus. Don't do it straight away though,
@@ -7997,13 +8016,13 @@ void ShuffleStimulus(int state)
     temp = stimorder[stimno];
     stimorder[stimno] = stimorder[stimno + i];
     if (stimorder[stimno] > expt.nstim[5]){
-        sprintf(buf,"Swapfrom Stim %d (stimno %d+%d)larger that nstim",stimorder[stimno],stimno,i);
-        acknowledge(buf, NULL);
+        sprintf(buf,"Swapfrom Stim %d (stimno %d+%d)larger that nstim expt.nstim[5]",stimorder[stimno],stimno,i);
+        acklog(buf, NULL);
     }
     stimorder[stimno+i] = temp;
     if (temp > expt.nstim[5]){
-        sprintf(buf,"Swapto Stim %d larger that nstim",temp);
-        acknowledge(buf, NULL);
+        sprintf(buf,"Swapto Stim %d larger that nstim (%d)",temp,expt.nstim[5]);
+        acklog(buf, NULL);
     }
     stimseq[trialctr].a = stimorder[stimno];
     stimseq[trialctr].b = stimorder[stimno+i];  
@@ -8703,6 +8722,9 @@ int PrepareExptStim(int show, int caller)
     gettimeofday(&now,NULL);
     if(netoutfile){
         fprintf(netoutfile,"#Prep%d %d %.3f\n",stimno, stimorder[stimno],ufftime(&now));
+    }
+    if(seroutfile){
+        fprintf(seroutfile,"#Prep%c %d %d %.3f\n",InExptChar,stimno, stimorder[stimno],ufftime(&now));
     }
 
     fakestim = 0;
@@ -10066,7 +10088,7 @@ int PrepareExptStim(int show, int caller)
         expt.targetcolor = 1;
     
     if(seroutfile){
-        fprintf(seroutfile,"##prep%c\n",InExptChar);
+        fprintf(seroutfile,"#Ready\n",InExptChar);
     }
     return(stimno);
 }
