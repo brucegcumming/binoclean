@@ -10188,7 +10188,8 @@ int GotChar(char c)
             DIOWriteBit(0,1);
             fsleep(0.01);
             DIOWriteBit(0,0);
-            acknowledge("Very Short interval between Serial Connect",NULL);
+            sprintf(buf,"Very Short interval between Serial Connect at %.2f: %s",ufftime(&now),binocTimeString());
+            acklog(buf,NULL);
         }
         else{
 #ifdef NIDAQ

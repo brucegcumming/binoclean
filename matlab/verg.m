@@ -3096,7 +3096,7 @@ function [DATA, str] = ReadHttp(DATA, varargin)
 j = 1;
 expecting= 0;
 expecttime = 1;
-silent = 0;
+silent = 1;
 str = [];
 persistent httpbusy;
 
@@ -3315,6 +3315,7 @@ function DATA = RunButton(a,b, type)
 
         DATA.newexptdef = 0;
         DATA.matexpres = [];
+        inexpt = 0;
         if type == 1
             if DATA.inexpt == 0 %sarting a new one. Increment counter
                 if DATA.optionflags.exm && ~isempty(DATA.matexpt)
@@ -3339,8 +3340,10 @@ function DATA = RunButton(a,b, type)
                 DATA.exptstoppedbyuser = 0;
                 DATA = ReadFromBinoc(DATA,'expect');
                 CheckExptIsGood(DATA);
+                inexpt = 1;
                 %            DATA = GetState(DATA);
             else
+                inexpt = 0;
                 DATA.rptexpts = 0;
                 if DATA.verbose(4)
                     fprintf('Before Cancel: Inexpt %d\n',DATA.inexpt);
@@ -3368,12 +3371,19 @@ function DATA = RunButton(a,b, type)
             DATA.optionflags.do = 0;
             DATA = AddTextToGui(DATA,['Stopped after ' num2str(ti) ' Trials']);
             DATA.exptstoppedbyuser = 1;
+            inexpt = 0;
         end
 %if expt is over, EXPTOVER should be received. - query state then
 %    DATA = GetState(DATA);
 %    DATA = ReadFromBinoc(DATA);
     if DATA.verbose(4)
         fprintf('RunButton: Inexpt %d\n',DATA.inexpt);
+    end
+    DATA = GetState(DATA);
+    if DATA.inexpt ~= inexpt; %not caught up yet
+        fprintf('Expt Button Confused. Trying again\n');
+        DATA = ReadFromBinoc(DATA,'expect',0.5);
+        DATA = GetState(DATA);
     end
     set(DATA.toplevel,'UserData',DATA);    
     SetGui(DATA);
