@@ -2866,6 +2866,7 @@ function MenuGui(a,b)
          DATA = OpenPipes(DATA, 0);
          SendState(DATA,'all');
          DATA = GetState(DATA);
+         SetGui(DATA);
          start(DATA.timerobj);
          set(DATA.toplevel,'UserData',DATA);
         

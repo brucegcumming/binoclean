@@ -1889,9 +1889,14 @@ char *ReadManualStim(char *file, int stimid){
     manualprop[0] = -1;  //in case file error
     if(file == NULL)
         return(NULL);
-    if(stat(file, &statbuf) == -1)
+//    if(stat(file, &statbuf) == -1)
+//        return(NULL);
+    if((fin = fopen(file,"r")) == NULL)
+    {
+        sprintf(cbuf,"Can't read %s",file);
+        acklog(cbuf,0);
         return(NULL);
-    fin = fopen(file,"r");
+    }
     sprintf(cbuf,"%d:",stimid);
     for(i = 0; i < MAXFRAMES; i++)
         imx[i] = imy[i] = 0;
@@ -8771,7 +8776,7 @@ int PrepareExptStim(int show, int caller)
            afc_s.stimsign = code;
         
         if (s == NULL){ //Error setting stimulus
-            sprintf(cbuf,"Error Setting Stimulus %s",ebuf);
+            sprintf(cbuf,"Error Reading Stimulus %s",ebuf);
             acknowledge(cbuf,0);
             return(-1);
         }
@@ -14601,6 +14606,8 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             case SET_TF_COMPONENTS:
             case SET_SF_CONTRASTS:
             case EARLY_RWTIME:
+            case QUICKEXPT_CODE:
+            case NETWORK_PREFIX:
             case UKA_VALS:
                 break;
         }
