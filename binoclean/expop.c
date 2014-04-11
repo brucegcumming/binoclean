@@ -1687,6 +1687,7 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
 
     pgimage.ptr = NULL;
     pgimage.name = NULL;
+    ex->codevalue = NOTSET;
     ex->verbose = 0;  //controls NSlog
     ex->biasedreward = 0;
     ex->backim.name = NULL;
@@ -1945,14 +1946,18 @@ char *ReadManualStim(char *file, int stimid){
             notify(inbuf);
             inbuf[strlen(inbuf)-1] = 0; // remove '\n';
             expt.codesent = 0;
+            r = strchr(inbuf,'=');
+            if(r){
+                sscanf(++r,"%f",&expt.codevalue);
+            }
             i = InterpretLine(inbuf,&expt,3);
             if (i == expt.mode){
-                r = strchr(inbuf,'=');
                 expt.currentval[0] = GetProperty(&expt, expt.st, i);
                 if(r){
-                    sscanf(++r,"%f",&val);
-                    if (expt.currentval[0] != val){
-                        sprintf(msg,"%s->%.6f",inbuf,expt.currentval[0]);
+                    if (fabs(expt.currentval[0] - expt.codevalue) > 0.001){
+                        sprintf(msg,"DX set error %s->%.6f",inbuf,expt.currentval[0]);
+                        acklog(msg,0);
+                        i = InterpretLine(inbuf,&expt,3); //try again to see if it repeats
                     }
                 }
             }
@@ -2035,6 +2040,8 @@ int SetManualStim(int frame)
 {
     int i,p = 0,code;
     float val;
+    
+    expt.codevalue = NOTSET;
     
     while(manualprop[p] >= 0){
         val = manualstimvals[p][frame];
@@ -8016,7 +8023,7 @@ void ShuffleStimulus(int state)
     temp = stimorder[stimno];
     stimorder[stimno] = stimorder[stimno + i];
     if (stimorder[stimno] > expt.nstim[5]){
-        sprintf(buf,"Swapfrom Stim %d (stimno %d+%d)larger that nstim expt.nstim[5]",stimorder[stimno],stimno,i);
+        sprintf(buf,"Swapfrom Stim %d (stimno %d+%d)larger that nstim %d",stimorder[stimno],stimno,i,expt.nstim[5]);
         acklog(buf, NULL);
     }
     stimorder[stimno+i] = temp;
@@ -8743,7 +8750,8 @@ int PrepareExptStim(int show, int caller)
     }
     
     expt.st->preloaded = expt.st->next->preloaded = 0;
-
+    expt.st->framectr = 0;
+    expt.st->next->framectr = 0;
 
     if (optionflags[MANUAL_EXPT]){
 

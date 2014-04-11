@@ -2816,8 +2816,9 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
             if(laststimtype[1] == STIM_RDS)
                 laststimtype[1] = st->next->type;
         }
-        if (st->framectr == 0)
+        if (st->framectr == 0){
             setblank = 0;
+        }
 	}
     
 	if(val == INTERLEAVE_EXPT_UNCORR){
@@ -3880,6 +3881,9 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
             break;
         case DISP_X:
             if(val > INTERLEAVE_EXPT){
+                if (val != expt.codevalue && expt.codevalue > NOTSET){
+                    sprintf(buf,"val not codevalue");
+                }
                 st->disp = deg2pix(val)/2;
                 CheckRect(stimptr);
                 if(st->prev != NULL)

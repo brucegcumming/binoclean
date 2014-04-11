@@ -147,6 +147,7 @@ int AddElectrodeString(char *s);
 void AddUserString(char *s);
 double pos2phase(Stimulus *st);
 
+void acklog(char *s, int flag);
 
 
 

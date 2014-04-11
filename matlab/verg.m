@@ -2865,9 +2865,9 @@ function MenuGui(a,b)
         stop(DATA.timerobj);
          DATA = OpenPipes(DATA, 0);
          SendState(DATA,'all');
-         outprintf(DATA,'QueryState\n');
-        DATA = ReadFromBinoc(DATA,'verbose2','expect');   
-        start(DATA.timerobj);
+         DATA = GetState(DATA);
+         start(DATA.timerobj);
+         set(DATA.toplevel,'UserData',DATA);
         
      elseif flag == 7 %obsolete
          if DATA.verbose(1) > 0
