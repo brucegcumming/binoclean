@@ -11862,6 +11862,8 @@ int CheckStimDuration(int retval)
             strcat(buf,"\n");
             SerialString(buf,-1);
             sprintf(buf,"%sFn=",serial_strings[MANUAL_TDR]);
+            if (netoutfile)
+                fprintf(netoutfile,"%s",buf);
             j=0;
             for(i = 0; i < framesdone; i++){
                 sprintf(tmp,"%.1f ",fframecounts[i]);
@@ -11872,6 +11874,8 @@ int CheckStimDuration(int retval)
             }
             strcat(buf,"\n");
             SerialString(buf,-1);
+            if (netoutfile)
+                fprintf(netoutfile,"%s",buf);
             nrpt = 0;
             diffmax = 1.2/mon.framerate;
             diffmin = 0.5/mon.framerate;
@@ -11889,6 +11893,8 @@ int CheckStimDuration(int retval)
             }
             strcat(buf,"\n");
             SerialString(buf,0);
+            if (netoutfile)
+                fprintf(netoutfile,"%s",buf);
         }
     }
     else if(frametimes[framesdone]  > (n-0.5)/expt.mon->framerate){
@@ -11904,6 +11910,9 @@ int CheckStimDuration(int retval)
             strcat(buf,"\n");
             if(seroutfile)
                 fprintf(seroutfile,"%s",buf);
+            if (netoutfile)
+                fprintf(netoutfile,"%s",buf);
+
             if(frametimes[framesdone]  > (n+1.5)/expt.mon->framerate){
                 printf("V long %.3f",frametimes[framesdone]);
             }
@@ -11919,7 +11928,8 @@ int CheckStimDuration(int retval)
             if(optionflags[FIXNUM_PAINTED_FRAMES]){
                 j=0;
                 for(i = 0; i < framesdone; i++){
-                    sprintf(tmp,"%.1f ",fframecounts[i]);                        if(strlen(buf)+strlen(tmp) < BUFSIZ*2)
+                    sprintf(tmp,"%.1f ",fframecounts[i]);
+                    if(strlen(buf)+strlen(tmp) < BUFSIZ*2)
                         strcat(buf,tmp);
                 }
                 strcat(buf,"\n");
@@ -11938,6 +11948,8 @@ int CheckStimDuration(int retval)
                 strcat(buf,"\n");
                 SerialString(buf,0);
             }
+            if (netoutfile)
+                fprintf(netoutfile,"%s",buf);
             
         }
         //        if(seroutfile)
