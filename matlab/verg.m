@@ -487,6 +487,8 @@ for j = 1:length(strs{1})
             DATA = SetExptMenus(DATA);
         elseif strncmp(s,'expt',4)
             DATA = ReadStimFile(DATA, value, 'inread');
+        elseif strncmp(s,'exp=',4)
+            DATA.binoc{1}.exp = value;
         end
             
     elseif strncmp(s,'TESTOVER',8)
@@ -1388,7 +1390,7 @@ function DATA = GetState(DATA)
         str = [DATA.ip 'getstate'];
         ts = now;
         [bstr, status] = urlread(str);
-        mytoc(ts);
+%        mytoc(ts); %getting here is fast. Its interpretline that is slow.
          DATA = InterpretLine(DATA, bstr);
          mytoc(ts);
     else
@@ -2842,11 +2844,12 @@ function MenuGui(a,b)
 
      
      if flag == 2
-         tic;
+         ts = now;
          DATA = GetState(DATA);
+         fprintf('Manual State took %.2f',mytoc(ts));
          set(DATA.toplevel,'UserData',DATA);
-        toc
-        SetGui(DATA);
+         SetGui(DATA);
+         fprintf('  +GUI setting %.2f\n',mytoc(ts));
      elseif flag == 3
          stop(DATA.timerobj)
          outprintf(DATA,'NewMatlab\n');

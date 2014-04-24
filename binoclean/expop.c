@@ -4395,7 +4395,7 @@ int ReadCommand(char *s)
     }
     else if(!strncasecmp(s,"ecancel",7)){
         if(expt.st->mode & EXPTPENDING) // if verg sends cancel, but not in expt, ignore
-            cancelflag = 1; // call canel when trial over
+            cancelflag = 1; // call cancel when trial over
         else {
             notify("\nEXPTOVER\n");
         }
@@ -9616,7 +9616,7 @@ int PrepareExptStim(int show, int caller)
             dorpt = 2;
         }
         else
-            dorpt = 0;
+            dorpt = 2; //preset sequence now the standard
         
         if(dorpt == 2){
             expt.st->left->baseseed = seedorder[stimno];
@@ -10082,7 +10082,7 @@ int PrepareExptStim(int show, int caller)
     else
         val = 0;
     
-    sprintf(cbuf,"exvals %.4f %.4f %.4f %d\n",stp->vals[0],stp->vals[1],stp->vals[EXP_THIRD],expt.st->left->baseseed);
+    sprintf(cbuf,"exvals %.4f %.4f %.4f %d %d\n",stp->vals[0],stp->vals[1],stp->vals[EXP_THIRD],expt.st->left->baseseed);
     SerialString(cbuf,0);
     notify(cbuf);
     
