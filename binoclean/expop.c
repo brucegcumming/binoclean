@@ -8401,6 +8401,9 @@ char *ShowStimVals(Thisstim *stp)
     
     glstatusline(cbuf,1);
     statusline(cbuf);
+//Things to make sure verg knows
+    sprintf(ebuf,"%s=%d\n%s=%d\n",serial_strings[SET_SEED],expt.st->left->baseseed,serial_strings[STIMID],expt.allstimid);
+    notify(ebuf);
     return(cbuf);
 }
 
@@ -9650,6 +9653,13 @@ int PrepareExptStim(int show, int caller)
         myrnd_init(expt.st->left->baseseed);
         srand48(expt.st->left->baseseed);
         currentstim.seqseed = expt.st->left->baseseed;
+    }
+    else if (dorpt == 2)
+    {
+        expt.st->left->baseseed = seedorder[stimno];
+    }
+    else{
+        expt.st->left->baseseed += 200;
     }
     
     /*
