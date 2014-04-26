@@ -139,6 +139,7 @@ int seedoffsets[100] = {0};
 int covaryprop = -1;
 int maxseed = 0;
 int popup_confirmed = -1;
+int cancelflag = 0;
 extern int renderoff;
 
 #define MAXHELPFILES 200
@@ -1686,6 +1687,7 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
 
     pgimage.ptr = NULL;
     pgimage.name = NULL;
+    ex->codevalue = NOTSET;
     ex->verbose = 0;  //controls NSlog
     ex->biasedreward = 0;
     ex->backim.name = NULL;
@@ -1878,7 +1880,7 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
 char *ReadManualStim(char *file, int stimid){
     struct stat statbuf;
     FILE *fin;
-    char *s,*t,inbuf[BUFSIZ*10];
+    char *s,*t,inbuf[BUFSIZ*10],msg[BUFSIZ],*r;
     int nprop = 0,j,i,nframes=0,modifier,pos;
     float val,imx[MAXFRAMES],imy[MAXFRAMES];
     Stimulus *st;
@@ -1887,9 +1889,14 @@ char *ReadManualStim(char *file, int stimid){
     manualprop[0] = -1;  //in case file error
     if(file == NULL)
         return(NULL);
-    if(stat(file, &statbuf) == -1)
+//    if(stat(file, &statbuf) == -1)
+//        return(NULL);
+    if((fin = fopen(file,"r")) == NULL)
+    {
+        sprintf(cbuf,"Can't read %s",file);
+        acklog(cbuf,0);
         return(NULL);
-    fin = fopen(file,"r");
+    }
     sprintf(cbuf,"%d:",stimid);
     for(i = 0; i < MAXFRAMES; i++)
         imx[i] = imy[i] = 0;
@@ -1944,9 +1951,21 @@ char *ReadManualStim(char *file, int stimid){
             notify(inbuf);
             inbuf[strlen(inbuf)-1] = 0; // remove '\n';
             expt.codesent = 0;
+            r = strchr(inbuf,'=');
+            if(r){
+                sscanf(++r,"%f",&expt.codevalue);
+            }
             i = InterpretLine(inbuf,&expt,3);
-            if (i == expt.mode)
+            if (i == expt.mode){
                 expt.currentval[0] = GetProperty(&expt, expt.st, i);
+                if(r){
+                    if (fabs(expt.currentval[0] - expt.codevalue) > 0.001){
+                        sprintf(msg,"DX set error %s->%.6f",inbuf,expt.currentval[0]);
+                        acklog(msg,0);
+                        i = InterpretLine(inbuf,&expt,3); //try again to see if it repeats
+                    }
+                }
+            }
             if (i == expt.type2)
                 expt.currentval[1] = GetProperty(&expt, expt.st, i);
             if (i == expt.type3)
@@ -2026,6 +2045,8 @@ int SetManualStim(int frame)
 {
     int i,p = 0,code;
     float val;
+    
+    expt.codevalue = NOTSET;
     
     while(manualprop[p] >= 0){
         val = manualstimvals[p][frame];
@@ -2594,8 +2615,8 @@ int OpenNetworkFile(Expt expt)
         netoutfile = fopen(name,"a");
     
         if (netoutfile == NULL){
-            strcpy(nbuf,name);
-            sprintf(name,"/local/%s",sfile);
+            getcwd(path,BUFSIZ);
+            sprintf(name,"%s/%s.bnc",path,getfilename(sfile));
             netoutfile = fopen(name,"a");
         }
     }
@@ -3529,6 +3550,7 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
             break;
         case CORRECTION_ENTRY_CRIT:
             afc_s.correction_entry = (int)val;
+            reset_afc_counters();//turn off any existing CorLoop
             break;
         case AFC_PROPORTION:
             afc_s.proportion = val;
@@ -4373,7 +4395,7 @@ int ReadCommand(char *s)
     }
     else if(!strncasecmp(s,"ecancel",7)){
         if(expt.st->mode & EXPTPENDING) // if verg sends cancel, but not in expt, ignore
-            expt_over(CANCEL_EXPT);
+            cancelflag = 1; // call cancel when trial over
         else {
             notify("\nEXPTOVER\n");
         }
@@ -5426,6 +5448,8 @@ int ReadStimOrder(char *file)
         fclose(fd);
     }
     expt.nstim[5] = imax;
+    sprintf(buf,"Manual Stimorder %d stim over %d trials\n",imax+1,nt);
+    statusline(buf);
     return(nt); // this is # of trials, not index of last trial.  But nt gets increment
 }
 
@@ -7101,11 +7125,11 @@ void runexpt(int w, Stimulus *st, int *cbs)
         fprintf(netoutfile,"#Start Expt at %.2f %sx%s %d%c%d (%d)\n",
                 ufftime(&now),serial_strings[expt.mode],serial_strings[expt.type2],
                 expt.nstim[0],(expt.flag & TIMES_EXPT2) ? 'x' : '+',expt.nstim[1],expt.nstim[4]);
+    InitExpt();
     if(optionflags[MANUAL_EXPT] && netoutfile == NULL && (optionflag & STORE_WURTZ_BIT)){
         sprintf(buf,"Remote (PC) file for stim record not open. Check \"netpref=\"");
         acknowledge(buf,NULL);
     }
-    InitExpt();
 }
 
 
@@ -7312,6 +7336,7 @@ void InitExpt()
     setstimulusorder(1);
     stimdurn = 0;
     stimdursum = 0;
+    cancelflag = 0;
     /*
      * This list of properties is recorded fo the stimulus before an expt run
      * starts playing with it. expt.stimvals[i] can then be used to reset the 
@@ -7955,6 +7980,14 @@ Thisstim *getexpval(int stimi)
     return(&stimret);
 }
 
+
+void acklog(char *s, int flag)
+{
+    acknowledge(s, flag);
+    if (seroutfile){
+        fprintf(seroutfile,"%s\n",s);
+    }
+}
 /*
  * if monkey does an indeterminate response in psychophysics
  * need to rerun that stimulus. Don't do it straight away though,
@@ -7995,13 +8028,13 @@ void ShuffleStimulus(int state)
     temp = stimorder[stimno];
     stimorder[stimno] = stimorder[stimno + i];
     if (stimorder[stimno] > expt.nstim[5]){
-        sprintf(buf,"Swapfrom Stim %d (stimno %d+%d)larger that nstim",stimorder[stimno],stimno,i);
-        acknowledge(buf, NULL);
+        sprintf(buf,"Swapfrom Stim %d (stimno %d+%d)larger that nstim %d",stimorder[stimno],stimno,i,expt.nstim[5]);
+        acklog(buf, NULL);
     }
     stimorder[stimno+i] = temp;
     if (temp > expt.nstim[5]){
-        sprintf(buf,"Swapto Stim %d larger that nstim",temp);
-        acknowledge(buf, NULL);
+        sprintf(buf,"Swapto Stim %d larger that nstim (%d)",temp,expt.nstim[5]);
+        acklog(buf, NULL);
     }
     stimseq[trialctr].a = stimorder[stimno];
     stimseq[trialctr].b = stimorder[stimno+i];  
@@ -8368,6 +8401,9 @@ char *ShowStimVals(Thisstim *stp)
     
     glstatusline(cbuf,1);
     statusline(cbuf);
+//Things to make sure verg knows
+    sprintf(ebuf,"%s=%d\n%s=%d\n",serial_strings[SET_SEED],expt.st->left->baseseed,serial_strings[STIMID],expt.allstimid);
+    notify(ebuf);
     return(cbuf);
 }
 
@@ -8656,6 +8692,15 @@ int PreLoadImages()
 
 }
 
+char *SendBoth(int code, int flag)
+{
+    char *s;
+    s = SerialSend(code);
+    if (flag)
+        SendToGui(code);
+    return(s);
+}
+
 int PrepareExptStim(int show, int caller)
 {
     int i, stimres,cnt,j,nvals,nv,nstim[10],k,frpt,ncycles,drop,iperiod;
@@ -8693,6 +8738,9 @@ int PrepareExptStim(int show, int caller)
     if(netoutfile){
         fprintf(netoutfile,"#Prep%d %d %.3f\n",stimno, stimorder[stimno],ufftime(&now));
     }
+    if(seroutfile){
+        fprintf(seroutfile,"#Prep%c %d %d %.3f\n",InExptChar,stimno, stimorder[stimno],ufftime(&now));
+    }
 
     fakestim = 0;
     expt.laststimno = stimno;
@@ -8710,9 +8758,16 @@ int PrepareExptStim(int show, int caller)
     }
     
     expt.st->preloaded = expt.st->next->preloaded = 0;
-    
+    expt.st->framectr = 0;
+    expt.st->next->framectr = 0;
+
     if (optionflags[MANUAL_EXPT]){
 
+        if(expt.vals[ONETARGET_P] > 0){
+            if ((drnd = mydrand()) < expt.vals[ONETARGET_P])
+                expt.vals[TARGET_RATIO] = 0;
+            SendBoth(TARGET_RATIO, 1);
+        }
         sprintf(ebuf,"%s/stim%d",expt.strings[EXPT_PREFIX],stimorder[stimno]);
         s = ReadManualStim(ebuf, stimorder[stimno]);
         val = afc_s.stimsign = expt.vals[PSYCH_VALUE];
@@ -8724,7 +8779,7 @@ int PrepareExptStim(int show, int caller)
            afc_s.stimsign = code;
         
         if (s == NULL){ //Error setting stimulus
-            sprintf(cbuf,"Error Setting Stimulus %s",ebuf);
+            sprintf(cbuf,"Error Reading Stimulus %s",ebuf);
             acknowledge(cbuf,0);
             return(-1);
         }
@@ -9564,7 +9619,7 @@ int PrepareExptStim(int show, int caller)
             dorpt = 2;
         }
         else
-            dorpt = 0;
+            dorpt = 2; //preset sequence now the standard
         
         if(dorpt == 2){
             expt.st->left->baseseed = seedorder[stimno];
@@ -9598,6 +9653,13 @@ int PrepareExptStim(int show, int caller)
         myrnd_init(expt.st->left->baseseed);
         srand48(expt.st->left->baseseed);
         currentstim.seqseed = expt.st->left->baseseed;
+    }
+    else if (dorpt == 2)
+    {
+        expt.st->left->baseseed = seedorder[stimno];
+    }
+    else{
+        expt.st->left->baseseed += 200;
     }
     
     /*
@@ -10030,7 +10092,7 @@ int PrepareExptStim(int show, int caller)
     else
         val = 0;
     
-    sprintf(cbuf,"exvals %.4f %.4f %.4f %d\n",stp->vals[0],stp->vals[1],stp->vals[EXP_THIRD],expt.st->left->baseseed);
+    sprintf(cbuf,"exvals %.4f %.4f %.4f %d %d\n",stp->vals[0],stp->vals[1],stp->vals[EXP_THIRD],expt.st->left->baseseed);
     SerialString(cbuf,0);
     notify(cbuf);
     
@@ -10049,7 +10111,7 @@ int PrepareExptStim(int show, int caller)
         expt.targetcolor = 1;
     
     if(seroutfile){
-        fprintf(seroutfile,"##prep%c\n",InExptChar);
+        fprintf(seroutfile,"#Ready\n",InExptChar);
     }
     return(stimno);
 }
@@ -11779,6 +11841,9 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
         sprintf(buf,"%d/%d Contrast Overflow!!",expt.noverflow,expt.ncalc);
         acknowledge(buf,"/bgc/bgc/c/binoc/help/overflow.1");
     }
+    if (cancelflag)
+        expt_over(CANCEL_EXPT);
+
     return(framecount);
 }
 
@@ -11807,6 +11872,8 @@ int CheckStimDuration(int retval)
             strcat(buf,"\n");
             SerialString(buf,-1);
             sprintf(buf,"%sFn=",serial_strings[MANUAL_TDR]);
+            if (netoutfile)
+                fprintf(netoutfile,"%s",buf);
             j=0;
             for(i = 0; i < framesdone; i++){
                 sprintf(tmp,"%.1f ",fframecounts[i]);
@@ -11817,6 +11884,8 @@ int CheckStimDuration(int retval)
             }
             strcat(buf,"\n");
             SerialString(buf,-1);
+            if (netoutfile)
+                fprintf(netoutfile,"%s",buf);
             nrpt = 0;
             diffmax = 1.2/mon.framerate;
             diffmin = 0.5/mon.framerate;
@@ -11834,6 +11903,8 @@ int CheckStimDuration(int retval)
             }
             strcat(buf,"\n");
             SerialString(buf,0);
+            if (netoutfile)
+                fprintf(netoutfile,"%s",buf);
         }
     }
     else if(frametimes[framesdone]  > (n-0.5)/expt.mon->framerate){
@@ -11849,6 +11920,9 @@ int CheckStimDuration(int retval)
             strcat(buf,"\n");
             if(seroutfile)
                 fprintf(seroutfile,"%s",buf);
+            if (netoutfile)
+                fprintf(netoutfile,"%s",buf);
+
             if(frametimes[framesdone]  > (n+1.5)/expt.mon->framerate){
                 printf("V long %.3f",frametimes[framesdone]);
             }
@@ -11864,7 +11938,8 @@ int CheckStimDuration(int retval)
             if(optionflags[FIXNUM_PAINTED_FRAMES]){
                 j=0;
                 for(i = 0; i < framesdone; i++){
-                    sprintf(tmp,"%.1f ",fframecounts[i]);                        if(strlen(buf)+strlen(tmp) < BUFSIZ*2)
+                    sprintf(tmp,"%.1f ",fframecounts[i]);
+                    if(strlen(buf)+strlen(tmp) < BUFSIZ*2)
                         strcat(buf,tmp);
                 }
                 strcat(buf,"\n");
@@ -11883,6 +11958,8 @@ int CheckStimDuration(int retval)
                 strcat(buf,"\n");
                 SerialString(buf,0);
             }
+            if (netoutfile)
+                fprintf(netoutfile,"%s",buf);
             
         }
         //        if(seroutfile)
@@ -14551,6 +14628,8 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             case SET_TF_COMPONENTS:
             case SET_SF_CONTRASTS:
             case EARLY_RWTIME:
+            case QUICKEXPT_CODE:
+            case NETWORK_PREFIX:
             case UKA_VALS:
                 break;
         }

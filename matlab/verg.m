@@ -93,7 +93,7 @@ if isempty(it)
             DATA = LoadLastSettings(DATA,'interactive');
         end
         outprintf(DATA,'QueryState\n');
-        DATA = ReadFromBinoc(DATA);
+        DATA = ReadFromBinoc(DATA,'expect');
         tt = TimeMark(tt, 'FromBinoc');
 
         j = 2;
@@ -243,7 +243,9 @@ for j = 1:length(strs{1})
         code = s;
     end
     if DATA.verbose(2) && strcmp(src,'frombinoc')
+        if ~strncmp(strs{1}{j},'SENDING00000',12)
             fprintf('%s**\n',strs{1}{j});
+        end
     end
     if DATA.savestrs > 0
         fprintf(savestrs,'%s%s\n',strs{1}{j},src);
@@ -487,6 +489,8 @@ for j = 1:length(strs{1})
             DATA = SetExptMenus(DATA);
         elseif strncmp(s,'expt',4)
             DATA = ReadStimFile(DATA, value, 'inread');
+        elseif strncmp(s,'exp=',4)
+            DATA.binoc{1}.exp = value;
         end
             
     elseif strncmp(s,'TESTOVER',8)
@@ -543,6 +547,9 @@ for j = 1:length(strs{1})
             DATA.trialcounts(8) = 0;
         end     
         ShowStatus(DATA);
+        if DATA.verbose(3)
+            fprintf('%s\n',s);
+        end
     elseif strncmp(s,'mo=fore',7)
         DATA.currentstim = 1;
     elseif strncmp(s,'mo=back',7)
@@ -1286,6 +1293,7 @@ function SaveExpt(DATA, name)
     else
         bname = [name '.bstm'];
     end
+    BackupFile(name,'print');
     outprintf(DATA,'\\savefile=%s\n',bname);
     fid = fopen(name,'w');
 
@@ -1341,7 +1349,7 @@ function DATA = OpenPipes(DATA, readflag)
 DATA.outpipe = '/tmp/binocinputpipe';
 DATA.inpipe = '/tmp/binocoutputpipe';
 
-
+rbusy = 0;
 if DATA.network
     DATA.binocisup = 1;
     warning('off','MATLAB:urlread:ReplacingSpaces');
@@ -1382,14 +1390,19 @@ end
 SetGui(DATA,'set');
  
     
-function DATA = GetState(DATA)
+function DATA = GetState(DATA, verbose)
+    if nargin == 1
+        verbose = 0;
+    end
     if DATA.network
         str = [DATA.ip 'getstate'];
         ts = now;
         [bstr, status] = urlread(str);
-        mytoc(ts);
+        a = mytoc(ts); %getting here is fast. Its interpretline that is slow.
          DATA = InterpretLine(DATA, bstr);
-         mytoc(ts);
+         if verbose
+             fprintf('Read/Interpret took %.3f,%.3f\n',a,mytoc(ts));
+         end
     else
         outprintf(DATA,'QueryState\n');
         tic; DATA = ReadFromBinoc(DATA);toc
@@ -1411,6 +1424,18 @@ function DATA = SetTrial(DATA, T)
     f = fields(T);
     for j = 1:length(f)
         DATA.Trials(nt).(f{j}) = T.(f{j});
+    end
+    
+    if isfield(DATA.binoc{1},'id')
+        if ~isfield(T,'id') || DATA.binoc{1}.id > T.id
+        DATA.Trials(nt).id = DATA.binoc{1}.id;
+        end
+    end
+    f = {'se'};
+    for j = 1:length(f)
+        if isfield(DATA.binoc{1},f{j})
+            DATA.Trials(nt).(f{j}) = DATA.binoc{1}.(f{j});
+        end
     end
     
     
@@ -1518,7 +1543,7 @@ DATA.stimflags{1}.nc = 1;
 DATA.stimflagnames.nc = 'Black Dots';
 DATA.stimflagnames.pc = 'White Dots';
 if ~isfield(DATA,'verbose')
-    DATA.verbose = [0 0 0 0 0];
+    DATA.verbose = [0 0 0 0 0 1];
 end
 DATA = SetField(DATA,'matexpt','');
 DATA = SetField(DATA,'perfmonitor',0);
@@ -1685,7 +1710,8 @@ function [strs, Keys] = ReadHelp(DATA)
     lastcode = code;
     for j = 1:length(txt)
         code = regexprep(txt{j},'\s.*','');
-        if code(1) == '+'  %optionflag help
+        if isempty(code)
+        elseif code(1) == '+'  %optionflag help
             str = regexprep(txt{j},code,'');
             code = code(2:end);
             Keys.options.(code) = str;
@@ -1797,11 +1823,13 @@ function ShowStatus(DATA)
 if isfield(DATA,'toplevel')
     set(DATA.toplevel,'Name',s);
 end
+%trialcounts(2) is total trials according to binoc
+%print out trails counts when this increases.
 if isfield(DATA,'trialcounts')
-    if status >0 && DATA.trialcounts(8) ~= oldcount
+    if (status > 0 && DATA.verbose(6) && DATA.trialcounts(2) > oldcount) || DATA.verbose(3)
+        oldcount = DATA.trialcounts(2);
         fprintf('%s\n',s);
     end
-    oldcount = DATA.trialcounts(8);
 else
     cprintf('red','No Trialcounts\n');
 end
@@ -2175,6 +2203,8 @@ function DATA = InitInterface(DATA)
     SetMenuCheck(xm, DATA.verbose(4));
     xm = uimenu(sm,'Label','IOTiming', 'Callback',{@SetVerbose, 5});
     SetMenuCheck(xm, DATA.verbose(5));
+    xm = uimenu(sm,'Label','Trial Results', 'Callback',{@SetVerbose, 6});
+    SetMenuCheck(xm, DATA.verbose(6));
     xm = uimenu(sm,'Label', 'All Off', 'Callback', {@SetVerbose, 0});
 
     sm = uimenu(subm,'Label','Try Pipes','Callback',{@ReadIO, 8},'foregroundcolor','r');
@@ -2840,11 +2870,12 @@ function MenuGui(a,b)
 
      
      if flag == 2
-         tic;
-         DATA = GetState(DATA);
+         ts = now;
+         DATA = GetState(DATA,1);
+         fprintf('Manual State took %.2f',mytoc(ts));
          set(DATA.toplevel,'UserData',DATA);
-        toc
-        SetGui(DATA);
+         SetGui(DATA);
+         fprintf('  +GUI setting %.2f\n',mytoc(ts));
      elseif flag == 3
          stop(DATA.timerobj)
          outprintf(DATA,'NewMatlab\n');
@@ -2863,9 +2894,10 @@ function MenuGui(a,b)
         stop(DATA.timerobj);
          DATA = OpenPipes(DATA, 0);
          SendState(DATA,'all');
-         outprintf(DATA,'QueryState\n');
-        DATA = ReadFromBinoc(DATA,'verbose2','expect');   
-        start(DATA.timerobj);
+         DATA = GetState(DATA);
+         SetGui(DATA);
+         start(DATA.timerobj);
+         set(DATA.toplevel,'UserData',DATA);
         
      elseif flag == 7 %obsolete
          if DATA.verbose(1) > 0
@@ -3092,30 +3124,47 @@ function CheckInput(a,b, fig, varargin)
 function [DATA, str] = ReadHttp(DATA, varargin)
 j = 1;
 expecting= 0;
+expecttime = 1;
+silent = 1;
+str = [];
+persistent httpbusy;
 
+if isempty(httpbusy)
+    httpbusy = 0;
+end
     while j <= length(varargin)
          if strncmpi(varargin{j},'verbose',5)
              verbose(1) = 1;
          elseif strncmpi(varargin{j},'expecting',5)
             expecting = 1;
+            if length(varargin) > j && isnumeric(varargin{j+1})
+                silent = 1;
+                expecttime = varargin{j};
+            end
          end
          j = j+1;
+    end
+
+     if httpbusy
+         return;
      end
-     
      ts = now;
     [str, status] = urlread([DATA.ip 'whatsup']);
     if expecting
         fprintf('%d bytes\n',length(str));
     end
     while expecting && strncmp(str,'SENDING000000',13)
-        fprintf('0 Bytes, but expect input. Trying again.\n');
+        httpbusy = 1;
         [str, status] = urlread([DATA.ip 'whatsup']);
+        if silent == 0
+        fprintf('0 Bytes, but expect input. Trying again.\n');
         if strncmp(str,'SENDING000000',13)
             fprintf('Nothing after %.2f\n',mytoc(ts));
         else
             fprintf('Second Try got %s\n',str(1:13));
         end
-        if mytoc(ts) > 2
+        end
+        if mytoc(ts) > expecttime
             expecting = 0;
             fprintf('Still Nothing. I give up\n');
         end
@@ -3130,7 +3179,7 @@ expecting= 0;
 %    myprintf(DATA.frombinocfid,'ReadBinoc%s:  %s',datestr(now),str);
     if ~isfield(DATA,'trialcounts')
     end
-
+httpbusy = 0;
  
  function [DATA, str] = ReadFromBinoc(DATA, varargin)
      global rbusy;
@@ -3146,12 +3195,12 @@ expecting= 0;
      expecting = 0;
      str = [];
 
-if DATA.network 
+if DATA.network
     if DATA.binocisup
         [DATA, str] = ReadHttp(DATA, varargin{:});
-    if isfield(DATA,'toplevel')
-        set(DATA.toplevel,'UserData',DATA);
-    end
+        if isfield(DATA,'toplevel')
+            set(DATA.toplevel,'UserData',DATA);
+        end
     end
     return;
 end
@@ -3295,6 +3344,7 @@ function DATA = RunButton(a,b, type)
 
         DATA.newexptdef = 0;
         DATA.matexpres = [];
+        inexpt = 0;
         if type == 1
             if DATA.inexpt == 0 %sarting a new one. Increment counter
                 if DATA.optionflags.exm && ~isempty(DATA.matexpt)
@@ -3317,16 +3367,18 @@ function DATA = RunButton(a,b, type)
                 DATA.Expts{DATA.nexpts} = ExptSummary(DATA);
                 DATA.optionflags.do = 1;
                 DATA.exptstoppedbyuser = 0;
-                DATA = ReadFromBinoc(DATA);
+                DATA = ReadFromBinoc(DATA,'expect');
                 CheckExptIsGood(DATA);
+                inexpt = 1;
                 %            DATA = GetState(DATA);
             else
+                inexpt = 0;
                 DATA.rptexpts = 0;
                 if DATA.verbose(4)
                     fprintf('Before Cancel: Inexpt %d\n',DATA.inexpt);
                 end
                 outprintf(DATA,'\\ecancel\n');
-                [DATA, str] = ReadFromBinoc(DATA,'expect');
+                [DATA, str] = ReadFromBinoc(DATA,'expect', 4);
                 if DATA.verbose(4)
                     fprintf('Cancel: Inexpt %d %s\n',DATA.inexpt,str);
                 end
@@ -3340,7 +3392,7 @@ function DATA = RunButton(a,b, type)
             end
         elseif type == 2
             outprintf(DATA,'\\estop\n');
-            DATA = ReadFromBinoc(DATA,'expect');
+            DATA = ReadFromBinoc(DATA,'expect',4);
             DATA.rptexpts = 0;
             DATA.Expts{DATA.nexpts}.last = DATA.Trial.Trial;
             DATA.Expts{DATA.nexpts}.End = now;
@@ -3348,12 +3400,19 @@ function DATA = RunButton(a,b, type)
             DATA.optionflags.do = 0;
             DATA = AddTextToGui(DATA,['Stopped after ' num2str(ti) ' Trials']);
             DATA.exptstoppedbyuser = 1;
+            inexpt = 0;
         end
 %if expt is over, EXPTOVER should be received. - query state then
 %    DATA = GetState(DATA);
 %    DATA = ReadFromBinoc(DATA);
     if DATA.verbose(4)
         fprintf('RunButton: Inexpt %d\n',DATA.inexpt);
+    end
+    DATA = GetState(DATA);
+    if DATA.inexpt ~= inexpt; %not caught up yet
+        fprintf('Expt Button Confused. Trying again\n');
+        DATA = ReadFromBinoc(DATA,'expect',0.5);
+        DATA = GetState(DATA);
     end
     set(DATA.toplevel,'UserData',DATA);    
     SetGui(DATA);
@@ -5349,6 +5408,12 @@ function ChoosePsych(a,b, mode)
         c = get(get(a,'parent'),'children');
         set(c,'checked','off');
         set(a,'checked','on');
+        if strcmp(mode,'All')
+            DATA.plotexpts(1:end) = 1;
+            strs = get(c,'label');
+            id = find(strncmp('Expt',strs,4));
+            set(c(id),'checked','on');
+        end
     elseif strmatch(mode,'Pause')
         DATA.psych.show = ~DATA.psych.show;
         set(a,'Checked',onoff{DATA.psych.show+1});
@@ -5357,6 +5422,14 @@ function ChoosePsych(a,b, mode)
         DATA.psych.(mode) = ~DATA.psych.(mode);
         set(a,'Checked',onoff{DATA.psych.(mode)+1});
         PlotPsych(DATA);
+    elseif strcmp(mode,'savetrials');
+        [outname, pathname] = uiputfile(['/local/' DATA.binoc{1}.monkey '/PsychDat.mat']);
+        if outname
+            outname = [pathname '/' outname];
+            Data = rmfields(DATA,{'timerobj' 'txtui'})'
+            save(outname,'Data');
+            fprintf('Trials saved to %s\n',outname);
+        end
     end
     set(DATA.toplevel,'UserData',DATA);
 
@@ -5376,6 +5449,7 @@ function DATA = SetFigure(tag, DATA)
                 'checked',onoff{DATA.psych.crosshairs+1});
             sm = uimenu(hm,'Label','Just Show Trial outcomes','callback', {@ChoosePsych, 'trialresult'},...
                 'checked',onoff{DATA.psych.trialresult+1});
+            sm = uimenu(hm,'Label','Save Trial Data','callback', {@ChoosePsych, 'savetrials'});
             set(a,'UserData',DATA.toplevel);
             set(a,'DefaultUIControlFontSize',DATA.font.FontSize);
             set(a,'DefaultUIControlFontName',DATA.font.FontName);
@@ -5447,9 +5521,14 @@ function DATA = PlotPsych(DATA)
         end
         
         for j = expts
+            if isfield(DATA.Expts{j},'last')
+                last = DATA.Expts{j}.last;
+            else
+                last = length(DATA.Trials);
+            end                
             if strcmp(DATA.Expts{j}.Stimvals.et,Expt.Stimvals.et) && ...
                strcmp(DATA.Expts{j}.Stimvals.e2,Expt.Stimvals.e2)
-                allid= [allid DATA.Expts{j}.first:DATA.Expts{j}.last];
+                allid= [allid DATA.Expts{j}.first:last];
             end
         end
     else

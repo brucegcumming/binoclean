@@ -258,7 +258,7 @@ char *flag_codes[] = {
     NULL,};
 
 extern double fakestim;
-extern int usenewdirs;
+extern int usenewdirs,cancelflag;
 extern int dorpt,rcrpt , lastrpt;
 extern int *stimorder,demomode,covaryprop;
 //struct plotdata *expplots;
@@ -1124,7 +1124,7 @@ char **argv;
 	mon.framerate = GetFrameRate();
 	TheStim->incr = TheStim->incr * framerate/mon.framerate;
 	printf("FrameRate %.2f\n",mon.framerate);
-	SerialSend(FRAMERATE_CODE);
+	SendBoth(FRAMERATE_CODE,1);
 //    notify("NewBinoc\n");  //init string in binocappdelegate
 //    system("touch /tmp/binocisnew");
 }
@@ -1443,7 +1443,7 @@ int TrialOver()
             fprintf(seroutfile,"#Cyl velocity %.6f (%.f)\n",st->left->ptr->velocity,oldvelocity);
     }
     if(fabs(expt.vals[PURSUIT_INCREMENT]) > 0.001 || expt.vals[PURSUIT_AMPLITUDE] > 0.01){
-        SerialSend(FIXPOS_XY);
+        SendBoth(FIXPOS_XY,1);
         //	SerialSend(XPOS);
         //	SerialSend(YPOS);
     }
@@ -1856,7 +1856,7 @@ void CntrlButtonRelease(vcoord *start, vcoord *end, WindowEvent e)
     
     statusline(s);
     glstatusline(s,2);
-    ss = SerialSend(RF_DIMENSIONS);
+    ss = SendBoth(RF_DIMENSIONS,1);
     if(penlog)
         fprintf(penlog,"%s\n",ss);
 }
@@ -2816,8 +2816,9 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
             if(laststimtype[1] == STIM_RDS)
                 laststimtype[1] = st->next->type;
         }
-        if (st->framectr == 0)
+        if (st->framectr == 0){
             setblank = 0;
+        }
 	}
     
 	if(val == INTERLEAVE_EXPT_UNCORR){
@@ -3618,7 +3619,7 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
                 }
             }
             if(up)
-                SerialSend(BACK_CORRELATION);
+                SendBoth(BACK_CORRELATION, 1);
             break;
         case BACK_VDISP:
             if(st->next == NULL && st->prev == NULL)
@@ -3645,7 +3646,7 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
                 }
             }
             if(up)
-                SerialSend(BACK_CORRELATION);
+                SendBoth(BACK_CORRELATION,1);
             break;
         case BACK_SIZE:
             if(st->next == NULL)
@@ -3880,6 +3881,9 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
             break;
         case DISP_X:
             if(val > INTERLEAVE_EXPT){
+                if (val != expt.codevalue && expt.codevalue > NOTSET){
+                    sprintf(buf,"val not codevalue");
+                }
                 st->disp = deg2pix(val)/2;
                 CheckRect(stimptr);
                 if(st->prev != NULL)
@@ -6160,6 +6164,12 @@ int next_frame(Stimulus *st)
         i = states[EXPT_PAUSED];
         i = ExptIsRunning();
     }
+    if (cancelflag > 0 && stimstate != INSTIMULUS)
+    {
+        expt_over(CANCEL_EXPT);
+        stimstate = STIMSTOPPED;
+    }
+    
     switch(stimstate)
     {
         case STIMSTOPPED:
@@ -10178,7 +10188,8 @@ int GotChar(char c)
             DIOWriteBit(0,1);
             fsleep(0.01);
             DIOWriteBit(0,0);
-            acknowledge("Very Short interval between Serial Connect",NULL);
+            sprintf(buf,"Very Short interval between Serial Connect at %.2f: %s",ufftime(&now),binocTimeString());
+            acklog(buf,NULL);
         }
         else{
 #ifdef NIDAQ
@@ -10990,6 +11001,7 @@ void expt_over(int flag)
     if (demomode)
         testflags[SAVE_IMAGES] = 0;
 
+    cancelflag = 0;
     StimulusType(expt.st, expt.stimtype); /* reset stim type */
     if(mode & MORE_PENDING && mode & AUTO_NEXT_EXPT)
     {

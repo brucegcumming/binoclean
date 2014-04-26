@@ -310,7 +310,7 @@ int set_loop_state()
     /* If getting both wrong don't go into correction loop */
     if(missed_negative >= afc_s.correction_entry && missed_positive >= afc_s.correction_entry)
         missed_negative = missed_positive = 0;
-    
+// if entry_crit is zero, then don't use correction loops
     if ((missed_negative >= afc_s.correction_entry) || (missed_positive >= afc_s.correction_entry) && afc_s.correction_entry > 0)
         loop_state = CORRECTION_LOOP;
     else
