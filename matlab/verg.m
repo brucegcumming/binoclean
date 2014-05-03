@@ -172,6 +172,12 @@ while j <= length(varargin)
         set(DATA.toplevel,'UserData',DATA);
     elseif strcmp(varargin{j},'checkstart')
         DATA = CheckStateAtStart(DATA);
+    elseif isfield(varargin{j},'Trials')
+        DATA.Trials = varargin{j}.Trials;
+        if isfield(varargin{j},'Expts')
+            DATA.Expts = varargin{j}.Expts;
+        end
+        PlotPsych(DATA);
     end
     j = j+1;
 end
@@ -1513,6 +1519,7 @@ DATA.windowcolor = [0.8 0.8 0.8];
 DATA.Trial.sv = [];
 DATA.psych.show = 1;
 DATA.psych.trialresult = 0;
+DATA.psych.showblocks = 0;
 DATA.psych.blockmode = 'All';
 DATA.psych.crosshairs = 1;
 DATA.psych.blockid = [];
@@ -2350,6 +2357,7 @@ function MenuHit(a,b, arg)
     elseif strcmp(arg,'onetrial')
         outprintf(DATA,'!onetrial\n');
     elseif strcmp(arg,'pipelog')       
+        system([GetFilePath('perl') '/pipelog end']); %first stop any existing
         [a, prefix] = fileparts(DATA.binoc{1}.psychfile);
         prefix = regexprep(prefix,'[0-9][0-9][A-Z][a-z][a-z]20[0-9][0-9]','');
         prefix = regexprep(prefix,'DATE$','');
@@ -3019,7 +3027,7 @@ end
         set(it,'string','Store');
     else
         set(it,'string','Run','backgroundcolor',DATA.windowcolor);
-        if ~DATA.optionflags.py  %%Human Psych
+        if isfield(DATA.optionflags,'py') && ~DATA.optionflags.py  %%Human Psych
             set(it,'backgroundcolor','r');
         end
     end
@@ -5418,7 +5426,7 @@ function ChoosePsych(a,b, mode)
         DATA.psych.show = ~DATA.psych.show;
         set(a,'Checked',onoff{DATA.psych.show+1});
         PlotPsych(DATA);
-    elseif sum(strcmp(mode,{'crosshairs' 'trialresult'}))
+    elseif sum(strcmp(mode,{'crosshairs' 'trialresult' 'showblocks'}))
         DATA.psych.(mode) = ~DATA.psych.(mode);
         set(a,'Checked',onoff{DATA.psych.(mode)+1});
         PlotPsych(DATA);
@@ -5449,6 +5457,8 @@ function DATA = SetFigure(tag, DATA)
                 'checked',onoff{DATA.psych.crosshairs+1});
             sm = uimenu(hm,'Label','Just Show Trial outcomes','callback', {@ChoosePsych, 'trialresult'},...
                 'checked',onoff{DATA.psych.trialresult+1});
+            sm = uimenu(hm,'Label','Separate by Block','callback', {@ChoosePsych, 'showblocks'},...
+                'checked',onoff{DATA.psych.showblocks+1});
             sm = uimenu(hm,'Label','Save Trial Data','callback', {@ChoosePsych, 'savetrials'});
             set(a,'UserData',DATA.toplevel);
             set(a,'DefaultUIControlFontSize',DATA.font.FontSize);
@@ -5489,6 +5499,8 @@ function DATA = CheckExpts(DATA)
         if j < length(DATA.Expts) && ~isfield(DATA.Expts{j},'last')
             DATA.Expts{j}.last = DATA.Expts{j+1}.first -1;
         end
+        DATA.Expts{j}.Header.exptno = j;
+        DATA.Expts{j}.Header.rc = 0; %Cant' do rc online at the moment
     end
     
 function DATA = PlotPsych(DATA)
@@ -5566,15 +5578,17 @@ function DATA = PlotPsych(DATA)
     if DATA.psych.show
         DATA = SetFigure('VergPsych', DATA);
         hold off;
+        eargs = {};
         if DATA.psych.trialresult
             plot([Expt.Trials.Start],[Expt.Trials.good],'o');
             datetick('x','hh:mm');
             axis('tight');
+        elseif DATA.psych.showblocks
+            ExptPsych(DATA.Expts(expts),'labelblock',eargs{:});
         else
         np = sum(abs([Expt.Trials.RespDir]) ==1); %psych trials
         Expt = FillTrials(Expt,Expt.Stimvals.et);
         Expt = FillTrials(Expt,Expt.Stimvals.e2);
-        eargs = {};
         if np > 1
             if strcmp(Expt.Stimvals.e2,'od') && isfield(Expt.Stimvals,'or')
                 for j = 1:length(DATA.expvals{2})
