@@ -8021,9 +8021,14 @@ void ShuffleStimulus(int state)
         i = random() % trialsleft;
     else
         i = 0;
+    
     if(seroutfile){
         fprintf(seroutfile,"#Swapping %d(%d) with %d(%d) stimno %d+%d\n",
                 stimno,stimorder[stimno],stimno+i,stimorder[stimno+i],stimno,i);
+    }
+    if (stimno == 0 && expt.nstim[5] == 0){
+        acklog("#Expt Ended - no swap\n",NULL);
+        return;
     }
     temp = stimorder[stimno];
     stimorder[stimno] = stimorder[stimno + i];
