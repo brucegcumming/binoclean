@@ -6804,7 +6804,7 @@ int next_frame(Stimulus *st)
                 waitcount = 0;
             val = timediff(&now, &endtrialtime);
 #ifdef MONITOR_CLOSE
-            if(seroutfile && !(option2flag & PSYCHOPHYSICS_BIT))
+            if(seroutfile && !(option2flag & PSYCHOPHYSICS_BIT)&& waitcount == 0) 
                 fprintf(seroutfile,"#WaitFor %.2f VS%.1f%c\n",val,afc_s.sacval[1],exptchr);
 #endif
 #if defined(WIN32) 
