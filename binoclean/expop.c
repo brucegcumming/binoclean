@@ -5189,6 +5189,9 @@ void setsecondexp(int w, int id, int val)
  */
 void ResetExpt()
 {
+    if (seroutfile)
+        fprintf(seroutfile,"#ResettingExpt\n");
+    
     expt.nstim[4] = 1;
     expt.type3 = EXPTYPE_NONE;
     /*

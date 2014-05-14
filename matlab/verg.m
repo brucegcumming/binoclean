@@ -1021,8 +1021,10 @@ function DATA = ReadExptLines(DATA, strs, src)
         if DATA.over
             DATA.overcmds = {DATA.overcmds{:} tline};
         else
+            if ~strncmp(tline,'!mat',4) %don't send !mat lines to binoc
             tline = CheckLineForBinoc(tline);
             outprintf(DATA,'%s\n',tline);
+            end
         end
     end
     if j >= length(DATA.exptlines)
@@ -1100,6 +1102,7 @@ function DATA = ReadStimFile(DATA, name, varargin)
 if DATA.newexptdef == 0 && isfield(DATA.binoc{1},'ereset') && ~strcmp('NotSet',DATA.binoc{1}.ereset);
     fprintf('Resetting Expt with %s\n',DATA.binoc{1}.ereset);
     DATA.newexptdef = 1;
+    outprintf(DATA,'newexpt\n');
     DATA = ReadStimFile(DATA, DATA.binoc{1}.ereset);
 end
 outprintf(DATA,'#qe%s\n',name);
@@ -1112,7 +1115,7 @@ if fid > 0
         
             
     if  inread == 0
-        outprintf(DATA,'\neventpause\nnewexpt\n');
+        outprintf(DATA,'\neventpause\n');
     end
     for j = 2:length(DATA.overcmds) %commands to execute at and
             outprintf(DATA,[DATA.overcmds{j} '\n']);
