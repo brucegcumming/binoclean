@@ -274,10 +274,11 @@
 #define EXPT_NAME (LAST_STIMULUS_CODE+171)
 #define STIMULUS_TAG (LAST_STIMULUS_CODE+172)
 #define STIM3_TYPE (LAST_STIMULUS_CODE+173)
+#define SCREEN_VOFFSET (LAST_STIMULUS_CODE+174)
 //Add above here anything that needs to go to Spike2
 
 
-#define MAXSERIALCODES (LAST_STIMULUS_CODE+174)/* 217 */
+#define MAXSERIALCODES (LAST_STIMULUS_CODE+175)/* 217 */
 #define OPPOSITE_DELAY  MAXSERIALCODES
 #define FAST_SEQUENCE_RPT MAXSERIALCODES+1
 #define BRIGHTSHIFT_CODE MAXSERIALCODES+2
@@ -1058,6 +1059,7 @@ ValueCode valstrings[] = {
   {"px",     "XPixel Size (cm)",XPIXEL_CODE, 32 , 'N' ,5, SEND_EXPT, SAVE_ALWAYS},
   {"py",     "YPIXEL_CODE",YPIXEL_CODE, 32 , 'N' ,5, SEND_EXPT, SAVE_ALWAYS},
   {"vd",     "VIEWD_CODE",VIEWD_CODE, 32 , 'N' ,2, SEND_EXPT, SAVE_ALWAYS},
+  {"Vy",     "Screen Vertical Offset",SCREEN_VOFFSET, 32 , 'N' ,2, SEND_EXPT, SAVE_ALWAYS},
   {"sP",     "Stim pulses",STIM_PULSES, 1 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
   {"pw",     "pulse width",PULSE_WIDTH, 1 , 'N' ,2, SEND_EXPT_NONZERO, SAVE_ALWAYS},
   {"pi",     "Pursuit Increment",PURSUIT_INCREMENT, 8 , 'N' ,4, SEND_EXPT, SAVE_ALWAYS},

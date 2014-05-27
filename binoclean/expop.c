@@ -237,6 +237,7 @@ long frametotal = 0;
 int outliers[2];
 int clearcnt;
 static int stimulus_is_prepared = 0;
+static int stimulus_is_reset = 0;
 float dframeseq[MAXFRAMES*4]; // tracks when change happens
 float frameseq[MAXFRAMES*4];
 float frameseqb[MAXFRAMES*4];
@@ -7593,7 +7594,7 @@ void InitExpt()
         if(option2flag & FLASH_BIT)
             sprintf(buf,"%2s=fl\n",serial_strings[STIMCHANGE_CODE]);
         stimulus_is_prepared = 0;
-        PrepareExptStim(1,6);
+        PrepareExptStim(1,16);
     }
 
     else{
@@ -8747,7 +8748,7 @@ int PrepareExptStim(int show, int caller)
         fprintf(netoutfile,"#Prep%d %d %.3f\n",stimno, stimorder[stimno],ufftime(&now));
     }
     if(seroutfile){
-        fprintf(seroutfile,"#Prep%c %d %d %.3f\n",InExptChar,stimno, stimorder[stimno],ufftime(&now));
+        fprintf(seroutfile,"#Prep%c %d %d %.3f %d\n",InExptChar,stimno, stimorder[stimno],ufftime(&now),caller);
     }
 
     fakestim = 0;
@@ -8768,7 +8769,8 @@ int PrepareExptStim(int show, int caller)
     expt.st->preloaded = expt.st->next->preloaded = 0;
     expt.st->framectr = 0;
     expt.st->next->framectr = 0;
-
+    stimulus_is_reset = 0;
+    
     if (optionflags[MANUAL_EXPT]){
 
         if(expt.vals[ONETARGET_P] > 0){
@@ -10144,6 +10146,13 @@ void ResetExpStim(int offset)
     stimulus_is_prepared = 0;
     if(stim < 0 || !(expt.st->mode | (EXPTPENDING)))
         return;
+    if (stimulus_is_reset){
+        stimulus_is_reset++;
+        if (seroutfile){
+            fprintf(seroutfile,"#Reset call %d ignored\n",stimulus_is_reset);
+        }
+        return;
+    }
     if(stimorder[stim] & STIMULUS_EXTRA_ZEROCOH){
         SetStimulus(expt.st, expt.stimvals[JDEATH], JDEATH, NULL);
         SetStimulus(expt.st, expt.stimvals[SET_SEEDLOOP], SET_SEEDLOOP, NULL);
@@ -10257,6 +10266,7 @@ void ResetExpStim(int offset)
         SetStimulus(expt.st,expt.stimvals[ORI_BANDWIDTH],ORI_BANDWIDTH,NULL);
     }
     stimulus_is_prepared = 0;
+    stimulus_is_reset = 1;
 }
 
 int ExpStimOver(int retval, int lastchar)
