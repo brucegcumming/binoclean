@@ -215,7 +215,7 @@ int  processUIEvents()
     //in future versions we may want to keep the time everytime it is called and return only the new events
     int result = 0; // 0 for nothing new happend
     NSDate * now = [NSDate date] ;
-    NSEvent * e = [[NSApplication sharedApplication] nextEventMatchingMask:NSLeftMouseDownMask | NSRightMouseDownMask
+    NSEvent * e = [[NSApplication sharedApplication] nextEventMatchingMask:NSLeftMouseDownMask | NSRightMouseDownMask | NSKeyUpMask
                                                                  untilDate:now
                                                                     inMode:NSEventTrackingRunLoopMode
                                                                    dequeue:YES];
@@ -224,6 +224,10 @@ int  processUIEvents()
             result = Button1; // left mouse event (up or down)
         } else if ([e type]==NSRightMouseUp | [e type]==NSRightMouseDown){
             result = Button3; // right mouse event (up or down)
+        } else if ([e type]==NSKeyUp){ //bgc. gets here, but then?
+            if([e modifierFlags] & NSControlKeyMask ){ //cntrl down
+            result = 100 + [e keyCode]; //
+            }
         }
         else
             result = 4; // something else happend

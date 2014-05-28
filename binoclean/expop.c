@@ -823,7 +823,7 @@ int SetTargets()
             SetStimulus(ChoiceStima, expt.fixpos[0],  XPOS, NULL);
             SetStimulus(ChoiceStimb, expt.fixpos[0],  XPOS, NULL);
             afc_s.abssac[0] = 0;
-            afc_s.abssac[1] = expt.vals[SACCADE_AMPLITUDE];
+            afc_s.abssac[1] = sgn * expt.vals[SACCADE_AMPLITUDE];
         }
     }
     else if (expt.mode == PLAID_RATIO){
@@ -9259,8 +9259,9 @@ int PrepareExptStim(int show, int caller)
     
     //If in a corrrection loop, stimulus will be repeated, so keep afc_sign the same
     if (optionflags[CHOICE_BY_ICON]  &&  afc_s.loopstate != CORRECTION_LOOP){
-        if((drnd = drand48()) < afc_s.signflipp)
+        if((drnd = drand48()) < afc_s.signflipp){
             afc_s.sign = -1;
+        }
         else {
             afc_s.sign = 1;
         }
@@ -11197,8 +11198,10 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
                 frametimes[framesdone] = timediff(&frametime,&zeroframetime);
             }
             
+            if (freezestimulus == 0){
             if((framesdone = ++framecount) >= MAXFRAMES)
                 framesdone = MAXFRAMES-1;
+            }
             
             expt.framesdone = framesdone;
             /*
@@ -11268,6 +11271,18 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
 // Button presses during the stimulus will be ignored. If n >= MAXFRAMES will
 // run forevever, so can't ignore buttonpresses then
                 if((e.mouseButton = processUIEvents()) > 0){
+                    if (e.mouseButton == 103){ //cntrl-F
+                        if (freezestimulus == 2)
+                        {
+                            freezestimulus = 1;
+                            increment_stimulus(expt.st, &expt.st->pos);
+                            freezestimulus = 2;
+                        }
+                        freezestimulus = 2;
+                    }
+                    if (e.mouseButton == 105){ //cntrl-G
+                        freezestimulus = 0;
+                    }
                     if (!optionflags[FIXNUM_PAINTED_FRAMES] || n >= MAXFRAMES){
                     e.eventType = ButtonPress;
                         e.modifierKey = 0;
@@ -14686,6 +14701,9 @@ int ButtonResponse(int button, int revise, vcoord *locn)
     
 // button = 1 (L) or 3(R)
     sign = afc_s.stimsign;
+    if(optionflags[FLIP_FEEDBACK]){
+        sign = -sign;
+    }
     if (sign == 0)
         res = button;
     else if(2-button == sign)
