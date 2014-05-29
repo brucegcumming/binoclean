@@ -7225,12 +7225,20 @@ void aarotrect(vcoord *line, vcoord x, vcoord y)
      return;
      */
     if (!(optionflag & ANTIALIAS_BIT)){
+        if (1){
+//            glVertex2f(x+line[10],y+line[11]); //line horizontal on scree = vertical aa
+//            glVertex2f(x+line[12],y+line[13]);
+            glVertex2f(x+line[8],y+line[9]); // Do vertical line second to be sure of horizontal aa
+            glVertex2f(x+line[14],y+line[15]);
+        }
+        else{
         glBegin(GL_POLYGON);
         glVertex2f(x+line[0],y+line[1]);
         glVertex2f(x+line[2],y+line[3]);
         glVertex2f(x+line[4],y+line[5]);
         glVertex2f(x+line[6],y+line[7]);
         glEnd();
+        }
     }
     else if (expt.st->aamode == AALINE){
 // On Reich, a single line gets AA at all sides. But Reich is also slower.....

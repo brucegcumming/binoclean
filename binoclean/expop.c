@@ -14664,6 +14664,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             case QUICKEXPT_CODE:
             case NETWORK_PREFIX:
             case UKA_VALS:
+            case SACCADE_DETECTED:
                 break;
         }
     }

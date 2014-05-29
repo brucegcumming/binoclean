@@ -294,8 +294,8 @@ for j = 1:length(strs{1})
     elseif sum(strncmp(s,{'NewBinoc' 'confirm' 'exvals' 'fontsiz' 'fontname' 'layout' ...
             'localmatdir' 'netmatdir', 'oldelectrode' 'TOGGLE' 'rptexpts' 'STIMTYPE' },6))
         if strncmp(s,'NewBinoc',7)
-            if DATA.optionflags.do
-                outprintf(DATA,'\\go\n');
+            if DATA.optionflags.do %only do this when reopen pipes
+%                outprintf(DATA,'\\go\n');
             end
         elseif strncmp(s,'confirm',7)
             yn = questdlg(s(8:end),'Update Check');
