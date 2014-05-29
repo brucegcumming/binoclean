@@ -5897,10 +5897,11 @@ void paint_frame(int type, int showfix)
         glDrawBuffer(GL_FRONT_AND_BACK);
     if (TheStim->noclear == 0)
         clearstim(TheStim,TheStim->gammaback, 0);
-    TheStim->noclear = 1;
-    if(SACCREQD(afc_s) && afc_s.target_in_trial > 0){
+    if(SACCREQD(afc_s) && afc_s.target_in_trial > 0 && optionflags[PAINT_THIRD_LAST] == 0){
         paint_target(expt.targetcolor, 0);
     }
+
+    TheStim->noclear = 1;
     setmask(BOTHMODE); // may be monoc if selected
     if(option2flag & PSYCHOPHYSICS_BIT || !(eventstate & MBUTTON) || (eventstate & CNTLKEY)){
         if(type == STIM_BACKGROUND && isastim(TheStim->next))
@@ -5914,6 +5915,9 @@ void paint_frame(int type, int showfix)
     else
         wipescreen(clearcolor);
     setmask(ALLMODE);
+    if(SACCREQD(afc_s) && afc_s.target_in_trial > 0 && optionflags[PAINT_THIRD_LAST] == 1){
+        paint_target(expt.targetcolor, 0);
+    }
     if(showfix)
         draw_fix(fixpos[0],fixpos[1], TheStim->fix.size, TheStim->fixcolor);
     gettimeofday(&btime, NULL);

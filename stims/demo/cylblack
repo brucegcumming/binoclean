@@ -1,0 +1,14 @@
+mo=back
+st=none
+mo=fore
+st=cylinder
+or=90 #-ve disparity -s 
+bc=0
+dw=0.1
+sz=7
+op=-fi
+jv=15
+fl=-nc+pc
+op=+aa
+
+
