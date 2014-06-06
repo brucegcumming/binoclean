@@ -658,6 +658,13 @@ for j = 1:length(strs{1})
         id = find(strcmp(s,{DATA.quickexpts.filename}));
         end
         if isempty(id)
+            if s(1) ~= '/' 
+                if isfield(DATA.binoc{1},'stimdir')
+                    s = [DATA.binoc{1}.stimdir '/' s];
+                elseif isfield(DATA,'stimfilename')
+                    s = [fileparts(DATA.stimfilename) '/' s];
+                end
+            end
         n = length(DATA.quickexpts)+1;
         DATA.quickexpts(n).name = b;
         DATA.quickexpts(n).filename = s;
@@ -749,7 +756,7 @@ for j = 1:length(strs{1})
     elseif strncmp(s, 'slider', 6)
         id = find(strcmp(s(4:end),DATA.stimulusnames));
 
-    elseif strncmp(s, 'st', 2)
+    elseif strncmp(s, 'st=', 3)
         id = find(strcmp(deblank(s(4:end)),DATA.stimulusnames));
         if length(id) == 1
         DATA.stimtype(DATA.currentstim) = id;
@@ -2234,6 +2241,7 @@ function DATA = InitInterface(DATA)
 
     
     hm = uimenu(cntrl_box,'Label','Help','Tag','HelpMenu');
+    DATA = AddHelpFiles(DATA); 
     BuildHelpMenu(DATA, hm);
 
     if DATA.network
@@ -2277,8 +2285,35 @@ function ShowHelp(a,b,file)
       fprintf('%s\n',lasterr)
   end
 
+  
+  function DATA = AddHelpFiles(DATA, varargin)
+      preifx = [];
+      if isfield(DATA.binoc{1},'helpdir') && isdir(DATA.binoc{1}.helpdir)
+          prefix = DATA.binoc{1}.helpdir;
+      elseif isdir('/b/binoclean/help')
+          prefix = '/b/binoclean/help';
+      end
+      if ~isempty(prefix)
+          d = dir([prefix '/*.hlp']);
+          for j = 1:length(d)
+              if isempty(DATA.helpfiles) || ...
+                      sum(cellstrfind({DATA.helpfiles.filename},d(j).name)) == 0 %new
+                  filename = [prefix '/' d(j).name];
+                  DATA.helpfiles(end+1).filename = filename;
+                  s = scanlines(filename);
+                  if length(s{1}) < 50
+                  DATA.helpfiles(end).label = s{1};
+                  else
+                  DATA.helpfiles(end).label = d(j).name;
+                  end
+              end
+          end
+          
+      end
+  
    function BuildHelpMenu(DATA, hm)
         
+      
    uimenu(hm,'Label','List All Codes','Callback',{@CodesPopup, 'popup'},'accelerator','L');
    uimenu(hm,'Label','List Codes with Help','Callback',{@CodesPopup, 'popuphelp'});
    for j = 1:length(DATA.helpfiles)
@@ -3184,11 +3219,13 @@ end
      end
 
     took = mytoc(ts);
-    DATA = InterpretLine(DATA,str,'frombinoc');
     if DATA.verbose(5)
         fprintf('Binoc status%d:%s\n',status,str);
         fprintf('Read took %.3f,%.3f\n',took,mytoc(ts));
+    elseif DATA.verbose(2) && ~strncmp(str,'SENDING000000',13)
+        fprintf('Binoc status%d:%s\n',status,str);
     end
+    DATA = InterpretLine(DATA,str,'frombinoc');
 %    myprintf(DATA.frombinocfid,'ReadBinoc%s:  %s',datestr(now),str);
     if ~isfield(DATA,'trialcounts')
     end

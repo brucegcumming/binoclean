@@ -499,6 +499,7 @@
 #define MONITOR_FILE  (MAXSAVECODES+39)
 #define SEQUENCE_PAUSE (MAXSAVECODES+40)
 #define STIMULUSDIR (MAXSAVECODES+41)
+#define HELPDIR (MAXSAVECODES+42)
 #define MAXTOTALCODES (MAXSAVECODES+43)  //372
 
 
@@ -1284,7 +1285,8 @@ ValueCode valstrings[] = {
     {  "expname", "Expt Name Label", EXPT_NAME, 0, 'C', 0, SEND_EXPT, SAVE_ALWAYS},
     {  "stimtag", "Stimulus Tag (label)", STIMULUS_TAG, 0, 'C', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "exp", "Expt Prefix (local dir)", EXPT_PREFIX, 0, 'C', 0, SEND_EXPLICIT, SAVE_ALWAYS},
-    {  "stimdir", "Stimulus File Directory", STIMULUSDIR, 0, 'C', 0, SEND_EXPLICIT, SAVE_NEVER},
+    {  "stimdir", "Stimulus File Directory", HELPDIR, 0, 'C', 0, SEND_VERG_ONLY, SAVE_NEVER},
+    {  "helpdir", "Stimulus File Directory", STIMULUSDIR, 0, 'C', 0, SEND_VERG_ONLY, SAVE_NEVER},
     {  "nph", "Number of Random phases", NPHASES, 0, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "jcomp", "SF Components that jump",  JUMP_SF_COMPONENTS, 0, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "nsf", "SF Components", SET_SF_COMPONENTS, 0, 'N', 3, SEND_EXPLICIT, SAVE_ALWAYS},

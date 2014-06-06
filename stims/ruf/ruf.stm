@@ -1,4 +1,5 @@
 clearquick
+monkey=ruf
 monitor=/local/monitors/Default	
 mo=0
 mo=+db+zb
@@ -349,8 +350,9 @@ PY=2.00	#Panel Y position
 sC=0.0000	#Counterphase
 ui=Not Set	#User id
 Tw=0.0000	#Time Ori BW
-qe="Rufus"/b/binoclean/stims/ruf/bwtask
-qe="Rufus"/b/binoclean/stims/ruf/latest
+stimdir=/b/binoclean/stims/ruf
+qe="Rufus"bwtask
+qe="Rufus"latest
 qe="RDS"/local/ruf/stims/odisp
 #qe="RDS"/local/ruf/stims/opdisp
 #qe="RDS"/local/ruf/stims/pdisp
