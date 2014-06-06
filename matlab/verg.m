@@ -3152,6 +3152,8 @@ end
                 silent = 1;
                 expecttime = varargin{j};
             end
+         elseif strncmpi(varargin{j},'reset',5)
+             httpbusy = 0;
          end
          j = j+1;
     end

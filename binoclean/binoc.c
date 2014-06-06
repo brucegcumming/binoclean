@@ -4609,6 +4609,13 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
         }
         if (notsent == 0)
             expt.codesent=1;
+        MakeString(code,buf,&expt,st,TO_FILE);
+        if (netoutfile != NULL){
+            fprintf(netoutfile,"back%s\n",buf);
+        }
+        if (seroutfile != NULL){
+            fprintf(seroutfile,"back%s\n",buf);
+        }
 	}
 	return(0);
 }
