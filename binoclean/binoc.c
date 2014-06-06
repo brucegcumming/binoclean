@@ -10831,26 +10831,26 @@ void paint_target(float color, int flag)
     if(ChoiceStima->type != STIM_NONE && showa){
         contrast = ChoiceStima->pos.contrast;
         if((afc_s.sacval[0]+afc_s.sacval[1]) * afc_s.sign < 0)
-            ChoiceStima->pos.contrast = contrast * expt.vals[TARGET_RATIO];
+            ChoiceStima->pos.contrast = ChoiceStima->pos.contrast_amp = contrast * expt.vals[TARGET_RATIO];
         ChoiceStima->noclear = 1;
         increment_stimulus(ChoiceStima,&(ChoiceStima->pos));
 //        if (ChoiceStima->left->seedloop == 0)
  //           ChoiceStima->left->baseseed+=2;
         calc_stimulus(ChoiceStima);
         paint_stimulus(ChoiceStima,0);
-        ChoiceStima->pos.contrast = contrast;
+        ChoiceStima->pos.contrast_amp = ChoiceStima->pos.contrast = contrast;
     }
     if(ChoiceStimb->type != STIM_NONE && showb){
         contrast = ChoiceStimb->pos.contrast;
         if((afc_s.sacval[0]+afc_s.sacval[1]) * afc_s.sign > 0)
-            ChoiceStimb->pos.contrast = contrast * expt.vals[TARGET_RATIO];
+            ChoiceStimb->pos.contrast = ChoiceStimb->pos.contrast_amp = contrast * expt.vals[TARGET_RATIO];
         ChoiceStimb->noclear = 1;
         increment_stimulus(ChoiceStimb,&(ChoiceStimb->pos));
 //        if (ChoiceStimb->left->seedloop == 0)
 //            ChoiceStimb->left->baseseed+=2;
         calc_stimulus(ChoiceStimb);
         paint_stimulus(ChoiceStimb,0);
-        ChoiceStimb->pos.contrast = contrast;
+        ChoiceStimb->pos.contrast = ChoiceStimb->pos.contrast_amp = contrast;
     }
     draw_fix(fixpos[0]+deg2pix(afc_s.sacval[0]+afc_s.sacval[2]),fixpos[1]+deg2pix(afc_s.sacval[1]+afc_s.sacval[3]), afc_s.targsize, color);
     
