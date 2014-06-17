@@ -10655,6 +10655,8 @@ int GotChar(char c)
                     if (expt.vals[TARGET_RATIO] > 0.99)
                         trueafc = 1;
                     monkey_dir = monkey_direction(jonresult, afc_s);
+                    if (optionflags[CHOICE_BY_ICON])
+                        monkey_dir *= afc_s.sign;
                     if(seroutfile)
                         fprintf(seroutfile,"MD %d %d %.1f %.3f",monkey_dir,jonresult,afc_s.sacval[1],timediff(&now,&endstimtime));
                     if(afc_s.loopstate != CORRECTION_LOOP && (option2flag & AFC))
