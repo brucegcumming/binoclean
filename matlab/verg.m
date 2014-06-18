@@ -262,10 +262,6 @@ for j = 1:length(strs{1})
     end
     
     if strcmp(src,'fromstim') %Check for some old strings and update
-        if strcmp(s,'immode=preload')
-            fprintf('Substituting imload for immode');
-            s = 'imload=preload';
-        end
     end
     if length(s) == 0
     elseif strncmp(s,'!mat',4) && ~isempty(value)
@@ -1016,6 +1012,11 @@ function DATA = ReadExptLines(DATA, strs, src)
             DATA.exptnextline = j;
             break;
         end
+        if strcmp(tline,'immode=preload')
+            fprintf('Substituting imload for immode\n');
+            tline = 'imload=preload';
+        end
+        
         [DATA, type] = InterpretLine(DATA,tline, src);
         if DATA.perfmonitor
             myprintf(DATA.frombinocfid,'%.3f file %s\n',mytoc(DATA.starttime),tline);

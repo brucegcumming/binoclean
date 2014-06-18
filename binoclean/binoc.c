@@ -6376,8 +6376,8 @@ int next_frame(Stimulus *st)
                 draw_fix(fixpos[0],fixpos[1], TheStim->fix.size, TheStim->fixcolor);
             if (SACCREQD(afc_s) && val < expt.vals[CHOICE_TARGET_DURATION] && monkeypress == WURTZ_OK)
                 paint_target(expt.targetcolor,2);
-            if(optionflags[ICON_IN_TRIAL])
-                paint_target(expt.targetcolor,1);
+//            if(optionflags[ICON_IN_TRIAL]) // Not in intertrial
+//                 paint_target(expt.targetcolor,1);
 
             if(rdspair(expt.st))
                 i = 0;
@@ -11007,6 +11007,7 @@ void expt_over(int flag)
     double t;
     
     mode &= (~BW_ERROR);
+    eventstate = 0;
     if(stimstate == WAIT_FOR_RESPONSE && flag != CANCEL_EXPT){
         TheStim->mode |= EXPT_OVER; // make sure this is called again after response
         return;
