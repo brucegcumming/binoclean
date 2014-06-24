@@ -227,7 +227,7 @@ if nargin < 2 || isempty(line)
 end
 
 PauseRead(DATA, 1);
-
+ts = now;
 strs = textscan(line,'%s','delimiter','\n');
 
 if DATA.verbose(1) && length(strs{1}) > 1
@@ -529,7 +529,10 @@ for j = 1:length(strs{1})
             fprintf('%s t%dR%d Ex%s\n',s,DATA.nt,DATA.Trial.RespDir,sprintf(' %.3f',DATA.Trial.sv));
         end
         if isfield(DATA.Trial,'RespDir')
-            DATA = PlotPsych(DATA);
+%Dont plot if there are more results still in the pipeline
+            if length(strs{1}) < 20 || max(find(strncmp('TRES',strs{1},4))) <= j
+                DATA = PlotPsych(DATA);
+            end
         end
     elseif length(code) > 4 & sum(strcmp(code,DATA.windownames))
         iw = find(strcmp(code,DATA.windownames));
@@ -918,6 +921,10 @@ for j = 1:length(strs{1})
             end
         end
     end
+end
+dur = mytoc(ts);
+if dur > 1
+    fprintf('Reading %d lines took %.2f\n',length(strs{1}),dur);
 end
 PauseRead(DATA,0);
 
