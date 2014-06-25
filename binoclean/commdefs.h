@@ -274,10 +274,11 @@
 #define EXPT_NAME (LAST_STIMULUS_CODE+171)
 #define STIMULUS_TAG (LAST_STIMULUS_CODE+172)
 #define STIM3_TYPE (LAST_STIMULUS_CODE+173)
+#define SCREEN_VOFFSET (LAST_STIMULUS_CODE+174)
 //Add above here anything that needs to go to Spike2
 
 
-#define MAXSERIALCODES (LAST_STIMULUS_CODE+174)/* 217 */
+#define MAXSERIALCODES (LAST_STIMULUS_CODE+175)/* 217 */
 #define OPPOSITE_DELAY  MAXSERIALCODES
 #define FAST_SEQUENCE_RPT MAXSERIALCODES+1
 #define BRIGHTSHIFT_CODE MAXSERIALCODES+2
@@ -452,7 +453,9 @@
 #define EXPTRESET_FILE MAXSERIALCODES+171
 #define SET_SF_CONTRASTS MAXSERIALCODES+172
 #define NETWORK_PREFIX MAXSERIALCODES+173
-#define MAXSAVECODES MAXSERIALCODES+174 //391
+#define XY_FSD MAXSERIALCODES+174
+
+#define MAXSAVECODES MAXSERIALCODES+175 //392
 //Add above here anything that needs to be saved to .stm files
 //Below here are temporary/convenience/state parameters that do not need saving
 
@@ -497,6 +500,8 @@
 #define IMAGELOAD_MODE (MAXSAVECODES+38)
 #define MONITOR_FILE  (MAXSAVECODES+39)
 #define SEQUENCE_PAUSE (MAXSAVECODES+40)
+#define STIMULUSDIR (MAXSAVECODES+41)
+#define HELPDIR (MAXSAVECODES+42)
 #define MAXTOTALCODES (MAXSAVECODES+43)  //372
 
 
@@ -568,7 +573,6 @@
 #define SHOW_COMMAND_HISTORY TOTALCODES+1
 #define EXPTVALS TOTALCODES+2
 
-#define XY_FSD 10
 
 /* bw toggle codes */
 #define BW_UFF_IS_OPEN 0
@@ -1058,6 +1062,7 @@ ValueCode valstrings[] = {
   {"px",     "XPixel Size (cm)",XPIXEL_CODE, 32 , 'N' ,5, SEND_EXPT, SAVE_ALWAYS},
   {"py",     "YPIXEL_CODE",YPIXEL_CODE, 32 , 'N' ,5, SEND_EXPT, SAVE_ALWAYS},
   {"vd",     "VIEWD_CODE",VIEWD_CODE, 32 , 'N' ,2, SEND_EXPT, SAVE_ALWAYS},
+  {"Vy",     "Screen Vertical Offset",SCREEN_VOFFSET, 32 , 'N' ,2, SEND_EXPT, SAVE_ALWAYS},
   {"sP",     "Stim pulses",STIM_PULSES, 1 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
   {"pw",     "pulse width",PULSE_WIDTH, 1 , 'N' ,2, SEND_EXPT_NONZERO, SAVE_ALWAYS},
   {"pi",     "Pursuit Increment",PURSUIT_INCREMENT, 8 , 'N' ,4, SEND_EXPT, SAVE_ALWAYS},
@@ -1281,6 +1286,8 @@ ValueCode valstrings[] = {
     {  "expname", "Expt Name Label", EXPT_NAME, 0, 'C', 0, SEND_EXPT, SAVE_ALWAYS},
     {  "stimtag", "Stimulus Tag (label)", STIMULUS_TAG, 0, 'C', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "exp", "Expt Prefix (local dir)", EXPT_PREFIX, 0, 'C', 0, SEND_EXPLICIT, SAVE_ALWAYS},
+    {  "stimdir", "Stimulus File Directory", HELPDIR, 0, 'C', 0, SEND_VERG_ONLY, SAVE_NEVER},
+    {  "helpdir", "Stimulus File Directory", STIMULUSDIR, 0, 'C', 0, SEND_VERG_ONLY, SAVE_NEVER},
     {  "nph", "Number of Random phases", NPHASES, 0, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "jcomp", "SF Components that jump",  JUMP_SF_COMPONENTS, 0, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "nsf", "SF Components", SET_SF_COMPONENTS, 0, 'N', 3, SEND_EXPLICIT, SAVE_ALWAYS},
@@ -1298,6 +1305,7 @@ ValueCode valstrings[] = {
     {"monitor","Monitor Filename",  MONITOR_FILE, 0, 'C', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {"ereset","File To run for Reset between Expts",  EXPTRESET_FILE, 0, 'C', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {"seqpause","Pause between computer repeated blocks",  SEQUENCE_PAUSE, 16, 'N', 2, SEND_VERG_ONLY, SAVE_ALWAYS},
+    {"xyfsd", "XY window width (degrees)", XY_FSD, 0, 'N', 1, SEND_EXPLICIT, SAVE_ALWAYS},
     {"netpref","Prefix for Network Data Record",  NETWORK_PREFIX, 16, 'C', 2, SEND_VERG_ONLY, SAVE_ALWAYS},
     { NULL, NULL, -1, -1 ,0 ,0, 0},
 };

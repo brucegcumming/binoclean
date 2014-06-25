@@ -372,6 +372,7 @@ Covariate=xo	#Covariate
 iF=0.00	#Initial Frames (Duration)
 e1max=0.00	#Expt1 Max
 qe="RDS"/local/bgc/stims/RDSacuity
+qe="RDS"/b/binoclean/stims/paul
 qe="Grating"/local/bgc/stims/GratingSA
 qe="Psych"/local/lem/stims/corr_task
 qe="Psych"/local/lem/stims/orivh_task

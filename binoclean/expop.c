@@ -237,6 +237,7 @@ long frametotal = 0;
 int outliers[2];
 int clearcnt;
 static int stimulus_is_prepared = 0;
+static int stimulus_is_reset = 0;
 float dframeseq[MAXFRAMES*4]; // tracks when change happens
 float frameseq[MAXFRAMES*4];
 float frameseqb[MAXFRAMES*4];
@@ -822,7 +823,7 @@ int SetTargets()
             SetStimulus(ChoiceStima, expt.fixpos[0],  XPOS, NULL);
             SetStimulus(ChoiceStimb, expt.fixpos[0],  XPOS, NULL);
             afc_s.abssac[0] = 0;
-            afc_s.abssac[1] = expt.vals[SACCADE_AMPLITUDE];
+            afc_s.abssac[1] = sgn * expt.vals[SACCADE_AMPLITUDE];
         }
     }
     else if (expt.mode == PLAID_RATIO){
@@ -5189,6 +5190,9 @@ void setsecondexp(int w, int id, int val)
  */
 void ResetExpt()
 {
+    if (seroutfile)
+        fprintf(seroutfile,"#ResettingExpt\n");
+    
     expt.nstim[4] = 1;
     expt.type3 = EXPTYPE_NONE;
     /*
@@ -7590,7 +7594,7 @@ void InitExpt()
         if(option2flag & FLASH_BIT)
             sprintf(buf,"%2s=fl\n",serial_strings[STIMCHANGE_CODE]);
         stimulus_is_prepared = 0;
-        PrepareExptStim(1,6);
+        PrepareExptStim(1,16);
     }
 
     else{
@@ -8021,9 +8025,14 @@ void ShuffleStimulus(int state)
         i = random() % trialsleft;
     else
         i = 0;
+    
     if(seroutfile){
         fprintf(seroutfile,"#Swapping %d(%d) with %d(%d) stimno %d+%d\n",
                 stimno,stimorder[stimno],stimno+i,stimorder[stimno+i],stimno,i);
+    }
+    if (stimno == 0 && expt.nstim[5] == 0){
+        acklog("#Expt Ended - no swap\n",NULL);
+        return;
     }
     temp = stimorder[stimno];
     stimorder[stimno] = stimorder[stimno + i];
@@ -8739,7 +8748,7 @@ int PrepareExptStim(int show, int caller)
         fprintf(netoutfile,"#Prep%d %d %.3f\n",stimno, stimorder[stimno],ufftime(&now));
     }
     if(seroutfile){
-        fprintf(seroutfile,"#Prep%c %d %d %.3f\n",InExptChar,stimno, stimorder[stimno],ufftime(&now));
+        fprintf(seroutfile,"#Prep%c %d %d %.3f %d\n",InExptChar,stimno, stimorder[stimno],ufftime(&now),caller);
     }
 
     fakestim = 0;
@@ -8760,7 +8769,8 @@ int PrepareExptStim(int show, int caller)
     expt.st->preloaded = expt.st->next->preloaded = 0;
     expt.st->framectr = 0;
     expt.st->next->framectr = 0;
-
+    stimulus_is_reset = 0;
+    
     if (optionflags[MANUAL_EXPT]){
 
         if(expt.vals[ONETARGET_P] > 0){
@@ -9249,8 +9259,9 @@ int PrepareExptStim(int show, int caller)
     
     //If in a corrrection loop, stimulus will be repeated, so keep afc_sign the same
     if (optionflags[CHOICE_BY_ICON]  &&  afc_s.loopstate != CORRECTION_LOOP){
-        if((drnd = drand48()) < afc_s.signflipp)
+        if((drnd = drand48()) < afc_s.signflipp){
             afc_s.sign = -1;
+        }
         else {
             afc_s.sign = 1;
         }
@@ -10136,6 +10147,13 @@ void ResetExpStim(int offset)
     stimulus_is_prepared = 0;
     if(stim < 0 || !(expt.st->mode | (EXPTPENDING)))
         return;
+    if (stimulus_is_reset){
+        stimulus_is_reset++;
+        if (seroutfile){
+            fprintf(seroutfile,"#Reset call %d ignored\n",stimulus_is_reset);
+        }
+        return;
+    }
     if(stimorder[stim] & STIMULUS_EXTRA_ZEROCOH){
         SetStimulus(expt.st, expt.stimvals[JDEATH], JDEATH, NULL);
         SetStimulus(expt.st, expt.stimvals[SET_SEEDLOOP], SET_SEEDLOOP, NULL);
@@ -10249,6 +10267,7 @@ void ResetExpStim(int offset)
         SetStimulus(expt.st,expt.stimvals[ORI_BANDWIDTH],ORI_BANDWIDTH,NULL);
     }
     stimulus_is_prepared = 0;
+    stimulus_is_reset = 1;
 }
 
 int ExpStimOver(int retval, int lastchar)
@@ -11179,8 +11198,10 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
                 frametimes[framesdone] = timediff(&frametime,&zeroframetime);
             }
             
+            if (freezestimulus == 0){
             if((framesdone = ++framecount) >= MAXFRAMES)
                 framesdone = MAXFRAMES-1;
+            }
             
             expt.framesdone = framesdone;
             /*
@@ -11250,6 +11271,18 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
 // Button presses during the stimulus will be ignored. If n >= MAXFRAMES will
 // run forevever, so can't ignore buttonpresses then
                 if((e.mouseButton = processUIEvents()) > 0){
+                    if (e.mouseButton == 103){ //cntrl-F
+                        if (freezestimulus == 2)
+                        {
+                            freezestimulus = 1;
+                            increment_stimulus(expt.st, &expt.st->pos);
+                            freezestimulus = 2;
+                        }
+                        freezestimulus = 2;
+                    }
+                    if (e.mouseButton == 105){ //cntrl-G
+                        freezestimulus = 0;
+                    }
                     if (!optionflags[FIXNUM_PAINTED_FRAMES] || n >= MAXFRAMES){
                     e.eventType = ButtonPress;
                         e.modifierKey = 0;
@@ -11856,7 +11889,8 @@ int CheckStimDuration(int retval)
     float framevals[MAXFRAMES], diffmax, diffmin;
     
     rpt = (expt.st->framerepeat < 1) ? 1 : expt.st->framerepeat;
-
+    n = framesdone;
+    
     sprintf(buf,"#du%.3f(%d:%.3f)\n",frametimes[framesdone],framesdone,(framesdone-0.5)/expt.mon->framerate);
     SerialString(buf,0);
     if (optionflags[FIXNUM_PAINTED_FRAMES]){
@@ -14631,6 +14665,9 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             case QUICKEXPT_CODE:
             case NETWORK_PREFIX:
             case UKA_VALS:
+            case SACCADE_DETECTED:
+            case PENETRATION_TEXT:
+            case FIXCOLORS:
                 break;
         }
     }
@@ -14668,6 +14705,9 @@ int ButtonResponse(int button, int revise, vcoord *locn)
     
 // button = 1 (L) or 3(R)
     sign = afc_s.stimsign;
+    if(optionflags[FLIP_FEEDBACK]){
+        sign = -sign;
+    }
     if (sign == 0)
         res = button;
     else if(2-button == sign)

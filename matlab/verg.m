@@ -226,8 +226,9 @@ if nargin < 2 || isempty(line)
         return;
 end
 
+pstr = '';
 PauseRead(DATA, 1);
-
+ts = now;
 strs = textscan(line,'%s','delimiter','\n');
 
 if DATA.verbose(1) && length(strs{1}) > 1
@@ -262,10 +263,6 @@ for j = 1:length(strs{1})
     end
     
     if strcmp(src,'fromstim') %Check for some old strings and update
-        if strcmp(s,'immode=preload')
-            fprintf('Substituting imload for immode');
-            s = 'imload=preload';
-        end
     end
     if length(s) == 0
     elseif strncmp(s,'!mat',4) && ~isempty(value)
@@ -281,6 +278,8 @@ for j = 1:length(strs{1})
             DATA.matlabwasrun = 1;
         end
         SendCode(DATA, 'exp');
+    elseif strncmp(s,'timerperiod',10) %verg special
+        DATA.timerperiod = sscanf(value,'%f');
     elseif s(1) == '#' %defines stim code/label
         [a,b] = sscanf(s,'#%d %s');
 %        a = a(1);
@@ -294,8 +293,8 @@ for j = 1:length(strs{1})
     elseif sum(strncmp(s,{'NewBinoc' 'confirm' 'exvals' 'fontsiz' 'fontname' 'layout' ...
             'localmatdir' 'netmatdir', 'oldelectrode' 'TOGGLE' 'rptexpts' 'STIMTYPE' },6))
         if strncmp(s,'NewBinoc',7)
-            if DATA.optionflags.do
-                outprintf(DATA,'\\go\n');
+            if DATA.optionflags.do %only do this when reopen pipes
+%                outprintf(DATA,'\\go\n');
             end
         elseif strncmp(s,'confirm',7)
             yn = questdlg(s(8:end),'Update Check');
@@ -533,7 +532,13 @@ for j = 1:length(strs{1})
             fprintf('%s t%dR%d Ex%s\n',s,DATA.nt,DATA.Trial.RespDir,sprintf(' %.3f',DATA.Trial.sv));
         end
         if isfield(DATA.Trial,'RespDir')
-            DATA = PlotPsych(DATA);
+%Dont plot if there are more results still in the pipeline
+            if length(strs{1}) < 20 || max(find(strncmp('TRES',strs{1},4))) <= j
+                pts = now;
+                DATA = PlotPsych(DATA);
+                pstr = sprintf('Psych took %.2f',mytoc(pts));
+                
+            end
         end
     elseif length(code) > 4 & sum(strcmp(code,DATA.windownames))
         iw = find(strcmp(code,DATA.windownames));
@@ -658,6 +663,13 @@ for j = 1:length(strs{1})
         id = find(strcmp(s,{DATA.quickexpts.filename}));
         end
         if isempty(id)
+            if s(1) ~= '/' 
+                if isfield(DATA.binoc{1},'stimdir')
+                    s = [DATA.binoc{1}.stimdir '/' s];
+                elseif isfield(DATA,'stimfilename')
+                    s = [fileparts(DATA.stimfilename) '/' s];
+                end
+            end
         n = length(DATA.quickexpts)+1;
         DATA.quickexpts(n).name = b;
         DATA.quickexpts(n).filename = s;
@@ -749,7 +761,7 @@ for j = 1:length(strs{1})
     elseif strncmp(s, 'slider', 6)
         id = find(strcmp(s(4:end),DATA.stimulusnames));
 
-    elseif strncmp(s, 'st', 2)
+    elseif strncmp(s, 'st=', 3)
         id = find(strcmp(deblank(s(4:end)),DATA.stimulusnames));
         if length(id) == 1
         DATA.stimtype(DATA.currentstim) = id;
@@ -916,6 +928,10 @@ for j = 1:length(strs{1})
         end
     end
 end
+dur = mytoc(ts);
+if dur > 1
+    fprintf('Reading %d lines took %.2f%s\n',length(strs{1}),dur,pstr);
+end
 PauseRead(DATA,0);
 
 
@@ -1009,6 +1025,11 @@ function DATA = ReadExptLines(DATA, strs, src)
             DATA.exptnextline = j;
             break;
         end
+        if strcmp(tline,'immode=preload')
+            fprintf('Substituting imload for immode\n');
+            tline = 'imload=preload';
+        end
+        
         [DATA, type] = InterpretLine(DATA,tline, src);
         if DATA.perfmonitor
             myprintf(DATA.frombinocfid,'%.3f file %s\n',mytoc(DATA.starttime),tline);
@@ -1021,8 +1042,10 @@ function DATA = ReadExptLines(DATA, strs, src)
         if DATA.over
             DATA.overcmds = {DATA.overcmds{:} tline};
         else
+            if ~strncmp(tline,'!mat',4) %don't send !mat lines to binoc
             tline = CheckLineForBinoc(tline);
             outprintf(DATA,'%s\n',tline);
+            end
         end
     end
     if j >= length(DATA.exptlines)
@@ -1100,6 +1123,7 @@ function DATA = ReadStimFile(DATA, name, varargin)
 if DATA.newexptdef == 0 && isfield(DATA.binoc{1},'ereset') && ~strcmp('NotSet',DATA.binoc{1}.ereset);
     fprintf('Resetting Expt with %s\n',DATA.binoc{1}.ereset);
     DATA.newexptdef = 1;
+    outprintf(DATA,'newexpt\n');
     DATA = ReadStimFile(DATA, DATA.binoc{1}.ereset);
 end
 outprintf(DATA,'#qe%s\n',name);
@@ -1112,7 +1136,7 @@ if fid > 0
         
             
     if  inread == 0
-        outprintf(DATA,'\neventpause\nnewexpt\n');
+        outprintf(DATA,'\neventpause\n');
     end
     for j = 2:length(DATA.overcmds) %commands to execute at and
             outprintf(DATA,[DATA.overcmds{j} '\n']);
@@ -1484,6 +1508,7 @@ function DATA = SetDefaults(DATA)
 scrsz = get(0,'Screensize');
 DATA = SetField(DATA,'ip','http://localhost:1110/');
 DATA.network = 1;
+DATA.timerperiod = 0.05;
 DATA.pausereading = 0;  %stop timer driven reads when want to control
 DATA.binocisup = 0;
 DATA.savestrs = 0;
@@ -2231,11 +2256,12 @@ function DATA = InitInterface(DATA)
 
     
     hm = uimenu(cntrl_box,'Label','Help','Tag','HelpMenu');
+    DATA = AddHelpFiles(DATA); 
     BuildHelpMenu(DATA, hm);
 
     if DATA.network
         period = 0.005;
-        period = 0.05;  %don't need 10ms reads yet
+        period = DATA.timerperiod;  %don't need 10ms reads yet
     else
         period = 1;
     end
@@ -2274,8 +2300,35 @@ function ShowHelp(a,b,file)
       fprintf('%s\n',lasterr)
   end
 
+  
+  function DATA = AddHelpFiles(DATA, varargin)
+      preifx = [];
+      if isfield(DATA.binoc{1},'helpdir') && isdir(DATA.binoc{1}.helpdir)
+          prefix = DATA.binoc{1}.helpdir;
+      elseif isdir('/b/binoclean/help')
+          prefix = '/b/binoclean/help';
+      end
+      if ~isempty(prefix)
+          d = dir([prefix '/*.hlp']);
+          for j = 1:length(d)
+              if isempty(DATA.helpfiles) || ...
+                      sum(cellstrfind({DATA.helpfiles.filename},d(j).name)) == 0 %new
+                  filename = [prefix '/' d(j).name];
+                  DATA.helpfiles(end+1).filename = filename;
+                  s = scanlines(filename);
+                  if length(s{1}) < 50
+                  DATA.helpfiles(end).label = s{1};
+                  else
+                  DATA.helpfiles(end).label = d(j).name;
+                  end
+              end
+          end
+          
+      end
+  
    function BuildHelpMenu(DATA, hm)
         
+      
    uimenu(hm,'Label','List All Codes','Callback',{@CodesPopup, 'popup'},'accelerator','L');
    uimenu(hm,'Label','List Codes with Help','Callback',{@CodesPopup, 'popuphelp'});
    for j = 1:length(DATA.helpfiles)
@@ -3149,6 +3202,8 @@ end
                 silent = 1;
                 expecttime = varargin{j};
             end
+         elseif strncmpi(varargin{j},'reset',5)
+             httpbusy = 0;
          end
          j = j+1;
     end
@@ -3179,11 +3234,13 @@ end
      end
 
     took = mytoc(ts);
-    DATA = InterpretLine(DATA,str,'frombinoc');
     if DATA.verbose(5)
         fprintf('Binoc status%d:%s\n',status,str);
         fprintf('Read took %.3f,%.3f\n',took,mytoc(ts));
+    elseif DATA.verbose(2) && ~strncmp(str,'SENDING000000',13)
+        fprintf('Binoc status%d:%s\n',status,str);
     end
+    DATA = InterpretLine(DATA,str,'frombinoc');
 %    myprintf(DATA.frombinocfid,'ReadBinoc%s:  %s',datestr(now),str);
     if ~isfield(DATA,'trialcounts')
     end

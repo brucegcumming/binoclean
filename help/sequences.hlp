@@ -1,3 +1,5 @@
+Running a sequence of expts
+
 There are two ways to set binoc up to run a sequence of expts. One is with a sepcial form of quick expt file.  This must begin with the word "sequence". After that, you can use any normal commands, plus two others:
 
 expt=path

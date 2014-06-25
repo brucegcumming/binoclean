@@ -4609,6 +4609,13 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
         }
         if (notsent == 0)
             expt.codesent=1;
+        MakeString(code,buf,&expt,st,TO_FILE);
+        if (netoutfile != NULL){
+            fprintf(netoutfile,"back%s\n",buf);
+        }
+        if (seroutfile != NULL){
+            fprintf(seroutfile,"back%s\n",buf);
+        }
 	}
 	return(0);
 }
@@ -5897,10 +5904,11 @@ void paint_frame(int type, int showfix)
         glDrawBuffer(GL_FRONT_AND_BACK);
     if (TheStim->noclear == 0)
         clearstim(TheStim,TheStim->gammaback, 0);
-    TheStim->noclear = 1;
-    if(SACCREQD(afc_s) && afc_s.target_in_trial > 0){
+    if(SACCREQD(afc_s) && afc_s.target_in_trial > 0 && optionflags[PAINT_THIRD_LAST] == 0){
         paint_target(expt.targetcolor, 0);
     }
+
+    TheStim->noclear = 1;
     setmask(BOTHMODE); // may be monoc if selected
     if(option2flag & PSYCHOPHYSICS_BIT || !(eventstate & MBUTTON) || (eventstate & CNTLKEY)){
         if(type == STIM_BACKGROUND && isastim(TheStim->next))
@@ -5914,6 +5922,9 @@ void paint_frame(int type, int showfix)
     else
         wipescreen(clearcolor);
     setmask(ALLMODE);
+    if(SACCREQD(afc_s) && afc_s.target_in_trial > 0 && optionflags[PAINT_THIRD_LAST] == 1){
+        paint_target(expt.targetcolor, 0);
+    }
     if(showfix)
         draw_fix(fixpos[0],fixpos[1], TheStim->fix.size, TheStim->fixcolor);
     gettimeofday(&btime, NULL);
@@ -6365,8 +6376,8 @@ int next_frame(Stimulus *st)
                 draw_fix(fixpos[0],fixpos[1], TheStim->fix.size, TheStim->fixcolor);
             if (SACCREQD(afc_s) && val < expt.vals[CHOICE_TARGET_DURATION] && monkeypress == WURTZ_OK)
                 paint_target(expt.targetcolor,2);
-            if(optionflags[ICON_IN_TRIAL])
-                paint_target(expt.targetcolor,1);
+//            if(optionflags[ICON_IN_TRIAL]) // Not in intertrial
+//                 paint_target(expt.targetcolor,1);
 
             if(rdspair(expt.st))
                 i = 0;
@@ -6804,7 +6815,7 @@ int next_frame(Stimulus *st)
                 waitcount = 0;
             val = timediff(&now, &endtrialtime);
 #ifdef MONITOR_CLOSE
-            if(seroutfile && !(option2flag & PSYCHOPHYSICS_BIT))
+            if(seroutfile && !(option2flag & PSYCHOPHYSICS_BIT)&& waitcount == 0) 
                 fprintf(seroutfile,"#WaitFor %.2f VS%.1f%c\n",val,afc_s.sacval[1],exptchr);
 #endif
 #if defined(WIN32) 
@@ -7225,12 +7236,20 @@ void aarotrect(vcoord *line, vcoord x, vcoord y)
      return;
      */
     if (!(optionflag & ANTIALIAS_BIT)){
+        if (1){
+//            glVertex2f(x+line[10],y+line[11]); //line horizontal on scree = vertical aa
+//            glVertex2f(x+line[12],y+line[13]);
+            glVertex2f(x+line[8],y+line[9]); // Do vertical line second to be sure of horizontal aa
+            glVertex2f(x+line[14],y+line[15]);
+        }
+        else{
         glBegin(GL_POLYGON);
         glVertex2f(x+line[0],y+line[1]);
         glVertex2f(x+line[2],y+line[3]);
         glVertex2f(x+line[4],y+line[5]);
         glVertex2f(x+line[6],y+line[7]);
         glEnd();
+        }
     }
     else if (expt.st->aamode == AALINE){
 // On Reich, a single line gets AA at all sides. But Reich is also slower.....
@@ -10636,6 +10655,8 @@ int GotChar(char c)
                     if (expt.vals[TARGET_RATIO] > 0.99)
                         trueafc = 1;
                     monkey_dir = monkey_direction(jonresult, afc_s);
+                    if (optionflags[CHOICE_BY_ICON])
+                        monkey_dir *= afc_s.sign;
                     if(seroutfile)
                         fprintf(seroutfile,"MD %d %d %.1f %.3f",monkey_dir,jonresult,afc_s.sacval[1],timediff(&now,&endstimtime));
                     if(afc_s.loopstate != CORRECTION_LOOP && (option2flag & AFC))
@@ -10812,26 +10833,26 @@ void paint_target(float color, int flag)
     if(ChoiceStima->type != STIM_NONE && showa){
         contrast = ChoiceStima->pos.contrast;
         if((afc_s.sacval[0]+afc_s.sacval[1]) * afc_s.sign < 0)
-            ChoiceStima->pos.contrast = contrast * expt.vals[TARGET_RATIO];
+            ChoiceStima->pos.contrast = ChoiceStima->pos.contrast_amp = contrast * expt.vals[TARGET_RATIO];
         ChoiceStima->noclear = 1;
         increment_stimulus(ChoiceStima,&(ChoiceStima->pos));
 //        if (ChoiceStima->left->seedloop == 0)
  //           ChoiceStima->left->baseseed+=2;
         calc_stimulus(ChoiceStima);
         paint_stimulus(ChoiceStima,0);
-        ChoiceStima->pos.contrast = contrast;
+        ChoiceStima->pos.contrast_amp = ChoiceStima->pos.contrast = contrast;
     }
     if(ChoiceStimb->type != STIM_NONE && showb){
         contrast = ChoiceStimb->pos.contrast;
         if((afc_s.sacval[0]+afc_s.sacval[1]) * afc_s.sign > 0)
-            ChoiceStimb->pos.contrast = contrast * expt.vals[TARGET_RATIO];
+            ChoiceStimb->pos.contrast = ChoiceStimb->pos.contrast_amp = contrast * expt.vals[TARGET_RATIO];
         ChoiceStimb->noclear = 1;
         increment_stimulus(ChoiceStimb,&(ChoiceStimb->pos));
 //        if (ChoiceStimb->left->seedloop == 0)
 //            ChoiceStimb->left->baseseed+=2;
         calc_stimulus(ChoiceStimb);
         paint_stimulus(ChoiceStimb,0);
-        ChoiceStimb->pos.contrast = contrast;
+        ChoiceStimb->pos.contrast = ChoiceStimb->pos.contrast_amp = contrast;
     }
     draw_fix(fixpos[0]+deg2pix(afc_s.sacval[0]+afc_s.sacval[2]),fixpos[1]+deg2pix(afc_s.sacval[1]+afc_s.sacval[3]), afc_s.targsize, color);
     
@@ -10986,6 +11007,7 @@ void expt_over(int flag)
     double t;
     
     mode &= (~BW_ERROR);
+    eventstate = 0;
     if(stimstate == WAIT_FOR_RESPONSE && flag != CANCEL_EXPT){
         TheStim->mode |= EXPT_OVER; // make sure this is called again after response
         return;

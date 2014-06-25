@@ -544,8 +544,7 @@ GLenum glReportError (void)
     //	glFrontFace(GL_CCW);
     //	glPolygonOffset (1.0f, 1.0f);
 	
-	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-	//[self resetCamera];
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);//[self resetCamera];
     //	shapeSize = 7.0f; // max radius of of objects
     
     //Ali 

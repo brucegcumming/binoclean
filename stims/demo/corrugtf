@@ -1,0 +1,333 @@
+dclearquick
+mo=0
+mo=+db+zb
+op=0
+op=+do+aa+sq+fc+sw+cs+py+if+bm+hs+tg+ls
+mo=fore
+xo=0.0000       #Fore X offset
+yo=0.0000       #Fore Y offset
+st=rds          #Fore Stimulus Type 
+sx=0.0000       #Fore Sigma X
+sy=0.0000       #Fore Sigma Y
+dp=0.0000       #Fore Diparate phase
+dx=0.0      	#Fore Disparity 
+wi=8.00         #Fore Width 
+hi=8.00         #Fore Height 
+sf=2.00         #Fore Spatial Frequency
+xn=0.0000       #Fore X sampling
+yn=0.0000       #Fore Y Sampling
+tf=0.0000       #Fore Temporal Frequency
+ph=0.0000       #Fore Spatial Phase
+or=0.0000       #Fore Orientation
+se=2214         #Fore SEED
+sl=0.0000       #Fore Seed Loop
+co=1.00         #Fore Contrast 
+dy=0.0000       #Fore VDisp
+f2=0.0000       #Fore SF2
+t2=0.0000       #Fore TF2
+p2=0.0000       #Fore Phase2
+a2=0.0000       #Fore Plaid angle
+jv=0.0000       #Fore J velocity
+fi=0.0000       #Fore front intensity
+bi=0.0000       #Fore back intensity
+jn=0.0000       #Fore cyl num dots
+jl=0.0000       #Fore dotlife (cyl)
+jx=0.0000       #Fore death chance
+c2=0.0000       #Fore contrast 2
+ic=0.0000       #Fore delta contrast
+od=0.0000       #Fore delta ori
+ds=0.0000       #Fore delta SF
+dg=0.0000       #Fore disp grad
+dm=0.0      	 #Fore depth modulation
+ta=0.0000       #Fore twobar angle
+dr=0.0000       #Fore Disp Ramp
+dq=0.0000       #Fore pDisp 2
+rp=0.0000       #Fore Rel Phase
+fl=+pc+nc+sq
+mo=back
+xo=0.0000       #Back X offset
+yo=0.0000       #Back Y offset
+st=rds          #Back Stimulus Type 
+sx=0.0000       #Back Sigma X
+sy=0.0000       #Back Sigma Y
+dp=0.0000       #Back Diparate phase
+dx=0.0000       #Back Disparity 
+wi=9.01        #Back Width 
+hi=8.00         #Back Height 
+sf=2.00         #Back Spatial Frequency
+xn=0.0000       #Back X sampling
+yn=0.0000       #Back Y Sampling
+tf=0.0000       #Back Temporal Frequency
+ph=0.0000       #Back Spatial Phase
+or=0.0000       #Back Orientation
+se=2214         #Back SEED
+sl=808464448    #Back Seed Loop
+co=1.00         #Back Contrast 
+dy=0.0000       #Back VDisp
+f2=0.0000       #Back SF2
+t2=0.0000       #Back TF2
+p2=0.0000       #Back Phase2
+a2=0.0000       #Back Plaid angle
+jv=0.0000       #Back J velocity
+fi=0.0000       #Back front intensity
+bi=0.0000       #Back back intensity
+jn=0.0000       #Back cyl num dots
+jl=0.0000       #Back dotlife (cyl)
+jx=0.0000       #Back death chance
+c2=0.0000       #Back contrast 2
+ic=0.0000       #Back delta contrast
+od=0.0000       #Back delta ori
+ds=0.0000       #Back delta SF
+dg=0.0000       #Back disp grad
+dm=0.0       	#Back depth modulation
+ta=-73.3713     #Back twobar angle
+dr=0.0000       #Back Disp Ramp
+dq=0.0000       #Back pDisp 2
+rp=0.0000       #Back Rel Phase
+fl=+pc+nc+sq
+mo=fore
+rp=0.0000	#Rel Phase
+fc=1.00	#Fixation Color
+zx=1.00	#Zoom
+bc=0.50	#BackGround Color 
+dt=0.0000	#Delay
+pr=0.000	#PREPERIOD
+et=dm	#NTRIALS
+fz=96.04	#FRAMERATE
+du1.000	#STIMULUS DURATION
+vc=0.00	#CLAMP_DISPARITY
+po=0.00	#POSTPERIOD
+mo=+db+zb	#Mode
+vr=0.00	#RAMP_VERGENCE
+nt=5	#N Stim (Expt 1)
+wr=0.00	#WURTZ task response period
+wv=30.00	#variance
+op=+do+aa+sq+fc+sw+cs+py+if+bm+hs+tf+ls	#optionflag setup
+nr=10	#N Repetitions
+tl=0.0000	#trigger level
+fw=0.0000	#fixation window
+ch0-,fs0.00,co14
+ch1-,fs0.00,co13
+ch2-,fs0.00,co4
+ch3-,fs0.00,co5
+ch4-,fs0.00,co6
+ch5-,fs0.00,co7
+ch6-,fs0.00,co8
+ch7-,fs0.00,co9
+ch8-,fs0.00,co10
+ch9-,fs0.00,co11
+ch10-,fs0.00,co12
+ch11-,fs0.00,co13
+ch12-,fs0.00,co14
+ch13-,fs0.00,co15
+ch14-,fs0.00,co1
+ch15-,fs0.00,co2
+ch16-,fs0.00,co0
+ch17-,fs0.00,co0
+	#channel Set code
+sv=0.0000	#Static Vergence
+wf=60.00	#mean fixation period
+Bc=1.00	#Background Contrast
+ei=0.0040lin	#Expt incr
+em=0.20	#Expt Mean
+is=0.100	#ISI
+bw=100.00	#bin width
+nf=96.00	#N Frames
+bd=0.0000	#backgound disparity
+rk=0.0000	#ramp coefficient
+fx=0.0000	#fixation x pos 
+fy=0.0000	#fixation y pos 
+fs=0.38	#fixation size 
+cj=0.0000	#mean conjugate
+rw=0	#Reward Size
+vh=0.00	#Vergence RAMP and Hold
+ti1.000	#TIMEOUT
+so=0 0 0 0	#Software Offsets 62 
+ra=0.0000	#Ramp Amplitude
+lb=0.0000	#Initial Blank Period
+vw=0.0000	#Vergence Window
+sp0.000	#Short Prem Trial Length
+ed=0.000	#electrode depth
+ss=0.0000	#Seed Shift
+pd=52.63	#Deg2pix
+sq=0.0000	#H Saccade Size
+to0.500	#WRONG_TIMEOUT
+s0=0.32	#STARTVAL
+sh=1.00	#MAXSTAIRVAL
+sm=0.0100	#MINSTAIRVAL
+js=0.0000	#STANDING_DISP
+jc=2.00	#SAC_FIX
+jt=0.38	#SACTARGSIZE
+vs=0.0000	#V Saccade Size
+dd=50.00	#DOT_DENSITY
+dw=0.1342	#DOT_SIZE
+e2=e0	#Expt 2 Type
+m2=0.0000	#Expt 2 Mean
+n2=0	#Expt 2 Nstims
+i2=0.0000lin	#Expt 2 increment
+ce=1.00	#CORRELATION
+np=2.00	#NPLANES
+me=0.0000	#MONOCULARITY_EXPT
+fh=0.0000	#FIXATION_SURROUND
+fd=100.00	#Fixation Overlap duration
+fr=1.00	#P(reward)
+oL=0.0000	#ORI_LEFT
+oR=0.0000	#ORI_RIGHT
+ve=4.08	#Version
+cb=1.00	#Backround Correlation
+sd=0.0000	#Seed Delay
+2t=0.0000	#Trigger 2
+3t=0.0000	#Trigger 3
+4t=0.0000	#Trigger 4
+cs=0.0000	#RC seed
+fn=1.00	#frame repeat
+Ro=0.0000	#RF Ori
+Bs=rds	#BackStim
+Fs=0.0000	#FP Move Size
+Fa=0.0000	#FP Move Dir
+ip=0.0000	#Starting Phase
+bo=0.0000	#BackGround Ori
+Bt=0.0000	#BackGround TF
+Er=0.0000	#Early Reward Time
+nx=1	#N Extras
+e3=e0	#Expt 3
+mf=3.00	#Modulation Frequency
+zf=0.0000	#Disparity of Fixpt
+vd=89.00	#VIEWD_CODE
+db=-0.2000	#BRIGHTSHIFT_CODE
+tc=1.00	#BLANKCOLOR_CODE
+px=0.0298	#XPIXEL_CODE
+py=0.0298	#YPIXEL_CODE
+fo=0.0000	#FIX_OFF_CODE
+sc=0.0000	#STOP_CRITERION
+rl=20.00	#RUNAVERAGE_LENGTH
+xr=0.0000	#XMINSAMPLE_RATIO
+nc=0.0000	#TF_CYCLES
+xm=0.0000	#XMAXSAMPLE_RATIO
+fl=+pc+nc+sq	#STIMULUS_FLAG
+si=1.00	#SWAPINTERVAL
+O2=0.0000	#STIM_SIZE
+Rw=0.96	#RF_WIDTH
+Rh=1.92	#RF_HEIGHT
+Rx=0.0000	#RF_X
+Ry=0.0000	#RF_Y
+sg=10.00	#SPIKE_GAIN
+Pw=200.00	#PLOTW
+Ph=200.00	#PLOTH
+Px=0.0000	#PLOTX
+Py=0.0000	#PLOTY
+ga=1.22	#GAMMAVAL_CODE
+lc=1.00	#CORRECTION_LEAVE_CRIT
+ec=3.00	#CORRECTION_ENTRY_CRIT
+ap=0.50	#AFC_PROPORTION
+cc=0.0000	#COVARY_XPOS
+bl=0.0000	#BONUS_CRITERION
+b2=0.0000	#BONUS2_CRITERION
+bs=1.00	#EXPT_BLKSIZ
+tb=0.0000	#Twobar sep
+Fl=0.0160	#Fixation Linw
+cg=0.50	#SETCLEARCOLOR
+bj=0.0000	#BACKJUMP
+lf=2.00	#SF left
+rf=2.00	#SF Right
+rx=0.0000	#X randomization
+ox=0.0000	#Ori randomization
+bb=0.0000	#dOri F+B
+dk=0.0000	#dOri Back
+cy1 0 0 0 0 0 0.0000
+cy2 0 0 0 0 0 0.0000
+cy3 0 0 0 0 0 0.0000
+cy4 0 0 0 0 0 0.0000
+cy5 0 0 0 0 0 0.0000
+cy6 0 0 0 0 0 0.0000
+cy7 0 0 0 0 0 0.0000
+cy8 0 0 0 0 0 0.0000
+	#Cyberamp channels
+lw=1.00	#Line Width for online plott
+ps=1.00	#Plot Smoothing for online RC
+pf=+do+sq+lm+rm+cf+ts+bw+sm+rh+fl+ei+ic+im+iu+sc+2a+fe+ff+bp+fs+iz+to+x2+ht+cp+hq+Iu+rp:+dd+mm+fo+sp	#Flags Shown on panel
+pt=1.00	#Stimuli per fixation Trial
+ri=0.0000	#RC delay
+cr=1.00	#Contrast Ratio
+gr=0.0000	#Grid Size
+dO=0.0000	#Orthog Disp
+dP=0.39	#Paralell Disp
+ns=0.0000	#Change Seed
+Ff=0.0000	#FP Move Frame
+we=0.0000	#Weight
+hr=0.0000	#Head Restrained
+tr=0.0160	#Target Ratio
+hs=16.00	#High SF val
+ht=36.00	#High TF val
+sL=0.0000	#Stepper Plot Length
+r1=0.0000	#Reward 1
+r2=0.0000	#Reward 2
+r3=0.0000	#Reward 3
+Tc=1.00	#Timeout Contrast
+nR=0.0000	#RC File Counter
+As=0.0000	#Alternative Stimulus
+T1=0.0000	#Test value 1
+T2=0.0000	#Test value 2
+Ba=0.0000	#Size to add for background
+Is=0.5
+qe="Subject"/bgc/data/psych/corrug/stims/bgc/bgc
+qe="Subject"/bgc/data/psych/corrug/stims/hn/hn
+qe="Subject"/bgc/data/psych/corrug/stims/ceb/ceb
+qe="Subject"/bgc/data/psych/corrug/stims/mitch/mitch
+qe="Subject"/bgc/data/psych/corrug/stims/mark/mark
+#
+qe="mark"/bgc/data/psych/corrug/stims/mark/mf0.5
+qe="mark"/bgc/data/psych/corrug/stims/mark/mf1.5
+qe="mark"/bgc/data/psych/corrug/stims/mark/mf3.0
+qe="mark"/bgc/data/psych/corrug/stims/mark/mf6.0
+qe="mark"/bgc/data/psych/corrug/stims/mark/mf8.0
+qe="mark"/bgc/data/psych/corrug/stims/mark/mf10.667
+qe="mark"/bgc/data/psych/corrug/stims/mark/mf12.0
+qe="mark"/bgc/data/psych/corrug/stims/mark/mf16.0
+qe="mark"/bgc/data/psych/corrug/stims/mark/mf19.2
+qe="mark"/bgc/data/psych/corrug/stims/mark/mf24.0
+#
+qe="mitch"/bgc/data/psych/corrug/stims/mitch/mf0.5
+qe="mitch"/bgc/data/psych/corrug/stims/mitch/mf1.5
+qe="mitch"/bgc/data/psych/corrug/stims/mitch/mf3.0
+qe="mitch"/bgc/data/psych/corrug/stims/mitch/mf6.0
+qe="mitch"/bgc/data/psych/corrug/stims/mitch/mf8.0
+qe="mitch"/bgc/data/psych/corrug/stims/mitch/mf10.667
+qe="mitch"/bgc/data/psych/corrug/stims/mitch/mf12.0
+qe="mitch"/bgc/data/psych/corrug/stims/mitch/mf16.0
+qe="mitch"/bgc/data/psych/corrug/stims/mitch/mf19.2
+qe="mitch"/bgc/data/psych/corrug/stims/mitch/mf24.0
+#
+qe="hn"/bgc/data/psych/corrug/stims/hn/mf1.0
+qe="hn"/bgc/data/psych/corrug/stims/hn/mf1.5
+qe="hn"/bgc/data/psych/corrug/stims/hn/mf3.0
+qe="hn"/bgc/data/psych/corrug/stims/hn/mf6.0
+qe="hn"/bgc/data/psych/corrug/stims/hn/mf8.0
+qe="hn"/bgc/data/psych/corrug/stims/hn/mf10.667
+qe="hn"/bgc/data/psych/corrug/stims/hn/mf12.0
+qe="hn"/bgc/data/psych/corrug/stims/hn/mf16.0
+qe="hn"/bgc/data/psych/corrug/stims/hn/mf19.2
+qe="hn"/bgc/data/psych/corrug/stims/hn/mf24.0
+#
+qe="bgc"/bgc/data/psych/corrug/stims/bgc/mf0.5
+qe="bgc"/bgc/data/psych/corrug/stims/bgc/mf1.5
+qe="bgc"/bgc/data/psych/corrug/stims/bgc/mf3.0
+qe="bgc"/bgc/data/psych/corrug/stims/bgc/mf6.0
+qe="bgc"/bgc/data/psych/corrug/stims/bgc/mf8.0
+qe="bgc"/bgc/data/psych/corrug/stims/bgc/mf10.667
+qe="bgc"/bgc/data/psych/corrug/stims/bgc/mf12.0
+qe="bgc"/bgc/data/psych/corrug/stims/bgc/mf16.0
+qe="bgc"/bgc/data/psych/corrug/stims/bgc/mf19.2
+qe="bgc"/bgc/data/psych/corrug/stims/bgc/mf24.0
+#
+qe="Stims"/bgc/data/psych/corrug/stims/mf1.5
+qe="Stims"/bgc/data/psych/corrug/stims/mf3.0
+qe="Stims"/bgc/data/psych/corrug/stims/mf6.0
+qe="Stims"/bgc/data/psych/corrug/stims/mf8.0
+qe="Subject"./q1exp
+qe="Subject"(null)
+qe="Subject"(null)
+slider0=tf
+slider1=wi
+slider2=hi
+eslider=is

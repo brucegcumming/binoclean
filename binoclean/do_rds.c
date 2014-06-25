@@ -1508,7 +1508,7 @@ void paint_rds(Stimulus *st, int mode)
   crect[2] = h * sina;
   crect[3] = h * cosa;
     
-    if (st->aamode ==4){
+    if (st->aamode ==4 && (optionflag & ANTIALIAS_BIT)){
         rect[0] = -(w-adj) * cosa - (h-adj) * sina; //-w,-h
         rect[1] = -(h-adj) * cosa + (w-adj) * sina;
         rect[6] = (w-adj) * cosa - (h-adj) * sina;

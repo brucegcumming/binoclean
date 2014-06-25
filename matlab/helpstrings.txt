@@ -240,6 +240,7 @@ r1 For first correct choice #Reward
 r2 For Nth consecutive correct choice, where N = bl #Reward
 r3 For Nth consecutive correct choice, where N = b2 #Reward
 RB Expt Type only. Sets monoc expt with R and binoc
+rb if -1, negative choices get r2,+get r1. If +1 vice versa. ; psychophysics 
 rC Expt Type only.
 rc Ratio of contrast Foregroud/Background. Change co and Bc
 rf SF of R eye stimulus. See also lf, ds #Binocular Disparity
