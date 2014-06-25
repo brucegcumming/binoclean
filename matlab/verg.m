@@ -226,6 +226,7 @@ if nargin < 2 || isempty(line)
         return;
 end
 
+pstr = '';
 PauseRead(DATA, 1);
 ts = now;
 strs = textscan(line,'%s','delimiter','\n');
@@ -277,6 +278,8 @@ for j = 1:length(strs{1})
             DATA.matlabwasrun = 1;
         end
         SendCode(DATA, 'exp');
+    elseif strncmp(s,'timerperiod',10) %verg special
+        DATA.timerperiod = sscanf(value,'%f');
     elseif s(1) == '#' %defines stim code/label
         [a,b] = sscanf(s,'#%d %s');
 %        a = a(1);
@@ -531,7 +534,10 @@ for j = 1:length(strs{1})
         if isfield(DATA.Trial,'RespDir')
 %Dont plot if there are more results still in the pipeline
             if length(strs{1}) < 20 || max(find(strncmp('TRES',strs{1},4))) <= j
+                pts = now;
                 DATA = PlotPsych(DATA);
+                pstr = sprintf('Psych took %.2f',mytoc(pts));
+                
             end
         end
     elseif length(code) > 4 & sum(strcmp(code,DATA.windownames))
@@ -924,7 +930,7 @@ for j = 1:length(strs{1})
 end
 dur = mytoc(ts);
 if dur > 1
-    fprintf('Reading %d lines took %.2f\n',length(strs{1}),dur);
+    fprintf('Reading %d lines took %.2f%s\n',length(strs{1}),dur,pstr);
 end
 PauseRead(DATA,0);
 
@@ -1502,6 +1508,7 @@ function DATA = SetDefaults(DATA)
 scrsz = get(0,'Screensize');
 DATA = SetField(DATA,'ip','http://localhost:1110/');
 DATA.network = 1;
+DATA.timerperiod = 0.05;
 DATA.pausereading = 0;  %stop timer driven reads when want to control
 DATA.binocisup = 0;
 DATA.savestrs = 0;
@@ -2254,7 +2261,7 @@ function DATA = InitInterface(DATA)
 
     if DATA.network
         period = 0.005;
-        period = 0.05;  %don't need 10ms reads yet
+        period = DATA.timerperiod;  %don't need 10ms reads yet
     else
         period = 1;
     end

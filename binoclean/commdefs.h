@@ -453,7 +453,9 @@
 #define EXPTRESET_FILE MAXSERIALCODES+171
 #define SET_SF_CONTRASTS MAXSERIALCODES+172
 #define NETWORK_PREFIX MAXSERIALCODES+173
-#define MAXSAVECODES MAXSERIALCODES+174 //391
+#define XY_FSD MAXSERIALCODES+174
+
+#define MAXSAVECODES MAXSERIALCODES+175 //392
 //Add above here anything that needs to be saved to .stm files
 //Below here are temporary/convenience/state parameters that do not need saving
 
@@ -571,7 +573,6 @@
 #define SHOW_COMMAND_HISTORY TOTALCODES+1
 #define EXPTVALS TOTALCODES+2
 
-#define XY_FSD 10
 
 /* bw toggle codes */
 #define BW_UFF_IS_OPEN 0
@@ -1304,6 +1305,7 @@ ValueCode valstrings[] = {
     {"monitor","Monitor Filename",  MONITOR_FILE, 0, 'C', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {"ereset","File To run for Reset between Expts",  EXPTRESET_FILE, 0, 'C', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {"seqpause","Pause between computer repeated blocks",  SEQUENCE_PAUSE, 16, 'N', 2, SEND_VERG_ONLY, SAVE_ALWAYS},
+    {"xyfsd", "XY window width (degrees)", XY_FSD, 0, 'N', 1, SEND_EXPLICIT, SAVE_ALWAYS},
     {"netpref","Prefix for Network Data Record",  NETWORK_PREFIX, 16, 'C', 2, SEND_VERG_ONLY, SAVE_ALWAYS},
     { NULL, NULL, -1, -1 ,0 ,0, 0},
 };

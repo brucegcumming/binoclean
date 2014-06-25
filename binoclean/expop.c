@@ -11889,7 +11889,8 @@ int CheckStimDuration(int retval)
     float framevals[MAXFRAMES], diffmax, diffmin;
     
     rpt = (expt.st->framerepeat < 1) ? 1 : expt.st->framerepeat;
-
+    n = framesdone;
+    
     sprintf(buf,"#du%.3f(%d:%.3f)\n",frametimes[framesdone],framesdone,(framesdone-0.5)/expt.mon->framerate);
     SerialString(buf,0);
     if (optionflags[FIXNUM_PAINTED_FRAMES]){
@@ -14665,6 +14666,8 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             case NETWORK_PREFIX:
             case UKA_VALS:
             case SACCADE_DETECTED:
+            case PENETRATION_TEXT:
+            case FIXCOLORS:
                 break;
         }
     }
