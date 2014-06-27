@@ -293,6 +293,7 @@ for j = 1:length(strs{1})
     elseif sum(strncmp(s,{'NewBinoc' 'confirm' 'exvals' 'fontsiz' 'fontname' 'layout' ...
             'localmatdir' 'netmatdir', 'oldelectrode' 'TOGGLE' 'rptexpts' 'STIMTYPE' },6))
         if strncmp(s,'NewBinoc',7)
+            DATA = CheckForNewBinoc(DATA);
             if DATA.optionflags.do %only do this when reopen pipes
 %                outprintf(DATA,'\\go\n');
             end
@@ -450,6 +451,7 @@ for j = 1:length(strs{1})
             if DATA.inexpt %in case reopen pipes mied expt
                 DATA.optionflags.do = 0;
             end
+            wasexpt = DATA.inexpt;
             DATA.inexpt = 0;
             if DATA.nexpts > 0  %may be 0 here if verg is fired up after a crash
             DATA.Expts{DATA.nexpts}.End = now;
@@ -470,14 +472,18 @@ for j = 1:length(strs{1})
             elseif DATA.exptnextline > 0
                 DATA = ReadExptLines(DATA,{},'fromseq');
                 DATA = RunButton(DATA,[],1);
-            elseif DATA.rptexpts > 0
+            elseif DATA.rptexpts > 0 && wasexpt
+                if DATA.restartbinoc && wasexpt  %if inexpt ==0, may be anew restart
+                    DATA = RestartBinoc(DATA);
+                end
                 outprintf(DATA,'#Nrpt is %d\n',DATA.rptexpts);
                 DATA.rptexpts = DATA.rptexpts-1;
                 it = findobj(DATA.toplevel,'Tag','RptExpts');
                 set(it,'string',num2str(DATA.rptexpts));
-                uipause(now, DATA.binoc{1}.seqpause, 'Fixed Delay for repeats');
+                DATA = uipause(now, DATA.binoc{1}.seqpause, 'Fixed Delay for repeats', DATA);
                 DATA = RunButton(DATA,[],1);
             end
+            DATA.inexpt = 0;
             DATA.matlabwasrun = 0;
             if DATA.verbose(4) fprintf('%s:%d\n',s,DATA.inexpt); end
         elseif strncmp(s,'Expts1',6)
@@ -1512,6 +1518,7 @@ DATA.timerperiod = 0.05;
 DATA.pausereading = 0;  %stop timer driven reads when want to control
 DATA.binocisup = 0;
 DATA.savestrs = 0;
+DATA.restartbinoc = 0;
 DATA.vergversion=vergversion();
 DATA.matlabwasrun=0;
 DATA.matexpres = [];
@@ -2181,6 +2188,7 @@ function DATA = InitInterface(DATA)
     hm = uimenu(cntrl_box,'Label','File','Tag','BinocFileMenu');
     uimenu(hm,'Label','Close','Callback',{@verg, 'close'});
     uimenu(hm,'Label','Close Verg and Binoc','Callback',{@MenuHit, 'bothclose'});
+    uimenu(hm,'Label','Restart Binoc','Callback',{@MenuHit, 'restartbinoc'});
     uimenu(hm,'Label','Save','Callback',{@SaveFile, 'current'});
     uimenu(hm,'Label','Save As...','Callback',{@SaveFile, 'saveas'});
     sm = uimenu(hm,'Label','Preferences');
@@ -2240,6 +2248,8 @@ function DATA = InitInterface(DATA)
     xm = uimenu(sm,'Label', 'All Off', 'Callback', {@SetVerbose, 0});
 
     sm = uimenu(subm,'Label','Try Pipes','Callback',{@ReadIO, 8},'foregroundcolor','r');
+    sm = uimenu(subm,'Label','Restart Binoc between Expts','Callback',{@SetMenuToggle, 'restartbinoc'});
+
     subm = uimenu(hm,'Label','&Software Offset');
     uimenu(subm,'Label','&Null','Callback',{@SendStr, 'sonull'},'accelerator','E');
     uimenu(subm,'Label','Edit','Callback',{@SoftoffPopup, 'popup'});
@@ -2387,6 +2397,15 @@ function SetElectrode(a,b, ei)
     SendCode(DATA, 'Electrode');
     set(DATA.toplevel,'UserData',DATA);
     
+function DATA = RestartBinoc(DATA)
+    outprintf(DATA,'\\quit\n');
+    if DATA.autoreopen == 0
+        DATA.autoreopen = 2;
+    end
+    SetData(DATA);
+    system('open /local/bin/binoclean.app');
+    
+        
 function MenuHit(a,b, arg)
     DATA = GetDataFromFig(a);
     if strcmp(arg,'bothclose')
@@ -2401,6 +2420,8 @@ function MenuHit(a,b, arg)
             CloseTag(DATA.windownames{j});
         end
         CloseTag(DATA.windownames{1}); %%close main window last
+    elseif strcmp(arg,'restartbinoc')
+        RestartBinoc(DATA);
     elseif strcmp(arg,'choosefont')
         fn = uisetfont;
         DATA.font = fn;
@@ -2982,6 +3003,20 @@ function MenuGui(a,b)
      end
         CheckTimer(DATA);
 
+function SetMenuToggle(a,b,flag)        
+     DATA = GetDataFromFig(a);
+     if ~isfield(DATA,flag)
+         DATA.(flag)= 1;
+     else
+         DATA.(flag) = ~DATA.(flag);
+     end
+     if DATA.(flag)
+         set(a,'checked','on');
+     else
+         set(a,'checked','off');
+     end
+     SetData(DATA);
+     
 function SetVerbose(a,b, flag)
      DATA = GetDataFromFig(a);
 
@@ -3189,7 +3224,12 @@ expecttime = 1;
 silent = 1;
 str = [];
 persistent httpbusy;
-
+persistent lastts;
+     
+if isempty(lastts)
+    lastts = 0;
+end
+     
 if isempty(httpbusy)
     httpbusy = 0;
 end
@@ -3240,10 +3280,15 @@ end
     elseif DATA.verbose(2) && ~strncmp(str,'SENDING000000',13)
         fprintf('Binoc status%d:%s\n',status,str);
     end
-    DATA = InterpretLine(DATA,str,'frombinoc');
+    if isempty(str)
+        [DATA,lastts] = CheckForNewBinoc(DATA,lastts);
+    else
+        DATA = InterpretLine(DATA,str,'frombinoc');
+    end
 %    myprintf(DATA.frombinocfid,'ReadBinoc%s:  %s',datestr(now),str);
     if ~isfield(DATA,'trialcounts')
     end
+    lastts = ts;
 httpbusy = 0;
  
  function [DATA, str] = ReadFromBinoc(DATA, varargin)
@@ -3263,9 +3308,7 @@ httpbusy = 0;
 if DATA.network
     if DATA.binocisup
         [DATA, str] = ReadHttp(DATA, varargin{:});
-        if isfield(DATA,'toplevel')
-            set(DATA.toplevel,'UserData',DATA);
-        end
+        SetData(DATA);
     end
     return;
 end
@@ -3345,23 +3388,7 @@ end
              end
          else
              nbytes = 0;
-             %if binoc has resstarted, reopen pipes
-             d = dir('/tmp/binocisnew');
-             if isfield(d,'datenum')
-                 if d.datenum > lastts || isempty(lastts)
-                     lastts = ts;
-                     if DATA.autoreopen
-                         fprintf('Reopening pipes\n');
-                         pause(1);
-                         ReadIO(DATA,[],6);
-                         if isfield(DATA,'reopenstr') && ~isempty(DATA.reopenstr)
-                             outprintf(DATA,'%s\n',DATA.reopenstr);
-                         end
-                     else
-                         fprintf('Binoc Restarted - reopen pipes\n');
-                     end
-                 end
-             end
+             [DATA, lastts] = CheckForNewBinoc(DATA, lastts);
          end
      end
      if verbose(2)
@@ -3383,6 +3410,42 @@ end
          lastts = ts;
      end
      rbusy = 0;
+
+     
+     
+     
+ function [DATA, lastts] = CheckForNewBinoc(DATA, lastts)
+
+     go = 0;
+if nargin > 1
+     %if binoc has resstarted, reopen pipes
+     d = dir('/tmp/binocisnew');
+     if isfield(d,'datenum')
+         if d.datenum > lastts || isempty(lastts)
+             lastts = now;
+             go = 1;
+         end
+     end
+else
+    go = 2;
+end
+if go
+     if DATA.autoreopen
+         fprintf('Reopening pipes\n');
+         if go ==1 %if received NewBinoc, no need to pause
+             pause(1);
+         end
+         ReadIO(DATA,[],6);
+         if isfield(DATA,'reopenstr') && ~isempty(DATA.reopenstr)
+             outprintf(DATA,'%s\n',DATA.reopenstr);
+         end
+         if DATA.autoreopen ==2 %once only
+             DATA.autoreopen = 0;
+         end
+     else
+         fprintf('Binoc Restarted - reopen pipes\n');
+     end
+end
      
 function OpenUffFile(a,b, type)
         DATA = GetDataFromFig(a);
@@ -4192,7 +4255,7 @@ function SendManualExpt(DATA)
     end
     outprintf(DATA,'EDONE\n');
 
-function uipause(start, secs, msg)
+function DATA = uipause(start, secs, msg, DATA)
 
     if secs <= 0
         return;
@@ -4203,6 +4266,9 @@ function uipause(start, secs, msg)
         dt = (now - start)/days;
         wdur = (now-start) * (24 * 60 * 60);
         waitbar(dt,wh,sprintf('%.1f/%.1f sec %s at %s',wdur,secs,msg,datestr(start)));
+        if nargin > 3
+            DATA = ReadFromBinoc(DATA);
+        end
     end
     delete(wh);
 
@@ -4924,7 +4990,7 @@ if strcmp(code,'optionflag')
         id = strmatch(code,{'et' 'e2' 'e3'});
         s = sprintf('%s=%s',code,DATA.exptype{id});
     elseif strcmp(code,'expts')
-        s = sprintf('et=%s\nei=%sf\nem=%.6f\nnt=%d\n',DATA.exptype{1},DATA.binoc{1}.ei,DATA.mean(1),DATA.nstim(1));
+        s = sprintf('et=%s\nei=%s\nem=%.6f\nnt=%d\n',DATA.exptype{1},DATA.binoc{1}.ei,DATA.mean(1),DATA.nstim(1));
         s = [s sprintf('e2=%s\ni2=%s\nm2=%6f\nn2=%d\n',DATA.exptype{2},DATA.binoc{1}.i2,DATA.mean(2),DATA.nstim(2))];
         s = [s sprintf('e3=%s\ni3=%s\nm3=%.6f\nn3=%d\n',DATA.exptype{3},DATA.binoc{1}.i3,DATA.mean(3),DATA.nstim(3))];
         s = AddCustomStim(DATA,s,1);

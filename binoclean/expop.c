@@ -13939,7 +13939,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     else switch(code)
     {
         case -1:
-            sprintf(buf,"Unrecognized code %s\n",line);
+            sprintf(buf,"Unrecognized code %s (src%d)\n",line,frompc);
             fprintf(stdout,buf);
             if(seroutfile)
                 fputs(buf,seroutfile);
