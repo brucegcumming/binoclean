@@ -462,6 +462,9 @@ for j = 1:length(strs{1})
             tic; PsychMenu(DATA); 
             tic; SetGui(DATA,'set'); 
             ShowStatus(DATA);
+            if ~wasexpt
+                myprintf(DATA.frombinocfid,'Got EXPTOVER, but not in Expt'\n');
+            end
             if DATA.exptstoppedbyuser  
             %if user hist cancal/stop, dont repeat or move on to automatic next expt
                 DATA.exptstoppedbyuser = 0;
@@ -476,6 +479,7 @@ for j = 1:length(strs{1})
                 if DATA.restartbinoc && wasexpt  %if inexpt ==0, may be anew restart
                     DATA = RestartBinoc(DATA);
                 end
+                myprintf(DATA.frombinocfd,'-show','Running Next of %d expts\n',DATA.rptexpts);
                 outprintf(DATA,'#Nrpt is %d\n',DATA.rptexpts);
                 DATA.rptexpts = DATA.rptexpts-1;
                 it = findobj(DATA.toplevel,'Tag','RptExpts');
@@ -1349,12 +1353,18 @@ function SaveExpt(DATA, name)
     SendChoiceTargets(fid, DATA);
     fprintf(fid,'mo=fore\n');
     fprintf(fid,'st=%s\n',DATA.stimulusnames{DATA.stimtype(1)});
-    f = fields(DATA.binoc{1});
+    allf = fields(DATA.binoc{1});
+    [a,b] = ismember(allf,{DATA.comcodes.code});
+    f = {DATA.comcodes(sort(b)).code};
     for j = 1:length(f)
         [s, lbl, type] = CodeText(DATA, f{j});
         if bitand(type, 512) == 0
             fprintf(fid,'%s\t#%s\n',s,lbl);
-        end
+        end        
+    end
+    id = find(~a)
+    for j = id(:)';
+        [s, lbl, type] = CodeText(DATA, f{j});
     end
     f = fields(DATA.binocstr);
     for j = 1:length(f)
@@ -2249,6 +2259,7 @@ function DATA = InitInterface(DATA)
 
     sm = uimenu(subm,'Label','Try Pipes','Callback',{@ReadIO, 8},'foregroundcolor','r');
     sm = uimenu(subm,'Label','Restart Binoc between Expts','Callback',{@SetMenuToggle, 'restartbinoc'});
+    uimenu(subm,'Label','Log Inputs','Callback',{@ReadIO, 'openlog'});
 
     subm = uimenu(hm,'Label','&Software Offset');
     uimenu(subm,'Label','&Null','Callback',{@SendStr, 'sonull'},'accelerator','E');
@@ -2933,8 +2944,20 @@ function MenuGui(a,b)
  end
      
  function myprintf(fid,varargin)
+     show = 0;
+     j = 1;
+     while j <= length(varargin)
+         if strncmpi(varargin{j},'-show',5)
+             varargin = varargin{j+1:end};
+             j = j+1;
+         end
+         j = j+1;
+     end
      if fid > 0
          fprintf(fid,varargin{:});
+     end
+     if show
+         fprintf(varargin{:});
      end
      
  function SendStr(a,b, str)
@@ -2950,8 +2973,11 @@ function MenuGui(a,b)
  function ReadIO(a,b, flag)
      DATA = GetDataFromFig(a);
 
-     
-     if flag == 2
+    if strcmp(flag,'openlog')
+        if DATA.frombinocfid <= 0
+            DATA.frombinocfid = fopen('/local/frombinoc.txt','a');
+        end
+    elseif flag == 2
          ts = now;
          DATA = GetState(DATA,1);
          fprintf('Manual State took %.2f',mytoc(ts));
