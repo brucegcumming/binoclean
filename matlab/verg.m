@@ -495,7 +495,7 @@ for j = 1:length(strs{1})
                 if DATA.restartbinoc && wasexpt  %if inexpt ==0, may be anew restart
                     DATA = RestartBinoc(DATA);
                 end
-                myprintf(DATA.frombinocfd,'-show','Running Next of %d expts\n',DATA.rptexpts);
+                myprintf(DATA.frombinocfid,'-show','Running Next of %d expts\n',DATA.rptexpts);
                 outprintf(DATA,'#Nrpt is %d\n',DATA.rptexpts);
                 DATA.rptexpts = DATA.rptexpts-1;
                 it = findobj(DATA.toplevel,'Tag','RptExpts');
@@ -1284,7 +1284,9 @@ function SendState(DATA, varargin)
             cid = 1; 
         end
         if DATA.comcodes(cid).group > 511
+            if DATA.verbose(4)
             fprintf('Not sending %s\n',f{j});
+            end
         elseif sum(strcmp(f{j},DATA.redundantcodes))
             fprintf('Not sending %s\n',f{j});
         elseif ischar(DATA.binoc{1}.(f{j}))
@@ -3553,7 +3555,7 @@ function Expt = ExptSummary(DATA)
         
 function DATA = RunButton(a,b, type)
         DATA = GetDataFromFig(a);
-        fprintf('Run Hit Inexpt %d, type %d\n',DATA.inexpt,type);
+        fprintf('Run Hit Inexpt %d, type %d %s\n',DATA.inexpt,type,datestr(now));
         PauseRead(DATA,1);
 
         DATA.newexptdef = 0;
@@ -4273,7 +4275,7 @@ function DATA = RunExptSequence(DATA, str, line)
                 PauseRead(DATA,1);
                 DATA= RestartBinoc(DATA);
                 %force a short pause to communicate with new binoc=
-                fprintf('Pausing for Restart of sequence\n');
+                fprintf('Pausing for Restart of sequence %s\n',datestr(now));
                 DATA = uipause(now, max([1 DATA.binoc{1}.seqpause]),'Fixed Sequence Pause', DATA);
                 PauseRead(DATA,0);
                 firstline = 1; %don't have second pause
@@ -4292,7 +4294,9 @@ function DATA = RunExptSequence(DATA, str, line)
         end
     end
 for j = line:length(str)
-    fprintf('From Seq window %s\n',str{j});
+    if DATA.verbose(4)
+        fprintf('From Seq window %s\n',str{j});
+    end
     nread = 1+j-line;
     DATA = InterpretLine(DATA,str{j},'fromseq');
     DATA = uipause(DATA.pausetime,DATA.readpause,'Pause in sequence', DATA); %for pauses set in window
@@ -4301,7 +4305,7 @@ for j = line:length(str)
 %need to do this before sending !expt to binoc, so that UserData is set
 % before binoc calls back with settings
         if firstline > 1
-            fprintf('Pausing for Next Expt in Sequnce nf=%d\n',DATA.binoc{1}.nf);
+            fprintf('Pausing for Next Expt in Sequnce %s\n',datestr(now));
             DATA= uipause(now, DATA.binoc{1}.seqpause,'Fixed Sequence Pause', DATA);
         end
 %if mat was called in the sequence file, don't want it overridden by the matept file        
