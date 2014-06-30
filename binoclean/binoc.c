@@ -1406,7 +1406,7 @@ void statusline(char *s)
     else
         s = statusstring;
 //    glstatusline(s,1);
-    printString(s, strlen(s)); //Need this? removed May 2013
+//    printString(s, strlen(s)); //Need this? removed May 2013
 
     notify("status=");
     notify(s);
