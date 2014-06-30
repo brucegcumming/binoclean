@@ -1,3 +1,4 @@
+rptexpt Number of times to repeat an Expt Block. When binoc finished a block, verg starts another
 +bw Before presenting each stimulus, do a handshake with Spike2 to be sure its responsive. 
 #Causes some delay, but ensures accurate record of timing.
 +do Run Trials. If not in an Expt, runs the current trial type repeatedly.
