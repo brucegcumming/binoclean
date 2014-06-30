@@ -216,6 +216,9 @@ j = 1;
 while j <= length(varargin)
     if strncmpi(varargin{j},'from',4)
         src = varargin{j};
+        if strcmp(src,'frombinoc')
+            frombinoc = 1;
+        end
     elseif strncmpi(varargin{j},'tobinoc',4)
         sendtobinoc = 1;
     end
@@ -265,21 +268,36 @@ for j = 1:length(strs{1})
     if strcmp(src,'fromstim') %Check for some old strings and update
     end
     if length(s) == 0
-    elseif strncmp(s,'!mat',4) && ~isempty(value)
-        DATA.matexpres = [];
-        if strcmp(src,'fromstim')
-            DATA.matexpt = value;
-            if strncmp(s,'!matnow',7)
-                eval(value);                
+    elseif frombinoc == 0 && sum(strncmp(s,{'!mat=' 'timerperiod' 'read=' 'pause' 'user='},5))
+        if strncmp(s,'!mat',4) && ~isempty(value)
+                DATA.matexpres = [];
+                if strcmp(src,'fromstim')
+                    DATA.matexpt = value;
+                    if strncmp(s,'!matnow',7)
+                        eval(value);
+                    end
+                else
+                    fprintf('Calling %s from %d\n',value,src);
+                    DATA.matexpres = eval(value);
+                    DATA.matlabwasrun = 1;
+                end
+                SendCode(DATA, 'exp');
+            elseif strncmp(s,'timerperiod',10) %verg special
+                DATA.timerperiod = sscanf(value,'%f');
+        elseif strncmp(s,'read',4) %read a set of instructions
+            fid = fopen(value,'r');
+        elseif strncmp(s,'user',4)
+            estr = s(eid(1)+1:end);
+            DATA.userstrings = {DATA.userstrings{:} estr};
+        elseif strncmp(s,'pause',5)
+            if ~isempty(value)
+                DATA.readpause = str2num(value);
             end
-        else
-            fprintf('Calling %s from %d\n',value,src); 
-            DATA.matexpres = eval(value);
-            DATA.matlabwasrun = 1;
-        end
-        SendCode(DATA, 'exp');
-    elseif strncmp(s,'timerperiod',10) %verg special
-        DATA.timerperiod = sscanf(value,'%f');
+     %       pause(DATA.readpause);
+            DATA.pausetime = now;
+        end  %end onf NotBinoc group
+        
+        
     elseif s(1) == '#' %defines stim code/label
         [a,b] = sscanf(s,'#%d %s');
 %        a = a(1);
@@ -296,13 +314,28 @@ for j = 1:length(strs{1})
         ScaleWindow(h,2);
         DATA.Statuslines{end+1} = s;
     elseif sum(strncmp(s,{'NewBinoc' 'confirm' 'exvals' 'fontsiz' 'fontname' 'layout' ...
-            'localmatdir' 'netmatdir', 'oldelectrode' 'TOGGLE' 'rptexpts' 'STIMTYPE' 'SENDING' },6))
+            'localmatdir' 'netmatdir', 'oldelectrode' 'TOGGLE' 'rptexpts' 'STIMTYPE' 'SENDING' 'SCODE=' 'CODE OVER'},6))
         if strncmp(s,'NewBinoc',7)
             DATA.newbinoc = 1;
             DATA = CheckForNewBinoc(DATA);
             if DATA.optionflags.do %only do this when reopen pipes
                 %                outprintf(DATA,'\\go\n');
             end
+        elseif strncmp(s,'CODE OVER',8)
+            for j = 1:length(DATA.comcodes)
+                if isempty(DATA.comcodes(j).code)
+                    DATA.comcodes(j).code = 'xx';
+                    DATA.comcodes(j).label = '';
+                    DATA.comcodes(j).const = NaN;
+                    DATA.comcodes(j).type = 'N';
+                    DATA.comcodes(j).group = 512+2048;
+                else
+                    if ~isfield(DATA.helpstrs,code) && DATA.verbose(1)
+                        fprintf('No help for %s\n',code);
+                    end
+                end
+            end
+            
         elseif strncmp(s,'confirm',7)
             yn = questdlg(s(8:end),'Update Check');
             if strcmp(yn,'Yes')
@@ -348,25 +381,24 @@ for j = 1:length(strs{1})
             id = strfind(s,' ');
             code = str2num(s(id(1)+1:id(2)-1))+1;
             DATA.stimulusnames{code} = s(id(2)+1:end);
-%can ignore SENDING'            
-        end
-        
-        
-        
-    elseif strncmp(s,'CODE OVER',8)
-        for j = 1:length(DATA.comcodes)
-            if isempty(DATA.comcodes(j).code)
-                DATA.comcodes(j).code = 'xx';
-                DATA.comcodes(j).label = '';
-                DATA.comcodes(j).const = NaN;
-                DATA.comcodes(j).type = 'N';
-                DATA.comcodes(j).group = 512+2048;
-            else
-               if ~isfield(DATA.helpstrs,code) && DATA.verbose(1)
-                   fprintf('No help for %s\n',code);
-               end
+        elseif strncmp(s,'SCODE',5)
+            id = strfind(s,' ');
+            icode = str2num(s(id(2)+1:id(3)-1))+1;
+            label = s(id(3)+1:end);
+            code = s(id(1)+1:id(2)-1);
+            sid = find(strcmp(code,{DATA.strcodes.code}));
+            if isempty(sid)
+                sid = length(DATA.strcodes)+1;
             end
-        end
+            DATA.strcodes(sid).label = label;
+            DATA.strcodes(sid).icode = icode;
+            DATA.strcodes(sid).code = code;
+
+%can ignore SENDING'            
+        end  %6 char codes
+        
+        
+        
     elseif strncmp(s,'CODE',4)
         id = strfind(s,' ');
         code = str2num(s(id(2)+1:id(3)-1))+1;
@@ -390,31 +422,6 @@ for j = 1:length(strs{1})
         DATA.codeids.xx = code; %index of codes
         DATA.comcodes(code).code = 'xx';
         end
-    elseif sum(strncmp(s,{'user' 'read'},4))
-        if strncmp(s,'read',4) %read a set of instructions
-            fid = fopen(value,'r');
-        elseif strncmp(s,'user',4)
-            estr = s(eid(1)+1:end);
-            DATA.userstrings = {DATA.userstrings{:} estr};
-        elseif strncmp(s,'pause',5)
-            if ~isempty(value)
-                DATA.readpause = str2num(value);
-            end
-     %       pause(DATA.readpause);
-            DATA.pausetime = now;
-        elseif strncmp(s,'SCODE',5)
-            id = strfind(s,' ');
-            icode = str2num(s(id(2)+1:id(3)-1))+1;
-            label = s(id(3)+1:end);
-            code = s(id(1)+1:id(2)-1);
-            sid = find(strcmp(code,{DATA.strcodes.code}));
-            if isempty(sid)
-                sid = length(DATA.strcodes)+1;
-            end
-            DATA.strcodes(sid).label = label;
-            DATA.strcodes(sid).icode = icode;
-            DATA.strcodes(sid).code = code;
-        end %real place for this. Move down for time test
     elseif strncmp(s,'cwd=',4)
         DATA.cwd = value;
     elseif strncmp(s,'status',5)
