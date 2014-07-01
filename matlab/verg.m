@@ -296,6 +296,19 @@ for j = 1:length(strs{1})
      %       pause(DATA.readpause);
             DATA.pausetime = now;
         end  %end onf NotBinoc group
+    elseif frombinoc == 0
+        if length(code) > 4 & sum(strcmp(code,DATA.windownames))
+            iw = find(strcmp(code,DATA.windownames));
+            DATA.winpos{iw} = sscanf(value,'%d');
+        elseif strncmp(s,'winpos=',7)
+            DATA.winpos{1} = sscanf(s(8:end),'%d');
+        elseif strncmp(s,'optionwinpos=',10)
+            DATA.winpos{2} = sscanf(s(eid(1)+1:end),'%d');
+        elseif strncmp(s,'softoffwinpos=',10)
+            DATA.winpos{3} = sscanf(s(eid(1)+1:end),'%d');
+        elseif strncmp(s,'penlogwinpos=',10)
+            DATA.winpos{4} = sscanf(s(eid(1)+1:end),'%d');
+        end
         
         
     elseif s(1) == '#' %defines stim code/label
@@ -314,7 +327,8 @@ for j = 1:length(strs{1})
         ScaleWindow(h,2);
         DATA.Statuslines{end+1} = s;
     elseif sum(strncmp(s,{'NewBinoc' 'confirm' 'exvals' 'fontsiz' 'fontname' 'layout' ...
-            'localmatdir' 'netmatdir', 'oldelectrode' 'TOGGLE' 'rptexpts' 'STIMTYPE' 'SENDING' 'SCODE=' 'CODE OVER'},6))
+            'localmatdir' 'netmatdir', 'oldelectrode' 'TOGGLE' 'rptexpts' 'STIMTYPE' ...
+            'SENDING' 'SCODE=' 'CODE OVER' 'status'},6))
         if strncmp(s,'NewBinoc',7)
             DATA.newbinoc = 1;
             DATA = CheckForNewBinoc(DATA);
@@ -393,37 +407,6 @@ for j = 1:length(strs{1})
             DATA.strcodes(sid).label = label;
             DATA.strcodes(sid).icode = icode;
             DATA.strcodes(sid).code = code;
-
-%can ignore SENDING'            
-        end  %6 char codes
-        
-        
-        
-    elseif strncmp(s,'CODE',4)
-        id = strfind(s,' ');
-        code = str2num(s(id(2)+1:id(3)-1))+1;
-        if ismember(code,[DATA.comcodes.code])
-           x = 1; 
-        end
-        str = s(id(1)+1:id(2)-1);
-        if ~strcmp(str,'xx') && sum(strcmp(str,{DATA.comcodes.code}))
-            x = strcmp(str,{DATA.comcodes.code});
-        end
-       
-        DATA.comcodes(code).label = s(id(3)+1:id(end)-2);
-        DATA.comcodes(code).code = s(id(1)+1:id(2)-1);
-        DATA.comcodes(code).const = code;
-        DATA.comcodes(code).type = s(id(end)-1);
-        DATA.comcodes(code).group = str2num(s(id(end)+1:end));
-        try
-        DATA.codeids.(DATA.comcodes(code).code) = code; %index of codes
-        catch
-            fprintf('Invalid field name %s\n',str);
-        DATA.codeids.xx = code; %index of codes
-        DATA.comcodes(code).code = 'xx';
-        end
-    elseif strncmp(s,'cwd=',4)
-        DATA.cwd = value;
     elseif strncmp(s,'status',5)
         DATA.Statuslines{end+1} = s(8:end);
         if ishandle(DATA.statusitem)
@@ -441,25 +424,12 @@ for j = 1:length(strs{1})
             DATA.Trials(length(DATA.Trials)).nf = nf;
         end
 %        fprintf(s);
-    elseif strncmpi(s,'exp',3)
-        if strncmp(s,'exps',4)
-            ex = 1;
-            DATA.expts{ex} = [];
-            pid = strfind(s,'+');
-            for k = 1:length(pid)
-                if k == length(pid)
-                    x = s(pid(k)+1:end);
-                else
-                    x = s(pid(k)+1:pid(k+1)-1);
-                end
-                if length(x) > 1
-                eid = find(strcmp(x,{DATA.comcodes.code}));
-                DATA.expts{ex} = [DATA.expts{ex} eid];
-                end
-            end
-            ex = 1;
 
-        elseif strncmp(s,'EXPTSTART',8)
+%can ignore SENDING'            
+        end  %6 char codes
+        
+        elseif sum(strncmp(s,{'EXPTSTART' 'EXPTOVER' 'TESTOVER'},8))
+           if strncmp(s,'EXPTSTART',8)
             DATA.inexpt = 1;
             tic; PsychMenu(DATA); 
             tic; SetGui(DATA,'set'); 
@@ -514,7 +484,14 @@ for j = 1:length(strs{1})
             DATA.matlabwasrun = 0;
             if DATA.verbose(4) fprintf('%s:%d\n',s,DATA.inexpt); end
             DATA.newbinoc = 0;
-        elseif strncmp(s,'Expts1',6)
+        elseif strncmp(s,'TESTOVER',8)
+           if isfield(DATA,'reopenstr') && ~isempty(DATA.reopenstr) && DATA.optionflags.do
+               outprintf(DATA,'%s\n',DATA.reopenstr);
+           end
+        end  %8 char codes 
+        
+    elseif sum(strncmp(s,{'Expts'},5))
+        if strncmp(s,'Expts1',6)
             DATA.extypes{1} = sscanf(s(8:end),'%d');
             DATA.extypes{1} = DATA.extypes{1}+1;
             DATA = SetExptMenus(DATA);
@@ -526,16 +503,56 @@ for j = 1:length(strs{1})
             DATA.extypes{3} = sscanf(s(8:end),'%d');
             DATA.extypes{3} = DATA.extypes{3}+1;
             DATA = SetExptMenus(DATA);
+        end
+    elseif strncmp(s,'CODE',4)
+        id = strfind(s,' ');
+        code = str2num(s(id(2)+1:id(3)-1))+1;
+        if ismember(code,[DATA.comcodes.code])
+           x = 1; 
+        end
+        str = s(id(1)+1:id(2)-1);
+        if ~strcmp(str,'xx') && sum(strcmp(str,{DATA.comcodes.code}))
+            x = strcmp(str,{DATA.comcodes.code});
+        end
+       
+        DATA.comcodes(code).label = s(id(3)+1:id(end)-2);
+        DATA.comcodes(code).code = s(id(1)+1:id(2)-1);
+        DATA.comcodes(code).const = code;
+        DATA.comcodes(code).type = s(id(end)-1);
+        DATA.comcodes(code).group = str2num(s(id(end)+1:end));
+        try
+        DATA.codeids.(DATA.comcodes(code).code) = code; %index of codes
+        catch
+            fprintf('Invalid field name %s\n',str);
+        DATA.codeids.xx = code; %index of codes
+        DATA.comcodes(code).code = 'xx';
+        end
+    elseif strncmp(s,'cwd=',4)
+        DATA.cwd = value;
+    elseif strncmpi(s,'exp',3)
+        if strncmp(s,'exps',4)
+            ex = 1;
+            DATA.expts{ex} = [];
+            pid = strfind(s,'+');
+            for k = 1:length(pid)
+                if k == length(pid)
+                    x = s(pid(k)+1:end);
+                else
+                    x = s(pid(k)+1:pid(k+1)-1);
+                end
+                if length(x) > 1
+                eid = find(strcmp(x,{DATA.comcodes.code}));
+                DATA.expts{ex} = [DATA.expts{ex} eid];
+                end
+            end
+            ex = 1;
+
         elseif strncmp(s,'expt',4)
             DATA = ReadStimFile(DATA, value, 'inread');
         elseif strncmp(s,'exp=',4)
             DATA.binoc{1}.exp = value;
         end
             
-    elseif strncmp(s,'TESTOVER',8)
-       if isfield(DATA,'reopenstr') && ~isempty(DATA.reopenstr) && DATA.optionflags.do
-           outprintf(DATA,'%s\n',DATA.reopenstr);
-       end
 
     elseif strncmp(s,'TRES',4)
         if s(6) == 'G' || s(6) == 'W'
@@ -574,17 +591,6 @@ for j = 1:length(strs{1})
                 
             end
         end
-    elseif length(code) > 4 & sum(strcmp(code,DATA.windownames))
-        iw = find(strcmp(code,DATA.windownames));
-        DATA.winpos{iw} = sscanf(value,'%d');
-    elseif strncmp(s,'winpos=',7)
-        DATA.winpos{1} = sscanf(s(8:end),'%d');
-    elseif strncmp(s,'optionwinpos=',10)
-        DATA.winpos{2} = sscanf(s(eid(1)+1:end),'%d');
-    elseif strncmp(s,'softoffwinpos=',10)
-        DATA.winpos{3} = sscanf(s(eid(1)+1:end),'%d');
-    elseif strncmp(s,'penlogwinpos=',10)
-        DATA.winpos{4} = sscanf(s(eid(1)+1:end),'%d');
 
     elseif strncmp(s,'STIMC ',6)
         DATA.trialcounts = sscanf(s(7:end),'%f');
