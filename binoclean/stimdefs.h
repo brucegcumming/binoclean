@@ -543,6 +543,7 @@ float pix2degy(float val);
 #define SHAKE_TIMEOUT 15
 #define SHAKE_TIMEOUT_PART2 16
 #define SHAKE_TIMEOUT_PART1 17
+#define TEST_BINOCLEAN 18
 
 #define IFNEEDED 0
 #define FORCE 1

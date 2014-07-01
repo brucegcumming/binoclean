@@ -1406,7 +1406,7 @@ void statusline(char *s)
     else
         s = statusstring;
 //    glstatusline(s,1);
-//    printString(s, strlen(s)); //Need this? removed May 2013
+    printString(s, strlen(s)); //Need this? removed May 2013
 
     notify("status=");
     notify(s);
@@ -7145,6 +7145,18 @@ int next_frame(Stimulus *st)
             if(timeout_type == SHAKE_TIMEOUT_PART2 && 0)
                 ShowTime();
             change_frame();
+            break;
+        case TEST_BINOCLEAN:
+            t2 = timediff(&now,&lastcleartime);
+            if (t2 > 1){
+                sprintf(buf,"status=Testing at %s",binocTimeString());
+                notify(buf);
+            }
+            if (laststate != val){
+                expt.verbose = 1;
+                    memcpy(&lastcleartime,&now,sizeof(struct timeval));
+            }
+            paint_frame(WHOLESTIM,1);
             break;
     }
     lastval = val;

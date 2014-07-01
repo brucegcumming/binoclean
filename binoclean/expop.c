@@ -13503,6 +13503,13 @@ int InterpretLine(char *line, Expt *ex, int frompc)
         SaveExptFile(buf,QUICK_SAVE);
         return(0);
     }
+    else if(!strncmp(line,"leantest",8)){
+        if (stimstate == TEST_BINOCLEAN)
+            stimstate = STIMSTOPPED;
+        else
+            stimstate = TEST_BINOCLEAN;
+        return(0);
+    }
     else if(!strncmp(line,"offdelay",8)){
         sprintf(buf,"%s\n",line);
         SerialString(buf,0);
