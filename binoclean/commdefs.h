@@ -859,7 +859,7 @@ char *bwtoggle_codes[] = {
  *         512 Indirect properties
  *         1024 Internal commands (sb+)
  *         2048 can't be an expt type. (Checked in setsecondexpt)
- *         4096 Verg only - deprecated. Binoc need to know about all variables
+ *         4096 Verg only - deprecated. Binoc needs to know about all variables
  */
 #define VERGONLY 3096
 #define INTERNALCOMMAND 1024

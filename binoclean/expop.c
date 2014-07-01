@@ -6733,7 +6733,7 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
                 {
                     if (togglestrings[i].group == 3)
                     {
-                        if(optionflags[togglestrings[i].icode]){
+                        if(optionflags[togglestrings[i].icode] == 1){ //CHECK_FRAMECOUNTS  can be 2. 
                             sprintf(temp,"+%s",togglestrings[i].code);
                             strcat(cbuf,temp);
                         }
@@ -6837,12 +6837,12 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
                 ret=-1;
             break;
         case STIMULUS_DURATION_CODE:
-            sprintf(cbuf,"%s%.3f",scode, 
+            sprintf(cbuf,"%s%s%.3f",scode,temp,
                     (expt.st->nframes)/expt.mon->framerate);
             break;
         case TIMEOUT_CODE:
             if(flag == TO_BW)
-                sprintf(cbuf,"%s%.0f",scode,
+                sprintf(cbuf,"%s%s%.0f",scode,temp,
                         (1000 * expt.st->fix.timeout));
             else
                 sprintf(cbuf,"%s=%.3f",scode,expt.st->fix.timeout);
@@ -11757,7 +11757,12 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
             else
                 sprintf(tmp," op-CN to stop Checking");
             sprintf(buf,"Only completed %d/%d frames (stim %d at %s). %s",framesdone,n,stimno,binocTimeString(),tmp);
-            acknowledge(buf,NULL);
+            if (optionflags[CHECK_FRAMECOUNTS])
+                acknowledge(buf,NULL);
+            else{
+                sprintf(tmp,"ACK:%s",buf);
+                notify(tmp);
+            }
             statusline(buf);
         }
     }
