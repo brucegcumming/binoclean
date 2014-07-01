@@ -463,7 +463,7 @@ for j = 1:length(strs{1})
             tic; SetGui(DATA,'set'); 
             ShowStatus(DATA);
             if ~wasexpt
-                myprintf(DATA.frombinocfid,'Got EXPTOVER, but not in Expt'\n');
+                myprintf(DATA.frombinocfid,'Got EXPTOVER, but not in Expt\n');
             end
             if DATA.exptstoppedbyuser  
             %if user hist cancal/stop, dont repeat or move on to automatic next expt
@@ -479,7 +479,7 @@ for j = 1:length(strs{1})
                 if DATA.restartbinoc && wasexpt  %if inexpt ==0, may be anew restart
                     DATA = RestartBinoc(DATA);
                 end
-                myprintf(DATA.frombinocfd,'-show','Running Next of %d expts\n',DATA.rptexpts);
+                myprintf(DATA.frombinocfid,'-show','Running Next of %d expts\n',DATA.rptexpts);
                 outprintf(DATA,'#Nrpt is %d\n',DATA.rptexpts);
                 DATA.rptexpts = DATA.rptexpts-1;
                 it = findobj(DATA.toplevel,'Tag','RptExpts');
@@ -2948,8 +2948,8 @@ function MenuGui(a,b)
      j = 1;
      while j <= length(varargin)
          if strncmpi(varargin{j},'-show',5)
-             varargin = varargin{j+1:end};
-             j = j+1;
+             varargin = varargin(j+1:end);
+             show = 1;
          end
          j = j+1;
      end
@@ -3056,6 +3056,10 @@ function SetVerbose(a,b, flag)
          else
              set(a,'checked','off');
          end             
+         if flag ==2
+                    outprintf(DATA,'verbose=%d\n',DATA.verbose(2));
+         end
+
      end
      set(DATA.toplevel,'UserData',DATA);
         

@@ -6294,6 +6294,14 @@ int next_frame(Stimulus *st)
                 ReplayExpt("Show");
             }
             ReadCommandFile(expt.cmdinfile);
+            t2 = timediff(&now,&lastcleartime);
+            if (expt.verbose && t2 > 1){
+                sprintf(buf,"status=Stopped at %s\n",binocTimeString());
+                notify(buf);
+                memcpy(&lastcleartime,&now,sizeof(struct timeval));
+            }
+            else if (expt.verbose == 0)
+                memcpy(&lastcleartime,&now,sizeof(struct timeval));
             break;
         case INTERTRIAL:
 #ifdef NIDAQ
