@@ -39,7 +39,7 @@ while j <= length(varargin)
     elseif strcmp(varargin{j},'new')
         checkforrestart = 0;
     elseif strcmp(varargin{j},'record')
-        DATA.frombinocfid = fopen('/local/frombinoc.txt','a');
+        DATA = OpenBinocLog(DATA);
     elseif strcmp(varargin{j},'verbose')
         if length(varargin) > j && isnumeric(varargin{j+1})
             j = j+1;
@@ -49,9 +49,9 @@ while j <= length(varargin)
         else
             verbose = 1;
         end
-        DATA.frombinocfid = fopen('/local/frombinoc.txt','a');
+        DATA = OpenBinocLog(DATA);
     elseif strcmp(varargin{j},'monitor')
-        DATA.frombinocfid = fopen('/local/frombinoc.txt','a');
+        DATA = OpenBinocLog(DATA);
         DATA.perfmonitor = 1;
 
     end
@@ -188,6 +188,17 @@ if autoquit
 end
 
 
+function DATA = OpenBinocLog(DATA)
+
+if DATA.frombinocfid <= 0
+    DATA.frombinocfid = fopen('/local/frombinoc.txt','a');
+    fprintf(DATA.frombinocfid,'Log openened %s\n',datestr(now));
+else
+    fprintf('Binoc log already open\n');
+end
+
+
+
 function DATA = CheckStateAtStart(DATA)
     if strcmp('NotSet',DATA.binoc{1}.ereset)
         str = 'You Can define A "reset" stimfile that is Run before loading each new Expt. Put ereset=path in verg.setup or your stimfile';
@@ -252,9 +263,12 @@ for j = 1:length(strs{1})
         value = [];
         code = s;
     end
-    if DATA.verbose(2) && strcmp(src,'frombinoc')
+    if frombinoc && (DATA.verbose(2) || DATA.frombinocfid > 0)
         if ~strncmp(strs{1}{j},'SENDING00000',12)
-            fprintf('%s**\n',strs{1}{j});
+            if DATA.verbose(2)
+                fprintf('%s**\n',strs{1}{j});
+            end
+            myprintf(DATA.frombinocfid,'%s %s\n',datestr(now),strs{1}{j});
         end
     end
     if DATA.savestrs > 0
@@ -484,6 +498,7 @@ for j = 1:length(strs{1})
             DATA.matlabwasrun = 0;
             if DATA.verbose(4) fprintf('%s:%d\n',s,DATA.inexpt); end
             DATA.newbinoc = 0;
+            myprintf(DATA.frombinocfid,'INexpt Set to %d\n',DATA.inexpt);
         elseif strncmp(s,'TESTOVER',8)
            if isfield(DATA,'reopenstr') && ~isempty(DATA.reopenstr) && DATA.optionflags.do
                outprintf(DATA,'%s\n',DATA.reopenstr);
@@ -1480,7 +1495,7 @@ function DATA = GetState(DATA, verbose)
         ts = now;
         [bstr, status] = urlread(str);
         a = mytoc(ts); %getting here is fast. Its interpretline that is slow.
-         DATA = InterpretLine(DATA, bstr);
+         DATA = InterpretLine(DATA, bstr,'frombinoc');
          if verbose
              fprintf('Read/Interpret took %.3f,%.3f\n',a,mytoc(ts));
          end
@@ -1560,6 +1575,7 @@ scrsz = get(0,'Screensize');
 DATA = SetField(DATA,'ip','http://localhost:1110/');
 DATA.network = 1;
 DATA.newbinoc = 0;
+DATA.ready = 0;
 DATA.timerperiod = 0.05;
 DATA.pausereading = 0;  %stop timer driven reads when want to control
 DATA.binocisup = 0;
@@ -3028,9 +3044,8 @@ function MenuGui(a,b)
      DATA = GetDataFromFig(a);
 
     if strcmp(flag,'openlog')
-        if DATA.frombinocfid <= 0
-            DATA.frombinocfid = fopen('/local/frombinoc.txt','a');
-        end
+        DATA = OpenBinocLog(DATA);
+        SetData(DATA);
     elseif flag == 2
          ts = now;
          DATA = GetState(DATA,1);
@@ -3068,10 +3083,7 @@ function MenuGui(a,b)
          else
              DATA.verbose = 2;
              set(a,'Label','Quiet pipes');
-             if DATA.frombinocfid <= 0
-                 DATA.frombinocfid = fopen('/local/frombinoc.txt','a');
-             end
-
+             DATA = OpenBinocLog(DATA);
          end
          outprintf(DATA,'verbose=%d\n',DATA.verbose(2));
          set(DATA.toplevel,'UserData',DATA);
@@ -3345,6 +3357,7 @@ end
             expecting = 1;
             if length(varargin) > j && isnumeric(varargin{j+1})
                 silent = 1;
+                j = j+1;
                 expecttime = varargin{j};
             end
          elseif strncmpi(varargin{j},'reset',5)
@@ -3372,9 +3385,12 @@ end
             fprintf('Second Try got %s\n',str(1:13));
         end
         end
+        if ~isnumeric(expecttime)
+            expecttime = 1;
+        end
         if mytoc(ts) > expecttime
             expecting = 0;
-            fprintf('Still Nothing. I give up\n');
+            fprintf('Still No Response from Binoc. I give up\n');
         end
      end
 
@@ -3643,9 +3659,12 @@ function DATA = RunButton(a,b, type)
     end
     DATA = GetState(DATA);
     if DATA.inexpt ~= inexpt; %not caught up yet
-        fprintf('Expt Button Confused. Trying again\n');
+        myprintf(DATA.frombinocfid,'-show','Expt Button Confused Inexpt is %d. Trying again\n',DATA.inexpt);
         DATA = ReadFromBinoc(DATA,'expect',0.5);
         DATA = GetState(DATA);
+        if DATA.inexpt ~= inexpt
+            myprintf(DATA.frombinocfid,'-show','Still Confused\n');
+        end
     end
     set(DATA.toplevel,'UserData',DATA);    
     SetGui(DATA);
