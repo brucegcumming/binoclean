@@ -7149,14 +7149,16 @@ int next_frame(Stimulus *st)
         case TEST_BINOCLEAN:
             t2 = timediff(&now,&lastcleartime);
             if (t2 > 1){
-                sprintf(buf,"status=Testing at %s",binocTimeString());
+                sprintf(buf,"status=Testing at %s\n",binocTimeString());
                 notify(buf);
+                gettimeofday(&lastcleartime,NULL);
             }
-            if (laststate != val){
+            if (laststate != stimstate){
                 expt.verbose = 1;
                     memcpy(&lastcleartime,&now,sizeof(struct timeval));
             }
-            paint_frame(WHOLESTIM,1);
+//            paint_frame(WHOLESTIM,1);
+//            change_frame();
             break;
     }
     lastval = val;

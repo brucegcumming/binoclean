@@ -1648,6 +1648,7 @@ DATA.binoc{1}.Electrode = 'default';
 DATA.binoc{1}.monkey = 'none';
 DATA.binoc{1}.lo = '';
 DATA.binoc{1}.st = 'none'; % make sure this field comes early
+DATA.binoc{1}.xyfsd = 5;
 DATA.penid = 0;
 DATA.stimulusnames{1} = 'none';
 DATA.stimulusnames{4} = 'grating';
@@ -1976,7 +1977,11 @@ function DATA = InitInterface(DATA)
     bp(2) = 2./nr;
     bp(3) = cw/3;
     bp(4) = 1./nr;
-    [a,j] = min(abs(DATA.binoc{1}.xyfsd - DATA.xyfsdvals));
+    if isfield(DATA.binoc{1},'xyfsd')
+        [a,j] = min(abs(DATA.binoc{1}.xyfsd - DATA.xyfsdvals));
+    else
+        j = 1;
+    end
     uicontrol(gcf,'style','text','string','FSD',  'units', 'norm', 'position',bp);
     bp(1) = bp(1)+bp(3);
     bp(3)=0.99-bp(1);
