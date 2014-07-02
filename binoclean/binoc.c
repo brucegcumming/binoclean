@@ -1161,16 +1161,16 @@ char *DescribeState()
 {
     int i,j;
     time_t tval;
-    char buf[BUFSIZ];
+    char buf[BUFSIZ*2];
     static char *str = NULL;
     
-    
+#define MAXCHARS 102400
     if(str == NULL)
-        str = (char *)(malloc(sizeof(char) * 102400));
+        str = (char *)(malloc(sizeof(char) * MAXCHARS));
     
     sprintf(str,"STATE\n");
     if(ChoiceStima->type != STIM_NONE){
-        notify("mo=ChoiceU\n");
+        strcat(str,"mo=ChoiceU\n");
         for(i = 0; i <= expt.laststimcode; i++)
         {
             buf[0] = '=';
@@ -1180,7 +1180,7 @@ char *DescribeState()
         }
     }
     if(ChoiceStimb->type != STIM_NONE){
-        notify("mo=ChoiceD\n");
+        strcat(str,"mo=ChoiceD\n");
         for(i = 0; i <= expt.laststimcode; i++)
         {
             buf[0] = '=';
@@ -1191,7 +1191,7 @@ char *DescribeState()
     }
     
     if(expt.st->next != NULL){
-        notify("mo=back\n");
+        strcat(str,"mo=back\n");
         for (i = 0; i < expt.laststimcode;  i++)
         {
             MakeString(valstrings[i].icode, buf, &expt, expt.st->next,TO_GUI);
@@ -1231,6 +1231,8 @@ char *DescribeState()
     strcat(str,DescribeExpStims());
      ListQuickExpts(str);
     i = strlen(str);
+    if (i >= MAXCHARS)
+        acknowledge("Status String too Long", NULL);
         return(str);
 
 }
@@ -6180,6 +6182,9 @@ int next_frame(Stimulus *st)
         expt_over(CANCEL_EXPT);
         stimstate = STIMSTOPPED;
     }
+    if (expt.verbose > 1){
+        fprintf(stderr,"Stimstate %d at %s\n",stimstate,binocTimeString());
+    }
     
     switch(stimstate)
     {
@@ -7147,6 +7152,12 @@ int next_frame(Stimulus *st)
             change_frame();
             break;
         case TEST_BINOCLEAN:
+            t2 = timediff(&now,&nftime); //time since last calle
+            if(t2 > 0.1){
+                sprintf(buf,"status=Long delay %.3f at  %s\n",t2,binocTimeString());
+                notify(buf);
+                fprintf(stderr,buf);
+            }
             t2 = timediff(&now,&lastcleartime);
             if (t2 > 1){
                 sprintf(buf,"status=Testing at %s\n",binocTimeString());
