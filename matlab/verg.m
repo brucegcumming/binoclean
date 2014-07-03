@@ -314,14 +314,16 @@ for j = 1:length(strs{1})
         if length(code) > 4 & sum(strcmp(code,DATA.windownames))
             iw = find(strcmp(code,DATA.windownames));
             DATA.winpos{iw} = sscanf(value,'%d');
+        elseif strncmp(s,'autoreopen=',10)
+            DATA.autoreopen = sscanf(value,'%d');
         elseif strncmp(s,'winpos=',7)
-            DATA.winpos{1} = sscanf(s(8:end),'%d');
+            DATA.winpos{1} = sscanf(value,'%d');
         elseif strncmp(s,'optionwinpos=',10)
-            DATA.winpos{2} = sscanf(s(eid(1)+1:end),'%d');
+            DATA.winpos{2} = sscanf(value,'%d');
         elseif strncmp(s,'softoffwinpos=',10)
-            DATA.winpos{3} = sscanf(s(eid(1)+1:end),'%d');
+            DATA.winpos{3} = sscanf(value,'%d');
         elseif strncmp(s,'penlogwinpos=',10)
-            DATA.winpos{4} = sscanf(s(eid(1)+1:end),'%d');
+            DATA.winpos{4} = sscanf(value,'%d');
         end
         
         
