@@ -53,7 +53,6 @@ while j <= length(varargin)
     elseif strcmp(varargin{j},'monitor')
         DATA = OpenBinocLog(DATA);
         DATA.perfmonitor = 1;
-
     end
     j = j+1;
 end
@@ -2396,7 +2395,7 @@ function ShowHelp(a,b,file)
                   filename = [prefix '/' d(j).name];
                   DATA.helpfiles(end+1).filename = filename;
                   s = scanlines(filename);
-                  if length(s{1}) < 50
+                  if ~isempty(s) && length(s{1}) < 50
                   DATA.helpfiles(end).label = s{1};
                   else
                   DATA.helpfiles(end).label = d(j).name;
