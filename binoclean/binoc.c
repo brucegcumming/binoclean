@@ -62,6 +62,7 @@ static GLuint base,bigbase,mediumbase;
 static int eventstate = 0,window_is_mapped = 0;
 static int rndbonus = 10;
 static int forcestart = 0;
+static int teststate = 0;
 static int nostore = 0;
 static float pursued = 0;
 int lastbutton = -1000;
@@ -173,6 +174,7 @@ struct timeval zeroframetime, prevframetime, frametime, cleartime;
 struct timeval lastcleartime,lastsertime;
 struct timeval progstarttime,calctime,paintframetime;
 struct timeval endexptime, changeframetime,lastcalltime,lastmonkeycheck,nftime;
+struct timeval testtime;
 int wurtzctr = 0, wurtzbufferlen = 512,lasteyecheck;
 float clearcolor = 0;
 float lasttf = -1, lastsz = -1, lastsf = -1,lastor=0;
@@ -6701,9 +6703,9 @@ int next_frame(Stimulus *st)
             
             if(nf < 1)
                 nf = 1;
-            
-            while((rc = getframecount()) < lastframecount +nf)
-                rc = getframecount();
+//? still need this in binoclean? seems not
+//            while((rc = getframecount()) < lastframecount +nf)
+//                rc = getframecount();
             change_frame();
             expt.framesdone++;
             if(mode & NEWDRAG)
@@ -7152,6 +7154,9 @@ int next_frame(Stimulus *st)
             change_frame();
             break;
         case TEST_BINOCLEAN:
+            teststate = 1;
+            stimstate = INSTIMULUS;
+            gettimeofday(&testtime,NULL);
             t2 = timediff(&now,&nftime); //time since last calle
             if(t2 > 0.1){
                 sprintf(buf,"status=Long delay %.3f at  %s\n",t2,binocTimeString());
@@ -7174,6 +7179,43 @@ int next_frame(Stimulus *st)
     }
     lastval = val;
     laststate = oldstimstate;
+    
+    if (teststate == 1){
+        t2 = timediff(&now,&nftime); //time since last calle
+        if(t2 > 0.1){
+            sprintf(buf,"status=Long delay %.3f at  %s\n",t2,binocTimeString());
+            notify(buf);
+            fprintf(stderr,buf);
+        }
+        switch(laststate){ // value at start of call
+            case INSTIMULUS:
+                break;
+            case POSTSTIMULUS:
+                break;
+            case POSTPOSTSTIMULUS:
+                stimstate = PRESTIMULUS;
+                break;
+            case PRESTIMULUS:
+                sprintf(buf,"status=Stimulus at %s\n",binocTimeString());
+                notify(buf);
+                mode |= FIRST_FRAME_BIT;
+                stimstate = INSTIMULUS;
+                break;
+            default:
+                stimstate = INSTIMULUS;
+                break;
+        }
+        t2 = timediff(&now,&testtime);
+        if (t2 > 1){
+            gettimeofday(&testtime,NULL);
+            sprintf(buf,"status=Testing at %s\n",binocTimeString());
+            notify(buf);
+            fprintf(stderr,buf);
+        }
+        
+    }
+
+    
     if(debug == 4){
         testcolor();
     }
