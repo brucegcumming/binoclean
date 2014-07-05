@@ -1094,7 +1094,7 @@ function DATA = ReadExptLines(DATA, strs, src)
             myprintf(DATA.frombinocfid,'%.3f file %s\n',mytoc(DATA.starttime),tline);
         end
   %if filename set before monkey, set monkeyname first
-        if strncmp(tline,'uf=',3) && strcmp(DATA.binoc{1}.monkey,'none')
+        if strncmp(tline,'uf=',3) && strcmp(DATA.binoc{1}.monkey,'none') && ~isempty(DATA.datafile)
             DATA.binoc{1}.monkey = GetMonkeyName(DATA.datafile);
             SendCode(DATA,'monkey');
         end

@@ -7197,12 +7197,12 @@ int next_frame(Stimulus *st)
                 break;
             case PRESTIMULUS:
                 sprintf(buf,"status=Stimulus at %s\n",binocTimeString());
-                notify(buf);
-                mode |= FIRST_FRAME_BIT;
-                stimstate = INSTIMULUS;
+//                notify(buf);
+//                mode |= FIRST_FRAME_BIT;
+//                stimstate = INSTIMULUS;
                 break;
             default:
-                stimstate = INSTIMULUS;
+    //            stimstate = INSTIMULUS;
                 break;
         }
         t2 = timediff(&now,&testtime);
