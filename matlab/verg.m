@@ -345,8 +345,8 @@ for j = 1:length(strs{1})
             'localmatdir' 'netmatdir', 'oldelectrode' 'TOGGLE' 'rptexpts' 'STIMTYPE' ...
             'SENDING' 'SCODE=' 'CODE OVER' 'status'},6))
         if strncmp(s,'NewBinoc',7)
-            DATA.newbinoc = 1;
             DATA = CheckForNewBinoc(DATA);
+            DATA.newbinoc = 1;
             if DATA.optionflags.do %only do this when reopen pipes
                 %                outprintf(DATA,'\\go\n');
             end
@@ -1575,7 +1575,7 @@ function DATA = SetDefaults(DATA)
 scrsz = get(0,'Screensize');
 DATA = SetField(DATA,'ip','http://localhost:1110/');
 DATA.network = 1;
-DATA.newbinoc = 0;
+DATA.newbinoc = 2;
 DATA.ready = 0;
 DATA.timerperiod = 0.05;
 DATA.pausereading = 0;  %stop timer driven reads when want to control
@@ -3551,7 +3551,7 @@ if nargin > 1
 else
     go = 2;
 end
-if go
+if go && DATA.newbinoc ~= 2
      if DATA.autoreopen
          fprintf('Reopening pipes\n');
          if go ==1 %if received NewBinoc, no need to pause

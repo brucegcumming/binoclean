@@ -69,8 +69,15 @@ int *RecordImage(int frame, Stimulus *st){
 // For RLS 0 = Black, 1 = grey, 2 = whiee
 // For RDS 0 = Grey, 1 = BLACK, 2 = white
         if(st->type == STIM_RLS){
+            if(st->pos.contrast_amp < 0.001)
+            {
+                *p++ = -1;
+                *p++ = -1;
+            }
+            else{
             for (j = 0; j < st->left->ndots; j++) {
                 *p++ = st->left->iimb[j] | (st->right->iimb[j] << 2);
+            }
             }
         }
         else if  (st->type == STIM_CHECKER){
@@ -100,7 +107,13 @@ void StimStringRecord(FILE *fd, Expt *ex)
             sprintf(s,"%x:",j);
             strcat(buf,s);
             for(i = 0; i < expt.st->left->ndots; i++){
-                sprintf(s,"%1x",*p++);
+                if(*p >= 0){
+                    sprintf(s,"%1x",*p++);
+                }
+                else{
+                    sprintf(s,"NaN");
+                    i = expt.st->left->ndots;
+                }
                 strcat(buf,s);
             }
             strcat(buf,"\n");

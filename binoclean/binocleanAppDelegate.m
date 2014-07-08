@@ -40,7 +40,7 @@ void quit_binoc()
     [[NSApplication sharedApplication] terminate:nil];
 }
 
-void acknowledge(char * a ,int b)
+void NSacknowledge(char * a ,int b)
 {
     return;
     NSLog(@"Acknowledge! %s", a);

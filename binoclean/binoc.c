@@ -7180,7 +7180,7 @@ int next_frame(Stimulus *st)
     lastval = val;
     laststate = oldstimstate;
     
-    if (teststate == 1){
+    if (teststate > 0){
         t2 = timediff(&now,&nftime); //time since last calle
         if(t2 > 0.1){
             sprintf(buf,"status=Long delay %.3f at  %s\n",t2,binocTimeString());
@@ -7191,6 +7191,7 @@ int next_frame(Stimulus *st)
             case INSTIMULUS:
                 break;
             case POSTSTIMULUS:
+//                stimstate = PRESTIMULUS;
                 break;
             case POSTPOSTSTIMULUS:
                 stimstate = PRESTIMULUS;
@@ -7205,9 +7206,11 @@ int next_frame(Stimulus *st)
                 stimstate = INSTIMULUS;
                 break;
         }
+        if (teststate == 2){
 // if set to INSTIMUUS all the time with these two lines, does not crash
-        stimstate = INSTIMULUS;
-        framesdone = 0;
+            stimstate = INSTIMULUS;
+            framesdone = 0;
+        }
         t2 = timediff(&now,&testtime);
         if (t2 > 1){
             gettimeofday(&testtime,NULL);

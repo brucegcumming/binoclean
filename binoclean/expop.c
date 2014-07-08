@@ -12195,7 +12195,19 @@ int CheckBW(int signal, char *msg)
     return(1);
 }
 
-
+int acknowledge(char *s, char *help)
+{
+    char buf[BUFSIZ*2];
+    if (0){
+        NSacknowledge(s, help);
+    }
+    else{
+        sprintf(buf,"ACK: %s\n",s);
+        notify(buf);
+        fprintf(stderr,buf);
+    }
+    
+}
 
 /* wait for n frames */
 void framepause(int nf)
