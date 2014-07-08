@@ -7205,6 +7205,9 @@ int next_frame(Stimulus *st)
                 stimstate = INSTIMULUS;
                 break;
         }
+// if set to INSTIMUUS all the time with these two lines, does not crash
+        stimstate = INSTIMULUS;
+        framesdone = 0;
         t2 = timediff(&now,&testtime);
         if (t2 > 1){
             gettimeofday(&testtime,NULL);
