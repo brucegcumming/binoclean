@@ -2616,6 +2616,8 @@ int OpenNetworkFile(Expt expt)
         netoutfile = fopen(name,"a");
     
         if (netoutfile == NULL){
+            sprintf(buf,"Can't open Network record %s",name);
+            statusline(buf);
             getcwd(path,BUFSIZ);
             sprintf(name,"%s/%s.bnc",path,getfilename(sfile));
             netoutfile = fopen(name,"a");
@@ -11156,6 +11158,10 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
     if (expt.stimmode == BUTTSEXPT){
         expt.backim = backims[(int)(expt.vals[BACKGROUND_IMAGE])];
     }
+    if (optionflags[MANUAL_EXPT] && manualprop[0] >= 0){
+        SetManualStim(0);
+    }
+
     
     
     /*
@@ -11817,7 +11823,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
   
     if ((expt.st->type == STIM_RLS || expt.st->type == STIM_CHECKER) && optionflags[SAVE_RLS] && rcfd){
         gettimeofday(&timea, NULL);
-        fprintf(rcfd,"id%dse%dt%.3f\n",expt.allstimid,expt.st->left->baseseed,ufftime(&firstframetime));
+        fprintf(rcfd,"id%dse%dt%.3fst%d\n",expt.allstimid,expt.st->left->baseseed,ufftime(&firstframetime),stimorder[stimno]);
         StimStringRecord(rcfd, expt.st);
         if(optionflags[FAST_SEQUENCE]){
             fputs(rcbuf,rcfd);

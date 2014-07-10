@@ -5274,12 +5274,10 @@ void increment_stimulus(Stimulus *st, Locator *pos)
      */
     //if manualprop[0] < 0 increment using binoc rules
     rds = st->left;
-    if (optionflags[MANUAL_EXPT] && manualprop[0] >= 0 ){
+    if (optionflags[MANUAL_EXPT] && manualprop[0] >= 0  && st->splane == 1){
         SetManualStim(expt.framesdone);
         if(rds->seedloop == 0)
             rds->baseseed += 2;
-        st->framectr++;
-        return;
     }
     st->framectr++;  //increment first called AFTER painting frame 0
     frame = expt.st->framectr;
@@ -5340,6 +5338,10 @@ void increment_stimulus(Stimulus *st, Locator *pos)
             }
         }
     }
+    if (optionflags[MANUAL_EXPT] && manualprop[0] >= 0  && st->splane == 1){
+        return;
+    }
+
     if(st->type == STIM_RADIAL)
     {
         if (seedframe > 0 && realframecount >= seedframe && stimstate == INSTIMULUS &&
@@ -7158,6 +7160,8 @@ int next_frame(Stimulus *st)
             stimstate = INSTIMULUS;
             gettimeofday(&testtime,NULL);
             t2 = timediff(&now,&nftime); //time since last calle
+            sprintf(buf,"Starting test Loop at %s\n",t2,binocTimeString());
+            printString(buf,2);
             if(t2 > 0.1){
                 sprintf(buf,"status=Long delay %.3f at  %s\n",t2,binocTimeString());
                 notify(buf);
@@ -7191,6 +7195,7 @@ int next_frame(Stimulus *st)
             case INSTIMULUS:
                 break;
             case POSTSTIMULUS:
+//when this is commented out, normal sequence runs. This crashes.
 //                stimstate = PRESTIMULUS;
                 break;
             case POSTPOSTSTIMULUS:
@@ -11037,6 +11042,8 @@ void printString(char *s, int size)
     // Ali: we decided that at least for now we display this info on the mainGUI not the monkey screen
     printf("%s\n",s);
     updateInfoText(s);
+    if (size ==2)
+        NSacknowledge(s, NULL);
     return;
 }
 

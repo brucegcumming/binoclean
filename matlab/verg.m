@@ -137,6 +137,10 @@ if isempty(it)
         TimeMark(tt,2);
     end
     DATA = CheckStateAtStart(DATA);
+    DATA.ready = 1;
+    vpath = which('verg'); %make sure local matlab/expts is in path too
+    vpath = strrep(vpath,'verg.m','expts');
+    addpath(vpath);
 else
     DATA = get(it,'UserData');
 end
@@ -252,9 +256,11 @@ for j = 1:length(strs{1})
  %   fprintf('%s\n', strs{1}{j});
     s = regexprep(strs{1}{j},'\s+\#.*$','');
     eid = strfind(s,'=');
+    codelen = 0;
     if ~isempty(eid)
         code = s(1:eid(1)-1);
         value = s(eid(1)+1:end);
+        codelen = eid(1);
     elseif strncmp(s,'SENDING',7)
         value = [];
         code = s;
@@ -309,10 +315,12 @@ for j = 1:length(strs{1})
      %       pause(DATA.readpause);
             DATA.pausetime = now;
         end  %end onf NotBinoc group
-    elseif frombinoc == 0
+    elseif frombinoc == 0 && codelen > 8  % long lines from files
         if length(code) > 4 & sum(strcmp(code,DATA.windownames))
             iw = find(strcmp(code,DATA.windownames));
             DATA.winpos{iw} = sscanf(value,'%d');
+        elseif strncmp(s,'mainwindow=',10) %old style
+            DATA.winpos{1} = sscanf(value,'%d');            
         elseif strncmp(s,'autoreopen=',10)
             DATA.autoreopen = sscanf(value,'%d');
         elseif strncmp(s,'winpos=',7)
@@ -341,6 +349,7 @@ for j = 1:length(strs{1})
         h = msgbox(s(5:end),'Binoc Warning','warn',CreateStruct);
         ScaleWindow(h,2);
         DATA.Statuslines{end+1} = s;
+        DATA.lastmsg = s;
     elseif sum(strncmp(s,{'NewBinoc' 'confirm' 'exvals' 'fontsiz' 'fontname' 'layout' ...
             'localmatdir' 'netmatdir', 'oldelectrode' 'TOGGLE' 'rptexpts' 'STIMTYPE' ...
             'SENDING' 'SCODE=' 'CODE OVER' 'status'},6))
@@ -982,7 +991,7 @@ for j = 1:length(strs{1})
                 end
                 SetCode(DATA,code);
             else
-                cprintf('red','Cannot Interpret From binoc: %s',s);
+                cprintf('red','Cannot Interpret %s: %s',src,s);
             end
         end
     end
@@ -1212,7 +1221,7 @@ if fid > 0
         DATA = ReadExptLines(DATA,a{1},'fromstim');
     end
 else
-    msgbox(sprintf('Can''t read %s',name),'Read Error','error');
+    msgbox(sprintf('Can''t read stimfile %s',name),'Stimfile Read Error','error');
 end
 if setall
     DATA = ReadVergFile(DATA, DATA.layoutfile);
@@ -1241,7 +1250,7 @@ if fid > 0
     end
     fclose(fid);
 else
-    msgbox(sprintf('Can''t read %s',name),'Read Error','error');
+    msgbox(sprintf('Can''t read Verg file %s',name),'VergFile Read Error','error');
 end
 
 
@@ -1575,6 +1584,7 @@ function DATA = SetDefaults(DATA)
 scrsz = get(0,'Screensize');
 DATA = SetField(DATA,'ip','http://localhost:1110/');
 DATA.network = 1;
+DATA.lastmsg = '';
 DATA.newbinoc = 2;
 DATA.ready = 0;
 DATA.timerperiod = 0.05;
@@ -3325,11 +3335,14 @@ function CheckInput(a,b, fig, varargin)
         end
         return;
     end
-    
-    if DATA.servofig
-        ServoDrive('readposition','quiet');
+    try
+        if DATA.servofig
+            ServoDrive('readposition','quiet');
+        end
+        ReadFromBinoc(DATA, 'auto');
+    catch ME
+        cprintf('red','Error in timer call\n';
     end
-    ReadFromBinoc(DATA, 'auto');
     if DATA.verbose(1) > 1
     fprintf('Timer read over at %s\n',datestr(now));
     end
@@ -3539,6 +3552,9 @@ end
  function [DATA, lastts] = CheckForNewBinoc(DATA, lastts)
 
      go = 0;
+if DATA.ready == 0
+    return;
+end
 if nargin > 1
      %if binoc has resstarted, reopen pipes
      d = dir('/tmp/binocisnew');
@@ -4338,14 +4354,17 @@ for j = line:length(str)
     DATA = InterpretLine(DATA,str{j},'fromseq');
     DATA = uipause(DATA.pausetime,DATA.readpause,'Pause in sequence', DATA); %for pauses set in window
     DATA.readpause = 0;
-    if strcmp(str{j},'!expt')
+    if strncmp(str{j},'!expt',5)
 %need to do this before sending !expt to binoc, so that UserData is set
 % before binoc calls back with settings
+        if strcmp(str{j},'!exptrpt') %repeat exact expt, without calling matexpt again
+            DATA.matlabwasrun = 1;
+        end
         if firstline > 1
             fprintf('Pausing for Next Expt in Sequnce %s\n',datestr(now));
             DATA= uipause(now, DATA.binoc{1}.seqpause,'Fixed Sequence Pause', DATA);
         end
-%if mat was called in the sequence file, don't want it overridden by the matept file        
+  %if mat was called in the sequence file, don't want it overridden by the matept file
         if DATA.optionflags.exm && ~isempty(DATA.matexpt) && DATA.matlabwasrun == 0
             fprintf('Running %s\n',DATA.matexpt);
             DATA.matexpres = [];
@@ -4360,6 +4379,7 @@ for j = line:length(str)
         set(DATA.toplevel,'UserData',DATA);
         outprintf(DATA,'#From RunSequence\n');
         outprintf(DATA,'%s\n',str{j}); %this runs expt in binoc
+        DATA.Statuslines{end+1} = sprintf('RunSequence Line %d. at %s',line,datestr(now,'hh:mm.ss'));
         return;
     end
     if ~sum(strncmp(str{j},'expt',4)) %don't send these lines to binoc

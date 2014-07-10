@@ -42,10 +42,10 @@ void quit_binoc()
 
 void NSacknowledge(char * a ,int b)
 {
-    return;
     NSLog(@"Acknowledge! %s", a);
     [[NSNotificationCenter defaultCenter] postNotificationName:@"updateinfotext" object:nil userInfo:[NSDictionary dictionaryWithObject:[NSString stringWithUTF8String:a] forKey:@"text"]];
     [[NSNotificationCenter defaultCenter] postNotificationName:@"updatecommandhistory" object:nil userInfo:[NSDictionary dictionaryWithObject:[NSString stringWithUTF8String:a] forKey:@"text"]];
+    return;
     if([NSApplication sharedApplication])
         if ([[NSApplication sharedApplication] windows])
             if([[[NSApplication sharedApplication] windows] count]>0)
