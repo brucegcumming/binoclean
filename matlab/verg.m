@@ -3341,7 +3341,7 @@ function CheckInput(a,b, fig, varargin)
         end
         ReadFromBinoc(DATA, 'auto');
     catch ME
-        cprintf('red','Error in timer call\n';
+        cprintf('red','Error in timer call\n');
     end
     if DATA.verbose(1) > 1
     fprintf('Timer read over at %s\n',datestr(now));

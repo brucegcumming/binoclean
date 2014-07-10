@@ -17,7 +17,7 @@ S.types = {'imx'};
 S.or = 135;
 stimvals{3} = [0];
 stimvals{2} = [0];
-stimvals{1} = [403004 403004 404004 419002 433008 434005 435002 503002 505006 511007 562001 572001 552001 455001];
+stimvals{1} = [403004 403004 404004 419002 433008 434005 435002 503002 505006 511007 562001 572001 552001 1];
 distvals = -0.2:0.05:0.2;
 ntrials = 1; %number of times to repeat set
 basedir = '/local/expts/Saccade';
@@ -27,7 +27,8 @@ fixedseed = 1001;
 rpts = 1; %5 number of times to show each exact sequence
 flipsaccade = 0;
 useimage = 1;
-longblank = 5;
+longblank = 1;
+
 fixedblank = 0;  %number of trials to include blanks
 pblank = 0.02;
 
@@ -49,6 +50,9 @@ while j <= length(varargin)
         ntrials = varargin{j};
     elseif strncmpi(varargin{j},'noimages',5)
         useimage = 0;
+    elseif strncmpi(varargin{j},'plank',5)
+        j = j+1;
+        pblank = varargin{j};
     elseif strncmpi(varargin{j},'nrpts',5)
         j = j+1;
         rpts = varargin{j};
@@ -123,6 +127,18 @@ for k = 1:nstim(2)
         else
             sgn = 1;
         end
+        S.imi = stimvals{1}(j);
+        pb = pblank;
+        if S.imi == stimvals{1}(1)
+            S.se = fixedseed;
+            jumptime = 0; %no saccades on rpt stim
+            pb = 0;
+        elseif S.imi == 1  %no saccade, 50ms blank
+            pb = 0;
+        else
+            S.se = 1000 + round(rand(1,1).*10000) .*1000; %random seed for trial
+        end
+
         if strcmp(stimvals{3}{m},'mimic')
             S.sactype = 1;
             if ismember(S.Fa,[0 180])
@@ -162,16 +178,27 @@ for k = 1:nstim(2)
         S.vals{1} = imx;
         S.vals{2} = imy;
         else            
-            if longblank
+            if longblank && pb > 0
                 S.types{1} = 'co';
                 S.vals{1} = ones(1,nf);
-                setblank = find(rand(1,round(nf/longblank)) < pblank);
+                setblank = find(rand(1,round(nf/longblank)) < pb);
                 for c = 1:length(setblank)
                     S.vals{1}(setblank(c):setblank(c)+longblank-1) = 0;
                 end
                 S.nblank = length(setblank);
+            elseif S.imi == 1 %
+                S.types{1} = 'co';
+                S.vals{1} = ones(1,nf);
+                frame = jumptime;
+                while frame < nf-20
+                    S.vals{1}(frame:frame+4) = 0;
+                    frame = frame+jumptime;
+                end                    
+                S.nblank = 4;                
             else
                 S.types = {};
+                S.vals = {};
+                S.nblank = 0;
             end            
             S.Ff = jumptime;
             S.str = '';
@@ -183,13 +210,6 @@ for k = 1:nstim(2)
                 S.sactype = 3;
                 S.Bs = 'image';
             end
-        end
-        S.imi = stimvals{1}(j);
-        if S.imi == stimvals{1}(1)
-            S.se = fixedseed;
-            S.jumptime = 0; %no saccades on rpt stim
-        else
-            S.se = 1000 + round(rand(1,1).*10000) .*1000; %random seed for trial
         end
         S.signal = stimvals{1}(j);
         sname = [basedir '/stim' num2str(S.stimno)];
