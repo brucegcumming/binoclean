@@ -343,11 +343,7 @@ for j = 1:length(strs{1})
 %        DATA.comcodes(a).const = a;
     elseif strncmp(s,'ACK:',4)
 %        t = regexprep(s(5:end),'([^''])''','$1'''''); %relace ' with '' for matlab
-        beep;
-        CreateStruct.Interpreter = 'tex';
-        CreateStruct.WindowStyle='replace';
-        h = msgbox(s(5:end),'Binoc Warning','warn',CreateStruct);
-        ScaleWindow(h,2);
+        vergwarning(s(5:end));
         DATA.Statuslines{end+1} = s;
         DATA.lastmsg = s;
     elseif sum(strncmp(s,{'NewBinoc' 'confirm' 'exvals' 'fontsiz' 'fontname' 'layout' ...
@@ -431,10 +427,20 @@ for j = 1:length(strs{1})
             DATA.strcodes(sid).label = label;
             DATA.strcodes(sid).icode = icode;
             DATA.strcodes(sid).code = code;
-    elseif strncmp(s,'status',5)
+    elseif strncmp(s,'status',6)
         DATA.Statuslines{end+1} = s(8:end);
+        if strncmp(s,'status=Can''t open Network',24)
+            DATA.lastmsg = s(8:end);
+            if DATA.errors(1) == 0
+                vergwarning(DATA.lastmsg);
+            end
+            DATA.errors(1) = DATA.errors(1)+1;
+        end
         if ishandle(DATA.statusitem)
             set(DATA.statusitem,'string',DATA.Statuslines,'listboxtop',length(DATA.Statuslines));
+            if ~isempty(DATA.lastmsg)
+                set(DATA.statusitem,'Name',DATA.lastmsg);
+            end
         end
         if DATA.inexpt == 0 && isfield(DATA,'toplevel')
             set(DATA.toplevel,'Name',s(8:end));
@@ -1128,7 +1134,15 @@ function DATA = ReadExptLines(DATA, strs, src)
         end
         DATA = SetExptMenus(DATA);
     end
+
+function vergwarning(s, varargin)
     
+   beep;
+   CreateStruct.Interpreter = 'tex';
+   CreateStruct.WindowStyle='replace';
+   h = msgbox(s,'Binoc Warning','warn',CreateStruct);
+   ScaleWindow(h,2);
+   
 function line = CheckLineForBinoc(tline)
     if strncmp(tline,'op',2)
         tline = strrep(tline,'+2a','+afc');
@@ -1585,6 +1599,11 @@ scrsz = get(0,'Screensize');
 DATA = SetField(DATA,'ip','http://localhost:1110/');
 DATA.network = 1;
 DATA.lastmsg = '';
+DATA.errors(1) = 0; %keep track of  erros received, so only acknowlge first
+DATA.confused = 1;
+DATA.servodata.alldepths = [];
+DATA.servodata.alltimes = [];
+
 DATA.newbinoc = 2;
 DATA.ready = 0;
 DATA.timerperiod = 0.05;
@@ -3325,6 +3344,13 @@ elseif length(value) > 1
      end
 end
 
+
+function CheckServo(a,b, fig, varargin);
+    DATA = get(fig,'UserData');
+    if DATA.servofig
+        ServoDrive('readposition','quiet');
+    end
+
 function CheckInput(a,b, fig, varargin)
     DATA = get(fig,'UserData');
     
@@ -3336,12 +3362,16 @@ function CheckInput(a,b, fig, varargin)
         return;
     end
     try
-        if DATA.servofig
-            ServoDrive('readposition','quiet');
-        end
         ReadFromBinoc(DATA, 'auto');
     catch ME
         cprintf('red','Error in timer call\n');
+        s = getReport(ME);
+        futs(s);
+    end
+    if DATA.confused
+        DATA = GetState(get(DATA.toplevel,'UserData'));
+        DATA.confused = 0;
+        SetData(DATA);
     end
     if DATA.verbose(1) > 1
     fprintf('Timer read over at %s\n',datestr(now));
@@ -3681,6 +3711,7 @@ function DATA = RunButton(a,b, type)
         DATA = GetState(DATA);
         if DATA.inexpt ~= inexpt
             myprintf(DATA.frombinocfid,'-show','Still Confused\n');
+            DATA.confused = 1;
         end
     end
     set(DATA.toplevel,'UserData',DATA);    
@@ -3707,7 +3738,7 @@ function DATA = RunButton(a,b, type)
 %        DATA.outid = 0;
         set(DATA.toplevel,'UserData',DATA);
         
-function ElectrodeMoved(F, pos) %called by ServoDrive
+function ElectrodeMoved(F, pos, varargin) %called by ServoDrive
 %ServoDrive sends position in microns. Binoc wants mm            
 if ~isfigure(F) %if verg was close before servowindow
     return;
@@ -3715,6 +3746,11 @@ end
 DATA = get(F, 'UserData');
 if strcmp(pos,'close') %Servo Contoller Closing
     DATA.servofig = 0;
+    if isfield(varargin{1},'alldepths')
+        X = varargin{1};
+        DATA.servodata.alldepths = cat(2,DATA.servodata.alldepths,X.alldepths,X.newdepths);
+        DATA.servodata.alltimes = cat(2,DATA.servodata.alltimes,X.alltimes,X.newtimes);
+    end
     set(DATA.toplevel,'UserData',DATA);
 else
     outprintf(DATA,'!seted=%.3f\n',pos./1000);
@@ -3724,8 +3760,14 @@ function ElectrodePopup(a,b, fcn, varargin)
   DATA = GetDataFromFig(a);
 
   if ~isempty(DATA.servoport)
-      X = ServoDrive('ttyname',DATA.servoport,'callback',{@ElectrodeMoved, DATA.toplevel});
+      args = {};
+      if ~isempty(DATA.servodata.alldepths)
+          args = {'depths' DATA.servodata.alldepths DATA.servodata.alltimes};
+      end
+      X = ServoDrive('ttyname',DATA.servoport,'callback',{@ElectrodeMoved, DATA.toplevel},args{:});
       DATA.servofig = X.toplevel;
+      DATA.servotimer = timer('timerfcn',{@CheckServo, DATA.toplevel},'Period',1,'executionmode','fixedspacing');
+      start(DATA.servotimer);
       set(DATA.toplevel,'UserData',DATA);
   end
   
@@ -4379,7 +4421,7 @@ for j = line:length(str)
         set(DATA.toplevel,'UserData',DATA);
         outprintf(DATA,'#From RunSequence\n');
         outprintf(DATA,'%s\n',str{j}); %this runs expt in binoc
-        DATA.Statuslines{end+1} = sprintf('RunSequence Line %d. at %s',line,datestr(now,'hh:mm.ss'));
+        DATA.Statuslines{end+1} = sprintf('RunSequence Line %d. at %s %d Repeats left',line,datestr(now,'hh:mm.ss'),DATA.rptexpts);
         return;
     end
     if ~sum(strncmp(str{j},'expt',4)) %don't send these lines to binoc

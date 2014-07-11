@@ -8,6 +8,11 @@ while j <= length(varargin)
     if strncmpi(varargin{j},'callback',5)
         j = j+1;
         DATA.callback = varargin{j};
+    elseif strncmpi(varargin{j},'depths',5)
+        j = j+1;
+        DATA.alldepths = varargin{j};
+        j = j+1;
+        DATA.alltimes = varargin{j};
     elseif strncmpi(varargin{j},'position',5)
         j = j+1;
         figpos = varargin{j};
@@ -262,7 +267,7 @@ function CloseServoPort(a,b)
 DATA = GetDataFromFig(a);
 %tell verg first
 if ~isempty(DATA.callback)
-    feval(DATA.callback{:}, 'close');
+    feval(DATA.callback{:}, 'close', DATA);
 end
 
 if isfield(DATA, 'sport');
@@ -293,6 +298,19 @@ else
 end
 set(DATA.toplevel,'UserData',DATA);
 
+function x = addfield(x,name, val)
+if iscell(name) && iscell(val) && length(name) == length(val)
+    for j = 1:length(name)
+        x = addfield(x,name{j},val{j});
+    end
+elseif iscell(name)
+    for j = 1:length(name)
+        x = addfield(x,name{j},val);
+    end
+elseif ~isfield(x,name)
+    x.(name) = val;
+end
+
 function DATA = SetDefaults(DATA)
 DATA.position = 0;
 DATA.step = 0;
@@ -303,9 +321,9 @@ DATA.customspeed = 1; %also default
 DATA.motorspeed = round(DATA.customspeed.* DATA.speedscale.*DATA.stepscale/1000);
 
 DATA.motorid = -1; %< 0 means dont set id
-DATA.alldepths = [];
-DATA.alltimes = [];
-DATA.offidx = []; %keep  track of when motor cut
+
+DATA = addfield(DATA,{'alldepths' 'alltimes' 'offidx'},[]);
+
 if ~isfield(DATA,'ttyname')
     DATA.ttyname = '/dev/tty.USA49Wfa1212P1.1';
 end

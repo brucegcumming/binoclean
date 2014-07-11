@@ -10387,7 +10387,7 @@ int GotChar(char c)
                 break;
             case START_STIM:
                 fixstate = GOOD_FIXATION;
-                SerialSend(GOOD_FIXATION);
+                SerialSignal(GOOD_FIXATION);
                 /* 
                  * for intial training, give one reward as soon as fixating
                  */

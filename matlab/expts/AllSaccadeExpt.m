@@ -101,7 +101,7 @@ else
     stimvals{3} = {'grey'};
 end
 
-nstim = [length(stimvals{1}) length(stimvals{2}) length(stimvals{3}) ntrials/rpts];
+nstim = [length(stimvals{1}) length(stimvals{2}) length(stimvals{3}) ceil(ntrials/rpts)];
 ssign = 2.*(round(rand(ntrials.*rpts,1)) -0.5);
 sgn = 1;
 for t = 1:nstim(4)
@@ -131,7 +131,7 @@ for k = 1:nstim(2)
         pb = pblank;
         if S.imi == stimvals{1}(1)
             S.se = fixedseed;
-            jumptime = 0; %no saccades on rpt stim
+            S.Ff = 0; %no saccades on rpt stim
             pb = 0;
         elseif S.imi == 1  %no saccade, 50ms blank
             pb = 0;
