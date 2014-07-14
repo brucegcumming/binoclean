@@ -132,12 +132,12 @@ if isempty(it)
     
     DATA.cmdfid = fopen(cmdfile,'a');
     myprintf(DATA.cmdfid,'Reopened %s\n',datestr(now));
-    set(DATA.toplevel,'UserData',DATA);
     if DATA.frombinocfid > 0
         TimeMark(tt,2);
     end
     DATA = CheckStateAtStart(DATA);
     DATA.ready = 1;
+    set(DATA.toplevel,'UserData',DATA);
     vpath = which('verg'); %make sure local matlab/expts is in path too
     vpath = strrep(vpath,'verg.m','expts');
     addpath(vpath);
@@ -3748,10 +3748,17 @@ if strcmp(pos,'close') %Servo Contoller Closing
     DATA.servofig = 0;
     if isfield(varargin{1},'alldepths')
         X = varargin{1};
-        DATA.servodata.alldepths = cat(2,DATA.servodata.alldepths,X.alldepths,X.newdepths);
-        DATA.servodata.alltimes = cat(2,DATA.servodata.alltimes,X.alltimes,X.newtimes);
+        if X.newtimes(1) > max(X.alltimes)
+            DATA.servodata.alldepths = cat(2,DATA.servodata.alldepths,X.alldepths,X.newdepths);
+            DATA.servodata.alltimes = cat(2,DATA.servodata.alltimes,X.alltimes,X.newtimes);
+        else
+            DATA.servodata.alldepths = cat(2,DATA.servodata.alldepths,X.alldepths);
+            DATA.servodata.alltimes = cat(2,DATA.servodata.alltimes,X.alltimes);
+        end
+        DATA.servodata.stepsize = X.stepsize;
     end
     set(DATA.toplevel,'UserData',DATA);
+    stop(DATA.servotimer);
 else
     outprintf(DATA,'!seted=%.3f\n',pos./1000);
 end
@@ -3763,6 +3770,9 @@ function ElectrodePopup(a,b, fcn, varargin)
       args = {};
       if ~isempty(DATA.servodata.alldepths)
           args = {'depths' DATA.servodata.alldepths DATA.servodata.alltimes};
+      end
+      if ~isempty(DATA.servodata.stepsize)
+          args = {'stepsize' DATA.servodata.stepsize};
       end
       X = ServoDrive('ttyname',DATA.servoport,'callback',{@ElectrodeMoved, DATA.toplevel},args{:});
       DATA.servofig = X.toplevel;
@@ -5604,12 +5614,19 @@ else
 end
 
 SetTextUI(DATA,'');
+showbinoc = 0; % display value binoc returns
 if txt(end) ~= '='
     DATA = InterpretLine(DATA,txt);
+else
+    showbinoc = 1;
 end
-DATA = ReadFromBinoc(DATA,'from TextEntered ');
-if txt(end) == '='
-    code = txt(1:end-1);
+if ~isempty(regexp(txt,'=[A-z]+[+-]')) && ~isempty(code)
+    outprintf(DATA,'%s=\n',code);
+    showbinoc = 2;
+end
+DATA = ReadFromBinoc(DATA,'from TextEntered ','expect');
+if showbinoc
+%    code = txt(1:end-1);
     if sum(strcmp(code,{'uf' 'monkey'}))
        DATA = AddTextToGui(DATA,['cwd=' DATA.cwd]);
     end
@@ -5631,7 +5648,11 @@ if txt(end) == '='
        elseif ischar(DATA.binoc{DATA.currentstim}.(code)) %sometimes nmes->char  (!! ei=180lin)
            txt = ['?' txt '?''' DATA.binoc{DATA.currentstim}.(code) ''''];
        else
-           txt = ['?' txt '?' num2str(DATA.binoc{DATA.currentstim}.(code)')];
+           if showbinoc ==2
+               txt = [code '=' num2str(DATA.binoc{DATA.currentstim}.(code)')];
+           else
+               txt = ['?' txt '?' num2str(DATA.binoc{DATA.currentstim}.(code)')];
+           end
        end
        if length(id)
         str = DATA.comcodes(id(1)).label;

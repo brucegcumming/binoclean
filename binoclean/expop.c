@@ -13108,6 +13108,12 @@ float readval(char *s, 	Stimulus *TheStim, int goteq)
         else if(!strncmp(s,"sp",2)){
             val = StimulusProperty(expt.st, STIM_PERIOD) * val;
         }
+        else if(!strncmp(s,serial_strings[RF_PARA],2)){
+            val = addval+StimulusProperty(expt.st, RF_PARA) * val;
+        }
+        else if(!strncmp(s,serial_strings[RF_ORTHO],2)){
+            val = addval+ StimulusProperty(expt.st, RF_PARA) * val;
+        }
         else if(!strncmp(s,serial_strings[DEPTH_MOD],2)){
             val = addval + StimulusProperty(expt.st,DEPTH_MOD) * val;
         }
@@ -14483,6 +14489,8 @@ int InterpretLine(char *line, Expt *ex, int frompc)
         case DISP_X:
         case DEPTH_MOD:
         case FP_MOVE_DIR:
+        case RF_PARA:
+        case RF_ORTHO:
         case SETZXOFF:
         case SETZYOFF:
         case STIM_WIDTH:
@@ -14704,6 +14712,9 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     if (frompc != 2 && code >= 0){  // send to verg if it came from Spike2 or binoc GUI
         notify(line);
         notify("\n");
+    }
+    else if(frompc ==2 && code >= 0){
+ //       SendToGui(code); // would like this only when readval uses another property.  Let verg figure this out
     }
     return(code);
 }

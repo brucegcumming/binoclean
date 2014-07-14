@@ -19,6 +19,9 @@ while j <= length(varargin)
     elseif strncmpi(varargin{j},'quiet',5)
         DATA.verbose = 0;
         verbose = 0;
+    elseif strncmpi(varargin{j},'stepsize',5)
+        j = j+1;
+        DATA.stepsize = varargin{j};
     elseif strncmpi(varargin{j},'ttyname',3)
         j = j+1;
         DATA.ttyname = varargin{j};
@@ -79,6 +82,7 @@ else
     str = get(it,'string');
     j= get(it,'value');
     step = sscanf(str(j,:),'%d');
+    DATA.stepsize = step;
     if  strcmp(fcn,'Up')
         step = -step;
     end
@@ -119,7 +123,20 @@ bp = [0.05 0.4 0.3 0.15];
 h = uicontrol(gcf,'style','popupmenu','string','10uM|20uM|25uM|50uM|100uM|200uM|Set Custom', ...
         'units', 'norm', 'position',bp,'value',1,...
         'Tag','StepSize','fontsize',18,'fontweight','bold','callback',@SetStepSize);
-
+if isfield(DATA,'stepsize') && DATA.stepsize > 0
+    [a,b] = min(abs(DATA.stepsize-[10 20 25 50 100 200]));
+    if a < 2
+        set(h,'value',b');
+    else
+        DATA.customstep = DATA.stepsize;
+        s = get(h,'string');
+        val = size(s,1);
+        str = sprintf('%d (Custom)',DATA.customstep);
+        DATA.step = DATA.customstep;
+        s(val+1,1:length(str)) = str;
+        set(h,'string',s,'value',val+1);
+    end
+end
     bp(2) = 0.2;
     bp(1) = bp(1)+bp(3)+0.05;
 bp(3) = 0.15;
@@ -225,6 +242,7 @@ function SetMotorPlot(a,b)
    tag = get(a,'tag');
    DATA.plottype = tag;
    SetMenuCheck(a,'exclusive');
+   DATA.firstsample = 0;
    PlotDepths(DATA);
    set(DATA.toplevel,'UserData',DATA);
 
@@ -243,7 +261,7 @@ elseif strcmp(tag,'VSlow')
 elseif strcmp(tag,'Auto')
     DATA.motorspeed = 0;
 elseif strcmp(tag,'Custom')
-    defaultanswer{1} = num2str(DATA.customspeed);
+    defaultanswer{1} = num2str(DATA.customspeed.*1000);
     str = inputdlg('Step Size in uM/sec','Custom',1,defaultanswer);
     if isempty(str)
        return;
@@ -314,14 +332,14 @@ end
 function DATA = SetDefaults(DATA)
 DATA.position = 0;
 DATA.step = 0;
-DATA.customstep = 0;
 DATA.stepscale = 65.6;
 DATA.speedscale = 15000;
+DATA.firstsample = 0;
 DATA.customspeed = 1; %also default
 DATA.motorspeed = round(DATA.customspeed.* DATA.speedscale.*DATA.stepscale/1000);
 
 DATA.motorid = -1; %< 0 means dont set id
-
+DATA = addfield(DATA,{'stepsize' 'customstep' 'position'},0);
 DATA = addfield(DATA,{'alldepths' 'alltimes' 'offidx'},[]);
 
 if ~isfield(DATA,'ttyname')
@@ -389,12 +407,58 @@ else
 fprintf(DATA.sport,'DI\n');
 end
 
+
+function DATA = SlowMove(DATA, pos)
+
+newpos = pos .* DATA.stepscale;
+d = GetCurrentPosition(DATA);
+edur = abs(pos-d)./DATA.motorspeed;
+
+nstep = floor(abs((pos-d)/10));  %divide into 10uM steps
+smallstep = (pos -d)./nstep;
+positions = d + smallstep .* [1:nstep];
+
+oldspeed = DATA.motorspeed;
+ispeed = round(0.1.*DATA.speedscale.*DATA.stepscale/1000);
+fprintf(DATA.sport,'SP%.0f\n',ispeed);
+DATA.motorspeed = ispeed;
+stopui = findobj(DATA.toplevel,'tag','EmergencyStop');
+
+
+DATA.firstsample = length(DATA.alldepths);
+for j = 1:nstep
+    istop = get(stopui,'value');
+    if istop
+        break;
+    else
+        DATA = SetNewPosition(DATA,positions(j))
+        if j < nstep
+            pause(edur./nstep);
+        end
+    end
+end
+
+if istop
+    fprintf('Stopped by User\n');
+    set(stopui,'value',0);
+end
+
+fprintf(DATA.sport,'SP%.0f\n',oldspeed);
+DATA.motorspeed = oldspeed;
+DATA.firstsample = 0;
+
 function DATA = SetNewPosition(DATA, pos)
+
+
 
 newpos = pos .* DATA.stepscale;
 pause(0.01);
 d = NaN;
 
+if DATA.motorspeed < 30
+    DATA = SlowMove(DATA, pos);
+    return;
+end
 if DATA.motorid >= 0
     fprintf(DATA.sport,'%dPOS\n',DATA.motorid);
 else
@@ -407,6 +471,8 @@ if isempty(s)
     return;
 end
 d = sscanf(s,'%d');
+startpos = d./DATA.stepscale;
+
 margin = 20 * DATA.stepscale; %allow for up to 20uM of noise
 step = newpos-d;
 edur = 0.1 + 2 .* abs(newpos-d) ./(DATA.motorspeed .* DATA.stepscale); %estimated duration
@@ -497,7 +563,7 @@ while npost < 2
             if poserr < 3./DATA.stepscale.*1000 %3uM margin of error seems necessary. 
                 npost = npost+1;
             end
-            if edur > 2
+            if edur > 2 || DATA.firstsample > 0
                 PlotDepths(DATA, ts, newd);
             end
         catch
@@ -513,7 +579,7 @@ while npost < 2
         fprintf(DATA.sport,'DI\n');
        npost = 2;
        F = gcf;
-       uiwait(warndlg(sprintf('Only Moved to %.3f (%.3f)',[newd(end) newpos]./(DATA.stepscale.*1000)),'Microdrive Error','modal'));
+       uiwait(warndlg(sprintf('Only Moved to %.3f (%.3f->%.3f)',[newd(end) startpos newpos]./(DATA.stepscale.*1000)),'Microdrive Error','modal'));
        figure(F);
     elseif newd(j) < minpos
         fprintf(DATA.sport,'DI\n');
@@ -578,8 +644,13 @@ end
 
 if ~strcmp(DATA.plottype,'None')
     if strcmp(DATA.plottype,'LastMove')
-        ts = ts-ts(1);
-        y =newd./DATA.stepscale;
+        if DATA.firstsample > 0
+            ts = DATA.alltimes(1+DATA.firstsample:end);
+            y = DATA.alldepths(1+DATA.firstsample:end);
+        else
+            ts = ts-ts(1);
+            y =newd./DATA.stepscale;
+        end
         plot(ts, y);
         set(gca,'xtick',[],'ytick',[],'ydir','reverse');
         xl = [min(ts) max(ts)];

@@ -2,3 +2,4 @@ Crashing
 
 Crash2.stm without Spike2 100rpt expts. crahses July 11 2014
 seems not when using leantest, but double check this
+Crash2.stm just free running trials. 

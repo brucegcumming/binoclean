@@ -3819,7 +3819,7 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
             SetStimulus(st,cval,YPOS,event);
             break;
         case ABS_ORTHOG_POS:
-            fval = GetProperty(&expt, st, PARA_POS);
+            fval = GetProperty(&expt, st,ABS_PARA_POS);
             cosa = cos(expt.rf->angle * M_PI/180.0);
             sina = sin(expt.rf->angle * M_PI/180.0);
             bval = -(val * sina - fval * cosa);
@@ -3829,40 +3829,45 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
             break;
         case ORTHOG_POS:
             fval = GetProperty(&expt, st, PARA_POS);
-        case RF_ORTHO:
             cosa = cos(expt.rf->angle * M_PI/180.0);
             sina = sin(expt.rf->angle * M_PI/180.0);
             bval = (val * sina - fval * cosa);
             cval = (fval * sina + val * cosa);
             bval =  pix2deg(expt.rf->pos[0]) - bval;
             cval +=  pix2deg(expt.rf->pos[1]);
-            if(code == RF_ORTHO){
-                SetStimulus(st,bval,RF_X,event);
-                SetStimulus(st,cval,RF_Y,event);
-                SerialSend(RF_SET);
-            }
-            //Set Stimulus to RF centre too.
             SetStimulus(st,bval,XPOS,event);
             SetStimulus(st,cval,YPOS,event);
             break;
+        case RF_ORTHO:
+            fval = GetProperty(&expt, st, RF_PARA);
+            cosa = cos(expt.rf->angle * M_PI/180.0);
+            sina = sin(expt.rf->angle * M_PI/180.0);
+            bval = -(val * sina - fval * cosa);
+            cval = (fval * sina + val * cosa);
+            SetStimulus(st,bval,RF_X,event);
+            SetStimulus(st,cval,RF_Y,event);
+            SerialSend(RF_SET);
+            break;
         case PARA_POS:
             fval = GetProperty(&expt, st, ORTHOG_POS);
-        case RF_PARA:
             cosa = cos(expt.rf->angle * M_PI/180.0);
             sina = sin(expt.rf->angle * M_PI/180.0);
             bval = (fval * sina - val * cosa);
             cval = (val * sina + fval * cosa);
             bval =  pix2deg(expt.rf->pos[0]) - bval;
             cval +=  pix2deg(expt.rf->pos[1]);
-            if(code == RF_PARA){
-                SetStimulus(st,bval,RF_X,event);
-                SetStimulus(st,cval,RF_Y,event);
-                SerialSend(RF_SET);
-            }
-            else{
-                SetStimulus(st,bval,XPOS,event);
-                SetStimulus(st,cval,YPOS,event);
-            }
+            SetStimulus(st,bval,XPOS,event);
+            SetStimulus(st,cval,YPOS,event);
+            break;
+        case RF_PARA:
+            fval = GetProperty(&expt, st, RF_ORTHO);
+            cosa = cos(expt.rf->angle * M_PI/180.0);
+            sina = sin(expt.rf->angle * M_PI/180.0);
+            bval = -(fval * sina - val * cosa);
+            cval = (val * sina + fval * cosa);
+            SetStimulus(st,bval,RF_X,event);
+            SetStimulus(st,cval,RF_Y,event);
+            SerialSend(RF_SET);
             break;
         case PARALELL_DISP:
             // ? use stim ori or RF ori?
@@ -3875,11 +3880,11 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
             SetStimulus(st,cval,DISP_X,event);
             break;
         case ABS_PARA_POS:
-            fval = GetProperty(&expt, st, ORTHOG_POS);
+            fval = GetProperty(&expt, st, ABS_ORTHOG_POS);
             cosa = cos(expt.rf->angle * M_PI/180.0);
             sina = sin(expt.rf->angle * M_PI/180.0);
-            bval = -(val * sina - fval * cosa);
-            cval = (fval * sina + val * cosa);
+            bval = -(fval * sina - val * cosa);
+            cval = (val * sina + fval * cosa);
             SetStimulus(st,bval,RF_X,event);
             SetStimulus(st,cval,RF_Y,event);
             break;
@@ -6291,7 +6296,9 @@ int next_frame(Stimulus *st)
             }
             else
                 search_background();
+            setmask(ALLMODE);
             draw_conjpos(cmarker_size,PLOT_COLOR);
+            ShowBox(expt.rf,RF_COLOR);
             glSwapAPPLE();
             gettimeofday(&now,NULL);
             if ((optionflag & SHOW_CONJUG_BIT) && (val = timediff(&now,&lastsertime)) > 2){
@@ -8796,6 +8803,13 @@ float StimulusProperty(Stimulus *st, int code)
             y = StimulusProperty(st,YPOS);
             value = x * sina +  y * cosa;
             break;
+        case RF_ORTHO:
+            cosa = cos(expt.rf->angle * M_PI/180.0);
+            sina = sin(expt.rf->angle * M_PI/180.0);
+            x =  -StimulusProperty(st,RF_X);
+            y = StimulusProperty(st,RF_Y);
+            value = x * sina +  y * cosa;
+            break;
         case STIMORTHOG_POS:
             x = StimulusProperty(st,ASPECT_RATIO);
             if(x > 1){
@@ -8828,6 +8842,13 @@ float StimulusProperty(Stimulus *st, int code)
             sina = sin(expt.rf->angle * M_PI/180.0);
             x =  -StimulusProperty(st,XPOS);
             y = StimulusProperty(st,YPOS);
+            value = y * sina -  x * cosa;
+            break;
+        case RF_PARA:
+            cosa = cos(expt.rf->angle * M_PI/180.0);
+            sina = sin(expt.rf->angle * M_PI/180.0);
+            x =  -StimulusProperty(st,RF_X);
+            y = StimulusProperty(st,RF_Y);
             value = y * sina -  x * cosa;
             break;
         case FRAMEREPEAT:
