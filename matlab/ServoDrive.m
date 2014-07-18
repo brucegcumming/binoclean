@@ -337,13 +337,21 @@ DATA.speedscale = 15000;
 DATA.firstsample = 0;
 DATA.customspeed = 1; %also default
 DATA.motorspeed = round(DATA.customspeed.* DATA.speedscale.*DATA.stepscale/1000);
+DATA.setupfile = '/local/servomotor.setup';
 
 DATA.motorid = -1; %< 0 means dont set id
 DATA = addfield(DATA,{'stepsize' 'customstep' 'position'},0);
 DATA = addfield(DATA,{'alldepths' 'alltimes' 'offidx'},[]);
 
 if ~isfield(DATA,'ttyname')
-    DATA.ttyname = '/dev/tty.USA49Wfa1212P1.1';
+    txt = scanlines(DATA.setupfile);
+    id = strncmp('serialport',txt,10);
+    if isempty(id)
+        DATA.ttyname = '/dev/tty.USA49Wfa1212P1.1';
+    else
+        a = split(txt{id},'=');
+        DATA.ttyname = a{2};
+    end
 end
 if ~isfield(DATA,'callback')
     DATA.callback = [];

@@ -1603,6 +1603,7 @@ DATA.errors(1) = 0; %keep track of  erros received, so only acknowlge first
 DATA.confused = 1;
 DATA.servodata.alldepths = [];
 DATA.servodata.alltimes = [];
+DATA.servodata.stepsize = 0;
 
 DATA.newbinoc = 2;
 DATA.ready = 0;
@@ -3369,9 +3370,11 @@ function CheckInput(a,b, fig, varargin)
         futs(s);
     end
     if DATA.confused
+        fprintf('Getting State from binoc\n');
         DATA = GetState(get(DATA.toplevel,'UserData'));
         DATA.confused = 0;
         SetData(DATA);
+        fprintf('inexpt is now %d\n',DATA.inexpt);
     end
     if DATA.verbose(1) > 1
     fprintf('Timer read over at %s\n',datestr(now));

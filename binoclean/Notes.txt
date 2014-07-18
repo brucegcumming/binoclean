@@ -2,4 +2,8 @@ Crashing
 
 Crash2.stm without Spike2 100rpt expts. crahses July 11 2014
 seems not when using leantest, but double check this
-Crash2.stm just free running trials. 
+Crash2.stm just free running trials does not crash for 24 hours.
+Crash2 4000 trials per expt: Crashes near end of second lap
+Crash2 10000 trials per expt. Crashes after 3831 in first expt
+Crash2 leantest when PRESTIM is bypassed and RunExptStim is in testloop. Crashes after 4578 trials
+Crash2 testloop is 1->2  2->3 459->12 12->1  crash after 6500
