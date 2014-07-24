@@ -6,4 +6,31 @@ Crash2.stm just free running trials does not crash for 24 hours.
 Crash2 4000 trials per expt: Crashes near end of second lap
 Crash2 10000 trials per expt. Crashes after 3831 in first expt
 Crash2 leantest when PRESTIM is bypassed and RunExptStim is in testloop. Crashes after 4578 trials
+
+Including different states. Best done by setting state after WAIT_FOR RESPONSE
 Crash2 testloop is 1->2  2->3 459->12 12->1  crash after 6500
+
+WAIT_FOR_RESPONSE -> PRESTIM
+                459/12-> 459/12 does not crash
+WAIT_FOR_RESPONSE -> INTERTRIAL
+		 1/1 1/2 2/3 459/12  Does crash, but only after 38854 stims
+WAIT_FOR_RESPONSE -> POSTTRIAL
+		  1/1 1/2 2/3 459/12 12/1 crash after 9792, 1343
+
+WAIT_FOR_RESPONSE -> POSTTRIAL
+		  1/2 2/3 459/12 1/2 crash after 9792, 1343
+
+WAIT_FOR_RESPONSE -> INTERTRIAL
+Add Postrial commands WAIR_FOR_RESPONSE in test loop crash after 1396
+cut these out again with if(crasher) goes 35000
+1/1 1/2 2/3 459/12 1/1
+
+
+POSTTRIAL 12
+POSTSTIMINTRIAL 13
+INTERTRIAL 1
+PREFIXATION 2
+PRESTIMULUS 3
+INSTIMULUS 4
+POSTSTIMULUS 5
+WAIT_FOR_RESPONSE 459

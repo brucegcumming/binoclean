@@ -129,12 +129,14 @@ for k = 1:nstim(2)
         end
         S.imi = stimvals{1}(j);
         pb = pblank;
+        S.Ff=jumptime;
         if S.imi == stimvals{1}(1)
             S.se = fixedseed;
             S.Ff = 0; %no saccades on rpt stim
             pb = 0;
         elseif S.imi == 1  %no saccade, 50ms blank
             pb = 0;
+            S.Ff=0;
         else
             S.se = 1000 + round(rand(1,1).*10000) .*1000; %random seed for trial
         end
@@ -194,13 +196,13 @@ for k = 1:nstim(2)
                     S.vals{1}(frame:frame+4) = 0;
                     frame = frame+jumptime;
                 end                    
-                S.nblank = 4;                
+                S.nblank = 4;
+                S.Ff=0;
             else
                 S.types = {};
                 S.vals = {};
                 S.nblank = 0;
             end            
-            S.Ff = jumptime;
             S.str = '';
             if strcmp(stimvals{3}{m},'grey')
                 S.sactype = 2;

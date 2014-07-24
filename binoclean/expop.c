@@ -99,7 +99,7 @@ char * VERSION_NUMBER;
 
 #define MAXRF 10
 extern Expstim oldrfs[];
-extern int Frames2DIO;
+extern int Frames2DIO,teststate;
 extern float pursuedir;
 extern FILE *imidxfd;
 extern char *replay_expt, ImageOutDir[],timeoutstring[];
@@ -2627,6 +2627,8 @@ int OpenNetworkFile(Expt expt)
         fprintf(netoutfile,"Reopened %s by binoc Version %s",ctime(&tval),VERSION_NUMBER);
         if (seroutfile != NULL)
             fprintf(seroutfile,"Network Record to %s\n",name);
+        sprintf(buf,"status=Network Record to %s\n",name);
+        notify(buf);
     }
     else{
         sprintf(buf,"Can't open Network parameter record file\n %s\t or\n%s",nbuf,name);
@@ -7645,10 +7647,14 @@ void InitExpt()
             sprintf(cbuf,"./%s.%sX%s.rc%d",stimulus_names[expt.st->type],serial_strings[expt.mode],serial_strings[expt.type2],rcctr++);
             rcfd = fopen(cbuf,"w");
         }
-        else if (seroutfile){
+        else{
+            sprintf(buf,"status=save rls to %s\n",cbuf);
+            notify(buf);
+        if (seroutfile){
             fprintf(seroutfile,"#saverls %s\n",cbuf);
             if (netoutfile)
                 fprintf(netoutfile,"#saverls %s\n",cbuf);
+        }
         }
     }
     else
@@ -11823,7 +11829,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
   
     if ((expt.st->type == STIM_RLS || expt.st->type == STIM_CHECKER) && optionflags[SAVE_RLS] && rcfd){
         gettimeofday(&timea, NULL);
-        fprintf(rcfd,"id%dse%dt%.3fst%d\n",expt.allstimid,expt.st->left->baseseed,ufftime(&firstframetime),stimorder[stimno]);
+        fprintf(rcfd,"id%dse%d:%dt%.3fst%d\n",expt.allstimid,expt.st->firstseed,expt.st->left->baseseed,ufftime(&firstframetime),stimorder[stimno]);
         StimStringRecord(rcfd, expt.st);
         if(optionflags[FAST_SEQUENCE]){
             fputs(rcbuf,rcfd);
@@ -13528,10 +13534,10 @@ int InterpretLine(char *line, Expt *ex, int frompc)
         return(0);
     }
     else if(!strncmp(line,"leantest",8)){
-        if (stimstate == TEST_BINOCLEAN)
-            stimstate = STIMSTOPPED;
-        else
+        if(teststate == 0)
             stimstate = TEST_BINOCLEAN;
+        else
+            teststate = 0;
         return(0);
     }
     else if(!strncmp(line,"offdelay",8)){

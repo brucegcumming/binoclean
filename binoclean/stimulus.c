@@ -69,7 +69,7 @@ int *RecordImage(int frame, Stimulus *st){
 // For RLS 0 = Black, 1 = grey, 2 = whiee
 // For RDS 0 = Grey, 1 = BLACK, 2 = white
         if(st->type == STIM_RLS){
-            if (st->pos.contrast_amp < 0.01){
+            if (fabs(st->pos.contrast_amp) < 0.01){
                 *p = -1;
                 return(0);
             }
