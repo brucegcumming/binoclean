@@ -44,6 +44,7 @@ fprintf(fid,'or=0\n');
 fprintf(fid,'sl=0\n');
 fprintf(fid,'nc=2\n');
 fprintf(fid,'Dr=1\n');
+fprintf(fid,'nph=0\n');
 
 fclose(fid);
 
@@ -80,19 +81,14 @@ fprintf(fid,'nc=%d\n',ncs(j));
 fprintf(fid,'or=0\n',ncs(j));
 fprintf(fid,'co=1\n',ncs(j));
 fprintf(fid,'jv=%.1f\n',speed);
-if j > 4
+if j > 3
     fprintf(fid,'sl=1\n');
     fprintf(fid,'sM=29\n');
     fprintf(fid,'Dr=1\n');
-elseif j ==4
-    fprintf(fid,'sl=1\n');
-    fprintf(fid,'sM=0\n');
-    fprintf(fid,'Dr=1\n');
-    fprintf(fid,'nph=1\n');
 elseif j ==3
     fprintf(fid,'sl=1\n');
     fprintf(fid,'sM=30\n');
-    fprintf(fid,'Dr=3\n');
+    fprintf(fid,'Dr=5\n');
 else
     fprintf(fid,'sl=0\n');
     fprintf(fid,'sM=29\n');
@@ -108,7 +104,7 @@ stimorder = repmat([1:ns]-1,1,nr);
 stimorder = stimorder(randperm(length(stimorder)));
 stimname = [basedir '/stimorder'];
 fid = fopen(stimname,'w');
-fprintf(fid,'expvars=co,a2,or,sl,nc,st,sf\n');
+fprintf(fid,'expvars=co,a2,or,sl,nc,st,sf,Dr,nph\n');
 fprintf(fid,'%s\n',sprintf('%d ',stimorder));
 fclose(fid);
 fprintf('%d stim * %d repeats\n',ns,nr);

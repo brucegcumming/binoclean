@@ -25,31 +25,79 @@ end
 matexp.stimdir = basedir;
 
 
-jvs = [0 0.5 1 2 0.5 1 2];
-nphs =[0 0   0 0  1  1 1];
-dws = [0.05 0.1 0.15];
-%size(values,1) must match length stimvars
-values(1,:)= repmat(jvs,1,length(dws));
-values(5,:)= repmat(nphs,1,length(dws));
-none = length(jvs); %# times to repeat each dw;
-n = length(dws);
-for j = 1:n
-    id = [1:none] + (j-1) * none;
-    values(2,id) = dws(j);
+if strcmp(name,'bothsize')
+    dws = [0.05 0.1 0.15];
+    ncs = [0 2 8 18 24 35 71];
+    jvs = [0.5 1 2];
+    nphs = [0 1];
+    ns = 0;
+    for j = 1:length(dws)
+        for k = 1:length(ncs)
+            ns = ns+1;
+            values(1,ns) = dws(j);
+            values(2,ns) = ncs(k);
+            values(3,ns) = 1;
+            values(4,ns) = 0.5;
+        end
+        ns = ns+1;
+        values(1,ns) = dws(j);
+        values(2,ns) = 0; 
+        values(3,ns) = 0;
+        values(4,ns) = 0.5;
+    end
+    for j = 1:length(jvs)
+        for k = 1:length(nphs)
+        ns = ns+1;
+        values(1,ns) = 0.05;
+        values(2,ns) = 0; 
+        values(3,ns) = 1;
+        values(4,ns) = jvs(j);
+        values(5,ns) = nphs(k);
+        end
+    end
+    ns = ns+1;
+    values(5,ns) = 0;
+    values(6,:) = StimulusName('rls');
+    values(6,ns) = StimulusName('rds');
+    stimvars = {'dw' 'nc' 'sl' 'jv' 'nph' 'st'};
+    exid = [1 2 3 6];
+elseif strcmp(name,'twords') %compare RDS with RLS, RLSnc
+    ncs=[0 71 0]
+    sts = {'rls' 'rls' 'rds'};
+    exid = [1 2];
+    
+else
+    jvs = [0 0.5 1 2 0.5 1 2];
+    nphs =[0 0   0 0  1  1 1];
+    dws = [0.05 0.1 0.15];
+    %size(values,1) must match length stimvars
+    values(1,:)= repmat(jvs,1,length(dws));
+    values(5,:)= repmat(nphs,1,length(dws));
+    none = length(jvs); %# times to repeat each dw;
+    n = length(dws);
+    for j = 1:n
+        id = [1:none] + (j-1) * none;
+        values(2,id) = dws(j);
+    end
+    values(3,:) = round(stimw./values(2,:));
+    values(4,:) = 29;
+    values(:,end+1) = [0.5 0.05 0 0 0];  %RLS jv 0.5
+    values(:,end+1) = [0.5 0.05 0 0 360]; %random phase
+    values(:,end+1) = [0.5 0.05 0 0 1]; %random walk
+    stimvars = {'jv' 'dw' 'nc' 'sM' 'nph'};
+    exid = [1 2];
 end
-values(3,:) = round(stimw./values(2,:));
-values(4,:) = 29;
-values(:,end+1) = [0.5 0.05 0 0 0];  %RLS jv 0.5
-values(:,end+1) = [0.5 0.05 0 0 360]; %random phase
-values(:,end+1) = [0.5 0.05 0 0 1]; %random walk
-stimvars = {'jv' 'dw' 'nc' 'sM' 'nph'};
-exid = [1 2];
+
 
 ns = 0;
 for j = 1:size(values,2)
     ns = ns+1;
     for k = 1:length(stimvars)
-        AllS(ns).(stimvars{k}) = values(k,j);
+        if strcmp(stimvars{k},'st')
+            AllS(ns).(stimvars{k}) = StimulusName(values(k,j));
+        else
+            AllS(ns).(stimvars{k}) = values(k,j);
+        end
     end
     exvals(ns,:) = values(exid,j);
 end

@@ -25,6 +25,15 @@ Add Postrial commands WAIR_FOR_RESPONSE in test loop crash after 1396
 cut these out again with if(crasher) goes 35000
 1/1 1/2 2/3 459/12 1/1
 
+with crasher = 3 did 12k before I stopped it
+with carhser = 2 14k then I stopped 
+crahser = 1(reopen pipe)   33k, then crash
+same, but move SendTrialCount line, crashes at 4k
+using SendTestCoutn, sith call t statusline removed 13k
+      		     remove rest of fcn 30k wihtout crash
+		     simple text, show message (crasher =2)  30k without crash
+		     crasher = 3 crashes at 4k
+		     crasher = 7
 
 POSTTRIAL 12
 POSTSTIMINTRIAL 13

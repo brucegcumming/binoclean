@@ -255,8 +255,10 @@ void SerialString(char *s, int tty)
         }
     }
 #endif
+// tty -1 sends stingot serial file and net file, but not serial line
+// tty -2 sends to just serial files
     if(seroutfile != NULL && tty != ttys[1])
         i = fprintf(seroutfile,"%s",s);
-    if(netoutfile != NULL && tty != ttys[1])
+    if(netoutfile != NULL && tty != ttys[1] && tty > -2)
         i = fprintf(netoutfile,"%s",s);
 }

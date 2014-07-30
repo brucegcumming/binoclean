@@ -118,6 +118,8 @@ extern float monkeyhour;
 double fakestim =0;
 
 int usenewdirs=0;
+int saveframetimes = 0;
+extern int inexptstim;
 static int pcmode = SPIKE2;
 static char **expmenustrings;
 
@@ -2600,6 +2602,9 @@ int OpenNetworkFile(Expt expt)
         sprintf(buf,"No prefix Name for network parameter file");
         fprintf(stderr,"%s\n",buf);
         statusline(buf);
+        if (optionflags[MANUAL_EXPT]){
+            acknowledge(buf,NULL);
+        }
         return(-1);
     }
     t = strchr(expt.bwptr->prefix,':');
@@ -2623,6 +2628,7 @@ int OpenNetworkFile(Expt expt)
             netoutfile = fopen(name,"a");
         }
     }
+    tval = time(NULL);
     if (netoutfile != NULL){
         fprintf(netoutfile,"Reopened %s by binoc Version %s",ctime(&tval),VERSION_NUMBER);
         if (seroutfile != NULL)
@@ -4343,6 +4349,9 @@ int ReadCommand(char *s)
         quit_binoc();
     else if(!strncasecmp(s,"getrow",4)){
         sscanf(s,"%*s %d %d %d",&line,&start,&stop);
+    }
+    else if(!strncmp(s,"expttrigger",12)){
+        TriggerExpt();
     }
     else if(!strncasecmp(s,"step",4)){
         sprintf(command_result,"step to %d",step_stimulus());
@@ -7088,8 +7097,9 @@ void runexpt(int w, Stimulus *st, int *cbs)
         if(optionflags[FAST_SEQUENCE] && expt.stimpertrial > 1){
             acknowledge("You have Nper > 1? (Fast Seq is ON)",NULL);
         }
-        if(!(optionflag & FIXATION_CHECK) && confirm_no("Sure You Don't want Fixation check?",NULL))
-            optionflag |= FIXATION_CHECK;
+        if(!(optionflag & FIXATION_CHECK)){
+            acknowledge("Make Sure You Don't want Fixation check", -1);
+        }
         if(optionflag != oldflag || option2flag != old2flag) /* was a mistake */
         {
             statusline("Expt Not run");
@@ -7333,7 +7343,7 @@ void InitExpt()
 
     if(!(mode & SERIAL_OK))
         MakeConnection(4);
-    if (optionflags[MANUAL_EXPT])
+    if (optionflags[MANUAL_EXPT] || netoutfile == NULL)
         OpenNetworkFile(expt);
     expt.cramp = expt.ramp;
     expt.expseed = 1;
@@ -11168,7 +11178,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
         SetManualStim(0);
     }
 
-    
+    inexptstim = 1;
     
     /*
      * Human Psych trials have different requirements - often have stimuli 
@@ -11584,7 +11594,8 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
     if(cctr && 0) // Don't do this normally
         printf("Serial %d: %s\n",cctr,cbuf);
     framecounts[framesdone] = rc;
-    frametimes[framesdone] = timediff(&endstimtime,&zeroframetime);
+    tval = frametimes[framesdone] = timediff(&endstimtime,&zeroframetime);
+    fframecounts[framesdone] = (tval * mon.framerate);
     if(debug==4)
         testcolor();
     
@@ -11836,6 +11847,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
         }
         gettimeofday(&now, NULL);
         val = timediff(&now,&timea);
+        if (val > 0.02)
         fprintf(seroutfile,"Id%d RLS save took %.3f\n",expt.allstimid,val);
     }
     else if (expt.st->type == STIM_RLS && seroutfile){
@@ -11898,10 +11910,11 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
 }
 
 
+#define LONGBUF (BUFSIZ*10)
 int CheckStimDuration(int retval)
 {
     int i = 0,j =0, n = 0, rpt =0,nrpt = 0,nf=0,k=0;
-    char buf[BUFSIZ * 100],tmp[BUFSIZ*10];
+    char buf[LONGBUF+10],tmp[LONGBUF+10];
     float val;
     float framevals[MAXFRAMES], diffmax, diffmin;
     
@@ -11911,32 +11924,33 @@ int CheckStimDuration(int retval)
     sprintf(buf,"#du%.3f(%d:%.3f)\n",frametimes[framesdone],framesdone,(framesdone-0.5)/expt.mon->framerate);
     SerialString(buf,0);
     if (optionflags[FIXNUM_PAINTED_FRAMES]){
-        if(frametimes[framesdone]  > (framesdone-0.5)/expt.mon->framerate){
+        if(frametimes[framesdone]  > (framesdone-0.5)/expt.mon->framerate || saveframetimes){
             fprintf(stderr,"%d frames took %.3f\n",framesdone,frametimes[framesdone]);
             sprintf(buf,"%sFi=",serial_strings[MANUAL_TDR]);
             for( i = 1; i < framesdone-1; i++){
                 val = frametimes[i]-frametimes[i-1];
                 framevals[i] = val;
                 sprintf(tmp,"%d ",(int)(round(val*1000)));
-                strcat(buf,tmp);
+                if(strlen(buf)+strlen(tmp) < LONGBUF)
+                    strcat(buf,tmp);
+                else
+                    SerialString("#FrameString too long\n",-1);
             }
             strcat(buf,"\n");
-            SerialString(buf,-1);
+            SerialString(buf,-1); //sends to seroutfile and to netoutfile
             sprintf(buf,"%sFn=",serial_strings[MANUAL_TDR]);
-            if (netoutfile)
-                fprintf(netoutfile,"%s",buf);
             j=0;
             for(i = 0; i < framesdone; i++){
                 sprintf(tmp,"%.1f ",fframecounts[i]);
-                if(strlen(buf)+strlen(tmp) < BUFSIZ*2)
+                if(strlen(buf)+strlen(tmp) < LONGBUF)
                     strcat(buf,tmp);
+                else
+                    SerialString("#FrameString too long\n",-1);
                 if (i > 1 && fframecounts[i]-fframecounts[i-1] > 1.5)
                     fprintf(stderr,"Skip at %d:%.1f\n",i,fframecounts[i]);
             }
             strcat(buf,"\n");
             SerialString(buf,-1);
-            if (netoutfile)
-                fprintf(netoutfile,"%s",buf);
             nrpt = 0;
             diffmax = 1.2/mon.framerate;
             diffmin = 0.5/mon.framerate;
@@ -11954,11 +11968,10 @@ int CheckStimDuration(int retval)
             }
             strcat(buf,"\n");
             SerialString(buf,0);
-            if (netoutfile)
-                fprintf(netoutfile,"%s",buf);
+            SerialString(buf,-1);
         }
     }
-    else if(frametimes[framesdone]  > (n-0.5)/expt.mon->framerate){
+    else if(frametimes[framesdone]  > (n-0.5)/expt.mon->framerate || saveframetimes){
         if (seroutfile)
             fprintf(seroutfile," #long(%d)",n);
         if (retval != BAD_TRIAL){
@@ -11995,6 +12008,9 @@ int CheckStimDuration(int retval)
                 }
                 strcat(buf,"\n");
                 SerialString(buf,0);
+                sprintf(buf,"#edur %.2f\n",fframecounts[framesdone]); //after end stim
+                SerialString(buf,-1);
+                
             }
             else{
                 j=0;
@@ -12214,9 +12230,14 @@ int acknowledge(char *s, char *help)
         NSacknowledge(s, help);
     }
     else{
-        sprintf(buf,"ACK: %s\n",s);
+        if (help < 0)// force new window in matlab
+            sprintf(buf,"ACK:: %s\n",s);
+        else
+            sprintf(buf,"ACK: %s\n",s);
         notify(buf);
         fprintf(stderr,buf);
+        if (seroutfile)
+            fprintf(seroutfile,"#ACK:%s\n",s);
     }
     
 }
@@ -13439,6 +13460,10 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     }
     else if(!strncmp(line,"demomode",8)){
         demomode = 2;
+        return(-1);
+    }
+    else if(!strncmp(line,"saveframetimes",12)){
+        saveframetimes = 1;
         return(-1);
     }
     else if(!strncmp(line,"bar",3) && s != NULL){

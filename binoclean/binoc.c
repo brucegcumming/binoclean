@@ -278,7 +278,7 @@ extern unsigned long charsread;
 extern int trialctr;
 extern int command_pending;
 extern /*Ali Cursor */ int thecursor;
-extern FILE *seroutfile,*penlog,*rcfd,*psychfile;
+extern FILE *seroutfile,*penlog,*rcfd,*psychfile,*netoutfile;
 extern int ranright,  ranleft, ranleftc, ranrightc,trialcnt;
 extern int ttys[];
 extern int laststimno,stimno;
@@ -332,10 +332,27 @@ char *binocTimeString()
 {
     char name[BUFSIZ],*t = NULL ,buf[256];
     time_t tval;
+
     tval = time(NULL);
     t = ctime(&tval);
     t[19] = 0;
     return (&t[10]);
+}
+
+void TriggerExpt()
+{
+
+
+#ifdef NIDAQ
+    // trigger data collection for Spike2
+    DIOWriteBit(0,1);
+    DIOWriteBit(2,1);
+    
+    fsleep(0.01);
+    DIOWriteBit(0,0);
+    DIOWriteBit(2,0);
+#endif
+    
 }
 
 
@@ -5104,8 +5121,12 @@ int change_frame()
 	    DIOWriteBit(3,1);
 #endif
 //Need to draw something AND call glFinishRnderApple (after swapbuffer above) to block CPU
-        glRectf(winsiz[0],winsiz[0]-1,winsiz[1],winsiz[1]-1);
-        glFinishRenderAPPLE(); /* block until buffer swapped */
+//Don't block CPU for STIMCHANGE pulses.  We can figure these out without, and it increases the risk
+//of droppping frames
+        if (!mode & STIMCHANGE_FRAME){
+            glRectf(winsiz[0],winsiz[0]-1,winsiz[1],winsiz[1]-1);
+            glFinishRenderAPPLE(); /* block until buffer swapped */
+        }
 //	    if(!(mode & STIMCHANGE_FRAME))
         gettimeofday(&changeframetime,NULL);
 	    WriteSignal();
@@ -7233,9 +7254,9 @@ int next_frame(Stimulus *st)
                 break;
                     case WAIT_FOR_RESPONSE:
                         // do POSTTRIAL commands here, then move on
-                        crasher =2;
+                        crasher =1;
+                        ShowTestCount(0, -1);
                         if (crasher < 1){
-                            ShowTrialCount(0, -1);
                             if(rdspair(expt.st))
                                 i = 0;
                             if(seroutfile){
@@ -7266,6 +7287,8 @@ int next_frame(Stimulus *st)
                                 change_frame();
                             }
                             if(debug) glstatusline("PostTrial",3);
+                        }
+                        if (crasher < 3){
                             if(fabs(expt.vals[PURSUIT_INCREMENT]) > 0.001 && fixstate != BAD_FIXATION){
                                 /*
                                  * N.B. at this moment changes in PURSUIT INCREMENT as part of an expt will not
@@ -7311,7 +7334,8 @@ int next_frame(Stimulus *st)
                             fixpos[1] = deg2pix(expt.vals[FIXPOS_Y]);
                             SerialSend(FIXPOS_XY);
                             draw_fix(fixpos[0],fixpos[1], TheStim->fix.size, TheStim->fixcolor);
-                            
+                        }
+                        if (crasher < 4){
                             /* stimseq[].result is used in human psychophysics for staircases */
                             if(!(option2flag & PSYCHOPHYSICS_BIT))
                                 stimseq[trialctr].result = monkeypress;
@@ -7325,6 +7349,7 @@ int next_frame(Stimulus *st)
                             }
                             stimseq[trialctr].a = stimseq[trialctr].b = 0;
                         }
+                        
                         if (crasher < 3){
                             /*
                              * if expt stim is prepared during a timout, this undoes the setting
@@ -7353,7 +7378,7 @@ int next_frame(Stimulus *st)
                                 fprintf(stairfd,"Post%d(%d) ",stimno,stimorder[stimno]);
                             }
                         } //end crasher < 1
-                        if (crasher < 3){
+                        if (crasher < 4){
                             if (stimstate != POSTTRIAL)
                                 ReadCommandFile(expt.cmdinfile);
                         }
@@ -10248,6 +10273,80 @@ int ShowTrialCount(float down, float sum)
 	return(0);
 }
 
+int ShowTestCount(float down, float sum)
+{
+    int i,*iptr;
+    char result = '0',buf[256];
+    float val;
+    int crasher;
+    
+    crasher =3;
+
+    
+    val = 0;
+    if (crasher & 1){
+    if(sum < 0)
+    {
+	    if(wurtzctr > avglen)
+        {
+            iptr = &fixed[wurtzctr-avglen];
+            sum = 0;
+            for(i = 0; i < avglen; i++)
+                if(*iptr++ == (int)WURTZ_OK)
+                    sum += 1.0;
+        }
+        else
+            sum = 0;
+    }
+	else{
+	    if(wurtzctr > avglen)
+            iptr = &fixed[wurtzctr-avglen];
+	    else
+            iptr = &fixed[0];
+	    sum = 0;
+	    for(i = 0; i < avglen && i < wurtzctr; i++)
+            if(*iptr++ == (int)WURTZ_OK)
+                sum += 1.0;
+	}
+    }
+    if (crasher & 8){
+	val = StimDuration();
+    if (val < 0)
+        val = timediff(&now, &firstframetime);
+    }
+	if(debug)
+        sprintf(mssg,"%s(%.2f) Frames: %d/%d (%.3f sec) %d/%d %d late %d bad (%.2f), %0f/%d",binocTimeString(),ufftime(&now),framesdone,TheStim->nframes,val,goodtrials,totaltrials,
+                totaltrials-(goodtrials+fixtrials),fixtrials,down,sum,avglen);
+	else
+        sprintf(mssg,"%s Frames: %d/%d (%.3f sec) %d/%d %d late %d bad (%.2f), %.0f/%d",binocTimeString(),framesdone,TheStim->nframes,val,goodtrials,wurtzctr,
+                totaltrials-(goodtrials+fixtrials),fixtrials,down,sum,avglen);
+    
+    if (crasher & 4){
+    sprintf(buf," rw%.1f ",totalreward);
+    strcat(mssg,buf);
+	if(TheStim->mode & EXPTPENDING)
+    {
+	    sprintf(buf,"Ex: %d/%d",stimno,expt.nstim[6]);
+	    strcat(mssg,buf);
+    }
+    strcat(mssg,resbuf);
+	if(endbadctr)
+    {
+	    sprintf(buf,"Bad: %d",endbadctr);
+	    strcat(mssg,buf);
+    }
+	if(optionflag & FRAME_ONLY_BIT)
+    {
+	    sprintf(mssg,"Ex: %ld/%d %.1f +- SD %.2f %d,%d outliers",frametotal,expt.nreps*expt.nstim[5],framemean,framesd,outliers[0],outliers[1]);
+    }
+    }
+    
+    if (crasher & 2){
+        statusline(mssg);
+    }
+	return(0);
+}
+
 int ShowLastCodes()
 {
     int i;
@@ -10470,15 +10569,7 @@ int GotChar(char c)
             acklog(buf,NULL);
         }
         else{
-#ifdef NIDAQ
-// trigger data collection for Spike2
-            DIOWriteBit(0,1);
-            DIOWriteBit(2,1);
-            
-            fsleep(0.01);
-            DIOWriteBit(0,0);
-            DIOWriteBit(2,0);
-#endif
+            TriggerExpt();
             MakeConnection(1);
         }
         gettimeofday(&lastconnecttime,NULL);
@@ -11437,6 +11528,10 @@ void expt_over(int flag)
     SaveExptFile("./leaneo.stm",SAVE_STATE);
     SendAllToGui();
     notify("\nEXPTOVER\n");
+    if (netoutfile != NULL){
+            fprintf(netoutfile,"Run ended at %s\n",ctime(&tval));
+       fflush(netoutfile);
+    }
 }
 
 void Stim2PsychFile(int state)

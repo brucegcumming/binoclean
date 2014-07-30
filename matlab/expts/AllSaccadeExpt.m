@@ -6,9 +6,10 @@ function varargout = AllSaccadeExpt(varargin)
 %   ..., 'acdisps', [ac] give disp values for the ac adaptors (first 100 frames) 
 %   ..., 'signal' [x]  gives the signal strength valses (fraction of frames
 %                      with signal disparity
-%   ...,'ntrials', N, is the number of times each stimulus is presented
 %   ...,'nrpts', R, is the number of times each exact (default 2 = twopass)
 
+%? not working...
+%   ...,'ntrials', N, is the number of times each stimulus is presented
 stimno= 1;
 nf = 400;
 j = 1;
@@ -17,7 +18,7 @@ S.types = {'imx'};
 S.or = 135;
 stimvals{3} = [0];
 stimvals{2} = [0];
-stimvals{1} = [403004 403004 404004 419002 433008 434005 435002 503002 505006 511007 562001 572001 552001 1];
+stimvals{1} = [403004 403004 403004 419002 433008 434005 435002 503002 505006 511007 562001 572001 552001 1];
 distvals = -0.2:0.05:0.2;
 ntrials = 1; %number of times to repeat set
 basedir = '/local/expts/Saccade';
