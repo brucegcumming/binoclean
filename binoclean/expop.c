@@ -105,8 +105,8 @@ extern FILE *imidxfd;
 extern char *replay_expt, ImageOutDir[],timeoutstring[];
 extern int rfctr,mimic_fixation;
 extern char *rcname;
-extern int wurtzctr,*fixed,lasteyecheck;
-extern float calcdur,paintdur,swapwait;
+extern int wurtzctr,*fixed,lasteyecheck,avglen;
+extern float calcdur,paintdur,swapwait,changeframedur;
 extern int debug,timeout_type;
 extern double olddisp,oldvelocity;
 extern int imageseed[],stimflag;
@@ -290,7 +290,7 @@ extern Log thelog;
 extern struct BWSTRUCT thebwstruct;
 extern FILE *testfd;
 extern struct timeval signaltime,now,endstimtime,firstframetime,zeroframetime,frametime,alarmstart;
-extern struct timeval calctime,paintframetime,changeframetime;
+extern struct timeval calctime,paintframetime,changeframetime,paintfinishtime;
 extern vcoord conjpos[],fixpos[];
 static time_t lastcmdread;
 static struct timeval lastcmdtime;
@@ -937,7 +937,7 @@ double *AdjustEyePos(int len)
     for(i = 0;i< 4; i++)
         sum[i] = 0;
     while(n < len && j >= 0){
-        if(fixed[j] == WURTZ_OK || fixed[j] == WURTZ_OK_W){
+        if(fixed[j%avglen] == WURTZ_OK || fixed[k%avglen] == WURTZ_OK_W){
             k = j % BUFSIZ;
             for(i = 0;i< 4; i++)
                 sum[i] += trialeyepos[i][k];
@@ -970,7 +970,7 @@ int CheckEyeDrift()
     int i,ngood = 0;
     
     for(i = lasteyecheck; i < wurtzctr; i++)
-        if(fixed[i] == WURTZ_OK || fixed[i] == WURTZ_OK_W){
+        if(fixed[i%avglen] == WURTZ_OK || fixed[i%avglen] == WURTZ_OK_W){
             ngood++;
         }
     if(expt.vals[AUTO_ZERO]>1 && ngood >= expt.vals[AUTO_ZERO])
@@ -8700,6 +8700,7 @@ int PreLoadImages()
         gettimeofday(&now, NULL);
         if(seroutfile)
             fprintf(seroutfile,"preload took %.4f\n",timediff(&now,&then));
+        fprintf(stderr,"preload took %.4f\n",timediff(&now,&then));
         //Ali #ifdef macosx
         sprintf(cbuf,"imve %.4f,%d %.4f %.4f %s %d\n",st->stimversion,st->seedoffset,st->pix2deg,timediff(&now,&then),st->builddate, st->envelopetype);
         SerialString(cbuf,0);
@@ -11068,6 +11069,7 @@ int RunHarrisStim(Stimulus *st, int n, /*Ali Display */ int D, /*Ali Window */ i
 
 static float frametimes[MAXFRAMES],fframecounts[MAXFRAMES];
 static int framecounts[MAXFRAMES];
+static float postframetimes[MAXFRAMES];
 
 int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win)
 {
@@ -11080,7 +11082,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
     struct plotdata *plot;
 //    Expstim *es,*exs;
     int lastframesdone;
-    float tval;
+    float tval,aval;
     float swapwaits[MAXFRAMES],calctimes[MAXFRAMES],painttimes[MAXFRAMES];
     float forcewaits[MAXFRAMES],phase;
     struct timeval lastframetime,pretime,forcetime,timea;
@@ -11139,6 +11141,9 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
     else if(seroutfile){
         fprintf(seroutfile,"#Velocity 0 before stim starts, was %.2f\n",oldvelocity);
     }
+    glDrawBuffer(GL_FRONT_AND_BACK);
+    glstatusline(NULL, 1); // paint this now, then don't paint each frame - its slow
+    glDrawBuffer(GL_BACK);
     SerialSend(STIMID);
     SerialSend(SET_SEED);
     if(st->type == STIM_RDS)
@@ -11409,19 +11414,44 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
                 rc = framesdone;
             
             change_frame();
+            frametimes[framesdone] = timediff(&paintframetime,&zeroframetime);
             if (optionflags[FIXNUM_PAINTED_FRAMES]){
                 framecounts[framesdone] = getframecount();
                 tval = timediff(&changeframetime, &zeroframetime);
+                postframetimes[framesdone] = tval;
                 fframecounts[framesdone] = (tval * mon.framerate);
+                if (tval > frametimes[framesdone] + 1/mon.framerate){
+                    aval = changeframedur;
+                    if (framesdone > 0){
+                        aval = frametimes[framesdone]-frametimes[framesdone-1];
+                        aval = postframetimes[framesdone]-postframetimes[framesdone-1];
+                        aval = postframetimes[framesdone]-frametimes[framesdone];
+                        aval = postframetimes[framesdone-1]-frametimes[framesdone];
+                    }
+                    aval = frametimes[framesdone];
+                    aval = (tval - frametimes[framesdone]) * 1000;
+                    tval = timediff(&changeframetime, &paintfinishtime);
+                    aval = (tval - frametimes[framesdone]) * 1000;
+                    tval = timediff(&changeframetime, &paintframetime);
+                    aval = (tval - frametimes[framesdone]) * 1000;
+                }
+                else if (tval < frametimes[framesdone]){
+                    aval = changeframedur;
+                    aval = frametimes[framesdone];
+                }
             }
             else
                 framecounts[framesdone] = rc;
             
-            if(optionflags[WATCH_TIMES]){
+            aval = timediff(&changeframetime, &paintframetime) * mon.framerate; // should always be > 0 and < 1
+            if(aval > 1 || optionflags[WATCH_TIMES]){
+                aval = timediff(&changeframetime, &paintfinishtime) * mon.framerate; // should always be > 0 and < 1
                 swapwaits[framesdone] = swapwait;
                 calctimes[framesdone] = calcdur;
                 painttimes[framesdone] = paintdur;
             }
+            else
+                painttimes[framesdone] = tval;
             
             /*
              * on the first frame, change_frame() blocks until the vertical retrace at the
@@ -11450,7 +11480,6 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
             if(freezestimulus)
                 rc = 0;
             
-            frametimes[framesdone] = timediff(&paintframetime,&zeroframetime);
             if(optionflags[FAST_SEQUENCE]){
                 sframetimes[framesdone] = frametimes[framesdone];
                 sframetimes[framesdone+1] = -10000;
@@ -11940,7 +11969,29 @@ int CheckStimDuration(int retval)
             SerialString(buf,-1); //sends to seroutfile and to netoutfile
             sprintf(buf,"%sFn=",serial_strings[MANUAL_TDR]);
             j=0;
+            
+/*
+ * Currently frametimes is paintframetime - zerofram, and paintframe time is taken during painting of current fram
+ * where CPU gets blocked on the previous frame. Idea is that this should always be a fixed multiple of frames, but
+ * not working.  fframecounts is based on changeframetime-zeroframe, = time when call to swapbuffers actually
+ * returns, regardless of any blocking. So changeframetime is always > paintframetime, but this should never exceed
+ * a frame
+ * except maybe when calcs get done during wait for previous frame swap?
+ */
             for(i = 0; i < framesdone; i++){
+                val = frametimes[i] * mon.framerate;
+                val = fframecounts[i]-val; // should be zero
+                if (val > 1){
+//                    fprintf(stderr,"Frame %d time mismatch %.2f\n",i,val);
+                    val = postframetimes[i]-frametimes[i];
+                    val = postframetimes[i]-postframetimes[i-1];
+                    val = frametimes[i]-frametimes[i-1];
+                    val = frametimes[i]-postframetimes[i-1];
+                }
+                else if (val < 0){
+ //                   fprintf(stderr,"Frame %d time too short %.2f\n",i,val);
+                    val = postframetimes[i]-frametimes[i];
+                }
                 sprintf(tmp,"%.1f ",fframecounts[i]);
                 if(strlen(buf)+strlen(tmp) < LONGBUF)
                     strcat(buf,tmp);
@@ -11962,7 +12013,8 @@ int CheckStimDuration(int retval)
                         nf = MAXFRAMES;
                     for (k = 0; k < nf; k++){
                         sprintf(tmp,"%d ",i+nrpt++);
-                        strcat(buf,tmp);
+                        if (strlen(buf)+strlen(tmp)< LONGBUF)
+                            strcat(buf,tmp);
                     }
                 }
             }
@@ -13733,7 +13785,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     else if(!strncmp(line,"epos:",5))
     {
         if(seroutfile && wurtzctr > 0){
-            fprintf(seroutfile,"%s %d\n",line,fixed[wurtzctr-1]);
+            fprintf(seroutfile,"%s %d\n",line,fixed[(wurtzctr-1)%avglen]);
             fflush(seroutfile);
         }
         /*

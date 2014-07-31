@@ -303,7 +303,7 @@ function SetMotorPlot(a,b)
        DATA.timerange = str2num(str{1});
    else
        DATA.plottype = tag;
-       if sum(strcmp(tag,{'FullHistory' 'LastMove'},6))
+       if sum(strncmp(tag,{'FullHistory' 'LastMove'},6))
            DATA.timerange = 0;
        end
        SetMenuCheck(a,'exclusive');
@@ -341,6 +341,9 @@ end
 if DATA.motorspeed > 0
     ispeed = round(DATA.motorspeed.*DATA.speedscale.*DATA.stepscale/1000);
     fprintf('New Speed %.3f mm/sec  = %.0f RPM\n',DATA.motorspeed,ispeed);
+    if ispeed < DATA.minrpm
+        fprintf('%.1f less than min RPM (%.1f). Will use steps\n',ispeed, DATA.minrpm);
+    end
     fprintf(DATA.sport,'SP%.0f\n',ispeed);
     DATA.motorspeed = ispeed;
 end
@@ -539,9 +542,11 @@ pause(0.01);
 d = NaN;
 
 if DATA.motorspeed < DATA.minrpm;
-    str = sprintf('RPM %.1f less that minimum (%.1f). Will use steps');
-    acknowledge(str,'ServoDrive');
+    str = sprintf('%.1f less than min RPM (%.1f). Using steps',DATA.motorspeed, DATA.minrpm);
+    fprintf('%s\n',str);
+    set(gcf,'Name',str);
     DATA = SlowMove(DATA, pos);
+    set(gcf,'Name','ServoMotor MicroDrive');
     return;
 end
 if DATA.motorid >= 0
@@ -750,6 +755,11 @@ if ~strcmp(DATA.plottype,'None')
         set(gca,'xtick',[],'ytick',[],'ydir','normal');
         xl = [min(ts) max(ts)];
         yl = minmax(y);
+        if length(y) > 3
+            ms = prctile(y,50);
+            line(xl,[ms ms],'color','r');            
+            text(mean(xl),ms,sprintf('%.1fuM/sec',ms),'verticalalignment','bottom');
+        end
     else
         if DATA.timerange > 0
             ti = find(DATA.alltimes(end)-DATA.alltimes < DATA.timerange./(24 * 60));

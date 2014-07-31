@@ -83,7 +83,7 @@ int stimflag = 0;
 double olddisp  = 0;
 int inexptstim = 0;
 int newmonoc = 0;
-float framehold = 0,calcdur,paintdur,swapwait;
+float framehold = 0,calcdur,paintdur,swapwait,changeframedur;
 float microsaccade = 0,microsaccdir = 0;
 char *replay_expt = NULL;
 int gotspikes = 0, endbadctr = 0;
@@ -172,8 +172,8 @@ struct timeval endtrialtime, starttimeout, goodfixtime,fixontime,cjtime,starttri
 struct timeval lastconnecttime;
 struct timeval zeroframetime, prevframetime, frametime, cleartime;
 struct timeval lastcleartime,lastsertime;
-struct timeval progstarttime,calctime,paintframetime;
-struct timeval endexptime, changeframetime,lastcalltime,lastmonkeycheck,nftime;
+struct timeval progstarttime,calctime,paintframetime,paintfinishtime;
+struct timeval endexptime, changeframetime,lastcalltime,lastmonkeycheck,nftime,endcalltime;
 struct timeval testtime;
 int wurtzctr = 0, wurtzbufferlen = 512,lasteyecheck;
 float clearcolor = 0;
@@ -625,6 +625,11 @@ void initial_setup()
 
     gettimeofday(&now,NULL);
     ExptInit(&expt, TheStim, &mon);
+    fixed = (int *)malloc(sizeof(int) * (wurtzbufferlen));
+    fixy = (float *)malloc(sizeof(float) * (wurtzbufferlen));
+    fixx = (float *)malloc(sizeof(float) * (wurtzbufferlen));
+
+
 //ExptInit now sets up codesend and nfplaces from valstrings
     
 //now can interpret lines from binoc.setup that require Expt to be initialized
@@ -1397,7 +1402,7 @@ void glstatusline(char *s, int line)
         lines[line] = myscopy(lines[line],s);
     if(s != NULL) /* new string */
         glDrawBuffer(GL_FRONT_AND_BACK);
-    if(optionflag & SHOW_STIMVAL_BIT)
+    if (optionflag & SHOW_STIMVAL_BIT)
         setmask(ALLPLANES);
 	mycmv(x);
 	if(s != NULL){
@@ -1415,7 +1420,8 @@ void glstatusline(char *s, int line)
         mycmv(x);
         statusline("Expt Frozen");
 	}
-    glDrawBuffer(GL_BACK);
+    if (s != NULL)
+        glDrawBuffer(GL_BACK);
 }
 
 void statusline(char *s)
@@ -2463,7 +2469,7 @@ int event_loop(float delay)
             calc_stimulus(TheStim);
             glFinishRenderAPPLE();
         }
-        else if(testmode == 6 || testmode == 7 || testmode == 8 || testmode == 9)
+        else if(testmode == 6 || testmode == 7 || testmode == 8 || testmode == 9 || testmode ==11)
             run_polygon_test_loop();
 // Run tests just once then tell verg. Verg decides whether to repeat
 //Otherwise can freeze verg
@@ -5041,7 +5047,8 @@ int change_frame()
 	int lastframe,oldmode = mode;
 	static int framesswapped = 0;
     int blockallframes = 0;
-    
+    float tval;
+    struct timeval atime,btime;
 	vcoord x[2];
     
     
@@ -5061,6 +5068,7 @@ int change_frame()
 	}
 	memcpy(&lasttime, &now, sizeof(struct timeval));
 #endif
+    gettimeofday(&atime,NULL);
 
 	if(mode & LAST_FRAME_BIT)
 	{
@@ -5082,20 +5090,26 @@ int change_frame()
 	 * otherwise things seem to get piled up in the pipeline blocking
 	 * Xevnet handling
 	 */
-	if(framehold > 0.01){
-        x[0] = 0;
-        x[1] = 0;
-        mycmv(x);
-        sprintf(buf,"%d",framesswapped);
-        printString(buf,1);
-	}
     //	—glFlushRenderAPPLE();
     //AliGLX	mySwapBuffers();
+    /*
+     * as of juy 2014, seems linke glSwapApple Blocks the CPU regardless of what
+     * happens next.  do changeframedur is typically about a frame duraiton
+     * !! 
+     * see testmode 11 to confirm....
+     */
+    gettimeofday(&btime,NULL);
+
     if (renderoff == 0){
-	glFinishRenderAPPLE();
+            if((mode & FRAME_BITS) || blockallframes)
+                glFinishRenderAPPLE();
     glSwapAPPLE();
     }
     gettimeofday(&changeframetime,NULL);
+    changeframedur = timediff(&changeframetime,&atime);
+    if (tval > 0.005){
+        tval = timediff(&changeframetime,&btime);
+    }
 
 	framesswapped++;
 #ifdef NIDAQ
@@ -5166,6 +5180,12 @@ int change_frame()
 	if(framehold > 0.01){
         fsleep(framehold);
 	}
+    gettimeofday(&btime,NULL);
+    tval = timediff(&btime,&atime);
+    if (tval > 0.005){
+        gettimeofday(&btime,NULL);
+    }
+
 	return(0);
 }
 
@@ -5990,7 +6010,17 @@ void paint_frame(int type, int showfix)
         else
             ShowBox(expt.rf,RF_COLOR);
     }
-    glstatusline(NULL, 1);
+    if (inexptstim == 0){
+        gettimeofday(&btime, NULL);
+        glstatusline(NULL, 1);
+    }
+    gettimeofday(&paintfinishtime, NULL);
+    tval= timediff(&paintfinishtime,&paintframetime) * mon.framerate;
+    if (tval > 0.8){
+        tval= timediff(&paintfinishtime,&btime)* mon.framerate;
+        w = tval+paintdur;
+        
+    }
 }
 
 int CheckFix()
@@ -6139,7 +6169,7 @@ int next_frame(Stimulus *st)
     
     static float lastval=0;
     static int laststate,fctr = 0;
-    float val=0,t2;
+    float val=0,t2,t3;
     Locator *pos = &st->pos;
     int i,oldstimstate = stimstate;
     vcoord x[2];
@@ -6163,6 +6193,7 @@ int next_frame(Stimulus *st)
     
     gettimeofday(&now,NULL);
     t2 = timediff(&now,&lastcalltime);
+    t3 = timediff(&now,&nftime);
     memcpy(&lastcalltime,&now,sizeof(struct timeval));
     /* some things need checking whatever the weather */
     if(stimno == NEW_EXPT)
@@ -6178,9 +6209,9 @@ int next_frame(Stimulus *st)
     markercolor = 1.0;
     glstatusline(NULL,1);
     if (optionflags[MONITOR_STATE]){
-        if(seroutfile && laststate != stimstate){
-            fprintf(seroutfile,"#State %d %d VS%.1f%c\n",stimstate,fixstate,afc_s.sacval[1],exptchr);
-        fprintf(stdout,"#State %d %d VS%.1f%c\n",stimstate,fixstate,afc_s.sacval[1],exptchr);
+        if(seroutfile && (laststate != stimstate || (optionflags[WATCH_TIMES] && laststate != STIMSTOPPED))){
+            fprintf(seroutfile,"#State %d %d VS%.1f%c %.2f,%.2f\n",stimstate,fixstate,afc_s.sacval[1],exptchr,t2,t3);
+        fprintf(stdout,"#State %d %d VS%.1f%c %.2f,%.2f\n",stimstate,fixstate,afc_s.sacval[1],exptchr,t2,t3);
         fflush(seroutfile);
     }
     }
@@ -7727,6 +7758,7 @@ void run_polygon_test_loop()
     char c;
     int ncalls[4];
     static int called = 0;
+    struct timeval atime,btime;
     
     
     called++;
@@ -7788,6 +7820,41 @@ void run_polygon_test_loop()
         return;
     }
     
+    if (testmode == 11 ) //Check frame swapping
+    {
+        nframes=210;
+        glLineWidth(3);
+        gettimeofday(&btime,NULL);
+
+        for(frame = 0; frame < nframes; frame++){
+            setmask(ALLPLANES);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            glEnable(GL_LINE_SMOOTH);
+            glEnable(GL_BLEND);
+            glEnable(GL_POLYGON_SMOOTH);
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            mycolor(bcolor);
+            PaintRectLine(x[0],x[1],2,2);
+            PaintRectLine(x[0],x[1]+8.6,2,2);
+            PaintRectLine(x[0],x[1]+16.9,2,2);
+            mycolor(bcolor);
+            x[0] = x[0]+0.008;
+            gettimeofday(&atime,NULL);
+            glSwapAPPLE();
+            gettimeofday(&now,NULL);
+            glSwapAPPLE();
+            gettimeofday(&now,NULL);
+            val = timediff(&now,&atime);
+            if (val > 1/mon.framerate){
+                fprintf(stderr,"Swap took %.3f\n",val);
+            }
+        }
+        mode &= (~TEST_PENDING);
+        gettimeofday(&now,NULL);
+        val = timediff(&now,&btime);
+        return;
+    }
 
     if (testmode == 9 ) //simple translation of polygon to explore jumping
     {
@@ -10213,43 +10280,26 @@ float StimTime(struct timeval *event)
 
 int ShowTrialCount(float down, float sum)
 {
-    int i,*iptr;
+    int i,*iptr,nt;
     char result = '0',buf[256];
-    float val;
+    float val,fsum;
     
     
-	if(sum < 0)
-    {
-	    if(wurtzctr > avglen)
-        {
-            iptr = &fixed[wurtzctr-avglen];
-            sum = 0;
-            for(i = 0; i < avglen; i++)
-                if(*iptr++ == (int)WURTZ_OK)
-                    sum += 1.0;
-        }
-        else
-            sum = 0;
+                fsum = 0;
+    for(i = 0; i < avglen && i < wurtzctr; i++){
+            if(fixed[i] == (int)WURTZ_OK)
+                fsum += 1.0;
     }
-	else{
-	    if(wurtzctr > avglen)
-            iptr = &fixed[wurtzctr-avglen];
-	    else
-            iptr = &fixed[0];
-	    sum = 0;
-	    for(i = 0; i < avglen && i < wurtzctr; i++)
-            if(*iptr++ == (int)WURTZ_OK)
-                sum += 1.0;
-	}
+    nt = i;
 	val = StimDuration();
     if (val < 0)
         val = timediff(&now, &firstframetime);
 	if(debug)
         sprintf(mssg,"%s(%.2f) Frames: %d/%d (%.3f sec) %d/%d %d late %d bad (%.2f), %0f/%d",binocTimeString(),ufftime(&now),framesdone,TheStim->nframes,val,goodtrials,totaltrials,
-                totaltrials-(goodtrials+fixtrials),fixtrials,down,sum,avglen);
+                totaltrials-(goodtrials+fixtrials),fixtrials,down,fsum,nt);
 	else
         sprintf(mssg,"%s Frames: %d/%d (%.3f sec) %d/%d %d late %d bad (%.2f), %.0f/%d",binocTimeString(),framesdone,TheStim->nframes,val,goodtrials,totaltrials,
-                totaltrials-(goodtrials+fixtrials),fixtrials,down,sum,avglen);
+                totaltrials-(goodtrials+fixtrials),fixtrials,down,fsum,nt);
     
     
     sprintf(buf," rw%.1f ",totalreward);
@@ -10279,8 +10329,10 @@ int ShowTestCount(float down, float sum)
     char result = '0',buf[256];
     float val;
     int crasher;
+    float fsum = 0;
     
-    crasher =3;
+    
+    crasher =31;
 
     
     val = 0;
@@ -10290,24 +10342,17 @@ int ShowTestCount(float down, float sum)
 	    if(wurtzctr > avglen)
         {
             iptr = &fixed[wurtzctr-avglen];
-            sum = 0;
-            for(i = 0; i < avglen; i++)
-                if(*iptr++ == (int)WURTZ_OK)
-                    sum += 1.0;
+            fsum = 0;
+            for(i = 0; i < avglen; i++){
+                if (crasher & 16){
+                    if(*iptr++ == (int)WURTZ_OK)
+                        fsum += 1.0;
+                }
+            }
         }
         else
-            sum = 0;
+            fsum = 0;
     }
-	else{
-	    if(wurtzctr > avglen)
-            iptr = &fixed[wurtzctr-avglen];
-	    else
-            iptr = &fixed[0];
-	    sum = 0;
-	    for(i = 0; i < avglen && i < wurtzctr; i++)
-            if(*iptr++ == (int)WURTZ_OK)
-                sum += 1.0;
-	}
     }
     if (crasher & 8){
 	val = StimDuration();
@@ -10316,10 +10361,10 @@ int ShowTestCount(float down, float sum)
     }
 	if(debug)
         sprintf(mssg,"%s(%.2f) Frames: %d/%d (%.3f sec) %d/%d %d late %d bad (%.2f), %0f/%d",binocTimeString(),ufftime(&now),framesdone,TheStim->nframes,val,goodtrials,totaltrials,
-                totaltrials-(goodtrials+fixtrials),fixtrials,down,sum,avglen);
+                totaltrials-(goodtrials+fixtrials),fixtrials,down,fsum,avglen);
 	else
         sprintf(mssg,"%s Frames: %d/%d (%.3f sec) %d/%d %d late %d bad (%.2f), %.0f/%d",binocTimeString(),framesdone,TheStim->nframes,val,goodtrials,wurtzctr,
-                totaltrials-(goodtrials+fixtrials),fixtrials,down,sum,avglen);
+                totaltrials-(goodtrials+fixtrials),fixtrials,down,fsum,avglen);
     
     if (crasher & 4){
     sprintf(buf," rw%.1f ",totalreward);
@@ -10734,14 +10779,9 @@ int GotChar(char c)
                 gettimeofday(&now,NULL);
                 if(c != BAD_FIXATION)
                     fixstate = RESPONDED;
-                if(fixed == NULL){
-                    fixed = (int *)malloc(sizeof(int) * (wurtzbufferlen));
-                    fixy = (float *)malloc(sizeof(float) * (wurtzbufferlen));
-                    fixx = (float *)malloc(sizeof(float) * (wurtzbufferlen));
-                }
-                fixed[wurtzctr] = (int)c;
-                fixx[wurtzctr] = expt.stimvals[FIXPOS_X];
-                fixy[wurtzctr] = expt.stimvals[FIXPOS_Y];
+                fixed[wurtzctr%avglen] = (int)c;
+                fixx[wurtzctr%avglen] = expt.stimvals[FIXPOS_X];
+                fixy[wurtzctr%avglen] = expt.stimvals[FIXPOS_Y];
                 
                 fixed[wurtzctr+1] = -1;
 			    if(c== WURTZ_OK){
@@ -10907,10 +10947,8 @@ int GotChar(char c)
                 }
                 if(wurtzctr >= avglen)
                 {
-                    iptr = &fixed[wurtzctr-avglen+1];
-                    wsum = 0;
                     for(i = 0; i < avglen; i++)
-                        if(*iptr++ == (int)WURTZ_OK)
+                        if(fixed[i] == (int)WURTZ_OK)
                             wsum += 1.0;
                     wsum = wsum/avglen;
                     if(wsum < stopcriterion && ++avctr >= avglen &&
@@ -10929,14 +10967,14 @@ int GotChar(char c)
                     stimtimes = (float *)malloc(sizeof(float) * (wurtzbufferlen));
                 if(starttimes == NULL)
                     starttimes = (float *)malloc(sizeof(float) * (wurtzbufferlen));
-                downtimes[wurtzctr] = down;
+                downtimes[wurtzctr%avglen] = down;
                 
                 
                 down = timediff(&lastframetime,&wurtzframetime);
                 if(down < 0) /* premature */
                     down = intended;
-                stimtimes[wurtzctr] = down;
-                starttimes[wurtzctr]= timediff(&wurtzframetime, &sessiontime);
+                stimtimes[wurtzctr%avglen] = down;
+                starttimes[wurtzctr%avglen]= timediff(&wurtzframetime, &sessiontime);
                 
                 /*
                  * after writing, close and reopen logfd to make sure
@@ -10944,7 +10982,7 @@ int GotChar(char c)
                  * check for changes
                  */
                 if(logfd){
-                    fprintf(logfd,"%.1f %c %.3f%s\n",starttimes[wurtzctr],result,downtimes[wurtzctr],binocTimeString());
+                    fprintf(logfd,"%.1f %c %.3f%s\n",starttimes[wurtzctr%avglen],result,downtimes[wurtzctr%avglen],binocTimeString());
                     fflush(logfd);
                     /*
                      close(logfd);
@@ -10953,41 +10991,9 @@ int GotChar(char c)
                 }
 		        wurtzctr++;
                 /*
-                 *  Alloc new memory early so that writing, for example -1 to fixed[ctr+1] does
-                 * not overwrite buffer end.
+                 * Binoc no longer tries to record every trial outcome. THis is all in disk files that matlab
+                 *can read.  so just keep track of  a circular buffer length avglen
                  */
-                if(wurtzctr >= (wurtzbufferlen-5))
-                {
-                    ptr = (float *)malloc(sizeof(float) * (wurtzbufferlen + 512));
-                    memcpy(ptr,downtimes,sizeof(float) * wurtzbufferlen);
-                    free(downtimes);
-                    downtimes = ptr;
-                    ptr = (float *)malloc(sizeof(float) * (wurtzbufferlen + 512));
-                    memcpy(ptr,stimtimes,sizeof(float) * wurtzbufferlen);
-                    free(stimtimes);
-                    stimtimes = ptr;
-                    ptr = (float *)malloc(sizeof(float) * (wurtzbufferlen + 512));
-                    memcpy(ptr,starttimes,sizeof(float) * wurtzbufferlen);
-                    free(starttimes);
-                    starttimes = ptr;
-                    
-                    ptr = (float *)malloc(sizeof(float) * (wurtzbufferlen + 512));
-                    memcpy(ptr,fixx,sizeof(float) * wurtzbufferlen);
-                    free(fixx);
-                    fixx = ptr;
-                    
-                    ptr = (float *)malloc(sizeof(float) * (wurtzbufferlen + 512));
-                    memcpy(ptr,fixy,sizeof(float) * wurtzbufferlen);
-                    free(fixy);
-                    fixy = ptr;
-                    
-                    
-                    iptr = (int *)malloc(sizeof(int) * (wurtzbufferlen + 512));
-                    memcpy(iptr,fixed,sizeof(int) * wurtzbufferlen);
-                    free(fixed);
-                    fixed = iptr;
-                    wurtzbufferlen += 512;
-                }
   
 
                 if(SACCREQD(afc_s)){
@@ -11313,13 +11319,23 @@ void printString(char *s, int size)
 
 void printStringOnMonkeyView(char *s, int size)
 {
+    struct timeval atime,btime,ctime;
+    float aval;
+    
     if (expt.vals[SETCLEARCOLOR] == 0  && optionflags[FEEDBACK] == 0)
         return;
     if (optionflags[STIMULUS_IN_OVERLAY] && expt.vals[RF_HEIGHT] < 0.01)
         return;
     glColor4f(1.0,1.0,1.0,1.0); //white text
     glColorMask(GL_FALSE, GL_TRUE, GL_FALSE, GL_TRUE);
+    gettimeofday(&atime,NULL);
     displayOnMonkeyView(s, -500, -450);
+    if (optionflags[WATCH_TIMES]){
+        gettimeofday(&btime,NULL);
+        aval = timediff(&btime,&atime) * mon.framerate;
+        if (aval > 0.2)
+            fprintf(stderr,"Slow string draw %.3f frames\n",aval);
+    }
 //    glPushAttrib(GL_LIST_BIT);
 //    if(size == 1)
 //        glListBase(mediumbase);
