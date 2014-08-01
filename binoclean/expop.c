@@ -3270,8 +3270,10 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
             expt.cj = val;
             break;
         case REWARD_SIZE:
-            if(val < 1 ) //Ali || !confirm_no("Sure you want a big reward (>1)?",NULL))
+            if(val < 1 ){
                 expt.st->fix.rwsize = val;
+                expt.st->fix.fixrwsize = val;
+            }
             break;
         case WURTZ_RT_CODE:
             expt.st->fix.rt = val;
@@ -11420,7 +11422,9 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
                 tval = timediff(&changeframetime, &zeroframetime);
                 postframetimes[framesdone] = tval;
                 fframecounts[framesdone] = (tval * mon.framerate);
+                if (optionflags[WATCH_TIMES]){
                 if (tval > frametimes[framesdone] + 1/mon.framerate){
+                    aval = timediff(&paintfinishtime, &paintframetime) *1000;
                     aval = changeframedur;
                     if (framesdone > 0){
                         aval = frametimes[framesdone]-frametimes[framesdone-1];
@@ -11438,6 +11442,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
                 else if (tval < frametimes[framesdone]){
                     aval = changeframedur;
                     aval = frametimes[framesdone];
+                }
                 }
             }
             else

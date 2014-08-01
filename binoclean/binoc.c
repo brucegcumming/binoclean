@@ -148,12 +148,12 @@ char ImageOutDir[BUFSIZ] = ".";
 FILE *imidxfd;
 
 #define CBUFLEN 4098
-static char charbuf[CBUFLEN],mssg[BUFSIZ], conjbuf[BUFSIZ];
+static char charbuf[CBUFLEN],tmssg[BUFSIZ], conjbuf[BUFSIZ];
 static int conjbufctr = -1;
 static char lastinput[BUFSIZ];
 
 static char theport[256] = "/dev/tty.KeySerial1";
-
+char mssg[BUFSIZ * 10];
 static char *statusstring = NULL;
 
 char stepperport[256] = "/dev/ttys1";
@@ -4475,7 +4475,7 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
             fixpos[1] = deg2pix(val);
             break;
         case REWARD_SIZE:
-            st->fix.rwsize = val;
+            st->fix.rwsize = st->fix.fixrwsize = val;
             break;
         case BLANKCOLOR_CODE:
             expt.vals[BLANKCOLOR_CODE] = val;
@@ -6516,7 +6516,13 @@ int next_frame(Stimulus *st)
                     optionflags[INITIAL_TRAINING] = 2;
                 
             }
-            
+            if (option2flag & AFC){
+                expt.st->fix.rwsize = expt.st->fix.afcrwsize;
+            }
+            else{
+                expt.st->fix.rwsize = expt.st->fix.fixrwsize;
+            }
+            SerialSend(REWARD_SIZE);
             wipescreen(clearcolor);
             RunBetweenTrials(st, pos);
             draw_fix(fixpos[0],fixpos[1], TheStim->fix.size, TheStim->fixcolor);
@@ -10333,6 +10339,8 @@ int ShowTestCount(float down, float sum)
     
     
     crasher =31;
+ //15 crashed, to its not the loop.
+ // looks like its overflowing mssg with some message?
 
     
     val = 0;
@@ -10348,6 +10356,17 @@ int ShowTestCount(float down, float sum)
                     if(*iptr++ == (int)WURTZ_OK)
                         fsum += 1.0;
                 }
+                else if (crasher & 32){
+                    *iptr++;
+                }
+                else if (crasher & 64){
+                    if(*iptr == (int)WURTZ_OK)
+                        fsum += 1.0;
+                }
+            }
+            for(i = 0; i < avglen && i < wurtzctr; i++){
+                if(fixed[i] == (int)WURTZ_OK)
+                    fsum += 1.0;
             }
         }
         else
@@ -10360,35 +10379,38 @@ int ShowTestCount(float down, float sum)
         val = timediff(&now, &firstframetime);
     }
 	if(debug)
-        sprintf(mssg,"%s(%.2f) Frames: %d/%d (%.3f sec) %d/%d %d late %d bad (%.2f), %0f/%d",binocTimeString(),ufftime(&now),framesdone,TheStim->nframes,val,goodtrials,totaltrials,
+        sprintf(tmssg,"%s(%.2f) Frames: %d/%d (%.3f sec) %d/%d %d late %d bad (%.2f), %0f/%d",binocTimeString(),ufftime(&now),framesdone,TheStim->nframes,val,goodtrials,totaltrials,
                 totaltrials-(goodtrials+fixtrials),fixtrials,down,fsum,avglen);
 	else
-        sprintf(mssg,"%s Frames: %d/%d (%.3f sec) %d/%d %d late %d bad (%.2f), %.0f/%d",binocTimeString(),framesdone,TheStim->nframes,val,goodtrials,wurtzctr,
+        sprintf(tmssg,"%s Frames: %d/%d (%.3f sec) %d/%d %d late %d bad (%.2f), %.0f/%d",binocTimeString(),framesdone,TheStim->nframes,val,goodtrials,wurtzctr,
                 totaltrials-(goodtrials+fixtrials),fixtrials,down,fsum,avglen);
     
     if (crasher & 4){
-    sprintf(buf," rw%.1f ",totalreward);
-    strcat(mssg,buf);
-	if(TheStim->mode & EXPTPENDING)
-    {
-	    sprintf(buf,"Ex: %d/%d",stimno,expt.nstim[6]);
-	    strcat(mssg,buf);
-    }
-    strcat(mssg,resbuf);
-	if(endbadctr)
-    {
-	    sprintf(buf,"Bad: %d",endbadctr);
-	    strcat(mssg,buf);
-    }
-	if(optionflag & FRAME_ONLY_BIT)
-    {
-	    sprintf(mssg,"Ex: %ld/%d %.1f +- SD %.2f %d,%d outliers",frametotal,expt.nreps*expt.nstim[5],framemean,framesd,outliers[0],outliers[1]);
-    }
+        sprintf(buf," rw%.1f ",totalreward);
+        strcat(tmssg,buf);
+        if(TheStim->mode & EXPTPENDING)
+        {
+            sprintf(buf,"Ex: %d/%d",stimno,expt.nstim[6]);
+            strcat(tmssg,buf);
+        }
+        strcat(tmssg,resbuf);
+        if(endbadctr)
+        {
+            sprintf(buf,"Bad: %d",endbadctr);
+            strcat(tmssg,buf);
+        }
+        if(optionflag & FRAME_ONLY_BIT)
+        {
+            sprintf(tmssg,"Ex: %ld/%d %.1f +- SD %.2f %d,%d outliers",frametotal,expt.nreps*expt.nstim[5],framemean,framesd,outliers[0],outliers[1]);
+        }
     }
     
     if (crasher & 2){
-        statusline(mssg);
+        statusline(tmssg);
     }
+    i = strlen(tmssg);
+    if (i > BUFSIZ)
+        fprintf(stderr,"%s: Message too long %d\n",tmssg,i);
 	return(0);
 }
 
@@ -11051,8 +11073,8 @@ int GotChar(char c)
                     monkey_dir = 0;
                     sprintf(resbuf," %c%d",result,monkey_dir);
                 }
-                if (!(option2flag & PSYCHOPHYSICS_BIT)){
-                    sprintf(buf,"TRES %c%d %d\n",result,monkey_dir,trueafc);
+                if (!(option2flag & PSYCHOPHYSICS_BIT)){  //all monkey trials send this
+                    sprintf(buf,"TRES %c%d %d %.2f\n",result,monkey_dir,trueafc,TheStim->fix.rwsize);
                     notify(buf);
                 }
 
@@ -11077,6 +11099,7 @@ int GotChar(char c)
                         TheStim->fix.rwsize = oldrw;
                     else
                         TheStim->fix.rwsize = expt.vals[REWARD_SIZE1];
+                    TheStim->fix.afcrwsize = TheStim->fix.rwsize;
                 }
                 else if(option2flag & AFC){
                 }

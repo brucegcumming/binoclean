@@ -502,7 +502,8 @@
 #define SEQUENCE_PAUSE (MAXSAVECODES+40)
 #define STIMULUSDIR (MAXSAVECODES+41)
 #define HELPDIR (MAXSAVECODES+42)
-#define MAXTOTALCODES (MAXSAVECODES+43)  //436
+#define TOTAL_REWARD (MAXSAVECODES+43)
+#define MAXTOTALCODES (MAXSAVECODES+44)  //436
 
 
 /*
@@ -859,13 +860,14 @@ char *bwtoggle_codes[] = {
  *         512 Indirect properties
  *         1024 Internal commands (sb+)
  *         2048 can't be an expt type. (Checked in setsecondexpt)
- *         4096 Verg only - deprecated. Binoc needs to know about all variables
+ *         4096 Verg only - ?deprecated. Binoc needs to know about all variables
  */
 #define VERGONLY 3096
 #define INTERNALCOMMAND 1024
 #define INDIRECT 512
 #define RF_PROPERTIES 256
 #define COMPOUND_GRATING (4096 << 1)
+#define EXPTSTATE (4069 <<2) // things that count trials etc - only save in expt state files
 #define SAVE_ALWAYS 1
 #define SAVE_STATE 2  //program state, but not part of stim - e.g. id, Pen details
 #define SAVE_NEVER 0
@@ -1290,6 +1292,7 @@ ValueCode valstrings[] = {
     {  "helpdir", "Stimulus File Directory", STIMULUSDIR, 0, 'C', 0, SEND_VERG_ONLY, SAVE_NEVER},
     {  "nph", "Number of Random phases", NPHASES, 0, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "jcomp", "SF Components that jump",  JUMP_SF_COMPONENTS, 0, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},
+    {  "Trw", "Total reward", TOTAL_REWARD, 0, 'N', 3, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "nsf", "SF Components", SET_SF_COMPONENTS, 0, 'N', 3, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "ntf", "TF Components", SET_TF_COMPONENTS, 0, 'N', 3, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "nco", "Component Contrasts", SET_SF_CONTRASTS, 0, 'N', 3, SEND_EXPLICIT, SAVE_ALWAYS},

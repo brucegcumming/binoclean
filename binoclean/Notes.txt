@@ -32,9 +32,9 @@ same, but move SendTrialCount line, crashes at 4k
 using SendTestCoutn, sith call t statusline removed 13k
       		     remove rest of fcn 30k wihtout crash
 		     simple text, show message (crasher =2)  30k without crash
-		     crasher = 3 crashes at 4k
-		     crasher = 7
-
+		     crasher = 3 crashes at 4k. Included call to StimulusDuration. Crasher & 8 added after this
+		     crasher = 10 (aeverything except 4) I stopped after 20k
+		     crahser = 31. Crahses after 11k
 POSTTRIAL 12
 POSTSTIMINTRIAL 13
 INTERTRIAL 1

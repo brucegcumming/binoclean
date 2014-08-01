@@ -443,7 +443,13 @@ for j = 1:length(strs{1})
             DATA.strcodes(sid).icode = icode;
             DATA.strcodes(sid).code = code;
     elseif strncmp(s,'status',6)
-        DATA.Statuslines{end+1} = s(8:end);
+        sstr = s(8:end);
+        if ~isempty(strfind(sstr,'Frames:')) && isfield(DATA.Trial,'rw')
+            sstr = regexprep(sstr,' rw[0-9,\.]+',['$0,' num2str(DATA.Trial.rw)]);
+        end
+                
+            
+        DATA.Statuslines{end+1} = sstr;
         if strncmp(s,'status=Can''t open Network',24)
             DATA.lastmsg = s(8:end);
             if DATA.errors(1) == 0
@@ -604,7 +610,7 @@ for j = 1:length(strs{1})
 
     elseif strncmp(s,'TRES',4)
         if s(6) == 'G' || s(6) == 'W'
-            a = sscanf(s(7:end),'%d');
+            a = sscanf(s(7:end),'%f');
         else
             a = 0;
         end
@@ -615,12 +621,15 @@ for j = 1:length(strs{1})
         else
             DATA.Trial.good = 0;
         end
-        DATA.Trial.rw = DATA.binoc{1}.rw;
         DATA.Trial.RespDir = a(1);
         if length(a) > 1
             DATA.Trial.tr = a(2);
         end
-        DATA = SetTrial(DATA, DATA.Trial);
+        if length(a) > 2
+            DATA.Trial.rw = DATA.binoc{1}.rw;
+        else
+            DATA = SetTrial(DATA, DATA.Trial);
+        end
         DATA.nt = DATA.nt+1;
         DATA.Trial.Trial = DATA.nt;
         id = findstr(s,' ');
@@ -1578,7 +1587,7 @@ function DATA = SetTrial(DATA, T)
     end
     
     if isfield(DATA.binoc{1},'id')
-        if ~isfield(T,'id') || DATA.binoc{1}.id > T.id
+        if ~isfield(T,'id') | DATA.binoc{1}.id > T.id
         DATA.Trials(nt).id = DATA.binoc{1}.id;
         end
     end
@@ -1981,9 +1990,9 @@ function ShowStatus(DATA)
         str = ['No Trials Run'];
     end
     if isfield(DATA,'trialcounts') && length(DATA.trialcounts) > 7
-    s = sprintf('Trials %d/%d Bad%d Late%d  Rw%.1f Ex:%d/%d %s',...
+    s = sprintf('Trials %d/%d Bad%d Late%d  Rw%.1f (%.2f) Ex:%d/%d %s',...
     DATA.trialcounts(1),DATA.trialcounts(2),DATA.trialcounts(3),DATA.trialcounts(4),...
-    DATA.trialcounts(8),DATA.trialcounts(6),DATA.trialcounts(7),str);
+    DATA.trialcounts(8),DATA.Trial.rw,DATA.trialcounts(6),DATA.trialcounts(7),str);
     else
         s = str;
     end
@@ -3487,7 +3496,7 @@ function CheckInput(a,b, fig, varargin)
     catch ME
         cprintf('red','Error in timer call\n');
         s = getReport(ME);
-        fputs(s);
+        fprintf(s);
     end
     if DATA.confused
         fprintf('Getting State from binoc\n');
