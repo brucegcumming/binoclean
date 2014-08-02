@@ -13,6 +13,7 @@ N.B. if you call a matlab funtion with
 
 in a sequence file, this supercedes any !mat command in any stimfiles names with expt=
 
+!exptrpt for matlab controlled  experiemnts repeats the last experiment without calling matlab again. I.e. uses the same stim files and stimorder file. 
 
 When a sequence file is read, the contents are shown in a new window, and can be edited. The sequence is run when the "Run" button in the sequence window is hit.
 

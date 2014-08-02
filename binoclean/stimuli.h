@@ -72,7 +72,7 @@ typedef struct WURTZ{
     int stimvar;
     float sacval[2];
     float timeout,minprem,rt;
-    float rwsize;
+    float rwsize,afcrwsize,fixrwsize;
     vcoord origfixpos[2];
     float stairfactor; /*j usually set to ROOT2*/
     float fixcolors[5]; /* for special tasks */
@@ -192,6 +192,7 @@ typedef struct CURRENTSTIM{
     int seqseed,seed,lastseed;
 }Currentstim;
 
+#define NBITS_WRITE 10
 
 typedef struct SUBSTIM{
     Locator pos;
@@ -227,7 +228,7 @@ typedef struct SUBSTIM{
     int autoscale;
     double size;
     double orbw;  // Orientation Bandwidth
-    unsigned long bits[10]; //for recording 1-D noise pattern
+    unsigned long bits[NBITS_WRITE]; //for recording 1-D noise pattern
     int npaint,nh,nw,nbars,npainta,imagei;
     float tf;
     float boundarypos;

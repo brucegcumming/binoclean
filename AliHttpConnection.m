@@ -17,6 +17,7 @@ extern NSMutableArray * inputPipeBuffer;
 NSString * outputPipeBuffer;
 BOOL dataReadyInInputPipe;
 char *DescribeState();
+extern int inexptstim;
 
 
 // Log levels : off, error, warn, info, verbose
@@ -52,6 +53,9 @@ static const int httpLogLevel = HTTP_LOG_LEVEL_WARN; // | HTTP_LOG_FLAG_TRACE;
     NSData *outputdata = [@"" dataUsingEncoding:NSASCIIStringEncoding];
     NSString * s = @"";
 
+//    if (inexptstim == 1){
+//        return [[HTTPDataResponse alloc] initWithData:outputdata];
+//    }
     if ([method isEqualToString:@"GET"]) {
         if (request.url){
             if (request.url.pathComponents){

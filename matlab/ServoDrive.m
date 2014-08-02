@@ -3,17 +3,31 @@ figpos = [1400 400 350 350];
 tag = 'Servo Controller';
 DATA.verbose = 1;
 verbose = [];
+startdepth = NaN;
+
+
 j = 1;
 while j <= length(varargin)
     if strncmpi(varargin{j},'callback',5)
         j = j+1;
         DATA.callback = varargin{j};
+    elseif strncmpi(varargin{j},'depths',5)
+        j = j+1;
+        DATA.alldepths = varargin{j};
+        j = j+1;
+        DATA.alltimes = varargin{j};
     elseif strncmpi(varargin{j},'position',5)
         j = j+1;
         figpos = varargin{j};
     elseif strncmpi(varargin{j},'quiet',5)
         DATA.verbose = 0;
         verbose = 0;
+    elseif strncmpi(varargin{j},'startdepth',8)
+        j = j+1;
+        startdepth = varargin{j};
+    elseif strncmpi(varargin{j},'stepsize',5)
+        j = j+1;
+        DATA.stepsize = varargin{j};
     elseif strncmpi(varargin{j},'ttyname',3)
         j = j+1;
         DATA.ttyname = varargin{j};
@@ -31,6 +45,8 @@ if isnew
     DATA = SetDefaults(DATA);
     DATA = BuildServoWindow(DATA);
     DATA = OpenServoPort(DATA);
+    DATA = OpenDiskLog(DATA);
+    DATA = SetStartDepth(DATA, startdepth);
     set(DATA.toplevel,'UserData',DATA);
 else 
     DATA = get(F,'UserData');
@@ -74,6 +90,7 @@ else
     str = get(it,'string');
     j= get(it,'value');
     step = sscanf(str(j,:),'%d');
+    DATA.stepsize = step;
     if  strcmp(fcn,'Up')
         step = -step;
     end
@@ -85,6 +102,23 @@ end
 EnableMoveButtons(DATA,'on');
 set(DATA.toplevel,'UserData',DATA);
 
+
+function DATA = SetStartDepth(DATA, startdepth)
+% set initial position, but check that drive has not already been used;
+if isnan(startdepth)
+    return;
+end
+if length(DATA.alldepths) && max(DATA.alltimes)-now < 2/24
+    x = GetCurrentPosition(DATA)./1000;
+    msg = sprintf('MicroDrive set to %.2f on %s. Now %.2f, Sure you want to set %.2f?',DATA.alldepths(end)./1000,datestr(DATA.alltimes(end)),x,startdepth);
+    yn = questdlg(msg,'ServoDrive Message','Yes','No','Yes');
+    if strcmp(yn,'No')
+        return;
+    end    
+end
+
+newpos = startdepth;
+SetHomePosition(DATA, newpos);
 
 function DATA = BuildServoWindow(DATA)
 F = DATA.toplevel;
@@ -114,7 +148,20 @@ bp = [0.05 0.4 0.3 0.15];
 h = uicontrol(gcf,'style','popupmenu','string','10uM|20uM|25uM|50uM|100uM|200uM|Set Custom', ...
         'units', 'norm', 'position',bp,'value',1,...
         'Tag','StepSize','fontsize',18,'fontweight','bold','callback',@SetStepSize);
-
+if isfield(DATA,'stepsize') && DATA.stepsize > 0
+    [a,b] = min(abs(DATA.stepsize-[10 20 25 50 100 200]));
+    if a < 2
+        set(h,'value',b');
+    else
+        DATA.customstep = DATA.stepsize;
+        s = get(h,'string');
+        val = size(s,1);
+        str = sprintf('%d (Custom)',DATA.customstep);
+        DATA.step = DATA.customstep;
+        s(val+1,1:length(str)) = str;
+        set(h,'string',s,'value',val+1);
+    end
+end
     bp(2) = 0.2;
     bp(1) = bp(1)+bp(3)+0.05;
 bp(3) = 0.15;
@@ -168,6 +215,7 @@ sm = uimenu(mn,'Label','Read Position','callback',{@MoveMicroDrive, 'readpositio
 sm = uimenu(mn,'Label','Plots');
 uimenu(sm,'Label','Full History','tag','FullHistory','checked','on','callback',@SetMotorPlot);
 uimenu(sm,'Label','Last Move','tag','LastMove','callback',@SetMotorPlot);
+uimenu(sm,'Label','Set Time range','tag','Custom','callback',@SetMotorPlot);
 uimenu(sm,'Label','Speed','tag','MoveSpeed','callback',@SetMotorPlot);
 uimenu(sm,'Label','None','tag','None','callback',@SetMotorPlot);
 sm = uimenu(mn,'Label','Speed');
@@ -214,12 +262,53 @@ function SetOption(a,b)
    end
    set(DATA.toplevel,'UserData',DATA);
    
+   
+function DATA = OpenDiskLog(DATA)
+
+if exist(DATA.logfile,'file')
+    X = load(DATA.logfile);
+    logdate = max(X.alltimes);
+    a = datevec(logdate);
+    b = datevec(now);
+    if now - logdate > 1  || a(3) < b(3)
+        BackupFile(DATA.logfile);
+    else
+        X = load(DATA.logfile);
+        DATA.alldepths = X.alldepths;
+        DATA.alltimes = X.alltimes;
+    end
+end
+
+function DATA = SaveDiskLog(DATA)
+
+X.alltimes = DATA.alltimes;
+X.alldepths = DATA.alldepths;
+save(DATA.logfile,'-struct','X');
+
+
 function SetMotorPlot(a,b)
 
    DATA = GetDataFromFig(a);
    tag = get(a,'tag');
-   DATA.plottype = tag;
-   SetMenuCheck(a,'exclusive');
+   if strcmp(tag,'Custom')
+       if DATA.timerange > 0
+           defaultanswer{1} = num2str(DATA.timerange(1));
+       else
+           defaultanswer{1} = '10';
+       end
+       str = inputdlg('Plot How many minutes back?','Custom',1,defaultanswer);
+       if isempty(str)
+           return;
+       end
+       DATA.timerange = str2num(str{1});
+   else
+       DATA.plottype = tag;
+       if sum(strncmp(tag,{'FullHistory' 'LastMove'},6))
+           DATA.timerange = 0;
+       end
+       SetMenuCheck(a,'exclusive');
+   end
+   DATA.firstsample = 0;
    PlotDepths(DATA);
    set(DATA.toplevel,'UserData',DATA);
 
@@ -238,7 +327,7 @@ elseif strcmp(tag,'VSlow')
 elseif strcmp(tag,'Auto')
     DATA.motorspeed = 0;
 elseif strcmp(tag,'Custom')
-    defaultanswer{1} = num2str(DATA.customspeed);
+    defaultanswer{1} = num2str(DATA.customspeed.*1000);
     str = inputdlg('Step Size in uM/sec','Custom',1,defaultanswer);
     if isempty(str)
        return;
@@ -252,6 +341,9 @@ end
 if DATA.motorspeed > 0
     ispeed = round(DATA.motorspeed.*DATA.speedscale.*DATA.stepscale/1000);
     fprintf('New Speed %.3f mm/sec  = %.0f RPM\n',DATA.motorspeed,ispeed);
+    if ispeed < DATA.minrpm
+        fprintf('%.1f less than min RPM (%.1f). Will use steps\n',ispeed, DATA.minrpm);
+    end
     fprintf(DATA.sport,'SP%.0f\n',ispeed);
     DATA.motorspeed = ispeed;
 end
@@ -262,7 +354,7 @@ function CloseServoPort(a,b)
 DATA = GetDataFromFig(a);
 %tell verg first
 if ~isempty(DATA.callback)
-    feval(DATA.callback{:}, 'close');
+    feval(DATA.callback{:}, 'close', DATA);
 end
 
 if isfield(DATA, 'sport');
@@ -293,21 +385,51 @@ else
 end
 set(DATA.toplevel,'UserData',DATA);
 
+function x = addfield(x,name, val)
+if iscell(name) && iscell(val) && length(name) == length(val)
+    for j = 1:length(name)
+        x = addfield(x,name{j},val{j});
+    end
+elseif iscell(name)
+    for j = 1:length(name)
+        x = addfield(x,name{j},val);
+    end
+elseif ~isfield(x,name)
+    x.(name) = val;
+end
+
 function DATA = SetDefaults(DATA)
 DATA.position = 0;
 DATA.step = 0;
-DATA.customstep = 0;
 DATA.stepscale = 65.6;
+DATA.minrpm = 20;
 DATA.speedscale = 15000;
+DATA.timerange = 0;
+DATA.firstsample = 0;
 DATA.customspeed = 1; %also default
 DATA.motorspeed = round(DATA.customspeed.* DATA.speedscale.*DATA.stepscale/1000);
+DATA.setupfile = '/local/servomotor.setup';
+DATA.logfile = '/local/servolog.mat';
 
 DATA.motorid = -1; %< 0 means dont set id
-DATA.alldepths = [];
-DATA.alltimes = [];
-DATA.offidx = []; %keep  track of when motor cut
+DATA = addfield(DATA,{'stepsize' 'customstep' 'position'},0);
+DATA = addfield(DATA,{'alldepths' 'alltimes' 'offidx'},[]);
+txt = scanlines(DATA.setupfile);
+
 if ~isfield(DATA,'ttyname')
-    DATA.ttyname = '/dev/tty.USA49Wfa1212P1.1';
+    id = strncmp('serialport',txt,10);
+    if isempty(id)
+        DATA.ttyname = '/dev/tty.USA49Wfa1212P1.1';
+    else
+        a = split(txt{id},'=');
+        DATA.ttyname = a{2};
+    end
+end
+for j = 1:length(txt)
+    a = split(txt{j},'=');
+    if strncmp(txt{j},'minrpm',6)
+        DATA.minrpm = sscanf(a{2},'%f');
+    end
 end
 if ~isfield(DATA,'callback')
     DATA.callback = [];
@@ -371,12 +493,62 @@ else
 fprintf(DATA.sport,'DI\n');
 end
 
+
+function DATA = SlowMove(DATA, pos)
+
+newpos = pos .* DATA.stepscale;
+d = GetCurrentPosition(DATA);
+edur = abs(pos-d)./DATA.motorspeed;
+
+nstep = floor(abs((pos-d)/10));  %divide into 10uM steps
+smallstep = (pos -d)./nstep;
+positions = d + smallstep .* [1:nstep];
+
+oldspeed = DATA.motorspeed;
+ispeed = round(0.1.*DATA.speedscale.*DATA.stepscale/1000);
+fprintf(DATA.sport,'SP%.0f\n',ispeed);
+DATA.motorspeed = ispeed;
+stopui = findobj(DATA.toplevel,'tag','EmergencyStop');
+
+
+DATA.firstsample = length(DATA.alldepths);
+for j = 1:nstep
+    istop = get(stopui,'value');
+    if istop
+        break;
+    else
+        DATA = SetNewPosition(DATA,positions(j));
+        if j < nstep
+            pause(edur./nstep);
+        end
+    end
+end
+
+if istop
+    fprintf('Stopped by User\n');
+    set(stopui,'value',0);
+end
+
+fprintf(DATA.sport,'SP%.0f\n',oldspeed);
+DATA.motorspeed = oldspeed;
+DATA.firstsample = 0;
+
 function DATA = SetNewPosition(DATA, pos)
+
+
 
 newpos = pos .* DATA.stepscale;
 pause(0.01);
 d = NaN;
 
+if DATA.motorspeed < DATA.minrpm;
+    str = sprintf('%.1f less than min RPM (%.1f). Using steps',DATA.motorspeed, DATA.minrpm);
+    fprintf('%s\n',str);
+    set(gcf,'Name',str);
+    DATA = SlowMove(DATA, pos);
+    set(gcf,'Name','ServoMotor MicroDrive');
+    return;
+end
 if DATA.motorid >= 0
     fprintf(DATA.sport,'%dPOS\n',DATA.motorid);
 else
@@ -389,6 +561,8 @@ if isempty(s)
     return;
 end
 d = sscanf(s,'%d');
+startpos = d./DATA.stepscale;
+
 margin = 20 * DATA.stepscale; %allow for up to 20uM of noise
 step = newpos-d;
 edur = 0.1 + 2 .* abs(newpos-d) ./(DATA.motorspeed .* DATA.stepscale); %estimated duration
@@ -479,7 +653,7 @@ while npost < 2
             if poserr < 3./DATA.stepscale.*1000 %3uM margin of error seems necessary. 
                 npost = npost+1;
             end
-            if edur > 2
+            if edur > 2 || DATA.firstsample > 0
                 PlotDepths(DATA, ts, newd);
             end
         catch
@@ -495,7 +669,7 @@ while npost < 2
         fprintf(DATA.sport,'DI\n');
        npost = 2;
        F = gcf;
-       uiwait(warndlg(sprintf('Only Moved to %.3f (%.3f)',[newd(end) newpos]./(DATA.stepscale.*1000)),'Microdrive Error','modal'));
+       uiwait(warndlg(sprintf('Only Moved to %.3f (%.3f->%.3f)',[newd(end) startpos newpos]./(DATA.stepscale.*1000)),'Microdrive Error','modal'));
        figure(F);
     elseif newd(j) < minpos
         fprintf(DATA.sport,'DI\n');
@@ -539,6 +713,7 @@ else
 end
 pause(0.01);
 DATA = PlotDepths(DATA, ts, newd);
+SaveDiskLog(DATA);
 
 if ~isempty(DATA.callback)
     feval(DATA.callback{:}, newd(end)./DATA.stepscale);
@@ -560,8 +735,13 @@ end
 
 if ~strcmp(DATA.plottype,'None')
     if strcmp(DATA.plottype,'LastMove')
-        ts = ts-ts(1);
-        y =newd./DATA.stepscale;
+        if DATA.firstsample > 0
+            ts = DATA.alltimes(1+DATA.firstsample:end);
+            y = DATA.alldepths(1+DATA.firstsample:end);
+        else
+            ts = ts-ts(1);
+            y =newd./DATA.stepscale;
+        end
         plot(ts, y);
         set(gca,'xtick',[],'ytick',[],'ydir','reverse');
         xl = [min(ts) max(ts)];
@@ -575,11 +755,24 @@ if ~strcmp(DATA.plottype,'None')
         set(gca,'xtick',[],'ytick',[],'ydir','normal');
         xl = [min(ts) max(ts)];
         yl = minmax(y);
+        if length(y) > 3
+            ms = prctile(y,50);
+            line(xl,[ms ms],'color','r');            
+            text(mean(xl),ms,sprintf('%.1fuM/sec',ms),'verticalalignment','bottom');
+        end
     else
-        plot(DATA.alltimes, DATA.alldepths);
+        if DATA.timerange > 0
+            ti = find(DATA.alltimes(end)-DATA.alltimes < DATA.timerange./(24 * 60));
+            t = DATA.alltimes(ti);
+            d = DATA.alldepths(ti);
+        else
+            t = DATA.alltimes;
+            d = DATA.alldepths;
+        end
+        plot(t, d);
         set(gca,'xtick',[],'ytick',[],'ydir','reverse');
-        xl = [min(DATA.alltimes) max(DATA.alltimes)];
-        yl = [min(DATA.alldepths) max(DATA.alldepths)];
+        xl = minmax(t);
+        yl = minmax(d);
     end
     
     if diff(yl) <= 0

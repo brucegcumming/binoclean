@@ -1,0 +1,2 @@
+V-probe 63/14 24 contacts 50uM spacing. Tip modified by mitch June2014.
+V-probe 64/14 24 contacts 50uM spacing. 

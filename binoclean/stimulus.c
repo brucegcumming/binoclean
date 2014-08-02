@@ -69,6 +69,10 @@ int *RecordImage(int frame, Stimulus *st){
 // For RLS 0 = Black, 1 = grey, 2 = whiee
 // For RDS 0 = Grey, 1 = BLACK, 2 = white
         if(st->type == STIM_RLS){
+            if (fabs(st->pos.contrast_amp) < 0.01){
+                *p = -1;
+                return(0);
+            }
             for (j = 0; j < st->left->ndots; j++) {
                 *p++ = st->left->iimb[j] | (st->right->iimb[j] << 2);
             }
@@ -100,7 +104,12 @@ void StimStringRecord(FILE *fd, Expt *ex)
             sprintf(s,"%x:",j);
             strcat(buf,s);
             for(i = 0; i < expt.st->left->ndots; i++){
-                sprintf(s,"%1x",*p++);
+                if (*p == -1){ //a blank frame
+                    sprintf(s,"NaN");
+                    i = expt.st->left->ndots;
+                }
+                else
+                    sprintf(s,"%1x",*p++);
                 strcat(buf,s);
             }
             strcat(buf,"\n");
@@ -232,7 +241,9 @@ float deg2pixy(float val)
 
 Stimulus *NewStimulus(Stimulus *st)
 {
-    int i;
+    int i,ndots;
+    Substim *sst;
+    
     Stimulus *new = (Stimulus *)malloc(sizeof(Stimulus));
     if(st != NULL)
     {
@@ -292,6 +303,28 @@ Stimulus *NewStimulus(Stimulus *st)
     new->dotfrac = 0.5;
     new->nphases = 360; //default for random
     new->phasesign = 1;
+    
+    ndots = 1000;  //initialize memory so that don't change oftern
+    for (i = 0; i < 2; i++){
+        if (i==0)
+            sst = new->left;
+        else
+            sst = new->right;
+        sst->imlen = ndots;
+    sst->iimlen = ndots;
+    sst->im = (float *)malloc(sst->imlen * sizeof(float));
+    sst->iim = (int *)malloc(sst->iimlen * sizeof(int));
+    sst->iimb = (int *)malloc(sst->iimlen * sizeof(int));
+    sst->imblen = ndots;
+    sst->imb = (float *)malloc(sst->imblen * sizeof(float));
+    sst->xpl = ndots;
+    sst->xpos = (vcoord *)malloc(sst->xpl * sizeof(vcoord));
+    sst->ypl = ndots;
+    sst->ypos = (vcoord *)malloc(sst->ypl * sizeof(vcoord));
+    sst->xpla = ndots;;
+    sst->xposa = (vcoord *)malloc(sst->xpla * sizeof(vcoord));
+    }
+    
     if(new->prev == NULL){
         new->right->id[1] = new->left->id[1] = '0';
     }

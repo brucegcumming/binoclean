@@ -31,7 +31,7 @@ If this is named, then verg will call eval with whateever follows the =.
 will send those argumnents to BuildExpt
 
 This is called every time the run button is hit, so if the matlab function re-caclulates stimorder, this will generate a new random order for each run. 
-
+You can force it to use the same files and order by using !exptrpt in a sequence run. 
 
 Stim files
 

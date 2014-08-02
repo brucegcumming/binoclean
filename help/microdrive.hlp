@@ -1,0 +1,7 @@
+Microdrive
+
+Initialising a new Chip
+
+Make sure chip is powered on.
+Fire up Faulhaber motion manager 4. It should correctly identify the chip
+To use the Faulhaber software make sure the green check button is on - it powers up the motor

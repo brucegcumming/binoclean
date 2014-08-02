@@ -368,6 +368,7 @@ void WurtzTrial();
 float StimDuration();
 float StimTime(struct timeval *event);
 int ShowTrialCount(float down, float sum);
+int ShowTestCount(float down, float sum);
 int ShowLastCodes();
 void ShowConjugReadState(char *line);
 double  RunTime(void );

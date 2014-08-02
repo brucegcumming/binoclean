@@ -1,0 +1,45 @@
+Crashing
+
+Crash2.stm without Spike2 100rpt expts. crahses July 11 2014
+seems not when using leantest, but double check this
+Crash2.stm just free running trials does not crash for 24 hours.
+Crash2 4000 trials per expt: Crashes near end of second lap
+Crash2 10000 trials per expt. Crashes after 3831 in first expt
+Crash2 leantest when PRESTIM is bypassed and RunExptStim is in testloop. Crashes after 4578 trials
+
+Including different states. Best done by setting state after WAIT_FOR RESPONSE
+Crash2 testloop is 1->2  2->3 459->12 12->1  crash after 6500
+
+WAIT_FOR_RESPONSE -> PRESTIM
+                459/12-> 459/12 does not crash
+WAIT_FOR_RESPONSE -> INTERTRIAL
+		 1/1 1/2 2/3 459/12  Does crash, but only after 38854 stims
+WAIT_FOR_RESPONSE -> POSTTRIAL
+		  1/1 1/2 2/3 459/12 12/1 crash after 9792, 1343
+
+WAIT_FOR_RESPONSE -> POSTTRIAL
+		  1/2 2/3 459/12 1/2 crash after 9792, 1343
+
+WAIT_FOR_RESPONSE -> INTERTRIAL
+Add Postrial commands WAIR_FOR_RESPONSE in test loop crash after 1396
+cut these out again with if(crasher) goes 35000
+1/1 1/2 2/3 459/12 1/1
+
+with crasher = 3 did 12k before I stopped it
+with carhser = 2 14k then I stopped 
+crahser = 1(reopen pipe)   33k, then crash
+same, but move SendTrialCount line, crashes at 4k
+using SendTestCoutn, sith call t statusline removed 13k
+      		     remove rest of fcn 30k wihtout crash
+		     simple text, show message (crasher =2)  30k without crash
+		     crasher = 3 crashes at 4k. Included call to StimulusDuration. Crasher & 8 added after this
+		     crasher = 10 (aeverything except 4) I stopped after 20k
+		     crahser = 31. Crahses after 11k
+POSTTRIAL 12
+POSTSTIMINTRIAL 13
+INTERTRIAL 1
+PREFIXATION 2
+PRESTIMULUS 3
+INSTIMULUS 4
+POSTSTIMULUS 5
+WAIT_FOR_RESPONSE 459

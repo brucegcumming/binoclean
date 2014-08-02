@@ -204,6 +204,7 @@ void calc_rls(Stimulus *st, Substim *sst)
     uint64_t *rp,rnd,*rq;
     int orthoguc = 0,orthogac = 0;
     int pblank = 0,*pi,maxconsec = 0;
+    int painterr = 0;
 
     if (sst->density < 100)
         pblank = rint((100-sst->density) * 2.55);
@@ -491,10 +492,11 @@ void calc_rls(Stimulus *st, Substim *sst)
         }
         bit = i % (sizeof(long) * 8);
         nbit = i/(sizeof(long) * 8);
+        if (nbit < NBITS_WRITE){
         if(*p == WHITEMODE){
             sst->bits[nbit] |= (1<<bit);
         }
-        
+        }
         /*     
          * Aproach 2. Do more manipulations to mask the problem. 
          * We only need one random bit. Choose the bit to test from the
@@ -651,6 +653,13 @@ void calc_rls(Stimulus *st, Substim *sst)
         }
         i++,x++,y++,p++,rp++,q++,zx++,zy++,pi++;
         nx++;
+        if (sst->npaint > sst->xpla){
+            sst->npaint = sst->xpla;
+            painterr++;
+        }
+    }
+    if (painterr){
+        acknowledge("Trying to Calc Too many dots",NULL);
     }
     
     if(maxconsec > 0){
@@ -1400,9 +1409,13 @@ void paint_rls(Stimulus *st, int mode)
     crect[3] = h * cosa;
     
     p = sst->iim;
-    end = (sst->iim+sst->npaint);
     if (sst->npaint < 0)
         sst->npaint = sst->ndots;
+    if (sst->npaint > sst->xpl){
+        acknowledge("Painting more lines that Allocated NOt allowed",NULL);
+        sst->npaint = sst->xpl;
+    }
+    end = (sst->iim+sst->npaint);
     x = sst->xpos;
     y = sst->ypos;
     i = 0;

@@ -99,14 +99,14 @@ char * VERSION_NUMBER;
 
 #define MAXRF 10
 extern Expstim oldrfs[];
-extern int Frames2DIO;
+extern int Frames2DIO,teststate;
 extern float pursuedir;
 extern FILE *imidxfd;
 extern char *replay_expt, ImageOutDir[],timeoutstring[];
 extern int rfctr,mimic_fixation;
 extern char *rcname;
-extern int wurtzctr,*fixed,lasteyecheck;
-extern float calcdur,paintdur,swapwait;
+extern int wurtzctr,*fixed,lasteyecheck,avglen;
+extern float calcdur,paintdur,swapwait,changeframedur;
 extern int debug,timeout_type;
 extern double olddisp,oldvelocity;
 extern int imageseed[],stimflag;
@@ -118,6 +118,8 @@ extern float monkeyhour;
 double fakestim =0;
 
 int usenewdirs=0;
+int saveframetimes = 0;
+extern int inexptstim;
 static int pcmode = SPIKE2;
 static char **expmenustrings;
 
@@ -288,7 +290,7 @@ extern Log thelog;
 extern struct BWSTRUCT thebwstruct;
 extern FILE *testfd;
 extern struct timeval signaltime,now,endstimtime,firstframetime,zeroframetime,frametime,alarmstart;
-extern struct timeval calctime,paintframetime,changeframetime;
+extern struct timeval calctime,paintframetime,changeframetime,paintfinishtime;
 extern vcoord conjpos[],fixpos[];
 static time_t lastcmdread;
 static struct timeval lastcmdtime;
@@ -935,7 +937,7 @@ double *AdjustEyePos(int len)
     for(i = 0;i< 4; i++)
         sum[i] = 0;
     while(n < len && j >= 0){
-        if(fixed[j] == WURTZ_OK || fixed[j] == WURTZ_OK_W){
+        if(fixed[j%avglen] == WURTZ_OK || fixed[k%avglen] == WURTZ_OK_W){
             k = j % BUFSIZ;
             for(i = 0;i< 4; i++)
                 sum[i] += trialeyepos[i][k];
@@ -968,7 +970,7 @@ int CheckEyeDrift()
     int i,ngood = 0;
     
     for(i = lasteyecheck; i < wurtzctr; i++)
-        if(fixed[i] == WURTZ_OK || fixed[i] == WURTZ_OK_W){
+        if(fixed[i%avglen] == WURTZ_OK || fixed[i%avglen] == WURTZ_OK_W){
             ngood++;
         }
     if(expt.vals[AUTO_ZERO]>1 && ngood >= expt.vals[AUTO_ZERO])
@@ -2600,6 +2602,9 @@ int OpenNetworkFile(Expt expt)
         sprintf(buf,"No prefix Name for network parameter file");
         fprintf(stderr,"%s\n",buf);
         statusline(buf);
+        if (optionflags[MANUAL_EXPT]){
+            acknowledge(buf,NULL);
+        }
         return(-1);
     }
     t = strchr(expt.bwptr->prefix,':');
@@ -2616,15 +2621,20 @@ int OpenNetworkFile(Expt expt)
         netoutfile = fopen(name,"a");
     
         if (netoutfile == NULL){
+            sprintf(buf,"Can't open Network record %s",name);
+            statusline(buf);
             getcwd(path,BUFSIZ);
             sprintf(name,"%s/%s.bnc",path,getfilename(sfile));
             netoutfile = fopen(name,"a");
         }
     }
+    tval = time(NULL);
     if (netoutfile != NULL){
         fprintf(netoutfile,"Reopened %s by binoc Version %s",ctime(&tval),VERSION_NUMBER);
         if (seroutfile != NULL)
             fprintf(seroutfile,"Network Record to %s\n",name);
+        sprintf(buf,"status=Network Record to %s\n",name);
+        notify(buf);
     }
     else{
         sprintf(buf,"Can't open Network parameter record file\n %s\t or\n%s",nbuf,name);
@@ -3260,8 +3270,10 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
             expt.cj = val;
             break;
         case REWARD_SIZE:
-            if(val < 1 ) //Ali || !confirm_no("Sure you want a big reward (>1)?",NULL))
+            if(val < 1 ){
                 expt.st->fix.rwsize = val;
+                expt.st->fix.fixrwsize = val;
+            }
             break;
         case WURTZ_RT_CODE:
             expt.st->fix.rt = val;
@@ -4339,6 +4351,9 @@ int ReadCommand(char *s)
         quit_binoc();
     else if(!strncasecmp(s,"getrow",4)){
         sscanf(s,"%*s %d %d %d",&line,&start,&stop);
+    }
+    else if(!strncmp(s,"expttrigger",12)){
+        TriggerExpt();
     }
     else if(!strncasecmp(s,"step",4)){
         sprintf(command_result,"step to %d",step_stimulus());
@@ -7084,8 +7099,9 @@ void runexpt(int w, Stimulus *st, int *cbs)
         if(optionflags[FAST_SEQUENCE] && expt.stimpertrial > 1){
             acknowledge("You have Nper > 1? (Fast Seq is ON)",NULL);
         }
-        if(!(optionflag & FIXATION_CHECK) && confirm_no("Sure You Don't want Fixation check?",NULL))
-            optionflag |= FIXATION_CHECK;
+        if(!(optionflag & FIXATION_CHECK)){
+            acknowledge("Make Sure You Don't want Fixation check", -1);
+        }
         if(optionflag != oldflag || option2flag != old2flag) /* was a mistake */
         {
             statusline("Expt Not run");
@@ -7329,7 +7345,7 @@ void InitExpt()
 
     if(!(mode & SERIAL_OK))
         MakeConnection(4);
-    if (optionflags[MANUAL_EXPT])
+    if (optionflags[MANUAL_EXPT] || netoutfile == NULL)
         OpenNetworkFile(expt);
     expt.cramp = expt.ramp;
     expt.expseed = 1;
@@ -7643,10 +7659,14 @@ void InitExpt()
             sprintf(cbuf,"./%s.%sX%s.rc%d",stimulus_names[expt.st->type],serial_strings[expt.mode],serial_strings[expt.type2],rcctr++);
             rcfd = fopen(cbuf,"w");
         }
-        else if (seroutfile){
+        else{
+            sprintf(buf,"status=save rls to %s\n",cbuf);
+            notify(buf);
+        if (seroutfile){
             fprintf(seroutfile,"#saverls %s\n",cbuf);
             if (netoutfile)
                 fprintf(netoutfile,"#saverls %s\n",cbuf);
+        }
         }
     }
     else
@@ -8682,6 +8702,7 @@ int PreLoadImages()
         gettimeofday(&now, NULL);
         if(seroutfile)
             fprintf(seroutfile,"preload took %.4f\n",timediff(&now,&then));
+        fprintf(stderr,"preload took %.4f\n",timediff(&now,&then));
         //Ali #ifdef macosx
         sprintf(cbuf,"imve %.4f,%d %.4f %.4f %s %d\n",st->stimversion,st->seedoffset,st->pix2deg,timediff(&now,&then),st->builddate, st->envelopetype);
         SerialString(cbuf,0);
@@ -11050,6 +11071,7 @@ int RunHarrisStim(Stimulus *st, int n, /*Ali Display */ int D, /*Ali Window */ i
 
 static float frametimes[MAXFRAMES],fframecounts[MAXFRAMES];
 static int framecounts[MAXFRAMES];
+static float postframetimes[MAXFRAMES];
 
 int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win)
 {
@@ -11062,7 +11084,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
     struct plotdata *plot;
 //    Expstim *es,*exs;
     int lastframesdone;
-    float tval;
+    float tval,aval;
     float swapwaits[MAXFRAMES],calctimes[MAXFRAMES],painttimes[MAXFRAMES];
     float forcewaits[MAXFRAMES],phase;
     struct timeval lastframetime,pretime,forcetime,timea;
@@ -11121,6 +11143,9 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
     else if(seroutfile){
         fprintf(seroutfile,"#Velocity 0 before stim starts, was %.2f\n",oldvelocity);
     }
+    glDrawBuffer(GL_FRONT_AND_BACK);
+    glstatusline(NULL, 1); // paint this now, then don't paint each frame - its slow
+    glDrawBuffer(GL_BACK);
     SerialSend(STIMID);
     SerialSend(SET_SEED);
     if(st->type == STIM_RDS)
@@ -11156,7 +11181,11 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
     if (expt.stimmode == BUTTSEXPT){
         expt.backim = backims[(int)(expt.vals[BACKGROUND_IMAGE])];
     }
-    
+    if (optionflags[MANUAL_EXPT] && manualprop[0] >= 0){
+        SetManualStim(0);
+    }
+
+    inexptstim = 1;
     
     /*
      * Human Psych trials have different requirements - often have stimuli 
@@ -11387,19 +11416,47 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
                 rc = framesdone;
             
             change_frame();
+            frametimes[framesdone] = timediff(&paintframetime,&zeroframetime);
             if (optionflags[FIXNUM_PAINTED_FRAMES]){
                 framecounts[framesdone] = getframecount();
                 tval = timediff(&changeframetime, &zeroframetime);
+                postframetimes[framesdone] = tval;
                 fframecounts[framesdone] = (tval * mon.framerate);
+                if (optionflags[WATCH_TIMES]){
+                if (tval > frametimes[framesdone] + 1/mon.framerate){
+                    aval = timediff(&paintfinishtime, &paintframetime) *1000;
+                    aval = changeframedur;
+                    if (framesdone > 0){
+                        aval = frametimes[framesdone]-frametimes[framesdone-1];
+                        aval = postframetimes[framesdone]-postframetimes[framesdone-1];
+                        aval = postframetimes[framesdone]-frametimes[framesdone];
+                        aval = postframetimes[framesdone-1]-frametimes[framesdone];
+                    }
+                    aval = frametimes[framesdone];
+                    aval = (tval - frametimes[framesdone]) * 1000;
+                    tval = timediff(&changeframetime, &paintfinishtime);
+                    aval = (tval - frametimes[framesdone]) * 1000;
+                    tval = timediff(&changeframetime, &paintframetime);
+                    aval = (tval - frametimes[framesdone]) * 1000;
+                }
+                else if (tval < frametimes[framesdone]){
+                    aval = changeframedur;
+                    aval = frametimes[framesdone];
+                }
+                }
             }
             else
                 framecounts[framesdone] = rc;
             
-            if(optionflags[WATCH_TIMES]){
+            aval = timediff(&changeframetime, &paintframetime) * mon.framerate; // should always be > 0 and < 1
+            if(aval > 1 || optionflags[WATCH_TIMES]){
+                aval = timediff(&changeframetime, &paintfinishtime) * mon.framerate; // should always be > 0 and < 1
                 swapwaits[framesdone] = swapwait;
                 calctimes[framesdone] = calcdur;
                 painttimes[framesdone] = paintdur;
             }
+            else
+                painttimes[framesdone] = tval;
             
             /*
              * on the first frame, change_frame() blocks until the vertical retrace at the
@@ -11428,7 +11485,6 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
             if(freezestimulus)
                 rc = 0;
             
-            frametimes[framesdone] = timediff(&paintframetime,&zeroframetime);
             if(optionflags[FAST_SEQUENCE]){
                 sframetimes[framesdone] = frametimes[framesdone];
                 sframetimes[framesdone+1] = -10000;
@@ -11572,7 +11628,8 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
     if(cctr && 0) // Don't do this normally
         printf("Serial %d: %s\n",cctr,cbuf);
     framecounts[framesdone] = rc;
-    frametimes[framesdone] = timediff(&endstimtime,&zeroframetime);
+    tval = frametimes[framesdone] = timediff(&endstimtime,&zeroframetime);
+    fframecounts[framesdone] = (tval * mon.framerate);
     if(debug==4)
         testcolor();
     
@@ -11817,13 +11874,14 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
   
     if ((expt.st->type == STIM_RLS || expt.st->type == STIM_CHECKER) && optionflags[SAVE_RLS] && rcfd){
         gettimeofday(&timea, NULL);
-        fprintf(rcfd,"id%dse%dt%.3f\n",expt.allstimid,expt.st->left->baseseed,ufftime(&firstframetime));
+        fprintf(rcfd,"id%dse%d:%dt%.3fst%d\n",expt.allstimid,expt.st->firstseed,expt.st->left->baseseed,ufftime(&firstframetime),stimorder[stimno]);
         StimStringRecord(rcfd, expt.st);
         if(optionflags[FAST_SEQUENCE]){
             fputs(rcbuf,rcfd);
         }
         gettimeofday(&now, NULL);
         val = timediff(&now,&timea);
+        if (val > 0.02)
         fprintf(seroutfile,"Id%d RLS save took %.3f\n",expt.allstimid,val);
     }
     else if (expt.st->type == STIM_RLS && seroutfile){
@@ -11886,10 +11944,11 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
 }
 
 
+#define LONGBUF (BUFSIZ*10)
 int CheckStimDuration(int retval)
 {
     int i = 0,j =0, n = 0, rpt =0,nrpt = 0,nf=0,k=0;
-    char buf[BUFSIZ * 100],tmp[BUFSIZ*10];
+    char buf[LONGBUF+10],tmp[LONGBUF+10];
     float val;
     float framevals[MAXFRAMES], diffmax, diffmin;
     
@@ -11899,32 +11958,55 @@ int CheckStimDuration(int retval)
     sprintf(buf,"#du%.3f(%d:%.3f)\n",frametimes[framesdone],framesdone,(framesdone-0.5)/expt.mon->framerate);
     SerialString(buf,0);
     if (optionflags[FIXNUM_PAINTED_FRAMES]){
-        if(frametimes[framesdone]  > (framesdone-0.5)/expt.mon->framerate){
+        if(frametimes[framesdone]  > (framesdone-0.5)/expt.mon->framerate || saveframetimes){
             fprintf(stderr,"%d frames took %.3f\n",framesdone,frametimes[framesdone]);
             sprintf(buf,"%sFi=",serial_strings[MANUAL_TDR]);
             for( i = 1; i < framesdone-1; i++){
                 val = frametimes[i]-frametimes[i-1];
                 framevals[i] = val;
                 sprintf(tmp,"%d ",(int)(round(val*1000)));
-                strcat(buf,tmp);
+                if(strlen(buf)+strlen(tmp) < LONGBUF)
+                    strcat(buf,tmp);
+                else
+                    SerialString("#FrameString too long\n",-1);
             }
             strcat(buf,"\n");
-            SerialString(buf,-1);
+            SerialString(buf,-1); //sends to seroutfile and to netoutfile
             sprintf(buf,"%sFn=",serial_strings[MANUAL_TDR]);
-            if (netoutfile)
-                fprintf(netoutfile,"%s",buf);
             j=0;
+            
+/*
+ * Currently frametimes is paintframetime - zerofram, and paintframe time is taken during painting of current fram
+ * where CPU gets blocked on the previous frame. Idea is that this should always be a fixed multiple of frames, but
+ * not working.  fframecounts is based on changeframetime-zeroframe, = time when call to swapbuffers actually
+ * returns, regardless of any blocking. So changeframetime is always > paintframetime, but this should never exceed
+ * a frame
+ * except maybe when calcs get done during wait for previous frame swap?
+ */
             for(i = 0; i < framesdone; i++){
+                val = frametimes[i] * mon.framerate;
+                val = fframecounts[i]-val; // should be zero
+                if (val > 1){
+//                    fprintf(stderr,"Frame %d time mismatch %.2f\n",i,val);
+                    val = postframetimes[i]-frametimes[i];
+                    val = postframetimes[i]-postframetimes[i-1];
+                    val = frametimes[i]-frametimes[i-1];
+                    val = frametimes[i]-postframetimes[i-1];
+                }
+                else if (val < 0){
+ //                   fprintf(stderr,"Frame %d time too short %.2f\n",i,val);
+                    val = postframetimes[i]-frametimes[i];
+                }
                 sprintf(tmp,"%.1f ",fframecounts[i]);
-                if(strlen(buf)+strlen(tmp) < BUFSIZ*2)
+                if(strlen(buf)+strlen(tmp) < LONGBUF)
                     strcat(buf,tmp);
+                else
+                    SerialString("#FrameString too long\n",-1);
                 if (i > 1 && fframecounts[i]-fframecounts[i-1] > 1.5)
                     fprintf(stderr,"Skip at %d:%.1f\n",i,fframecounts[i]);
             }
             strcat(buf,"\n");
             SerialString(buf,-1);
-            if (netoutfile)
-                fprintf(netoutfile,"%s",buf);
             nrpt = 0;
             diffmax = 1.2/mon.framerate;
             diffmin = 0.5/mon.framerate;
@@ -11936,17 +12018,17 @@ int CheckStimDuration(int retval)
                         nf = MAXFRAMES;
                     for (k = 0; k < nf; k++){
                         sprintf(tmp,"%d ",i+nrpt++);
-                        strcat(buf,tmp);
+                        if (strlen(buf)+strlen(tmp)< LONGBUF)
+                            strcat(buf,tmp);
                     }
                 }
             }
             strcat(buf,"\n");
             SerialString(buf,0);
-            if (netoutfile)
-                fprintf(netoutfile,"%s",buf);
+            SerialString(buf,-1);
         }
     }
-    else if(frametimes[framesdone]  > (n-0.5)/expt.mon->framerate){
+    else if(frametimes[framesdone]  > (n-0.5)/expt.mon->framerate || saveframetimes){
         if (seroutfile)
             fprintf(seroutfile," #long(%d)",n);
         if (retval != BAD_TRIAL){
@@ -11983,6 +12065,9 @@ int CheckStimDuration(int retval)
                 }
                 strcat(buf,"\n");
                 SerialString(buf,0);
+                sprintf(buf,"#edur %.2f\n",fframecounts[framesdone]); //after end stim
+                SerialString(buf,-1);
+                
             }
             else{
                 j=0;
@@ -12195,7 +12280,24 @@ int CheckBW(int signal, char *msg)
     return(1);
 }
 
-
+int acknowledge(char *s, char *help)
+{
+    char buf[BUFSIZ*2];
+    if (0){
+        NSacknowledge(s, help);
+    }
+    else{
+        if (help < 0)// force new window in matlab
+            sprintf(buf,"ACK:: %s\n",s);
+        else
+            sprintf(buf,"ACK: %s\n",s);
+        notify(buf);
+        fprintf(stderr,buf);
+        if (seroutfile)
+            fprintf(seroutfile,"#ACK:%s\n",s);
+    }
+    
+}
 
 /* wait for n frames */
 void framepause(int nf)
@@ -13090,6 +13192,12 @@ float readval(char *s, 	Stimulus *TheStim, int goteq)
         else if(!strncmp(s,"sp",2)){
             val = StimulusProperty(expt.st, STIM_PERIOD) * val;
         }
+        else if(!strncmp(s,serial_strings[RF_PARA],2)){
+            val = addval+StimulusProperty(expt.st, RF_PARA) * val;
+        }
+        else if(!strncmp(s,serial_strings[RF_ORTHO],2)){
+            val = addval+ StimulusProperty(expt.st, RF_PARA) * val;
+        }
         else if(!strncmp(s,serial_strings[DEPTH_MOD],2)){
             val = addval + StimulusProperty(expt.st,DEPTH_MOD) * val;
         }
@@ -13411,6 +13519,10 @@ int InterpretLine(char *line, Expt *ex, int frompc)
         demomode = 2;
         return(-1);
     }
+    else if(!strncmp(line,"saveframetimes",12)){
+        saveframetimes = 1;
+        return(-1);
+    }
     else if(!strncmp(line,"bar",3) && s != NULL){
         sscanf(&line[3],"%f",&expt.st->modifier);
         i = FindCode(&line[3]);
@@ -13504,10 +13616,10 @@ int InterpretLine(char *line, Expt *ex, int frompc)
         return(0);
     }
     else if(!strncmp(line,"leantest",8)){
-        if (stimstate == TEST_BINOCLEAN)
-            stimstate = STIMSTOPPED;
-        else
+        if(teststate == 0)
             stimstate = TEST_BINOCLEAN;
+        else
+            teststate = 0;
         return(0);
     }
     else if(!strncmp(line,"offdelay",8)){
@@ -13678,7 +13790,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     else if(!strncmp(line,"epos:",5))
     {
         if(seroutfile && wurtzctr > 0){
-            fprintf(seroutfile,"%s %d\n",line,fixed[wurtzctr-1]);
+            fprintf(seroutfile,"%s %d\n",line,fixed[(wurtzctr-1)%avglen]);
             fflush(seroutfile);
         }
         /*
@@ -14465,6 +14577,8 @@ int InterpretLine(char *line, Expt *ex, int frompc)
         case DISP_X:
         case DEPTH_MOD:
         case FP_MOVE_DIR:
+        case RF_PARA:
+        case RF_ORTHO:
         case SETZXOFF:
         case SETZYOFF:
         case STIM_WIDTH:
@@ -14686,6 +14800,9 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     if (frompc != 2 && code >= 0){  // send to verg if it came from Spike2 or binoc GUI
         notify(line);
         notify("\n");
+    }
+    else if(frompc ==2 && code >= 0){
+ //       SendToGui(code); // would like this only when readval uses another property.  Let verg figure this out
     }
     return(code);
 }
