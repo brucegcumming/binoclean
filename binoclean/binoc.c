@@ -6522,7 +6522,9 @@ int next_frame(Stimulus *st)
             else{
                 expt.st->fix.rwsize = expt.st->fix.fixrwsize;
             }
-            SerialSend(REWARD_SIZE);
+            if (laststate!= PREFIXATION){
+                SerialSend(REWARD_SIZE);
+            }
             wipescreen(clearcolor);
             RunBetweenTrials(st, pos);
             draw_fix(fixpos[0],fixpos[1], TheStim->fix.size, TheStim->fixcolor);
@@ -11692,5 +11694,4 @@ void ReopenSerial(void)
         }
     }
 }
-
 

@@ -35,6 +35,22 @@ using SendTestCoutn, sith call t statusline removed 13k
 		     crasher = 3 crashes at 4k. Included call to StimulusDuration. Crasher & 8 added after this
 		     crasher = 10 (aeverything except 4) I stopped after 20k
 		     crahser = 31. Crahses after 11k
+		     =15 (everything except iptr++)  crashes after 1300 trials!!
+		     27 crashes after 5k sprintf mssg fixed
+		     =10 crashed at 33k (two days).  Second run stopped at 6k
+		     =2 crased after 2k, (at home) and = 0 crashes at home. 
+		     =31 crasehd afte 13k
+		     =15 still running after 8k
+
+
+Crasher in teststate part of event loop at home, were 0 in ShowTest crashes
+	=7 goes one data
+	= 15  goes overnight. crhasher in Showtest was 0
+	=15 with31 in showtest: crash after 695
+	 = 15 with 2 crashes after 560
+	 15 with 0  goes 33k
+	 15 / 2 again 
+
 POSTTRIAL 12
 POSTSTIMINTRIAL 13
 INTERTRIAL 1

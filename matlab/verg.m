@@ -625,11 +625,8 @@ for j = 1:length(strs{1})
         if length(a) > 1
             DATA.Trial.tr = a(2);
         end
-        if length(a) > 2
-            DATA.Trial.rw = DATA.binoc{1}.rw;
-        else
-            DATA = SetTrial(DATA, DATA.Trial);
-        end
+        DATA.Trial.rw = DATA.binoc{1}.rw;
+        DATA = SetTrial(DATA, DATA.Trial);
         DATA.nt = DATA.nt+1;
         DATA.Trial.Trial = DATA.nt;
         id = findstr(s,' ');
@@ -1644,6 +1641,7 @@ DATA.confused = 1;
 DATA.servodata.alldepths = [];
 DATA.servodata.alltimes = [];
 DATA.servodata.stepsize = 0;
+DATA.Trial.rw = 0;
 
 DATA.newbinoc = 2;
 DATA.ready = 0;
@@ -6075,6 +6073,15 @@ function DATA = PlotPsych(DATA)
     
     
     if DATA.psych.show
+        for j = 1:length(Expt.Trials)
+            if ~isempty(Expt.Trials(j).Trial)
+                good(j) = 1;
+            else
+                good(j) = 0;
+            end
+        end
+        Expt.Trials = Expt.Trials(find(good));
+                
         DATA = SetFigure('VergPsych', DATA);
         hold off;
         eargs = {};
