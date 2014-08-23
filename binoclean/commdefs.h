@@ -1131,7 +1131,7 @@ ValueCode valstrings[] = {
   {"Tg", "good trials ", GOODTRIALS, 8 , 'N' ,2, SEND_EXPLICIT, SAVE_STATE},
   {"Tb", "bad trials ", BADTRIALS, 8 , 'N' ,2, SEND_EXPLICIT, SAVE_STATE},
   {"dc", "disp X as cycle of sinewave ", DISP_AS_CYCLES, 1 , 'N' ,2, SEND_EXPLICIT, SAVE_NEVER},
-  {"qe", "quickexp code ", QUICKEXPT_CODE, 128 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
+  {"qe", "quickexp code ", QUICKEXPT_CODE, 128 , 'C' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
   {"ga", "gamma correction val ", GAMMAVAL_CODE, 32 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
   {"lc", "CorLoop Exit crit", CORRECTION_LEAVE_CRIT, 8 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
   {"ec", "CorLoop Enter crit", CORRECTION_ENTRY_CRIT, 8 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},

@@ -2297,9 +2297,15 @@ void paint_stimulus(Stimulus *st, int follow)
     if(st->next != NULL && st->next->next != NULL && st->next->next->type != STIM_NONE && optionflags[PAINT_BACKGROUND] && follow){
         paint_stimulus(st->next,0);
         st->next->next->noclear = 1;
-        paint_stimulus(st->next->next, 0);
         st->noclear = 1;
-        paint_stimulus(st, 0);
+        if (optionflags[PAINT_THIRD_LAST]){
+            paint_stimulus(st, 0);
+            paint_stimulus(st->next->next, 0);
+        }
+        else{
+            paint_stimulus(st->next->next, 0);
+            paint_stimulus(st, 0);
+        }
         return;
     }
     if(st->next != NULL && optionflags[PAINT_BACKGROUND] && st->next->type != STIM_NONE && follow)

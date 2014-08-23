@@ -363,7 +363,7 @@ for j = 1:length(strs{1})
         DATA.lastmsg = s;
     elseif sum(strncmp(s,{'NewBinoc' 'confirm' 'exvals' 'fontsiz' 'fontname' 'layout' ...
             'localmatdir' 'netmatdir', 'oldelectrode' 'TOGGLE' 'rptexpts' 'STIMTYPE' ...
-            'SENDING' 'SCODE=' 'CODE OVER' 'status'},6))
+            'SENDING' 'SCODE=' 'CODE OVER' 'status' 'stimdir'},6))
         if strncmp(s,'NewBinoc',7)
             DATA = CheckForNewBinoc(DATA);
             DATA.newbinoc = 1;
@@ -442,6 +442,9 @@ for j = 1:length(strs{1})
             DATA.strcodes(sid).label = label;
             DATA.strcodes(sid).icode = icode;
             DATA.strcodes(sid).code = code;
+    elseif strncmp(s,'stimdir',6)
+        DATA.binoc{1}.stimdir = value;
+        SendCode(DATA,'stimdir');
     elseif strncmp(s,'status',6)
         sstr = s(8:end);
         if ~isempty(strfind(sstr,'Frames:')) && isfield(DATA.Trial,'rw')
@@ -625,11 +628,8 @@ for j = 1:length(strs{1})
         if length(a) > 1
             DATA.Trial.tr = a(2);
         end
-        if length(a) > 2
-            DATA.Trial.rw = DATA.binoc{1}.rw;
-        else
-            DATA = SetTrial(DATA, DATA.Trial);
-        end
+        DATA.Trial.rw = DATA.binoc{1}.rw;
+        DATA = SetTrial(DATA, DATA.Trial);
         DATA.nt = DATA.nt+1;
         DATA.Trial.Trial = DATA.nt;
         id = findstr(s,' ');
@@ -751,26 +751,28 @@ for j = 1:length(strs{1})
             s = s(id(end)+1:end);
         else
             submenu = '';
-        s = s(4:end);
+            s = s(4:end);
         end
+        if ~strcmp(s,'NotSet')
         [a,b,c] = fileparts(s);
         b = [b c];
+        if s(1) ~= '/'
+            if isfield(DATA.binoc{1},'stimdir')
+                s = [DATA.binoc{1}.stimdir '/' s];
+            elseif isfield(DATA,'stimfilename')
+                s = [fileparts(DATA.stimfilename) '/' s];
+            end
+        end
         id = [];
         if isfield(DATA.quickexpts,'filename') %check we don't alreayd have this
         id = find(strcmp(s,{DATA.quickexpts.filename}));
         end
         if isempty(id)
-            if s(1) ~= '/' 
-                if isfield(DATA.binoc{1},'stimdir')
-                    s = [DATA.binoc{1}.stimdir '/' s];
-                elseif isfield(DATA,'stimfilename')
-                    s = [fileparts(DATA.stimfilename) '/' s];
-                end
-            end
         n = length(DATA.quickexpts)+1;
         DATA.quickexpts(n).name = b;
         DATA.quickexpts(n).filename = s;
         DATA.quickexpts(n).submenu = submenu;
+        end
         end
     elseif strncmp(s,'nt=',3)
         DATA.nstim(1) = sscanf(s,'nt=%d');
@@ -6081,6 +6083,15 @@ function DATA = PlotPsych(DATA)
     
     
     if DATA.psych.show
+        for j = 1:length(Expt.Trials)
+            if ~isempty(Expt.Trials(j).Trial)
+                good(j) = 1;
+            else
+                good(j) = 0;
+            end
+        end
+        Expt.Trials = Expt.Trials(find(good));
+                
         DATA = SetFigure('VergPsych', DATA);
         hold off;
         eargs = {};

@@ -549,6 +549,8 @@ if DATA.motorspeed < DATA.minrpm;
     set(gcf,'Name','ServoMotor MicroDrive');
     return;
 end
+
+%first read position. 
 if DATA.motorid >= 0
     fprintf(DATA.sport,'%dPOS\n',DATA.motorid);
 else
@@ -575,6 +577,8 @@ end
 stopui = findobj(DATA.toplevel,'tag','EmergencyStop');
 set(stopui,'value',0);
 drawnow;
+
+%set speed for movement
 if DATA.motorspeed == 0 %automatic speed
     dd = abs(d-newpos)./DATA.stepscale; %step in uM
     if dd > 1000
@@ -600,6 +604,8 @@ if abs(newpos) > DATA.maxrange
     return;
 end
 
+
+%request new position
 if DATA.motorid >= 0
     fprintf(DATA.sport,'%dEN\n',DATA.motorid);
     fprintf(DATA.sport,sprintf('%dLA%.0f\n',DATA.motorid,newpos));
@@ -629,6 +635,12 @@ else
     minpos = startpos-margin;
     maxpos = startpos+step+margin;
 end
+
+
+%keep reading postition during movement to check that all is well
+%sometimes can stop just short of the finishing position, so allow some
+%leeway.
+
 j = 2;
 while npost < 2
     if DATA.motorid >= 0
@@ -665,6 +677,7 @@ while npost < 2
         newd(j) = 0;
     end
     
+%deatcitvat the motor if too much time, or close enough. 
     if mytoc(ts(1)) > edur+1
         fprintf(DATA.sport,'DI\n');
        npost = 2;

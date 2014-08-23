@@ -6524,7 +6524,9 @@ int next_frame(Stimulus *st)
             else{
                 expt.st->fix.rwsize = expt.st->fix.fixrwsize;
             }
-            SerialSend(REWARD_SIZE);
+            if (laststate!= PREFIXATION){
+                SerialSend(REWARD_SIZE);
+            }
             wipescreen(clearcolor);
             RunBetweenTrials(st, pos);
             draw_fix(fixpos[0],fixpos[1], TheStim->fix.size, TheStim->fixcolor);
@@ -10512,7 +10514,8 @@ int PrintPsychLine(int presult, int sign)
             fprintf(psychfile,"R%d %s=%.5f %s=%.5f",
                     presult,serial_strings[expt.mode],expt.currentval[0],
                     serial_strings[expt.type2],expt.currentval[1]);
-        fprintf(psychfile," sn=%d %.2f %.2f %.2f",sign,start,down,expt.vals[REWARD_SIZE]);
+        fprintf(psychfile," sn=%d%c %.2f %.2f %.2f",sign,afc_s.respdir,start,down,expt.vals[REWARD_SIZE]);
+        
         if(microsaccade >0)
             sprintf(str,"%s(%,4f)=%.2f",serial_strings[SACCADE_DETECTED],microsaccdir, microsaccade);
         else if (optionflags[MANUAL_EXPT])
@@ -11578,8 +11581,16 @@ void expt_over(int flag)
 void Stim2PsychFile(int state)
 {
     float t,val,version;
+    char buf[2048],*s,*r;
 
     sscanf(VERSION_NUMBER,"binoclean.%f",&version);
+    strcpy(buf,VERSION_NUMBER);
+    s = &buf[9];
+    r = strchr(s,' ');
+    if (r != NULL && r - s > 3) //remove Day name
+        *(r-4) = 0;
+
+    
     
     
 
@@ -11607,8 +11618,8 @@ void Stim2PsychFile(int state)
                 GetProperty(&expt,expt.st,YPOS));
         fprintf(psychfile," %s=%.4f %s=%.4f x=0 x=0 x=0 x=0\n",serial_strings[INITIAL_APPLY_MAX],GetProperty(&expt,expt.st,INITIAL_APPLY_MAX),serial_strings[JDEATH],GetProperty(&expt,expt.st,JDEATH));
         
-        fprintf(psychfile,"R5 %s=%.4f %s=%.2f By=%.2f",
-                serial_strings[VERSION_CODE],version, 
+        fprintf(psychfile,"R5 %s=%s %s=%.2f By=%.2f",
+                serial_strings[VERSION_CODE],s,
                 serial_strings[REWARD_BIAS],GetProperty(&expt,expt.st,REWARD_BIAS),
                 GetProperty(&expt,expt.st->next,YPOS));
         fprintf(psychfile," 0 %.2f %.2f",
@@ -11694,5 +11705,4 @@ void ReopenSerial(void)
         }
     }
 }
-
 

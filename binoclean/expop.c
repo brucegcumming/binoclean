@@ -14824,7 +14824,8 @@ int ButtonResponse(int button, int revise, vcoord *locn)
     int sign = 0, aid = 0;
     
     stim = expt.stimid;
-    
+    stp = getexpval(stim);
+
     //  if(option2flag & IFC){
     /*
      * left button % stored as spike 0., type 0.
