@@ -1644,6 +1644,7 @@ DATA.confused = 1;
 DATA.servodata.alldepths = [];
 DATA.servodata.alltimes = [];
 DATA.servodata.stepsize = 0;
+DATA.Trial.rw = 0;
 
 DATA.newbinoc = 2;
 DATA.ready = 0;

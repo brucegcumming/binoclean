@@ -36,6 +36,8 @@
 
 #define MAXMEM 25000000  /* 25 Meg or so for image allocation */
 #define MAXPLOTS 40
+#define LONGBUF 10240// long buffer for strings
+
 
 /* 
  * bits set in mode (front.c)

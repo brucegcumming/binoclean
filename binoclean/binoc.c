@@ -616,6 +616,8 @@ void initial_setup()
 	mon.name = NULL;
 	mon.viewd = 57;
 	mon.framerate = 72.0;
+    statusstring = (char *)(malloc(LONGBUF * sizeof(char)));
+    
 	srandom((i = getpid()));
 	mtype = (long)i;
 	srand48(mtype);
@@ -1430,12 +1432,12 @@ void statusline(char *s)
     char buf[BUFSIZ];
     
     
-    if(s != NULL)
+    if(s != NULL && strlen(s) > LONGBUF)
         statusstring = myscopy(statusstring,s);
     else
         s = statusstring;
 //    glstatusline(s,1);
-    printString(s, strlen(s)); //Need this? removed May 2013
+//    printString(s, strlen(s)); //Need this? removed May 2013
 
     notify("status=");
     notify(s);
@@ -7247,9 +7249,10 @@ int next_frame(Stimulus *st)
                 expt.verbose = 1;
                     memcpy(&lastcleartime,&now,sizeof(struct timeval));
             }
-//            paint_frame(WHOLESTIM,1);
-//            change_frame();
-            break;
+            paint_frame(WHOLESTIM,1);
+            TheStim->mode |= EXPTPENDING;
+            mode |= ANIMATE_BIT;
+           break;
     }
     lastval = val;
     laststate = oldstimstate;
@@ -7282,16 +7285,17 @@ int next_frame(Stimulus *st)
                      stimno--;
                   break;
             case PRESTIMULUS:
-                sprintf(buf,"status=Stimulus at %s\n",binocTimeString());
-//                notify(buf);
+                sprintf(buf,"status=Stimulus %d at %s\n",++testctr,binocTimeString());
+                notify(buf);
 //                mode |= FIRST_FRAME_BIT;
 //                stimstate = INSTIMULUS;
                 break;
                     case WAIT_FOR_RESPONSE:
                         // do POSTTRIAL commands here, then move on
-                        crasher =1;
-                        ShowTestCount(0, -1);
-                        if (crasher < 1){
+                        crasher = 15;
+                        if (crasher & 8)
+                            ShowTestCount(0, -1);
+                        if (crasher & 1){
                             if(rdspair(expt.st))
                                 i = 0;
                             if(seroutfile){
@@ -7323,7 +7327,7 @@ int next_frame(Stimulus *st)
                             }
                             if(debug) glstatusline("PostTrial",3);
                         }
-                        if (crasher < 3){
+                        if (crasher &2){
                             if(fabs(expt.vals[PURSUIT_INCREMENT]) > 0.001 && fixstate != BAD_FIXATION){
                                 /*
                                  * N.B. at this moment changes in PURSUIT INCREMENT as part of an expt will not
@@ -7370,7 +7374,7 @@ int next_frame(Stimulus *st)
                             SerialSend(FIXPOS_XY);
                             draw_fix(fixpos[0],fixpos[1], TheStim->fix.size, TheStim->fixcolor);
                         }
-                        if (crasher < 4){
+                        if (crasher & 4){
                             /* stimseq[].result is used in human psychophysics for staircases */
                             if(!(option2flag & PSYCHOPHYSICS_BIT))
                                 stimseq[trialctr].result = monkeypress;
@@ -7385,7 +7389,7 @@ int next_frame(Stimulus *st)
                             stimseq[trialctr].a = stimseq[trialctr].b = 0;
                         }
                         
-                        if (crasher < 3){
+                        if (crasher &2){
                             /*
                              * if expt stim is prepared during a timout, this undoes the setting
                              * of saccval...
@@ -7413,14 +7417,14 @@ int next_frame(Stimulus *st)
                                 fprintf(stairfd,"Post%d(%d) ",stimno,stimorder[stimno]);
                             }
                         } //end crasher < 1
-                        if (crasher < 4){
+                        if (crasher & 16){
                             if (stimstate != POSTTRIAL)
                                 ReadCommandFile(expt.cmdinfile);
                         }
                         stimstate = INTERTRIAL;
                         break;
             default:
-    //            stimstate = INSTIMULUS;
+//                stimstate = INSTIMULUS;
                 break;
         }
         if (stimstate == PRESTIMULUS){ //hijack this
@@ -10336,7 +10340,7 @@ int ShowTestCount(float down, float sum)
     float fsum = 0;
     
     
-    crasher =31;
+    crasher = 2;
  //15 crashed, to its not the loop.
  // looks like its overflowing mssg with some message?
 
