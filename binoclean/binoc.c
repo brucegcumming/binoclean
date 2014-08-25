@@ -2007,6 +2007,9 @@ int HandleMouse(WindowEvent e)
             if(e.mouseButton == Button2){
                 eventstate |= MBUTTON;
                 ButtonDown(start, endpt, e);
+                if(e.scrolldelta < -1 && !(ExptIsRunning())){
+                    runexpt(NULL,NULL,NULL);
+                }
             }
             break;
         case ButtonPress:
@@ -11453,7 +11456,10 @@ void expt_over(int flag)
         fflush(penlog);
         PrintPenLog(1);
     }
-    Stim2PsychFile(flag);
+    if (flag == 1)
+        Stim2PsychFile(END_EXPT);
+    else
+        Stim2PsychFile(flag);
     
     /*
      * Set things back to how they were befre the experiment

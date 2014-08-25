@@ -2408,6 +2408,7 @@ function DATA = InitInterface(DATA)
     uimenu(hm,'Label','Clear Drawn Lines','Callback',{@SendStr, '!clearlines'});
     uimenu(hm,'Label','BlackScreen (shake)','Callback',{@MenuHit, 'setshake'},'accelerator','B');
     uimenu(hm,'Label','pipelog','Callback',{@MenuHit, 'pipelog'});
+    uimenu(hm,'Label','Update Network Psych Files','Callback',{@MenuHit, 'updatepsych'});
     uimenu(hm,'Label','freereward','Callback',{@MenuHit, 'freereward'},'accelerator','R');
     uimenu(hm,'Label','Run One Trial','Callback',{@MenuHit, 'onetrial'},'accelerator','1');
 %    hm = uimenu(cntrl_box,'Label','Mark');
@@ -2591,6 +2592,8 @@ function MenuHit(a,b, arg)
         set(DATA.toplevel,'UserData',DATA);
     elseif strcmp(arg,'freereward')
         outprintf(DATA,'freerwd\n');
+    elseif strcmp(arg,'updatenetworkpsych')
+        UpdatePsychFile(DATA.binoc{1}.psychfile);
     elseif strcmp(arg,'onetrial')
         outprintf(DATA,'!onetrial\n');
     elseif strcmp(arg,'pipelog')       
