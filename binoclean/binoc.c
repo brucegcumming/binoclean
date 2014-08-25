@@ -69,6 +69,11 @@ int lastbutton = -1000;
 int renderoff;
 
 static int track_resets[] = {XPOS, YPOS, FIXPOS_X, FIXPOS_Y, -1};
+
+#define NTRACKCODES 100
+int trackcodes[NTRACKCODES] = {0};
+int tracklevel[NTRACKCODES] = {0}; //each expt, each trial, or display in verg GUI
+
 float pursuedir = -1;
 float totalreward = 0;
 static float timeoutadjust = 0;
@@ -622,7 +627,11 @@ void initial_setup()
     
 	gettimeofday(&sessiontime,NULL);
     gettimeofday(&lastconnecttime,NULL);
-
+    for (i = 0; i < NTRACKCODES; i++)
+        trackcodes[i] = -1;
+    trackcodes[0] = STIM_SIZE;
+    
+    
     gettimeofday(&now,NULL);
     ExptInit(&expt, TheStim, &mon);
     fixed = (int *)malloc(sizeof(int) * (wurtzbufferlen));
@@ -11576,10 +11585,19 @@ void expt_over(int flag)
     }
 }
 
+char *StimString(int code)
+{
+    char buf[BUFSIZ*10];
+    
+    MakeString(code, buf, &expt, expt.st,TO_FILE);
+    return(buf);
+}
+
 void Stim2PsychFile(int state)
 {
     float t,val,version;
     char buf[2048],*s,*r;
+    int i,j;
 
     sscanf(VERSION_NUMBER,"binoclean.%f",&version);
     strcpy(buf,VERSION_NUMBER);
@@ -11607,7 +11625,7 @@ void Stim2PsychFile(int state)
                 serial_strings[CONTRAST2],GetProperty(&expt,expt.st,CONTRAST2),
                 state);
         
-        fprintf(psychfile,"R5 %s=%.2f %s=%.2f %s=%.2f",
+        fprintf(psychfile,"R%d %s=%.2f %s=%.2f %s=%.2f",state+8,
                 serial_strings[ORIENTATION],GetProperty(&expt,expt.st,ORIENTATION), 
                 serial_strings[SF],GetProperty(&expt,expt.st,SF),
                 serial_strings[DOT_SIZE],GetProperty(&expt,expt.st,DOT_SIZE));
@@ -11633,8 +11651,7 @@ void Stim2PsychFile(int state)
         fprintf(psychfile," 0 %.2f %.2f",
                 GetProperty(&expt,expt.st,BACK_ORI),
                 GetProperty(&expt,expt.st,BACK_SIZE));
-        fprintf(psychfile," %s=%.0f usenewdir=%d x=0 x=0 x=0 x=0\n",serial_strings[STIMULUS_MODE],GetProperty(&expt,expt.st,STIMULUS_MODE),usenewdirs);
-        
+        fprintf(psychfile," %s=%.0f usenewdir=%d %s %s %s x=0\n",serial_strings[STIMULUS_MODE],GetProperty(&expt,expt.st,STIMULUS_MODE),usenewdirs,StimString(BACK_CORRELATION),StimString(BACK_HEIGHT),StimString(BACK_WIDTH));
         
         if(expt.st->next && expt.st->next->type != STIM_NONE){
             fprintf(psychfile,"R8 %s=%.2f %s=%.2f %s=%.2f",
@@ -11658,6 +11675,18 @@ void Stim2PsychFile(int state)
                     seedoffsets[13],expt.st->stimversion);
             
         }
+        j = 0;
+        for (i = 0; i < NTRACKCODES; i++){
+            if(trackcodes[i] >= 0){
+                if(j%12 ==0)
+                    fprintf(psychfile,"R7 %s",StimString(trackcodes[i]));
+                if(j%12 ==11)
+                    fprintf(psychfile,"\n");
+                j++;
+            }
+        }
+        if (j%12 > 0)
+            fprintf(psychfile,"\n");
         fflush(psychfile);
     }
     

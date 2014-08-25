@@ -1352,6 +1352,9 @@ function SendState(DATA, varargin)
     if DATA.showxy(1)
         outprintf(DATA,'ch10+\n'); %B
     end
+%send op first, as it may change the way what follows is interpreted
+% eg if op=+bf (back fixed)
+    SendCode(DATA,{'optionflag'}); 
 
     if length(DATA.binoc) > 1 && isstruct(DATA.binoc{2})
     f = fields(DATA.binoc{2});
