@@ -11593,7 +11593,7 @@ void expt_over(int flag)
 
 char *StimString(int code)
 {
-    char buf[BUFSIZ*10];
+    static char buf[BUFSIZ*10];
     
     MakeString(code, buf, &expt, expt.st,TO_FILE);
     return(buf);
@@ -11681,6 +11681,7 @@ void Stim2PsychFile(int state)
                     seedoffsets[13],expt.st->stimversion);
             
         }
+        fprintf(psychfile,"R7 %s\n",binocTimeString());
         j = 0;
         for (i = 0; i < NTRACKCODES; i++){
             if(trackcodes[i] >= 0){

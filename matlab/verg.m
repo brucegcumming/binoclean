@@ -2592,7 +2592,7 @@ function MenuHit(a,b, arg)
         set(DATA.toplevel,'UserData',DATA);
     elseif strcmp(arg,'freereward')
         outprintf(DATA,'freerwd\n');
-    elseif strcmp(arg,'updatenetworkpsych')
+    elseif strcmp(arg,'updatepsych')
         UpdatePsychFile(DATA.binoc{1}.psychfile);
     elseif strcmp(arg,'onetrial')
         outprintf(DATA,'!onetrial\n');
