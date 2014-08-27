@@ -7318,17 +7318,21 @@ void InitExpt()
     afc_s.nmags = expt.nstim[0];
     afc_s.stairsign = 1;
     afc_s.signflipp = 0;
+    tval = expt.vals[CHOICE_TARGET_OVERLAP];
+    if (tval == 0){
+        tval = GetProperty(&expt,expt.st,STIMULUS_DURATION_CODE);
+        tval = tval*1.1;
+    }
     if (optionflags[CHOICE_BY_ICON]){
         afc_s.signflipp = 0.5;
-        afc_s.target_in_trial = 1;
+        afc_s.target_in_trial = tval;
     }
     else{
         afc_s.signflipp = 0;
         afc_s.target_in_trial = 0;
     }
     if (optionflags[ICON_IN_TRIAL]){
-        afc_s.target_in_trial = 1;
-        
+        afc_s.target_in_trial = tval;
     }
     
     

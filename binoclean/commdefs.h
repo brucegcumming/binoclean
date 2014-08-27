@@ -503,7 +503,8 @@
 #define STIMULUSDIR (MAXSAVECODES+41)
 #define HELPDIR (MAXSAVECODES+42)
 #define TOTAL_REWARD (MAXSAVECODES+43)
-#define MAXTOTALCODES (MAXSAVECODES+44)  //436
+#define CHOICE_TARGET_OVERLAP (MAXSAVECODES+44)
+#define MAXTOTALCODES (MAXSAVECODES+45)  //437
 
 
 /*
@@ -1277,6 +1278,7 @@ ValueCode valstrings[] = {
     {  "fixcolors", "Fixpt colors for special tasks", FIXCOLORS, 0, 'N', 0, SEND_VERG_ONLY, SAVE_ALWAYS},
     {  "usenewdirs", "Try different targe location rules", USENEWDIRS, 0, 'N', 0, SEND_VERG_ONLY, SAVE_ALWAYS},
     {  "choicedur", "Choice target persistance", CHOICE_TARGET_DURATION, 0, 'N', 2, SEND_VERG_ONLY, SAVE_ALWAYS},
+    {  "tgtdur", "Choice target Duration in trial", CHOICE_TARGET_OVERLAP, 0, 'N', 2, SEND_VERG_ONLY, SAVE_ALWAYS},
     {  "cha", "Choice target Angle", FORCE_CHOICE_ANGLE, 0, 'N', 2, SEND_EXPT, SAVE_ALWAYS},
     {  "imi", "Image Index", IMAGEINDEX, 0, 'N', 0, SEND_EXPT, SAVE_ALWAYS},
     {  "adapter", "Adapter", CHAMBER_ADAPTER, 0, 'C', 0, SEND_EXPLICIT, SAVE_STATE},

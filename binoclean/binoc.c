@@ -5971,7 +5971,8 @@ void paint_frame(int type, int showfix)
     if (TheStim->noclear == 0)
         clearstim(TheStim,TheStim->gammaback, 0);
     if(SACCREQD(afc_s) && afc_s.target_in_trial > 0 && optionflags[PAINT_THIRD_LAST] == 0){
-        paint_target(expt.targetcolor, 0);
+        if (afc_s.target_in_trial > (tval = timediff(&atime,&firstframetime)))
+            paint_target(expt.targetcolor, 0);
     }
 
     TheStim->noclear = 1;
@@ -5989,7 +5990,8 @@ void paint_frame(int type, int showfix)
         wipescreen(clearcolor);
     setmask(ALLMODE);
     if(SACCREQD(afc_s) && afc_s.target_in_trial > 0 && optionflags[PAINT_THIRD_LAST] == 1){
-        paint_target(expt.targetcolor, 0);
+        if (afc_s.target_in_trial > timediff(&now,&firstframetime))
+            paint_target(expt.targetcolor, 0);
     }
     if(showfix)
         draw_fix(fixpos[0],fixpos[1], TheStim->fix.size, TheStim->fixcolor);
@@ -6059,6 +6061,9 @@ int RunBetweenTrials(Stimulus *st, Locator *pos)
         increment_stimulus(st, pos);
         loopframes++;
         return(1);
+    }
+    else if (afc_s.target_in_trial != 0){
+        paint_target(expt.targetcolor, 0);
     }
     else
         return(0);
@@ -6460,6 +6465,7 @@ int next_frame(Stimulus *st)
             wipescreen(clearcolor);
             if(rdspair(expt.st))
                 i = 0;
+            RunBetweenTrials(st, pos);
             if(!(optionflag & STIM_IN_WURTZ_BIT)){
                 paint_frame(WHOLESTIM, !(mode & FIXATION_OFF_BIT));
                 increment_stimulus(st, pos);
@@ -11113,7 +11119,7 @@ int GotChar(char c)
                     else if (afc_s.bonuslevel == 0 && afc_s.bonuslevel2 == 0)
                         TheStim->fix.rwsize = oldrw;
                     else
-                        TheStim->fix.rwsize = expt.vals[REWARD_SIZE1];
+                        TheStim->fix.rwsize = TheStim->fix.fixrwsize;
                     TheStim->fix.afcrwsize = TheStim->fix.rwsize;
                 }
                 else if(option2flag & AFC){
