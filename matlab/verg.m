@@ -1127,6 +1127,7 @@ function DATA = ReadExptLines(DATA, strs, src)
             DATA.exptnextline = j;
             break;
         end
+        tline = strrep(tline,'$MNK',DATA.binoc{1}.monkey);
         if strcmp(tline,'immode=preload')
             fprintf('Substituting imload for immode\n');
             tline = 'imload=preload';
@@ -5938,6 +5939,15 @@ function ChoosePsych(a,b, mode)
         DATA.psych.(mode) = ~DATA.psych.(mode);
         set(a,'Checked',onoff{DATA.psych.(mode)+1});
         PlotPsych(DATA);
+    elseif strmatch(mode,'readpsychfile')
+        Expts = ReadPsychFile(DATA.binoc{1}.psychfile);
+        setappdata(gcf,'Expts',Expts);
+        PsychMenu(DATA,Expts);
+    elseif strmatch(mode,'readselectedfile')
+        psychfile = uigetfile('/b/data/psych','select psych data file');
+        Expts = ReadPsychFile(psychfile);
+        setappdata(gcf,'Expts',Expts);
+        PsychMenu(DATA,Expts);
     elseif strcmp(mode,'savetrials');
         [outname, pathname] = uiputfile(['/local/' DATA.binoc{1}.monkey '/PsychDat.mat']);
         if outname
@@ -5968,6 +5978,7 @@ function DATA = SetFigure(tag, DATA)
             sm = uimenu(hm,'Label','Separate by Block','callback', {@ChoosePsych, 'showblocks'},...
                 'checked',onoff{DATA.psych.showblocks+1});
             sm = uimenu(hm,'Label','Save Trial Data','callback', {@ChoosePsych, 'savetrials'});
+            sm = uimenu(hm,'Label','Read PsychFile','callback', {@ChoosePsych, 'readpsychfile'});
             set(a,'UserData',DATA.toplevel);
             set(a,'DefaultUIControlFontSize',DATA.font.FontSize);
             set(a,'DefaultUIControlFontName',DATA.font.FontName);
@@ -5976,17 +5987,26 @@ function DATA = SetFigure(tag, DATA)
         set(DATA.toplevel,'UserData',DATA);
     end
 
-function PsychMenu(DATA)    
+function PsychMenu(DATA, varargin)    
+    
+    Expts = DATA.Expts;
+    j = 1; 
+    while j <= length(varargin)
+        if iscell(varargin{j})
+            Expts = varargin{j};
+        end
+        j = j+1;
+    end
     if ~isfield(DATA,'figs')
         return;
     end
     hm = findobj(DATA.figs.VergPsych,'tag','ExptMenu');
     c = get(hm,'children');
     delete(c);
-    for j = 1:length(DATA.Expts)
-        if isfield(DATA.Expts{j},'Trials')
-        nt = length(DATA.Expts{j}.Trials);
-        sm = uimenu(hm,'Label', sprintf('Expt%d %s %d',j,Expt2Name(DATA.Expts{j}),nt),'CallBack', {@ChoosePsych, sprintf('Expt%d',j)});
+    for j = 1:length(Expts)
+        if isfield(Expts{j},'Trials')
+        nt = length(Expts{j}.Trials);
+        sm = uimenu(hm,'Label', sprintf('Expt%d %s %d',j,Expt2Name(Expts{j}),nt),'CallBack', {@ChoosePsych, sprintf('Expt%d',j)});
         if j < length(DATA.plotexpts) && DATA.plotexpts(j)
             set(sm,'Checked','on');
         end

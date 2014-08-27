@@ -69,7 +69,7 @@ ce Correlation. For gratings ce=0 produces random phases in each eye.
 cg luminance of background when stopped (usually 1)
 ch Internal, for setting xy eye position display. 
 cha Normally the axis along which choice targets are displaced is determined by binoc from the stimulus. This forces the choice axis. 
-choicedur For correct choices, target remains on after saccade for this duration (sec)
+choicedur For correct choices, target remains on after saccade for this duration (sec) # psychophy
 cL Contrast of L eye stimulus. See also cR, ic #Binocular Disparity
 cmdfile the named file is monitored for changes. If it changes, then binoc reads its contents and executes the commands. Used for remote monitoring/control
 co Range 0 -> 1
@@ -329,7 +329,7 @@ Tb Internal for recording Trial statistics
 Tc contrast of the timeout screen. Useful for screen calibration 
 tf temporal frequency (Hz)
 Tg  Internal for recording Trial statistics 
-tgtdur How long choice icons are up in a trial. If < 0, icons up in intertrial interval
+tgtdur How long choice icons are up in a trial. If < 0, icons up in intertrial interval # psychophysics choice duration
 to duration of checkerboard following incorrect psych choices.
 tr ratio of luminances for choice targets. 1 = same, 0 = only correct choice visibles. See also pT. 
 ts When shake detector activated, timeout in sec
