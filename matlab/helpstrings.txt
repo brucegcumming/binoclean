@@ -21,6 +21,7 @@ rptexpt Number of times to repeat an Expt Block. When binoc finished a block, ve
 +x2 All combinations of expt1 and expt2 values are used
 +Rcd Choice saccade is to correct icon, but position flips at random 
 +bf Normally change foreground position/contrast/correlation also changes the background to follow. +bf prevents this. 
++Iit Display Choice Icons during the stimulus presentation. See also tgtdur
 
 a2 when > 0, turns grating into plaid, and RLS into noise plaid. 
 #Sets angle difference between components, so changes in or rotate both.

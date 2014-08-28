@@ -4332,6 +4332,8 @@ setappdata(GetFigure(lst),'OldText',a);
 
 if strcmp(type,'popuphelp')
     CodesPopup(helpmenu,b,'byhelp');
+elseif strcmp(type,'popup')
+    CodesPopup(helpmenu,b,'bycode');
 end
 
 function HelpHit(a,b)
