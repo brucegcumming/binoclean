@@ -1899,11 +1899,15 @@ function [strs, Keys] = ReadHelp(DATA)
             code = code(2:end);
             Keys.options.(code) = str;
             lastcode = code;
-        elseif txt{j}(1) == '#' && ~isempty(lastcode)
-            if isfield(Keys.extras,lastcode)
-                Keys.extras.(lastcode){end+1} = txt{j}(2:end);
+        elseif txt{j}(1) == '#' 
+            if ~isempty(lastcode)
+                if isfield(Keys.extras,lastcode)
+                    Keys.extras.(lastcode){end+1} = txt{j}(2:end);
+                else
+                    Keys.extras.(lastcode){1} = txt{j}(2:end);
+                end
             else
-                Keys.extras.(lastcode){1} = txt{j}(2:end);
+                code
             end
         elseif ~isempty(code) && txt{j}(1) ~= '#'
             if isfield(strs,code) && DATA.verbose(4)
@@ -4241,10 +4245,9 @@ function CodesPopup(a,b, type)
           end
           if isfield(DATA.helpstrs,code)
               if isfield(DATA.helpkeys.extras,code)
-                  s = [s '*   ;*  ' DATA.helpstrs.(code)];
-              else
-                  s = [s '   ;   ' DATA.helpstrs.(code)];
+                  s = regexprep(s,' ',' *','once');
               end
+              s = [s '   ;   ' DATA.helpstrs.(code)];
               keys{j+nl} = DATA.helpkeys.KeyWords.(code);
           end
           a(nc+nl,1:length(s)) = s;
@@ -4336,16 +4339,18 @@ DATA = GetDataFromFig(a);
 
 str = get(a,'string');
 l = get(a,'value');
-code = str(l,:);
-code = regexprep(code,'\s.*','');
-fpos = get(GetFigure(a),'position');
-if isfield(DATA.helpkeys.extras,code)
-    cm = uicontextmenu;
-    X = DATA.helpkeys.extras.(code);
-    for j = 1:length(X)
-        uimenu(cm,'label',X{j});
+if length(l) == 1
+    code = str(l,:);
+    code = regexprep(code,'\s.*','');
+    fpos = get(GetFigure(a),'position');
+    if isfield(DATA.helpkeys.extras,code)
+        cm = uicontextmenu;
+        X = DATA.helpkeys.extras.(code);
+        for j = 1:length(X)
+            uimenu(cm,'label',X{j});
+        end
+        set(cm,'position', [50 fpos(4)/2],'visible','on');
     end
-    set(cm,'position', [50 fpos(4)/2],'visible','on');
 end
 
 

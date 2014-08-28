@@ -330,6 +330,10 @@ Tc contrast of the timeout screen. Useful for screen calibration
 tf temporal frequency (Hz)
 Tg  Internal for recording Trial statistics 
 tgtdur How long choice icons are up in a trial. If < 0, icons up in intertrial interval # psychophysics choice duration
+#tgtdur <0 op=+iit -> icons shown only during intertrial period
+#tgtdur=0  op=+iit -> icons shown between trials and throughout trial. Change once choice saccade is made
+#tgtdur=0 op=-iit -> icons only shown after stimulus off and until choice saccade
+#tgtdur > 0 op=+iit  icons show for first tgtdur seconds of stimulus presentation
 to duration of checkerboard following incorrect psych choices.
 tr ratio of luminances for choice targets. 1 = same, 0 = only correct choice visibles. See also pT. 
 ts When shake detector activated, timeout in sec
