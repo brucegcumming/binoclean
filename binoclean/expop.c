@@ -1832,6 +1832,8 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
 
     afc_s.lasttrial = -(BAD_TRIAL);
     afc_s.targsize = 20;
+    afc_s.respdir = '?';
+    afc_s.rt = 0;
     if(ex->nstim[0] <= 0)
     {
         ex->nstim[0] = 5;
@@ -14867,11 +14869,11 @@ int ButtonResponse(int button, int revise, vcoord *locn)
         if(expt.type2 != EXPTYPE_NONE)
             sprintf(rbuf," %s=%4f",serial_strings[expt.type2],stp->vals[1]);
         else
-            sprintf(rbuf,"");
+            sprintf(rbuf," xx=0");
         if(expt.type3 != EXPTYPE_NONE)
             sprintf(sbuf," %s=%.4f",serial_strings[expt.type3],stp->vals[2]);
         else
-            sprintf(sbuf,"");
+            sprintf(sbuf," xx=0");
         
         framesum += framesdone;
         realframesum += realframes;
