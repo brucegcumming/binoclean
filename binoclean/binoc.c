@@ -10530,7 +10530,7 @@ int PrintPsychLine(int presult, int sign)
             fprintf(psychfile,"R%d %s=%.5f %s=%.5f",
                     presult,serial_strings[expt.mode],expt.currentval[0],
                     serial_strings[expt.type2],expt.currentval[1]);
-        fprintf(psychfile," sn=%d%c %.2f %.2f %.2f",sign,afc_s.respdir,start,down,expt.vals[REWARD_SIZE]);
+        fprintf(psychfile," sn=%d %.2f %.2f %.2f",sign,afc_s.respdir,start,down,expt.vals[REWARD_SIZE]);
         
         if(microsaccade >0)
             sprintf(str,"%s(%,4f)=%.2f",serial_strings[SACCADE_DETECTED],microsaccdir, microsaccade);
@@ -11698,8 +11698,9 @@ void Stim2PsychFile(int state)
                 j++;
             }
         }
-        if (j%12 > 0)
+        if (j%12 > 0){
             fprintf(psychfile,"\n");
+        }
         fflush(psychfile);
     }
     

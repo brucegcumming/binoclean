@@ -16,6 +16,7 @@ extern int mode;
 extern FILE *seroutfile;
 extern char *expname;
 extern int option2flag;
+static int nalloc;
 
 #define TOGGLE_BOX 1
 #define ONOFFBUTTON 2+MAXCHANS
@@ -46,7 +47,7 @@ char *getfilename(char *path)
 		p++;
 	else
 		p = path;
-    
+    nalloc++;
 	return((char *)strcpy((char *)malloc(strlen(p)+1), p));
 }
 
@@ -59,7 +60,7 @@ char *getdirname(char *path)
 	if((p = strrchr(pdir, '/')) || (p= strrchr(pdir,'\\'))){
         *p = NULL;
     }
-    
+    nalloc++;    
 	return((char *)strcpy((char *)malloc(strlen(pdir)+1), pdir));
 }
 

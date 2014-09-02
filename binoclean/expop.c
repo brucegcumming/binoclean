@@ -5233,6 +5233,7 @@ void ResetExpt()
 void checkstimbuffers(int nstim, int nreps)
 {
     int *temp;
+    static int csnalloc = 0;
     
     if(nstim+1 > nisset)
     {
@@ -5241,7 +5242,7 @@ void checkstimbuffers(int nstim, int nreps)
         nisset = nstim+1;
         isset = (int *)malloc(sizeof(int) * nisset);
         memcpy(isset, temp, sizeof(int) * nisset);
-        
+        csnalloc++;
     }
     if(nstim*(nreps+1) > nstimorder)
     {
@@ -5250,6 +5251,7 @@ void checkstimbuffers(int nstim, int nreps)
         nstimorder = nstim * (nreps+1);
         stimorder = (int *)malloc(sizeof(int) * nstimorder);
         memcpy(stimorder, temp, sizeof(int) * nstimorder);
+        csnalloc++;
     }
 }
 
