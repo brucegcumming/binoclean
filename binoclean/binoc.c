@@ -1246,7 +1246,7 @@ char *DescribeState()
         strcat(str,"\nEXPTOVER\n");
     }
     else
-        strcat(str,"\nEXPTSTART\n");
+        strcat(str,"\nEXPTRUNNING\n");
 
     /*
      if(expt.st->imprefix != NULL){
@@ -7448,7 +7448,7 @@ int next_frame(Stimulus *st)
                 break;
         }
         if (stimstate == PRESTIMULUS){ //hijack this
-            sprintf(buf,"status=Stimulus %d,%d at %s\n",++testctr,trialctr,binocTimeString());
+            sprintf(buf,"status=TestStimulus %d,%d at %s\n",++testctr,trialctr,binocTimeString());
             notify(buf);
             mode |= FIRST_FRAME_BIT;
             framesdone = RunExptStim(TheStim, TheStim->nframes, D, -1);

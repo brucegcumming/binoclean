@@ -206,7 +206,7 @@ function DATA = OpenBinocLog(DATA)
 
 if DATA.frombinocfid <= 0
     DATA.frombinocfid = fopen('/local/frombinoc.txt','a');
-    fprintf(DATA.frombinocfid,'Log openened %s\n',datestr(now));
+    myprintf(DATA.frombinocfid,'Log openened %s\n',datestr(now));
 else
     fprintf('Binoc log already open\n');
 end
@@ -473,6 +473,11 @@ for j = 1:length(strs{1})
         end
         if strncmp(s,'status=Grid is',14)
             DATA = AddTextToGui(DATA,s(8:end));
+        elseif strncmp(s,'status=TestStimulus',19)
+            ns = sscanf(s,'status=TestStimulus %d');
+            if mod(ns,20) == 0
+                DATA = GetState(DATA);
+            end
         end
         fid = strfind(s,'Frames:');
         if ~isempty(fid) && ~isempty(DATA.Trials)
@@ -484,12 +489,14 @@ for j = 1:length(strs{1})
 %can ignore SENDING'            
         end  %6 char codes
         
-        elseif sum(strncmp(s,{'EXPTSTART' 'EXPTOVER' 'TESTOVER'},8))
+        elseif sum(strncmp(s,{'EXPTSTART' 'EXPTOVER' 'EXPTRUNNING' 'TESTOVER'},8))
            if strncmp(s,'EXPTSTART',8)
             DATA.inexpt = 1;
             tic; PsychMenu(DATA); 
             tic; SetGui(DATA,'set'); 
             if DATA.verbose(4) fprintf('%s\n',s); end
+        elseif strncmp(s,'EXPTRUNNING',8) %from GetState
+            DATA.inexpt = 1;
         elseif strncmp(s,'EXPTOVER',8) %called at end or cancel
             if DATA.inexpt %in case reopen pipes mied expt
                 DATA.optionflags.do = 0;
@@ -506,7 +513,9 @@ for j = 1:length(strs{1})
             tic; SetGui(DATA,'set'); 
             ShowStatus(DATA);
             if ~wasexpt
-                myprintf(DATA.frombinocfid,'Got EXPTOVER, but not in Expt\n');
+                myprintf(DATA.frombinocfid,'-show','Got EXPTOVER, but not in Expt\n');
+            else
+                fprintf('Expt over at %s\n',datestr(now));
             end
             if DATA.exptstoppedbyuser  
             %if user hist cancal/stop, dont repeat or move on to automatic next expt
@@ -1132,8 +1141,11 @@ function DATA = ReadExptLines(DATA, strs, src)
             fprintf('Substituting imload for immode\n');
             tline = 'imload=preload';
         end
-        
-        [DATA, type] = InterpretLine(DATA,tline, src);
+        if strncmp(tline,'openbinoclog',15)
+            DATA = OpenBinocLog(DATA);
+        else
+            [DATA, type] = InterpretLine(DATA,tline, src);
+        end
         if DATA.perfmonitor
             myprintf(DATA.frombinocfid,'%.3f file %s\n',mytoc(DATA.starttime),tline);
         end
@@ -1182,8 +1194,9 @@ newwindow =1;
         CreateStruct.WindowStyle='non-modal';
    end
    try
-   h = msgbox(s,'Binoc Warning','warn',CreateStruct);
-   ScaleWindow(h,2);
+       h = msgbox(s,'Binoc Warning','warn',CreateStruct);
+       ScaleWindow(h,2);
+       fprintf('WARNING: %s at %s\n',s,datestr(now));
    end
    
 function line = CheckLineForBinoc(tline)
@@ -1565,6 +1578,9 @@ function DATA = GetState(DATA, verbose)
         ts = now;
         [bstr, status] = urlread(str);
         a = mytoc(ts); %getting here is fast. Its interpretline that is slow.
+        if isempty(bstr)
+            vergwarning('GetState Return is Emtpy');
+        end
          DATA = InterpretLine(DATA, bstr,'frombinoc');
          if verbose
              fprintf('Read/Interpret took %.3f,%.3f\n',a,mytoc(ts));

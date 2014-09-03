@@ -1858,8 +1858,6 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
         {
             if(i > MAXTOTALCODES)
                 printf("Expt %s %d(%d) > MAXTOTALCODES\n",firstmenu[j].label,j,i);
-            else
-                printf("Expt %s %d(%d,%s: %s) > MAXSERIALCODES\n",firstmenu[j].label,j,i,serial_strings[i],serial_names[i]);
         }
         j++;
     }
@@ -1869,8 +1867,6 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
         {
             if(i > MAXTOTALCODES)
                 printf("Expt %s %d(%d) > MAXTOTALCODES\n",secondmenu[j].label,j,i);
-            else
-                printf("Expt %s %d(%d,%s: %s) > MAXSERIALCODES\n",secondmenu[j].label,j,i,serial_strings[i],serial_names[i]);
         }
         j++;
     }
