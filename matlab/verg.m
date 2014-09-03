@@ -1025,7 +1025,7 @@ for j = 1:length(strs{1})
                 end
                 SetCode(DATA,code);
             else
-                cprintf('red','Cannot Interpret %s: %s',src,strs{1}{j});
+                cprintf('red','Cannot Interpret %s: %s\n',src,deblank(strs{1}{j}));
             end
         end
     end

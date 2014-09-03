@@ -11618,7 +11618,7 @@ void Stim2PsychFile(int state)
 
     sscanf(VERSION_NUMBER,"binoclean.%f",&version);
     strcpy(buf,VERSION_NUMBER);
-    s = &buf[9];
+    s = &buf[10];
     r = strchr(s,' ');
     if (r != NULL && r - s > 3) //remove Day name
         *(r-4) = 0;
@@ -11663,7 +11663,7 @@ void Stim2PsychFile(int state)
         fprintf(psychfile," %s=%.0f usenewdir=%d %s %s %s x=0\n",serial_strings[STIMULUS_MODE],GetProperty(&expt,expt.st,STIMULUS_MODE),usenewdirs,StimString(BACK_CORRELATION),StimString(BACK_HEIGHT),StimString(BACK_WIDTH));
         
         if(expt.st->next && expt.st->next->type != STIM_NONE){
-            fprintf(psychfile,"R8 %s=%.2f %s=%.2f %s=%.2f",
+            fprintf(psychfile,"R7 %s=%.2f %s=%.2f %s=%.2f",
                     serial_strings[XPOS], GetProperty(&expt,expt.st->next,XPOS),
                     serial_strings[YPOS], GetProperty(&expt,expt.st->next,YPOS),
                     serial_strings[REWARD_BIAS],GetProperty(&expt,expt.st,REWARD_BIAS),
@@ -11671,14 +11671,14 @@ void Stim2PsychFile(int state)
             fprintf(psychfile," 0 %.2f %.2f",
                     GetProperty(&expt,expt.st,BACK_ORI),
                     GetProperty(&expt,expt.st,BACK_SIZE));
-            fprintf(psychfile," %s=%.4f %s=%.2f x=0 x=0 x=0 x=0\n",serial_strings[INITIAL_APPLY_MAX],GetProperty(&expt,expt.st,INITIAL_APPLY_MAX),serial_strings[BACK_CONTRAST],GetProperty(&expt,expt.st,BACK_CONTRAST));
+            fprintf(psychfile," %s=%.4f %s=%.2f x=0 x=0 x=0 mo=back\n",serial_strings[INITIAL_APPLY_MAX],GetProperty(&expt,expt.st,INITIAL_APPLY_MAX),serial_strings[BACK_CONTRAST],GetProperty(&expt,expt.st,BACK_CONTRAST));
         }
         if(expt.st->type == STIM_IMAGE){
-            fprintf(psychfile,"R6 se0=%d se1=%d se2=%d %d %d %d se6=%d imver=%.2f x=0 x=0 x=0 x=0\n",
+            fprintf(psychfile,"R7 se0=%d se1=%d se2=%d %d %d %d se6=%d imver=%.2f x=0 x=0 x=0 st=image\n",
                     seedoffsets[0],seedoffsets[1],seedoffsets[2],
                     seedoffsets[3],seedoffsets[4],seedoffsets[5],
                     seedoffsets[6],expt.st->stimversion);
-            fprintf(psychfile,"R6 se7=%d se8=%d se9=%d %d %d %d se13=%d imver=%.2f x=0 x=0 x=0 x=0\n",
+            fprintf(psychfile,"R7 se7=%d se8=%d se9=%d %d %d %d se13=%d imver=%.2f x=0 x=0 x=0 st=image\n",
                     seedoffsets[7],seedoffsets[8],seedoffsets[9],
                     seedoffsets[10],seedoffsets[11],seedoffsets[12],
                     seedoffsets[13],expt.st->stimversion);

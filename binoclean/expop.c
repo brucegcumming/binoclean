@@ -2853,22 +2853,22 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
                     sprintf(outbuf,"Psych Log: %s\n",buf);
                     statusline(outbuf);
                     strcpy(nbuf,buf);
-                    if(seroutfile){
-                        fprintf(seroutfile,"Psych Log: %s\n",buf);
-                    }
                     psychfile = fopen(buf,"a");
                     sprintf(buf,"%s.log",s);
                     psychfilelog = fopen(buf,"a");
                 }
                 else{
-                    psychfile = fopen(nonewline(s),"w");
+                    psychfile = fopen(nonewline(s),"a");
                     sprintf(nbuf,"%s",nonewline(s));
                 }
                 if (psychfile == NULL){
                     sprintf(buf,"Can't open %s\n",nbuf);
                     acknowledge(buf,NULL);
                 }
-            break;
+                else if(seroutfile){
+                    fprintf(seroutfile,"Psych Log: %s\n",nbuf);
+                }
+                break;
 
         case ELECTRODE_TYPE:
             i = 0;
@@ -13734,7 +13734,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     else if(!strncmp(line,"optionwinxy",6)  && (s = strchr(line,'=')) != 0){
         return(0);
     }
-    else if(!strncmp(line,"psychfile",6)  && (s = strchr(line,'=')) != 0){
+    else if(!strncmp(line,"xxpsychfile",6)  && (s = strchr(line,'=')) != 0){
         if (strlen(s) < 2){
             sprintf(outbuf,"psychfile=%s\n",psychfilename);
             notify(outbuf);
@@ -13756,20 +13756,22 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             sprintf(outbuf,"Psych Log: %s\n",buf);
             statusline(outbuf);
             strcpy(nbuf,buf);
-            if(seroutfile){
-                fprintf(seroutfile,"Psych Log: %s\n",buf);
-            }
             psychfile = fopen(buf,"a");
             sprintf(buf,"%s.log",s);
             psychfilelog = fopen(buf,"a");
         }
        else{
-            psychfile = fopen(nonewline(s),"w");
+            psychfile = fopen(nonewline(s),"a");
             sprintf(nbuf,"%s",nonewline(s));
         }
         if (psychfile == NULL){
             sprintf(buf,"Can't open %s\n",nbuf);
             acknowledge(buf,NULL);
+        }
+        else{
+            if(seroutfile){
+                fprintf(seroutfile,"Psych Log: %s\n",nbuf);
+            }
         }
         return(0);
     }
