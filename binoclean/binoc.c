@@ -11649,7 +11649,7 @@ void Stim2PsychFile(int state)
         fprintf(psychfile," %.2lf %.2f %.2f",t,
                 GetProperty(&expt,expt.st,XPOS),
                 GetProperty(&expt,expt.st,YPOS));
-        fprintf(psychfile," %s=%.4f %s=%.4f x=0 x=0 x=0 x=0\n",serial_strings[INITIAL_APPLY_MAX],GetProperty(&expt,expt.st,INITIAL_APPLY_MAX),serial_strings[JDEATH],GetProperty(&expt,expt.st,JDEATH));
+        fprintf(psychfile," %s %s=%.4f %s x=0 x=0 x=0\n",StimString(INITIAL_APPLY_MAX),serial_strings[JDEATH],GetProperty(&expt,expt.st,JDEATH),StimString(VERSION_CODE));
         
         
         
@@ -11685,7 +11685,7 @@ void Stim2PsychFile(int state)
             
         }
         r = binocTimeString();
-        fprintf(psychfile,"R7 %s=%s time=%s ", serial_strings[VERSION_CODE],s, &r[1]);
+        fprintf(psychfile,"R7 binoclean=%s time=%s ", s, &r[1]);
         j = 2;
         for (i = 0; i < NTRACKCODES; i++){
             if(trackcodes[i] >= 0){
