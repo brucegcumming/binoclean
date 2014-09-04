@@ -146,7 +146,7 @@ int GetLastPen(){
     [self.actualPenLogTextField setStringValue:@"I am here!!"];
 }
 
-
+/*
 - (IBAction) applyAndSave:(id)sender
 {
     NSLog(@"Applying and saving!");
@@ -181,5 +181,6 @@ int GetLastPen(){
     [[NSUserDefaults standardUserDefaults] setValue:self.userValue forKey:@"user"];
     [[NSUserDefaults standardUserDefaults] setValue:self.actualPenLog forKey:@"actualpenlog"];
 }
+*/
 
 @end

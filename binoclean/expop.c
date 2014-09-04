@@ -14917,8 +14917,8 @@ int ButtonResponse(int button, int revise, vcoord *locn)
 char *DescribeStim(Stimulus *st)
 {
     int i,n,code;
-    static char dbuf[512];
-    char buf[256];
+    static char dbuf[BUFSIZ*5];
+    char buf[BUFSIZ];
     float val = 0,a,b,c,d;
     
     if(stimdurn > 0)
@@ -15043,6 +15043,9 @@ char *DescribeStim(Stimulus *st)
         sprintf(buf,"\nStep X=%.4f (T=%.0f, dt=%.0f) every %.1f ms = %.2f deg/sec\n",a,d,c,b,(a * 1000)/b);
         strcat(dbuf,buf);
     }
+    i = strlen(dbuf);
+    if (i > BUFSIZ * 5)
+        fprintf(stderr,"DescribeStim length Too lond %d\n",i);
     return(dbuf);
 }
 

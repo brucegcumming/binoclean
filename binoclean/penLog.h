@@ -57,6 +57,6 @@
 
 - (void) loadPenLogTimerFire:(NSTimer*)theTimer;
 
-- (IBAction) applyAndSave:(id)sender;
+//- (IBAction) applyAndSave:(id)sender;
 
 @end

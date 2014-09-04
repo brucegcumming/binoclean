@@ -1178,7 +1178,8 @@ function DATA = ReadExptLines(DATA, strs, src)
 
 function vergwarning(s, varargin)
 
-newwindow =1;    
+newwindow =1;
+toconsole = 1;
     j = 1;
     while j <= length(varargin)
         if strncmpi(varargin{j},'newwin',3)
@@ -1196,7 +1197,9 @@ newwindow =1;
    try
        h = msgbox(s,'Binoc Warning','warn',CreateStruct);
        ScaleWindow(h,2);
-       fprintf('WARNING: %s at %s\n',s,datestr(now));
+       if toconsole
+        fprintf('WARNING: %s at %s\n',s,datestr(now));
+       end
    end
    
 function line = CheckLineForBinoc(tline)
@@ -1609,7 +1612,7 @@ function DATA = SetTrial(DATA, T)
     end
     
     if isfield(DATA.binoc{1},'id')
-        if ~isfield(T,'id') | DATA.binoc{1}.id > T.id
+        if ~isfield(T,'id') | isempty(T.id) | DATA.binoc{1}.id > T.id
         DATA.Trials(nt).id = DATA.binoc{1}.id;
         end
     end
