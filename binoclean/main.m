@@ -15,7 +15,7 @@
 
 
 int binocmain(int argc, char * argv[]);
-char * VERSION_NUMBER;
+char * VERSION_STRING;
 char * SHORT_VERSION_NUMBER;
 
 
@@ -30,7 +30,7 @@ int main(int argc, char *argv[])
     setpriority(PRIO_PROCESS, 0, -10);
     
     NSString *version = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleVersion"];
-    VERSION_NUMBER = [version UTF8String];    
+    VERSION_STRING = [version UTF8String];    
 
     version = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleShortVersionString"];
         SHORT_VERSION_NUMBER = [version UTF8String];  

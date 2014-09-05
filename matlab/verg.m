@@ -237,15 +237,21 @@ codetype = 0;
 frombinoc = 0;
 sendtobinoc =0;
 src = 'unknown';
+srcchr = 'U';
 j = 1;
 while j <= length(varargin)
     if strncmpi(varargin{j},'from',4)
         src = varargin{j};
         if strcmp(src,'frombinoc')
             frombinoc = 1;
+            srcchr = 'B';
+        elseif strcmp(src,'fromgetstate')
+            srcchr = 'G';
+            frombinoc = 2;
         end
     elseif strncmpi(varargin{j},'tobinoc',4)
         sendtobinoc = 1;
+        srcchr = 'V';
     end
     j = j+1;
 end
@@ -284,7 +290,7 @@ for j = 1:length(strs{1})
             if DATA.verbose(2)
                 fprintf('%s**\n',strs{1}{j});
             end
-            myprintf(DATA.frombinocfid,'%s %s\n',datestr(now),strs{1}{j});
+            myprintf(DATA.frombinocfid,'%s%c %s\n',datestr(now),srcchr,strs{1}{j});
         end
     end
     if DATA.savestrs > 0
@@ -512,10 +518,12 @@ for j = 1:length(strs{1})
             tic; PsychMenu(DATA); 
             tic; SetGui(DATA,'set'); 
             ShowStatus(DATA);
-            if ~wasexpt
-                myprintf(DATA.frombinocfid,'-show','Got EXPTOVER, but not in Expt\n');
-            else
-                fprintf('Expt over at %s\n',datestr(now));
+            if frombinoc == 1
+                if ~wasexpt
+                    myprintf(DATA.frombinocfid,'-show','Got EXPTOVER(%c), but not in Expt\n',srcchr);
+                else
+                    fprintf('Expt over at %s\n',datestr(now));
+                end
             end
             if DATA.exptstoppedbyuser  
             %if user hist cancal/stop, dont repeat or move on to automatic next expt
@@ -1178,7 +1186,7 @@ function DATA = ReadExptLines(DATA, strs, src)
 
 function vergwarning(s, varargin)
 
-newwindow =1;
+newwindow = 0;
 toconsole = 1;
     j = 1;
     while j <= length(varargin)
@@ -1187,9 +1195,14 @@ toconsole = 1;
         end
         j = j+1;
     end
+   OldPos = [];
    beep;
    CreateStruct.Interpreter = 'tex';
-   if newwindow
+   if newwindow == 0
+        OldFig=findobj(0,'Type','figure','Tag','Msgbox_Binoc Warning','Name','Binoc Warning');
+        if ~isempty(OldFig)
+           OldPos = get(OldFig(1),'position');
+        end
         CreateStruct.WindowStyle='replace';
    else
         CreateStruct.WindowStyle='non-modal';
@@ -1197,6 +1210,10 @@ toconsole = 1;
    try
        h = msgbox(s,'Binoc Warning','warn',CreateStruct);
        ScaleWindow(h,2);
+
+       if ~isempty(OldPos)
+           set(h,'Position', OldPos);
+       end
        if toconsole
         fprintf('WARNING: %s at %s\n',s,datestr(now));
        end
@@ -1584,7 +1601,7 @@ function DATA = GetState(DATA, verbose)
         if isempty(bstr)
             vergwarning('GetState Return is Emtpy');
         end
-         DATA = InterpretLine(DATA, bstr,'frombinoc');
+         DATA = InterpretLine(DATA, bstr,'fromgetstate');
          if verbose
              fprintf('Read/Interpret took %.3f,%.3f\n',a,mytoc(ts));
          end
@@ -3690,7 +3707,7 @@ end
      end
      rbusy = 0;
      if DATA.frombinocfid > 0 && ~isempty(a)
-         fprintf(DATA.frombinocfid,'%s %s',datestr(now),char(a'));
+         fprintf(DATA.frombinocfid,'%sB %s',datestr(now),char(a'));
      end
      if strncmp(char(a'),'SENDINGstart1',12)
         a = fread(DATA.inid,14);
@@ -3804,7 +3821,8 @@ function Expt = ExptSummary(DATA)
         
 function DATA = RunButton(a,b, type)
         DATA = GetDataFromFig(a);
-        fprintf('Run Hit Inexpt %d, type %d %s\n',DATA.inexpt,type,datestr(now));
+        s = get(a,'String');
+        fprintf('%s Hit Inexpt %d, type %d %s\n',s,DATA.inexpt,type,datestr(now));
         PauseRead(DATA,1);
 
         DATA.newexptdef = 0;
@@ -3846,6 +3864,9 @@ function DATA = RunButton(a,b, type)
                 [DATA, str] = ReadFromBinoc(DATA,'expect', 4);
                 if DATA.verbose(4)
                     fprintf('Cancel: Inexpt %d %s\n',DATA.inexpt,str);
+                end
+                if DATA.inexpt
+                    fprintf('Cancel: Still in Expt after %s\n',DATA.inexpt,str);
                 end
                 DATA = AddTextToGui(DATA,'Cancelled','norec');
                 if DATA.nexpts > 0

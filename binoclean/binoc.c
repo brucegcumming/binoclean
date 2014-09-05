@@ -54,8 +54,8 @@
 
 //Ali
 
-char * VERSION_NUMBER;
-char * SHORT_VERSION_NUMBER;
+extern char * VERSION_STRING;
+extern char * SHORT_VERSION_NUMBER;
 
 /*GLUquadricObj *gluq;*/
 static GLuint base,bigbase,mediumbase;
@@ -784,7 +784,7 @@ char **argv;
     /*
      * first pass through argv leave any stimfiles named in argv
      */
-    printf("VERSION %s\n",VERSION_NUMBER);
+    printf("VERSION %s\n",VERSION_STRING);
     gettimeofday(&lastmonkeycheck,NULL);
     sprintf(timeoutstring,"Startup...");
 
@@ -11423,6 +11423,11 @@ void expt_over(int flag)
     time_t tval;
     double t;
     
+/* 
+ * First call to notify in here must be EXPTOVER, so that verg gets this in response to a stop
+ * expt request
+ */
+    
     mode &= (~BW_ERROR);
     eventstate = 0;
     if(stimstate == WAIT_FOR_RESPONSE && flag != CANCEL_EXPT){
@@ -11518,10 +11523,6 @@ void expt_over(int flag)
         else
             optionflags[MODULATE_DISPARITY] = 0;
     }
-    if(!(optionflag & FRAME_ONLY_BIT)){
-        sprintf(buf,"Expt over at %s",binocTimeString());
-        statusline(buf);
-    }
     TheStim->mode &= (~(EXPTPENDING | EXPT_OVER | INTRIAL));
     //Ali  SetRunButton(NULL);
     
@@ -11593,19 +11594,24 @@ void expt_over(int flag)
         mode &= (~ANIMATE_BIT);
     if(optionflag & FRAME_ONLY_BIT)
         WriteFrameData();
+    notify("\nEXPTOVER\n");
     SaveExptFile("./leaneo.stm",SAVE_STATE);
     SendAllToGui();
-    notify("\nEXPTOVER\n");
     if (netoutfile != NULL){
             fprintf(netoutfile,"Run ended at %s\n",ctime(&tval));
        fflush(netoutfile);
     }
+    if(!(optionflag & FRAME_ONLY_BIT)){
+        sprintf(buf,"Expt over at %s",binocTimeString());
+        statusline(buf);
+    }
+
 }
 
 char *StimString(int code)
 {
-    static char buf[BUFSIZ*10];
-    
+    static char buf[2048];
+
     MakeString(code, buf, &expt, expt.st,TO_FILE);
     return(buf);
 }
@@ -11616,12 +11622,7 @@ void Stim2PsychFile(int state)
     char buf[2048],*s,*r;
     int i,j;
 
-    sscanf(VERSION_NUMBER,"binoclean.%f",&version);
-    strcpy(buf,VERSION_NUMBER);
-    s = &buf[10];
-    r = strchr(s,' ');
-    if (r != NULL && r - s > 3) //remove Day name
-        *(r-4) = 0;
+    sscanf(VERSION_STRING,"binoclean.%f",&version);
 
     
     
@@ -11649,12 +11650,12 @@ void Stim2PsychFile(int state)
         fprintf(psychfile," %.2lf %.2f %.2f",t,
                 GetProperty(&expt,expt.st,XPOS),
                 GetProperty(&expt,expt.st,YPOS));
-        fprintf(psychfile," %s %s=%.4f %s x=0 x=0 x=0\n",StimString(INITIAL_APPLY_MAX),serial_strings[JDEATH],GetProperty(&expt,expt.st,JDEATH),StimString(VERSION_CODE));
+        fprintf(psychfile," %s %s=%.4f %s expt=%d x=0 x=0\n",StimString(INITIAL_APPLY_MAX),serial_strings[JDEATH],GetProperty(&expt,expt.st,JDEATH),StimString(VERSION_NUMBER),state);
         
         
         
-        fprintf(psychfile,"R5 %s=%.4f %s=%.2f By=%.2f",
-                serial_strings[VERSION_CODE],version, 
+        fprintf(psychfile,"R5 %s %s=%.2f By=%.2f",
+                StimString(VERSION_NUMBER),
                 serial_strings[REWARD_BIAS],GetProperty(&expt,expt.st,REWARD_BIAS),
                 GetProperty(&expt,expt.st->next,YPOS));
         fprintf(psychfile," 0 %.2f %.2f",
@@ -11684,6 +11685,12 @@ void Stim2PsychFile(int state)
                     seedoffsets[13],expt.st->stimversion);
             
         }
+        strcpy(buf,VERSION_STRING);
+        s = &buf[10];
+        r = strchr(s,' ');
+        if (r != NULL && r - s > 3) //remove Day name
+            *(r-4) = 0;
+
         r = binocTimeString();
         fprintf(psychfile,"R7 binoclean=%s time=%s ", s, &r[1]);
         j = 2;

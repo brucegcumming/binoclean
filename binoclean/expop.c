@@ -94,7 +94,7 @@
 #define MANUALEVENT 1
 #define TRUE 1
 #import "stimuli.h"
-char * VERSION_NUMBER;
+extern char * VERSION_STRING;
 
 
 #define MAXRF 10
@@ -2628,7 +2628,7 @@ int OpenNetworkFile(Expt expt)
     }
     tval = time(NULL);
     if (netoutfile != NULL){
-        fprintf(netoutfile,"Reopened %s by binoc Version %s",ctime(&tval),VERSION_NUMBER);
+        fprintf(netoutfile,"Reopened %s by binoc Version %s",ctime(&tval),VERSION_STRING);
         if (seroutfile != NULL)
             fprintf(seroutfile,"Network Record to %s\n",name);
         sprintf(buf,"status=Network Record to %s\n",name);
@@ -2805,7 +2805,7 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
                 if((seroutfile = fopen(sfile,"a")) != NULL){
                     sprintf(buf,"Serial Out to %s/%s",expt.cwd,sfile);
                     statusline(buf);
-                    fprintf(seroutfile,"Reopened %s by binoc Version %s",ctime(&tval),VERSION_NUMBER);
+                    fprintf(seroutfile,"Reopened %s by binoc Version %s",ctime(&tval),VERSION_STRING);
                     sprintf(buf,"Reopened %s",ctime(&tval));
                     SerialString(buf,NULL);
                 }
@@ -6399,7 +6399,7 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
     
     char *scode = valstrings[valstringindex[code]].code; //char code matching icode code
     char temp[BUFSIZ],cadd[BUFSIZ];
-    float val;
+    float val,version;
     double *f;
     int ret = 0,ival =0,i,pcflag =0,nstim = 0,icode = 0;
     time_t tval;
@@ -6486,9 +6486,13 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
             sprintf(cbuf,"%s%s%.6f %.6f", scode,
                     temp,expt.mon->trapscale[0], expt.mon->trapscale[2]);
             break;
+        case VERSION_NUMBER:
+            sscanf(VERSION_STRING,"binoclean.%f",&version);
+            sprintf(cbuf,"%s%s%.4f",serial_strings[VERSION_CODE],temp, version);
+            break;
         case VERSION_CODE:
             sprintf(cbuf,"%s%s%s", scode,
-                    temp,VERSION_NUMBER);
+                    temp,VERSION_STRING);
             break;
         case EARLY_RWTIME:
             sprintf(cbuf,"%s=%.2f %.2f", scode,expt.vals[EARLY_RWTIME],expt.vals[EARLY_RWSIZE]);
@@ -7562,7 +7566,7 @@ void InitExpt()
     }
     if(psychfilelog){
         tstart = time(NULL);
-        fprintf(psychfilelog,"Expt at %s by binoc Version %s\n",nonewline(ctime(&tstart)),VERSION_NUMBER);
+        fprintf(psychfilelog,"Expt at %s by binoc Version %s\n",nonewline(ctime(&tstart)),VERSION_STRING);
         fprintf(psychfilelog,"\nStimulus %s\n",DescribeStim(expt.st));
         for(j = 0; j < expt.totalcodes; j++){
             cbuf[0] = 0;
@@ -15080,13 +15084,13 @@ int PrintPsychData(char *filename)
         fprintf(fd,"\nExperiment %d:* %s\n",expt.plotcluster+(int)(expt.tl),expname);
     else
         fprintf(fd,"\nExperiment %d: %s\n",expt.plotcluster+(int)(expt.tl),expname);
-    fprintf(fd,"\nVersion %s\n",VERSION_NUMBER);
+    fprintf(fd,"\nVersion %s\n",VERSION_STRING);
     fprintf(fd,"\nStimulus %s\n",DescribeStim(expt.st));
     cbuf[0] = 0;
     MakeString(OPTION_CODE,cbuf, &expt, expt.st, TO_FILE);
     fprintf(fd,"%s\n",cbuf);
     if(psychlog){
-        fprintf(psychlog,"\nVersion %s\n",VERSION_NUMBER);
+        fprintf(psychlog,"\nVersion %s\n",VERSION_STRING);
         fprintf(psychlog,"\nStimulus %s\n",DescribeStim(expt.st));
         fprintf(psychlog,"%s\n",cbuf);
     }
