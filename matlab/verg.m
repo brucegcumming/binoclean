@@ -2632,8 +2632,12 @@ function MenuHit(a,b, arg)
         outprintf(DATA,'usershake\n');
         
     elseif strcmp(arg,'showpsych')
+        DATA = SetFigure('VergPsych', DATA);
         DATA.psych.blockmode = 'Current';
-        PlotPsych(DATA);
+        DATA = PlotPsych(DATA);
+        if ~isempty(DATA.err)
+            fprintf('%s\n',DATA.err);
+        end
         set(DATA.toplevel,'UserData',DATA);
     end
     
@@ -5913,7 +5917,8 @@ function ClearTaggedChecks(it, tags)
 function ChoosePsych(a,b, mode)
     DATA = GetDataFromFig(a);
     onoff = {'off' 'on'};
-    
+    F = GetFigure(a);
+    Expts = getappdata(F,'Expts');
     if strncmp(mode,'Expt',4)
         e = sscanf(mode,'Expt%d');
         if length(DATA.plotexpts) < e
@@ -5922,7 +5927,7 @@ function ChoosePsych(a,b, mode)
             DATA.plotexpts(e) = ~DATA.plotexpts(e);
         end
         DATA.psych.blockmode = 'Select';
-        PlotPsych(DATA);
+        PlotPsych(DATA, Expts);
         if strmatch(DATA.psych.blockmode,'OneOnly')
             c = get(get(a,'parent'),'children');
             set(c,'checked','off');
@@ -5965,13 +5970,15 @@ function ChoosePsych(a,b, mode)
         DATA.psych.(mode) = ~DATA.psych.(mode);
         set(a,'Checked',onoff{DATA.psych.(mode)+1});
         PlotPsych(DATA);
+    elseif strmatch(mode,'choosepsychfile')
+        [name, path] = uigetfile(['/local/data/psych/' DATA.binoc{1}.monkey '/*.*'],'select psych data file');
+        if name
+            Expts = ReadPsychFile([path '/' name]);
+            setappdata(gcf,'Expts',Expts);
+            PsychMenu(DATA,Expts);
+        end
     elseif strmatch(mode,'readpsychfile')
         Expts = ReadPsychFile(DATA.binoc{1}.psychfile);
-        setappdata(gcf,'Expts',Expts);
-        PsychMenu(DATA,Expts);
-    elseif strmatch(mode,'readselectedfile')
-        psychfile = uigetfile('/b/data/psych','select psych data file');
-        Expts = ReadPsychFile(psychfile);
         setappdata(gcf,'Expts',Expts);
         PsychMenu(DATA,Expts);
     elseif strcmp(mode,'savetrials');
@@ -6004,7 +6011,8 @@ function DATA = SetFigure(tag, DATA)
             sm = uimenu(hm,'Label','Separate by Block','callback', {@ChoosePsych, 'showblocks'},...
                 'checked',onoff{DATA.psych.showblocks+1});
             sm = uimenu(hm,'Label','Save Trial Data','callback', {@ChoosePsych, 'savetrials'});
-            sm = uimenu(hm,'Label','Read PsychFile','callback', {@ChoosePsych, 'readpsychfile'});
+            sm = uimenu(hm,'Label','Read Todays PsychFile','callback', {@ChoosePsych, 'readpsychfile'});
+            sm = uimenu(hm,'Label','Read Previous PsychFile','callback', {@ChoosePsych, 'choosepsychfile'});
             set(a,'UserData',DATA.toplevel);
             set(a,'DefaultUIControlFontSize',DATA.font.FontSize);
             set(a,'DefaultUIControlFontName',DATA.font.FontName);
@@ -6057,17 +6065,24 @@ function DATA = CheckExpts(DATA)
         DATA.Expts{j}.Header.rc = 0; %Cant' do rc online at the moment
     end
     
-function DATA = PlotPsych(DATA)
+function DATA = PlotPsych(DATA, Expts)
     
+    if nargin ==1
+        Expts = {};
+    end
     
-    
-    if isempty(DATA.Expts) || isempty(DATA.Trials)
+    DATA.err = '';
+    if (isempty(DATA.Expts) || isempty(DATA.Trials)) && isempty(Expts)
+        DATA.err = sprintf('No Trials/Expts');
         return;
     end
     if strmatch(DATA.psych.blockmode,'None')
+        DATA.err = sprintf('Plotting Off - See ''Expts'' Menu');
         return;
     end
-    DATA = CheckExpts(DATA);
+    if isempty(Expts)
+        DATA = CheckExpts(DATA);
+        Expts = DATA.Expts;
 
     Expt = [];
     e = length(DATA.Expts);
@@ -6110,6 +6125,7 @@ function DATA = PlotPsych(DATA)
     end
     id = unique(allid);
     if length(id) < 2
+        DATA.err = sprintf('Too Few Trials(%d)',length(id));
         return;
     end
     Expt.Trials = DATA.Trials(id);
@@ -6126,8 +6142,11 @@ function DATA = PlotPsych(DATA)
         if isfield(DATA.binoc{1},f{j})
             Expt.Stimvals.(f{j}) = DATA.binoc{1}.(f{j});
         end
+    end
+    else
+        expts = find(DATA.plotexpts);
+        Expt = CombineExpts(Expts(expts));
     end    
-    
     
     if DATA.psych.show
         for j = 1:length(Expt.Trials)
@@ -6147,7 +6166,7 @@ function DATA = PlotPsych(DATA)
             datetick('x','hh:mm');
             axis('tight');
         elseif DATA.psych.showblocks
-            ExptPsych(DATA.Expts(expts),'labelblock',eargs{:});
+            ExptPsych(Expts(expts),'labelblock','nmin',2, 'mintrials', 2, 'shown', eargs{:});
         else
         np = sum(abs([Expt.Trials.RespDir]) ==1); %psych trials
         Expt = FillTrials(Expt,Expt.Stimvals.et);
@@ -6165,7 +6184,8 @@ function DATA = PlotPsych(DATA)
             try
                 [a,b] = ExptPsych(Expt,'nmin',1,'mintrials',2,'shown',eargs{:});
             catch ME
-                fprintf('Error In ExptPsych %s\n',ME.message);
+                DATA.err = sprintf('Error In ExptPsych %s',ME.message);
+                fprintf('%s\n',DATA.err);
             end
             id = find(strcmp(Expt.Stimvals.et,{DATA.comcodes.code}));
             if length(id) == 1

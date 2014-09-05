@@ -74,7 +74,7 @@ static const int httpLogLevel = HTTP_LOG_LEVEL_WARN; // | HTTP_LOG_FLAG_TRACE;
                         }
                         else if (strncmp([[sLines objectAtIndex:i] UTF8String], "getstate", 8) == 0){
                             char * cs =DescribeState();
-                            s = [[NSString alloc] initWithBytes:cs length:sizeof(cs) encoding:NSASCIIStringEncoding];
+                            s = [[NSString alloc] initWithBytes:cs length:strlen(cs) encoding:NSASCIIStringEncoding];
                             s = [NSString stringWithUTF8String:cs];
                             if([s length] == 0){
                                 NSLog(@"Empty String conversion in GetState. But strlen(*cs) is%d", strlen(cs));
