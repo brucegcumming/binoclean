@@ -23,6 +23,7 @@ static NSColor * textColor;
 static NSColor * textBGColor;
 
 int outPipe = 0;
+int innotify = 0;
 NSMutableArray * inputPipeBuffer;
 NSString * outputPipeBuffer;
 NSMutableDictionary *bold12Attribs;
@@ -171,10 +172,12 @@ void WriteToOutputPipe(NSString * ns)
 
 void notify(char * s)
 {
+    innotify = 1;
     if (!outputPipeBuffer) {
         outputPipeBuffer = [[NSString alloc] init];
     }
     outputPipeBuffer = [NSString stringWithFormat:@"%@%s", outputPipeBuffer, s] ;
+    innotify = 0;
 }
 
 

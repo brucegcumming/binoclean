@@ -162,7 +162,7 @@ while j <= length(varargin)
         CloseTag(DATA.windownames{1});
         return;
     elseif strncmpi(varargin{j},'getstate',5)
-        DATA = GetState(DATA);
+        DATA = GetState(DATA,'commandline');
     elseif strncmpi(varargin{j},'quick',5)
         j = j+1;
         ts = now;
@@ -172,7 +172,7 @@ while j <= length(varargin)
         if DATA.verbose(4) mytoc(ts); end
         DATA = AddTextToGui(DATA, ['qe=' varargin{j}]);
         if DATA.verbose(4) mytoc(ts); end
-        DATA = GetState(DATA);
+        DATA = GetState(DATA,'quickexpt');
         if DATA.verbose(4) mytoc(ts); end
         SetGui(DATA,'ifneed');
         if DATA.verbose(4) mytoc(ts); end
@@ -236,6 +236,7 @@ setlist = 0;  %% don't update gui for every line read.
 codetype = 0;
 frombinoc = 0;
 sendtobinoc =0;
+paused = 0;
 src = 'unknown';
 srcchr = 'U';
 j = 1;
@@ -245,13 +246,18 @@ while j <= length(varargin)
         if strcmp(src,'frombinoc')
             frombinoc = 1;
             srcchr = 'B';
+        elseif strcmp(src,'frombinocT') %timer initiate read
+            frombinoc = 2;
+            srcchr = 'T';
         elseif strcmp(src,'fromgetstate')
             srcchr = 'G';
-            frombinoc = 2;
+            frombinoc = 3;
         end
     elseif strncmpi(varargin{j},'tobinoc',4)
         sendtobinoc = 1;
         srcchr = 'V';
+    elseif strncmpi(varargin{j},'paused',6)
+        paused = 1;
     end
     j = j+1;
 end
@@ -261,7 +267,9 @@ if nargin < 2 || isempty(line)
 end
 
 pstr = '';
-PauseRead(DATA, 1);
+if frombinoc ~= 2 && paused == 0 %don't pause reading when called from timee
+    PauseRead(DATA, 1);
+end
 ts = now;
 strs = textscan(line,'%s','delimiter','\n');
 
@@ -290,7 +298,7 @@ for j = 1:length(strs{1})
             if DATA.verbose(2)
                 fprintf('%s**\n',strs{1}{j});
             end
-            myprintf(DATA.frombinocfid,'%s%c %s\n',datestr(now),srcchr,strs{1}{j});
+            myprintf(DATA.frombinocfid,'%s%c%d %s\n',datestr(now),srcchr,DATA.inexpt,strs{1}{j});
         end
     end
     if DATA.savestrs > 0
@@ -482,7 +490,7 @@ for j = 1:length(strs{1})
         elseif strncmp(s,'status=TestStimulus',19)
             ns = sscanf(s,'status=TestStimulus %d');
             if mod(ns,20) == 0
-                DATA = GetState(DATA);
+                DATA = GetState(DATA,'test');
             end
         end
         fid = strfind(s,'Frames:');
@@ -518,24 +526,29 @@ for j = 1:length(strs{1})
             tic; PsychMenu(DATA); 
             tic; SetGui(DATA,'set'); 
             ShowStatus(DATA);
-            if frombinoc == 1
+            if ismember(frombinoc,[1 2]) && ~strncmp(s,'EXPTOVERSTATE',12)
                 if ~wasexpt
                     myprintf(DATA.frombinocfid,'-show','Got EXPTOVER(%c), but not in Expt\n',srcchr);
                 else
-                    fprintf('Expt over at %s\n',datestr(now));
+                    myprintf(DATA.frombinocfid,'-show','Expt over at %s\n',datestr(now));
                 end
+            end
+            if strcmp(s,'EXPTOVERSTATE') %just reporting state, not an event
+                exptover = 0; %put a check in here to resolve confusions
+            else
+                exptover = 1;
             end
             if DATA.exptstoppedbyuser  
             %if user hist cancal/stop, dont repeat or move on to automatic next expt
                 DATA.exptstoppedbyuser = 0;
                 DATA.seqline = 0;
-            elseif DATA.seqline > 0 
-                myprintf(DATA.cmdfid,'Sequence continuing from line %d',DATA.seqline);
+            elseif DATA.seqline > 0 && exptover
+                myprintf(DATA.cmdfid,'-show','Sequence continuing from line %d',DATA.seqline);
 %                if DATA.restartbinoc && wasexpt  %if inexpt ==0, may be anew restart
 %                    DATA = RestartBinoc(DATA);
 %                end
                 DATA = ContinueSequence(DATA);
-            elseif DATA.exptnextline > 0
+            elseif DATA.exptnextline > 0 && exptover
                 DATA = ReadExptLines(DATA,{},'fromseq');
                 DATA = RunButton(DATA,[],1);
             elseif DATA.rptexpts > 0 && wasexpt
@@ -1051,7 +1064,9 @@ dur = mytoc(ts);
 if dur > 1
     fprintf('Reading %d lines took %.2f%s\n',length(strs{1}),dur,pstr);
 end
-PauseRead(DATA,0);
+if frombinoc ~= 2 && paused == 0
+    PauseRead(DATA,0);
+end
 
 
 
@@ -1584,18 +1599,22 @@ outprintf(DATA,'NewMatlab\n');
 pause(0.01);
 DATA = ReadFromBinoc(DATA,'reset','expect');
 if readflag
-    DATA = GetState(DATA);
+    DATA = GetState(DATA,'OpenPipe');
 end
 SetGui(DATA,'set');
  
     
-function DATA = GetState(DATA, verbose)
-    if nargin == 1
+function DATA = GetState(DATA, caller, verbose)
+    if nargin < 3
         verbose = 0;
+    end
+    if nargin < 2
+        caller = 'unknown';
     end
     if DATA.network
         str = [DATA.ip 'getstate'];
         ts = now;
+        myprintf(DATA.frombinocfid,'Getstate caller: %s\n,',caller)
         [bstr, status] = urlread(str);
         a = mytoc(ts); %getting here is fast. Its interpretline that is slow.
         if isempty(bstr)
@@ -1691,6 +1710,8 @@ DATA.Trial.rw = 0;
 DATA.newbinoc = 2;
 DATA.ready = 0;
 DATA.timerperiod = 0.05;
+DATA.runsequence = 0;
+DATA.canceltimer = 0;
 DATA.pausereading = 0;  %stop timer driven reads when want to control
 DATA.binocisup = 0;
 DATA.savestrs = 0;
@@ -2412,7 +2433,6 @@ function DATA = InitInterface(DATA)
     subm = uimenu(cntrl_box,'Label','Pipes');
     uimenu(subm,'Label','Reopen Pipes','Callback',{@ReadIO, 6});
     uimenu(subm,'Label','reopenserial','Callback',{@SendStr, '\reopenserial'});
-    uimenu(subm,'Label','Test','Callback',{@TestIO});
     uimenu(subm,'Label','Read','Callback',{@ReadIO, 1});
     uimenu(subm,'Label','GetState','Callback',{@ReadIO, 2});
     uimenu(subm,'Label','NewStart','Callback',{@ReadIO, 3});
@@ -2438,6 +2458,8 @@ function DATA = InitInterface(DATA)
     sm = uimenu(subm,'Label','Restart Binoc between Expts','Callback',{@SetMenuToggle, 'restartbinoc'});
     sm = uimenu(subm,'Label','Send Expt Trigger to Spike2','Callback',{@SendStr, '!expttrigger'});
     uimenu(subm,'Label','Log Inputs','Callback',{@ReadIO, 'openlog'});
+    sm = uimenu(subm,'Label','Tests');
+    uimenu(sm,'Label','Run/Cancel','Callback',{@TestIO, 'cancel'});
 
     subm = uimenu(hm,'Label','&Software Offset');
     uimenu(subm,'Label','&Null','Callback',{@SendStr, 'sonull'},'accelerator','E');
@@ -3228,7 +3250,7 @@ function MenuGui(a,b)
         SetData(DATA);
     elseif flag == 2
          ts = now;
-         DATA = GetState(DATA,1);
+         DATA = GetState(DATA,'ReadIO',1);
          fprintf('Manual State took %.2f',mytoc(ts));
          set(DATA.toplevel,'UserData',DATA);
          SetGui(DATA);
@@ -3251,7 +3273,7 @@ function MenuGui(a,b)
         stop(DATA.timerobj);
          DATA = OpenPipes(DATA, 0);
          SendState(DATA,'all');
-         DATA = GetState(DATA);
+         DATA = GetState(DATA,'Reopen');
          SetGui(DATA);
          StartTimer(DATA);
          set(DATA.toplevel,'UserData',DATA);
@@ -3347,7 +3369,11 @@ function StartTimer(DATA, onoff)
 function onoff = PauseRead(DATA, onoff)
 %onoff 1 = pause is ON.
 if isfield(DATA,'toplevel') && isfigure(DATA.toplevel)
+    current_state = getappdata(DATA.toplevel,'PauseReading');
     if nargin == 2
+        if onoff == current_state
+            fprintf('Pause is already %d\n',onoff);
+        end
         setappdata(DATA.toplevel,'PauseReading',onoff);
         if isfield(DATA,'timerobj') & isvalid(DATA.timerobj)
             on = strcmp(get(DATA.timerobj,'Running'),'on');
@@ -3358,7 +3384,7 @@ if isfield(DATA,'toplevel') && isfigure(DATA.toplevel)
             end
         end
     else
-        onoff = getappdata(DATA.toplevel,'PauseReading');
+        onoff = current_state;
     end
 end
         
@@ -3377,7 +3403,10 @@ end
          end
          j = j+1;
      end
-     PauseRead(DATA,1);
+     paused = PauseRead(DATA); %get current state
+     if paused ==0
+        PauseRead(DATA,1);
+     end
     DATA= CheckExptMenus(DATA);
     SetTextItem(DATA.toplevel,'Expt1Nstim',DATA.nstim(1));
     SetTextItem(DATA.toplevel,'Expt2Nstim',DATA.nstim(2));
@@ -3489,7 +3518,9 @@ end
         fprintf('SetGUI: Ex%d\n',DATA.inexpt);
     end
     DATA.guiset = 1;
-    PauseRead(DATA,0);
+    if paused == 0 %only release pause if we weren't paused at the start.
+        PauseRead(DATA,0);
+    end
 
     
     
@@ -3554,10 +3585,23 @@ function CheckInput(a,b, fig, varargin)
     end
     if DATA.confused
         fprintf('Getting State from binoc\n');
-        DATA = GetState(get(DATA.toplevel,'UserData'));
+        DATA = GetState(get(DATA.toplevel,'UserData'),'Confused');
         DATA.confused = 0;
         SetData(DATA);
         fprintf('inexpt is now %d\n',DATA.inexpt);
+    end
+    if DATA.canceltimer > 0 
+        if isfield(DATA,'Expts') && ~isempty(DATA.Expts)
+        if DATA.inexpt
+            if(now-DATA.Expts{end}.Start > (DATA.canceltimer ./ (24 * 60* 60)));            
+                DATA = RunButton(DATA,'Cancel',1);
+            end
+        else
+            if(now-DATA.Expts{end}.End > (DATA.canceltimer ./ (24 * 60* 60)));            
+                DATA = RunButton(DATA,'Run',1);
+            end            
+        end
+        end
     end
     if DATA.verbose(1) > 1
     fprintf('Timer read over at %s\n',datestr(now));
@@ -3572,6 +3616,7 @@ silent = 1;
 str = [];
 persistent httpbusy;
 persistent lastts;
+srcchr = '';
      
 if isempty(lastts)
     lastts = 0;
@@ -3580,6 +3625,7 @@ end
 if isempty(httpbusy)
     httpbusy = 0;
 end
+    args = {};
     while j <= length(varargin)
          if strncmpi(varargin{j},'verbose',5)
              verbose(1) = 1;
@@ -3590,6 +3636,10 @@ end
                 j = j+1;
                 expecttime = varargin{j};
             end
+         elseif strncmpi(varargin{j},'auto',4)
+             srcchr = 'T';
+         elseif strncmpi(varargin{j},'paused',4)
+             args = {args{:} varargin{j}};
          elseif strncmpi(varargin{j},'reset',5)
              httpbusy = 0;
          end
@@ -3599,6 +3649,7 @@ end
      if httpbusy
          return;
      end
+     
      ts = now;
     [str, status] = urlread([DATA.ip 'whatsup']);
     if expecting && DATA.verbose(4) %verg state
@@ -3634,7 +3685,7 @@ end
     if isempty(str)
         [DATA,lastts] = CheckForNewBinoc(DATA,lastts);
     else
-        DATA = InterpretLine(DATA,str,'frombinoc');
+        DATA = InterpretLine(DATA,str,['frombinoc' srcchr],args{:});
     end
 %    myprintf(DATA.frombinocfid,'ReadBinoc%s:  %s',datestr(now),str);
     if ~isfield(DATA,'trialcounts')
@@ -3821,15 +3872,35 @@ function Expt = ExptSummary(DATA)
         
 function DATA = RunButton(a,b, type)
         DATA = GetDataFromFig(a);
-        s = get(a,'String');
-        fprintf('%s Hit Inexpt %d, type %d %s\n',s,DATA.inexpt,type,datestr(now));
+        if isstruct(a)
+            if ~isempty(b)
+                caller = b;
+            else
+                caller = ['Seq'];
+            end
+        else
+            caller = get(a,'String');
+            if sum(strcmp(caller,{'Cancel' 'Finish'})) %really hit button
+                DATA.canceltimer = 0;
+            end
+        end
+        ts = now;
+        myprintf(DATA.frombinocfid,'-show','%s Hit Inexpt %d, type %d %s\n',caller,DATA.inexpt,type,datestr(now));
         PauseRead(DATA,1);
+        pauseread = getappdata(DATA.toplevel, 'PauseReading');
+        if pauseread ==0
+            myprintf(DATA.frombinocfid,'PAUSE ERROR pause %d\n',pauseread);
+        end
 
         DATA.newexptdef = 0;
         DATA.matexpres = [];
         inexpt = 0;
         if type == 1
             if DATA.inexpt == 0 %sarting a new one. Increment counter
+        pauseread = getappdata(DATA.toplevel, 'PauseReading');
+        if pauseread ==0
+            myprintf(DATA.frombinocfid,'PAUSE ERROR pause %d\n',pauseread);
+        end
                 if DATA.optionflags.exm && ~isempty(DATA.matexpt)
                     fprintf('Running %s\n',DATA.matexpt);
                     DATA.matexpres = eval(DATA.matexpt);
@@ -3850,8 +3921,7 @@ function DATA = RunButton(a,b, type)
                 DATA.Expts{DATA.nexpts} = ExptSummary(DATA);
                 DATA.optionflags.do = 1;
                 DATA.exptstoppedbyuser = 0;
-                DATA = ReadFromBinoc(DATA,'expect');
-                CheckExptIsGood(DATA);
+                caller = 'Run';
                 inexpt = 1;
                 %            DATA = GetState(DATA);
             else
@@ -3860,32 +3930,12 @@ function DATA = RunButton(a,b, type)
                 if DATA.verbose(4)
                     fprintf('Before Cancel: Inexpt %d\n',DATA.inexpt);
                 end
-                outprintf(DATA,'\\ecancel\n');
-                [DATA, str] = ReadFromBinoc(DATA,'expect', 4);
-                if DATA.verbose(4)
-                    fprintf('Cancel: Inexpt %d %s\n',DATA.inexpt,str);
-                end
-                if DATA.inexpt
-                    fprintf('Cancel: Still in Expt after %s\n',DATA.inexpt,str);
-                end
-                DATA = AddTextToGui(DATA,'Cancelled','norec');
-                if DATA.nexpts > 0
-                DATA.Expts{DATA.nexpts}.last = DATA.Trial.Trial;
-                DATA.Expts{DATA.nexpts}.End = now;
-                end
-                DATA.optionflags.do = 0;
                 DATA.exptstoppedbyuser = 1;
+                outprintf(DATA,'\\ecancel\n');
             end
         elseif type == 2
-            outprintf(DATA,'\\estop\n');
-            DATA = ReadFromBinoc(DATA,'expect',4);
-            DATA.rptexpts = 0;
-            DATA.Expts{DATA.nexpts}.last = DATA.Trial.Trial;
-            DATA.Expts{DATA.nexpts}.End = now;
-            ti = 1 + DATA.Trial.Trial-DATA.Expts{DATA.nexpts}.first;
-            DATA.optionflags.do = 0;
-            DATA = AddTextToGui(DATA,['Stopped after ' num2str(ti) ' Trials']);
             DATA.exptstoppedbyuser = 1;
+            outprintf(DATA,'\\estop\n');
             inexpt = 0;
         end
 %if expt is over, EXPTOVER should be received. - query state then
@@ -3894,38 +3944,66 @@ function DATA = RunButton(a,b, type)
     if DATA.verbose(4)
         fprintf('RunButton: Inexpt %d\n',DATA.inexpt);
     end
-    DATA = GetState(DATA);
-    if DATA.inexpt ~= inexpt; %not caught up yet
-        myprintf(DATA.frombinocfid,'-show','Expt Button Confused Inexpt is %d. Trying again\n',DATA.inexpt);
-        DATA = ReadFromBinoc(DATA,'expect',0.5);
-        DATA = GetState(DATA);
+%    DATA = GetState(DATA,'Runbutton');
+    x(1) = mytoc(ts);
+    ts = now;
+    while DATA.inexpt ~= inexpt  && mytoc(ts) < 10 %not caught up yet
+        pauseread = getappdata(DATA.toplevel, 'PauseReading');
+        if pauseread ==0
+            myprintf(DATA.frombinocfid,'PAUSE ERROR pause %d\n',pauseread);
+        end
+        DATA = ReadFromBinoc(DATA,'RunButton','paused');
+        myprintf(DATA.frombinocfid,'Read Done %.2f %s. DATA.inexpt %d\n',mytoc(ts),datestr(now),DATA.inexpt);
         if DATA.inexpt ~= inexpt
-            myprintf(DATA.frombinocfid,'-show','Still Confused\n');
-            DATA.confused = 1;
+            pause(0.5);
         end
     end
+    x(2) = mytoc(ts);
+    if sum(strcmp(caller,{'Cancel' 'Seqcancel'}))
+          DATA = AddTextToGui(DATA,'Cancelled','norec');
+                if DATA.nexpts > 0
+                DATA.Expts{DATA.nexpts}.last = DATA.Trial.Trial;
+                DATA.Expts{DATA.nexpts}.End = now;
+                end
+                DATA.optionflags.do = 0;
+                if strcmp(caller,'Cancel')
+                    DATA.exptstoppedbyuser = 1;
+                end
+    elseif strcmp(caller,'Run')
+       CheckExptIsGood(DATA);
+    elseif strcmp(caller,'Finish')
+            DATA.rptexpts = 0;
+            DATA.Expts{DATA.nexpts}.last = DATA.Trial.Trial;
+            DATA.Expts{DATA.nexpts}.End = now;
+            ti = 1 + DATA.Trial.Trial-DATA.Expts{DATA.nexpts}.first;
+            DATA.optionflags.do = 0;
+            DATA = AddTextToGui(DATA,['Stopped after ' num2str(ti) ' Trials']);
+            DATA.exptstoppedbyuser = 1;
+    end
+    if DATA.inexpt ~= inexpt
+            myprintf(DATA.frombinocfid,'-show','Expt Button (%s) Confused Inexpt is %d,%d. Trying again\n',caller,DATA.inexpt,inexpt);
+            DATA = GetState(DATA, 'RunButton');
+    end
     set(DATA.toplevel,'UserData',DATA);    
+    pauseread = getappdata(DATA.toplevel, 'PauseReading');
+    if pauseread == 0
+        myprintf(DATA.frombinocfid,'PAUSE ERROR pause %d\n',pauseread);
+    end
+    myprintf(DATA.frombinocfid,'Runbutton Done %.2f pause %d\n',x,pauseread);
     SetGui(DATA);
     PauseRead(DATA,0);
 
     CheckTimer(DATA);
      
-    function TestIO(a,b)
+    function TestIO(a,b, str)
         
         DATA = GetDataFromFig(a);
- %       if DATA.outid > 0
- %           fclose(DATA.outid);
- %       end
-        %fclose('all');
         if ~isfield(DATA,'outpipe')
             DATA = OpenPipes(DATA, 1);
         end
-        if DATA.outid <= 0
-        DATA.outid = fopen(DATA.outpipe,'w');
+        if strcmp(str,'cancel')
+            DATA.canceltimer = 10;
         end
-        outprintf(DATA,'ed+10\n');
-%        fclose(DATA.outid);
-%        DATA.outid = 0;
         set(DATA.toplevel,'UserData',DATA);
         
 function ElectrodeMoved(F, pos, varargin) %called by ServoDrive
@@ -4570,6 +4648,9 @@ function DATA = RunExptSequence(DATA, str, line)
         lastline = runlines(end);
     end
     firstline = line;
+    if DATA.runsequence == 0
+        return;
+    end
  
     if line > lastline
         if DATA.rptexpts > 0
@@ -4602,9 +4683,11 @@ for j = line:length(str)
         fprintf('From Seq window %s\n',str{j});
     end
     nread = 1+j-line;
+    rptstogo = DATA.rptexpts;
     DATA = InterpretLine(DATA,str{j},'fromseq');
     DATA = uipause(DATA.pausetime,DATA.readpause,'Pause in sequence', DATA); %for pauses set in window
     DATA.readpause = 0;
+    DATA.rptexpts = rptstogo; %don't let stimfiles change this
     if strncmp(str{j},'!expt',5)
 %need to do this before sending !expt to binoc, so that UserData is set
 % before binoc calls back with settings
@@ -4612,7 +4695,7 @@ for j = line:length(str)
             DATA.matlabwasrun = 1;
         end
         if firstline > 1
-            fprintf('Pausing for Next Expt in Sequnce %s\n',datestr(now));
+            fprintf('Pausing for Next Expt in Sequnce Line %d %s\n',j,datestr(now));
             DATA= uipause(now, DATA.binoc{1}.seqpause,'Fixed Sequence Pause', DATA);
         end
   %if mat was called in the sequence file, don't want it overridden by the matept file
@@ -4696,7 +4779,7 @@ function DATA = uipause(start, secs, msg, DATA)
 function DATA = ContinueSequence(DATA)
   cntrl_box = findobj('Tag',DATA.windownames{8},'type','figure');
   lst = findobj(cntrl_box,'Tag','SequenceList');
-  if DATA.newbinoc == 0 %don't call this when just parsing initial state
+  if DATA.newbinoc == 0 && ~isempty(lst) %don't call this when just parsing initial state
       DATA = RunExptSequence(DATA,get(lst,'string'),DATA.seqline+1);
   end
 
@@ -4731,8 +4814,12 @@ function SequencePopup(a,exptlines,type)
   cntrl_box = findobj('Tag',DATA.windownames{8},'type','figure');
   if ~strcmp(type,'popup')
       if strcmp(type,'run')
+          DATA.runsequence = 1;
           lst = findobj(cntrl_box,'Tag','SequenceList');
           RunExptSequence(DATA,get(lst,'string'),1);
+      elseif strcmp(type,'pause')
+          DATA.runsequence = 0;
+          SetData(DATA);
       end
       return;
   end
@@ -4753,6 +4840,10 @@ bp(3) = 1./nc;
 bp(4) = 1./nr;
 uicontrol(gcf,'style','pushbutton','string','Run', ...
     'Callback', {@SequencePopup, 'run'} ,...
+    'units', 'norm', 'position',bp,'value',1);
+bp(1) = bp(1)+bp(3)+0.01;
+uicontrol(gcf,'style','pushbutton','string','Pause', ...
+    'Callback', {@SequencePopup, 'pause'} ,...
     'units', 'norm', 'position',bp,'value',1);
 
 lst = uicontrol(gcf, 'Style','edit','String', 'sequence',...

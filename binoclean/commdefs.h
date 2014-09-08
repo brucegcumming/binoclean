@@ -950,7 +950,7 @@ ValueCode valstrings[] = {
   {"ch",     "channel Set code",CHANNEL_CODE, 32 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
 // {"sv",     "Static Vergence",STATIC_VERGENCE, 0 , 'N' ,2, SEND_NON_ZERO, SAVE_ALWAYS},
 //  {"wf",     "mean fixation period",WURTZ_DURATION_CODE, 8 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
-  {"bt",     "BW Time",UFF_TIME, 0 , 'N' ,2, SEND_READ_ONLY, SAVE_NEVER},
+  {"bt",     "BW Time",UFF_TIME, 0 , 'N' ,4, SEND_READ_ONLY, SAVE_NEVER},
   {"Bc",     "Background Contrast",BACK_CONTRAST, 4+INDIRECT, 'N' ,3, SEND_VERG_ONLY, SAVE_NEVER},
   {"ei",     "Expt incr", EXPT_INCR, 16 , 'N' ,5, SEND_EXPT, SAVE_ALWAYS},
   {"em",     "Expt Mean", EXPT_MEAN, 16 , 'N' ,5, SEND_EXPT, SAVE_ALWAYS},

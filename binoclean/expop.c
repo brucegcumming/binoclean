@@ -290,7 +290,7 @@ extern Log thelog;
 extern struct BWSTRUCT thebwstruct;
 extern FILE *testfd;
 extern struct timeval signaltime,now,endstimtime,firstframetime,zeroframetime,frametime,alarmstart;
-extern struct timeval calctime,paintframetime,changeframetime,paintfinishtime;
+extern struct timeval calctime,paintframetime,changeframetime,paintfinishtime,sessiontime;
 extern vcoord conjpos[],fixpos[];
 static time_t lastcmdread;
 static struct timeval lastcmdtime;
@@ -2884,6 +2884,11 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
             SendPenInfo();
             break;
         case LOGFILE_CODE:
+            if (strncmp("gin",s,3) ==NULL)
+            {
+                sprintf(buf,"Setting Suspicious logname:%s",s);
+                acknowledge(buf,NULL);
+            }
             if(expt.logfile == NULL || strcmp(s,expt.logfile))
             {
                 expt.logfile = (char *)myscopy(expt.logfile,nonewline(s));
@@ -3194,7 +3199,7 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
             setstimuli(1);
             break;
         case PURSUIT_INCREMENT:
-            expt.vals[flag] = val;
+            expt.vals[flag] = val/mon.framerate;
             break;
         case INITIAL_MOVEMENT:
             expt.vals[flag] = val;
@@ -3751,6 +3756,10 @@ float ExptProperty(Expt *exp, int flag)
     
     switch(flag)
     {
+        case UFF_TIME:
+            gettimeofday(&now,NULL);
+            val = timediff(&now,&sessiontime);
+            break;
         case IMAGEJUMPS:
             val = expt.st->jumps;
             break;
@@ -3910,7 +3919,7 @@ float ExptProperty(Expt *exp, int flag)
             val = expt.hightype;
             break;
         case PURSUIT_INCREMENT:
-            val = expt.vals[flag];
+            val = expt.vals[flag] * mon.framerate;
             break;	
         case PENNUMCOUNTER:
             val = expt.ipen;
@@ -4411,7 +4420,7 @@ int ReadCommand(char *s)
         if(expt.st->mode & EXPTPENDING) // if verg sends cancel, but not in expt, ignore
             cancelflag = 1; // call cancel when trial over
         else {
-            notify("\nEXPTOVER\n");
+            notify("\nEXPTOVER (cancel)\n");
         }
     }
     else if(!strncasecmp(s,"expt",4)){
@@ -6415,6 +6424,7 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
     icode = valstringindex[code];
     if (icode < 0)
         return(-1);
+    
     switch(code)
     {
         case SET_SF_COMPONENTS:
@@ -6560,8 +6570,15 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
             break;
             
         case LOGFILE_CODE:
-            if(expt.logfile != NULL)
+            
+            if(expt.logfile != NULL){
+                    if (strncmp("gin",expt.logfile,3) ==NULL)
+                    {
+                        sprintf(cbuf,"Setting Suspicious logname:%s",expt.logfile);
+                        acknowledge(cbuf,NULL);
+                    }
                 sprintf(cbuf,"%s%s%s",serial_strings[LOGFILE_CODE],temp,expt.logfile);
+            }
             else
                 ret = -1;
             break;
@@ -13689,10 +13706,10 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     else if(!strncmp(line,"QueryState",9)){
         SendAllToGui();
         if(!(expt.st->mode & EXPTPENDING)){ //if not in expt make sure verg knows 
-            notify("\nEXPTOVER\n");
+            notify("\nEXPTOVERSTATE\n");
         }
         else
-            notify("\nEXPTSTART\n");
+            notify("\nEXPTRUNNING\n");
         return(0);
     }
     else if(!strncmp(line,"usershake",9)){

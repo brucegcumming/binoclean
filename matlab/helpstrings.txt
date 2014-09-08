@@ -4,10 +4,10 @@ rptexpt Number of times to repeat an Expt Block. When binoc finished a block, ve
 +do Run Trials. If not in an Expt, runs the current trial type repeatedly.
 +sw If checked, stimulus is only presented during trials. IF off, stimulus is left up in ISI, when not fixating etc.
 +bac make RLS background the contrast inverse of foreground
-+cB  Badfix trials take reward size back to r1, just like incorrect trials.
++cB Badfix trials take reward size back to r1, just like incorrect trials.
 +cf Only show stimulus if fixation reported OK from spike2
-+co  Plot conjugate eye position as a cross in the overlay plane on the display screen
-+fe  For human psychophyics give visual feedback acter errors.
++co Plot conjugate eye position as a cross in the overlay plane on the display screen
++fe For human psychophyics give visual feedback acter errors.
 +fc Show the fixation marker
 +fb Use a square as a fixation marker (-fc = a cross)
 +ff Flip Feedback.  Reverse which mouse button is correct for feedback. Human Psychophysics
@@ -22,6 +22,8 @@ rptexpt Number of times to repeat an Expt Block. When binoc finished a block, ve
 +Rcd Choice saccade is to correct icon, but position flips at random 
 +bf Normally change foreground position/contrast/correlation also changes the background to follow. +bf prevents this. 
 +Iit Display Choice Icons during the stimulus presentation. See also tgtdur
++rd  Randomize direcion of Fixation point moves. Produces saccadic random walk. #eye movements. fixation
+#size still fixed at Fs.  Goes back to fx,fy at start of each trial
 
 a2 when > 0, turns grating into plaid, and RLS into noise plaid. 
 #Sets angle difference between components, so changes in or rotate both.
@@ -95,7 +97,7 @@ dP applies a disparity Parallel  to RF ori (changes dx and dy)
 dq phase disparity applied to second component of compound grating
 dr changes RDS dispaity deg/sec
 Dr When RDS is made of random disparity samples, each ramdom pick generates Dr Dots of the same disparity. For RLS Dr places an upper limit on the number of consecutive lines with the same color, if check enable with sM =30.
-ds interocular SF difference. sfR = sf-ds/2, sfL = sf+ds/2
+ds interocular SF difference. sfR = sf-ds/2, sfL = sf+ds/2# SF disparity
 dS Sets what variable is adjusted for mimic microstimulation
 dt For Stroboscopic Pulfrich Expts. Should be 0 otherwise #Psychophysics
 dw If +aa is not set, gets rounded to nearest pixel size. Dots are square. 
@@ -112,10 +114,10 @@ ereset path of file applied before reading a new expt file, to reset state. I.e 
 exp folder where manual expt stims will be for a manual expt #Manual
 expname arbitrary label to give to manual expts. Will be used by combine for grouping #Manual
 f2 SF of second frequency component for compound gratings/plaids
-Fa Direction for movement of Fixation point (Saccadic if Ff >0, Pursuit if pi > 0)
+Fa Direction for movement of Fixation point (Saccadic if Ff >0, Pursuit if pi > 0) #eye movements. fixation
 FakeSig Value of dS used to mimic microstim 
 fc color of fixation marker when fixating. 
-Ff Frame on which Fixation point jumps. Jumps back after 2x Ff frames have elapsed
+FfFrame on which Fixation point jumps. Jumps back after 2x Ff frames have elapsed #eye movements. fixation
 fH For generating rectangular fixation windows. Set fw first, then fH. 
 fi No longer implemented
 fixcolors
@@ -123,7 +125,7 @@ Fl when fix marker is a cross (op=-fb), sets line width used to draw. Also used 
 fm Sets which eye sees the fixation marker 0 = binoc, -1 = left, 1 = right. Must set op-bm for this to work #Fixation
 Fr Repeats each stimulus in a fastseq for Fr frames. For RLS/RDS each frame still has a new seed.
 fs size of fixation marker
-Fs Size of fixation point jump (degrees) 
+Fs Size of fixation point jump (degrees) #eye movements. fixation
 fw fixation within +-fw is good
 fz Should be set in binoc.setup. Needs to match monitor.
 ga record gamma correction used.  Doen't do anything inside binoc
@@ -226,17 +228,17 @@ Pp Position relative to RF in direction parallel to RF ori. See also Op,rPp
 pR Contrast ratio between two components of a plaid. 
 pr preperiod code (seconds). This much time must elapse after trial start (or last stimulus if pt > 1) before stimulus appears. When pt > 1 gap between stimuli is po+pr
 pS Not implemented yet. For adding extra signal frames.
-ps with of a single correlation pulse. Only active when et=sP and op=+fS
+ps width of a single correlation pulse. Only active when et=sP and op=+fS
 psychfile path to a local file where results of each trial are written in format used by PsychMon
 psychmon list of codes to be included in online psych monitoring files
 psyv in stim files, sets the psychophysical metameter for this stim.
 pt Number of stimuli presented per fixation trial.  
 pT With +afc and when tr=1, this sets the probability that tr will be set to 0 for a given trial. Useful in training.
 pU In RC expts, probability that a given frame is uncorrelated. Ignored unless > 0. Be sure to reset this
-puA Pursuit amlitude. Makes a sinusoidal pursuit target. See also puF
-puF Frequency of sinusoidal pursuit see also puA
+puA Pursuit amlitude. Makes a sinusoidal pursuit target. See also puF #eye movements. fixation. 
+puF Frequency of sinusoidal pursuit see also puA #eye movements. fixation
 px pixel size(X) in cm. Also reports back size in degrees.
-qe name an expt file to be added to the Quick Menu
+qe name an expt file to be added to the Quick Menu #experiemnt
 r0  Expt Type only. Interleveaves RDS/no stim
 r1 For first correct choice #Reward
 r2 For Nth consecutive correct choice, where N = bl #Reward

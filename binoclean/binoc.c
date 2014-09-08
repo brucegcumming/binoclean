@@ -1192,7 +1192,7 @@ void SendToGui(int code)
     
 }
 
-char *DescribeState()
+char *DescribeState(char caller)
 {
     int i,j;
     time_t tval;
@@ -1203,7 +1203,7 @@ char *DescribeState()
     if(str == NULL)
         str = (char *)(malloc(sizeof(char) * MAXCHARS));
     
-    sprintf(str,"STATE\n");
+    sprintf(str,"STATE%c\n",caller);
     if(ChoiceStima->type != STIM_NONE){
         strcat(str,"mo=ChoiceU\n");
         for(i = 0; i <= expt.laststimcode; i++)
@@ -1243,7 +1243,7 @@ char *DescribeState()
     }
     i =0;
     if(!(expt.st->mode & EXPTPENDING)){ //if not in expt make sure verg knows
-        strcat(str,"\nEXPTOVER\n");
+        strcat(str,"\nEXPTOVERSTATE\n");
     }
     else
         strcat(str,"\nEXPTRUNNING\n");
@@ -3668,8 +3668,8 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
             if(st->next == NULL && st->prev == NULL)
                 break;
 	        else if(val == INTERLEAVE_EXPT_UNCORR){
-                st->next->flag &= (~ANTICORRELATE);
-                st->next->flag |= UNCORRELATE;
+                expt.st->next->flag &= (~ANTICORRELATE);
+                expt.st->next->flag |= UNCORRELATE;
             }
             else if(st->next == NULL && st->prev != NULL){
                 expt.vals[BACK_VDISP] = val;
@@ -11594,7 +11594,11 @@ void expt_over(int flag)
         mode &= (~ANIMATE_BIT);
     if(optionflag & FRAME_ONLY_BIT)
         WriteFrameData();
-    notify("\nEXPTOVER\n");
+    if (seroutfile){
+        fprintf(seroutfile,"#EXPTOVER at %s",ctime(&tval));
+        fflush(seroutfile);
+    }
+    notify("\nEXPTOVERE\n");
     SaveExptFile("./leaneo.stm",SAVE_STATE);
     SendAllToGui();
     if (netoutfile != NULL){
