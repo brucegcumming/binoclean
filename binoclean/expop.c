@@ -1473,6 +1473,9 @@ void PrintCodes(int mode)
         sprintf(tmp,"CODE %s %d %s%c %d\n",valstrings[i].code,valstrings[i].icode,valstrings[i].label,valstrings[i].ctype,valstrings[i].group);
         notify(tmp);
         }
+        else{
+//           printf("Code %s not (%s) for verg\n",valstrings[i].code,valstrings[i].label);
+        }
     }
     sprintf(tmp,"CODE OVER\n");
     notify(tmp);

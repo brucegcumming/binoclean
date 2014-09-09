@@ -17,7 +17,8 @@ extern NSMutableArray * inputPipeBuffer;
 NSString * outputPipeBuffer;
 BOOL dataReadyInInputPipe;
 char *DescribeState(char caller);
-extern int inexptstim,innotify;
+extern int inexptstim,innotify,ReadingInputPipe;
+int AddingToInputPipe = 0;
 static int notifyclash = 0;
 
 // Log levels : off, error, warn, info, verbose
@@ -52,6 +53,7 @@ static const int httpLogLevel = HTTP_LOG_LEVEL_WARN; // | HTTP_LOG_FLAG_TRACE;
 {
     NSData *outputdata = [@"" dataUsingEncoding:NSASCIIStringEncoding];
     NSString * s = @"";
+    int readloop = 0;
 
     if ([method isEqualToString:@"GET"]) {
         if (request.url){
@@ -90,7 +92,18 @@ static const int httpLogLevel = HTTP_LOG_LEVEL_WARN; // | HTTP_LOG_FLAG_TRACE;
                             if (!inputPipeBuffer) {
                                 inputPipeBuffer = [[NSMutableArray alloc] init];
                             }
+                            while (ReadingInputPipe && readloop < 100){
+                                if (readloop %10 ==0){
+                                    NSLog(@"http request while ReadInputPipe is Reading(%d).", readloop);
+                                }
+                                readloop++;
+                                usleep(100);
+                            }
+                            if (readloop > 0) { //? need to re-fetch the http suff?
+                            }
+                            AddingToInputPipe = 1;
                             [inputPipeBuffer addObject:[sLines objectAtIndex:i]];
+                            AddingToInputPipe = 0;
                         }
                     }
                     dataReadyInInputPipe = YES;

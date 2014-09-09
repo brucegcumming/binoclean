@@ -1238,7 +1238,7 @@ char *DescribeState(char caller)
     }
     strcat(str, "mo=fore\n");
     for(i = 0; i < expt.totalcodes; i++){
-        if((j=MakeString(valstrings[i].icode, buf, &expt, expt.st,TO_GUI))>=0)
+        if(valstrings[i].codesend != SEND_READ_ONLY && (j=MakeString(valstrings[i].icode, buf, &expt, expt.st,TO_GUI))>=0)
             strcat(str,buf);
     }
     i =0;
@@ -1313,7 +1313,7 @@ void SendAllToGui()
     }
     notify("mo=fore\n");
     for(i = 0; i < expt.totalcodes; i++){
-        if((j=MakeString(valstrings[i].icode, buf, &expt, expt.st,TO_GUI))>=0)
+        if( valstrings[i].codesend != SEND_READ_ONLY && (j=MakeString(valstrings[i].icode, buf, &expt, expt.st,TO_GUI))>=0)
             notify(buf);
     }
     i =0;
