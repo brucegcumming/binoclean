@@ -1272,7 +1272,7 @@ ValueCode valstrings[] = {
   {"posinc",     "Position Displacement per frame",FRAME_DISPLACEMENT, 513 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
   {"aOp",     "absolute OrthoPos",ABS_ORTHOG_POS, 256+512 , 'N' ,2, SEND_EXPLICIT, SAVE_NEVER},
   {"aPp",     "absolute ParaPos",ABS_PARA_POS, 256+512, 'N' ,2, SEND_EXPLICIT, SAVE_NEVER},
-  {"verbose", "Verbosity", VERBOSE_CODE, 128 , 'N' ,2, SEND_EXPLICIT, SAVE_STATE},
+  {"verbose", "Verbosity", VERBOSE_CODE, 128 , 'N' ,0, SEND_EXPLICIT, SAVE_STATE},
     {  "seof", "Seed Offst", SEEDOFFSET, 0, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "serange", "Seed Range", SEEDRANGE, 0, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "nimplaces", "NumDigits for image name", NIMPLACES, 0, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},

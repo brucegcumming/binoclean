@@ -433,7 +433,7 @@ struct EXPERIMENT{
     int hightype;
     char *showflags;
     char *monkey;
-    int verbose;
+    int verbose[10];
     int laststimcode,lastserialcode,totalcodes,lastsavecode;
     int maxcode; //largest value of any code = length of serial_strings
     char cwd[BUFSIZ*2];

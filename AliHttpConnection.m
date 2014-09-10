@@ -12,7 +12,7 @@
 #import "DDNumber.h"
 #import "HTTPLogging.h"
 
-Expt expt;
+extern Expt expt;
 extern NSMutableArray * inputPipeBuffer;
 NSString * outputPipeBuffer;
 BOOL dataReadyInInputPipe;
@@ -61,7 +61,7 @@ static const int httpLogLevel = HTTP_LOG_LEVEL_WARN; // | HTTP_LOG_FLAG_TRACE;
                 if ([request.url.pathComponents count]>1){
                     //NSString * pq = [request.url.pathComponents[1] componentsSeparatedByString:@"="][1];
                     NSString * command = [[request.url.relativeString substringFromIndex:1] stringByReplacingPercentEscapesUsingEncoding:NSASCIIStringEncoding]; //request.url.pathComponents[1];
-                    if (expt.verbose > 1){
+                    if (expt.verbose[0] > 1){
                         NSLog(@"Input Pipe: %@", command);
                     }
                     NSArray * sLines = [command componentsSeparatedByCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"\r\n"]];
@@ -93,7 +93,7 @@ static const int httpLogLevel = HTTP_LOG_LEVEL_WARN; // | HTTP_LOG_FLAG_TRACE;
                                 inputPipeBuffer = [[NSMutableArray alloc] init];
                             }
                             while (ReadingInputPipe && readloop < 100){
-                                if (readloop %10 ==0){
+                                if (readloop %10 ==0 && expt.verbose[2]){
                                     NSLog(@"http request while ReadInputPipe is Reading(%d).", readloop);
                                 }
                                 readloop++;

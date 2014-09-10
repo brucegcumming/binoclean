@@ -93,6 +93,11 @@
 #define ZERO 0
 #define MANUALEVENT 1
 #define TRUE 1
+
+
+#define LONGBUF (BUFSIZ*100)
+
+
 #import "stimuli.h"
 extern char * VERSION_STRING;
 
@@ -1463,28 +1468,32 @@ float ufftime(struct timeval *thetime)
 
 void PrintCodes(int mode)
 {
-    char s[BUFSIZ*2],tmp[BUFSIZ],ctype = 'N';
+    char s[LONGBUF],tmp[BUFSIZ],ctype = 'N';
     int i,showcode = 1;
     
     sprintf(s,"");
     for(i = 0; i < expt.totalcodes; i++)
     {
         if(valstrings[i].codesend < SEND_READ_ONLY || valstrings[i].codesend == SEND_VERG_ONLY){
-        sprintf(tmp,"CODE %s %d %s%c %d\n",valstrings[i].code,valstrings[i].icode,valstrings[i].label,valstrings[i].ctype,valstrings[i].group);
-        notify(tmp);
+            sprintf(tmp,"CODE %s %d %s%c %d\n",valstrings[i].code,valstrings[i].icode,valstrings[i].label,valstrings[i].ctype,valstrings[i].group);
+            if (strlen(s)+strlen(tmp) < LONGBUF)
+                strcat(s,tmp);
         }
         else{
 //           printf("Code %s not (%s) for verg\n",valstrings[i].code,valstrings[i].label);
         }
     }
-    sprintf(tmp,"CODE OVER\n");
-    notify(tmp);
+    i = strlen(s);
+    strcat(s,"CODE OVER\n");
+    notify(s);
+    sprintf(s,"");
     i = 0;
     while(commstrings[i].code != NULL){
         sprintf(tmp,"SCODE %s %d %s\n",commstrings[i].code,commstrings[i].icode,commstrings[i].label);
-        notify(tmp);
+        strcat(s,tmp);
         i++;
     }
+    notify(s);
     SendExptTypesToGui();
     SendToggleCodesToGui();
 }
@@ -1493,15 +1502,17 @@ void PrintCodes(int mode)
 int SendToggleCodesToGui()
 {
     int i;
-    char buf[BUFSIZ],tmp[BUFSIZ];
+    char buf[LONGBUF],tmp[BUFSIZ];
     
     i = 0;
+    sprintf(buf,"");
     while(togglestrings[i].code != NULL){
-        sprintf(buf,"TOGGLE %s %s\n",togglestrings[i].code,togglestrings[i].label);
-        notify(buf);
+        sprintf(tmp,"TOGGLE %s %s\n",togglestrings[i].code,togglestrings[i].label);
+        strcat(buf,tmp);
         i++;
     }
-    notify("TOGGLEEND\n");
+    strcat(buf,"TOGGLEEND\n");
+    notify(buf);
     for (i = 0; i < N_STIMULUS_TYPES; i++){
         sprintf(buf,"STIMTYPE %d %s\n",i,stimulus_names[i]);
         notify(buf);
@@ -1694,7 +1705,9 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
     pgimage.ptr = NULL;
     pgimage.name = NULL;
     ex->codevalue = NOTSET;
-    ex->verbose = 0;  //controls NSlog
+    for (i = 0; i < 10; i++)
+        ex->verbose[i] = 0;  //controls NSlog
+    ex->verbose[2] = 1;  //defualt - show clashes in ReadInput threads
     ex->biasedreward = 0;
     ex->backim.name = NULL;
     ex->backim.ptr = NULL;
@@ -3007,8 +3020,11 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
             expt.biasedreward = val;
             break;
         case VERBOSE_CODE:
-            expt.verbose = (int)(val);
-            break;
+            expt.verbose[0] = ival & 1;
+            expt.verbose[1] = ival & 2;
+            expt.verbose[2] = ival & 4;
+            expt.verbose[3] = ival & 8;
+           break;
         case BACK_PPOS:
             if(expt.st->next)
                 SetStimulus(expt.st->next,val,PARA_POS, NOEVENT);
@@ -3755,6 +3771,7 @@ float GetProperty(Expt *exp, Stimulus *st, int code)
 float ExptProperty(Expt *exp, int flag)
 {
     float val=0;
+    int ival,i;
     Position x;
     
     switch(flag)
@@ -3770,7 +3787,12 @@ float ExptProperty(Expt *exp, int flag)
             val = expt.biasedreward;
             break;
         case VERBOSE_CODE:
-            val = expt.verbose;
+            ival = expt.verbose[0];
+            for (i = 1; i < 10; i++){
+                if (expt.verbose[i])
+                ival |= (1<<i);
+            }
+            val = ival;
             break;
         case BACK_OPOS:
             if(expt.st->next)
@@ -11971,7 +11993,6 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
 }
 
 
-#define LONGBUF (BUFSIZ*10)
 int CheckStimDuration(int retval)
 {
     int i = 0,j =0, n = 0, rpt =0,nrpt = 0,nf=0,k=0;
@@ -14823,6 +14844,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             case SACCADE_DETECTED:
             case PENETRATION_TEXT:
             case FIXCOLORS:
+            case VERBOSE_CODE:
                 break;
         }
     }

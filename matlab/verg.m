@@ -298,9 +298,9 @@ for j = 1:length(strs{1})
         value = [];
         code = s;
     end
-    if frombinoc && (DATA.verbose(2) || DATA.frombinocfid > 0)
+    if frombinoc && (DATA.verbose(7) || DATA.frombinocfid > 0)
         if ~strncmp(strs{1}{j},'SENDING00000',12)
-            if DATA.verbose(2)
+            if DATA.verbose(7)
                 fprintf('%s**\n',strs{1}{j});
             end
             myprintf(DATA.frombinocfid,'%s%c%d %s\n',datestr(now),srcchr,DATA.inexpt,strs{1}{j});
@@ -310,7 +310,10 @@ for j = 1:length(strs{1})
     donestr = 0;
     if frombinoc == 0
         donestr = 1;
+        oldsend = sendtobinoc;
         if sum(strncmp(s,{'!mat=' 'timerperiod' 'read=' 'pause' 'user='},5))
+            sendtobinoc = 0;
+            codetype = -1;
             if strncmp(s,'!mat',4) && ~isempty(value)
                 DATA.matexpres = [];
                 if strcmp(src,'fromstim')
@@ -332,16 +335,18 @@ for j = 1:length(strs{1})
             elseif strncmp(s,'user',4)
                 estr = s(eid(1)+1:end);
                 DATA.userstrings = {DATA.userstrings{:} estr};
+                sendtobinoc=oldsend;
+                codetype =0;
             elseif strncmp(s,'pause',5)
                 if ~isempty(value)
                     DATA.readpause = str2num(value);
                 end
                 %       pause(DATA.readpause);
                 DATA.pausetime = now;
-                sendtobinoc = 0;
             end  %end of NotBinoc group
         elseif codelen > 8  % long lines from files
             sendtobinoc = 0;
+            codetype = -1;
             if length(code) > 4 & sum(strcmp(code,DATA.windownames))
                 iw = find(strcmp(code,DATA.windownames));
                 DATA.winpos{iw} = sscanf(value,'%d');
@@ -356,18 +361,26 @@ for j = 1:length(strs{1})
             elseif strncmp(s,'penlogwinpos=',10)
                 DATA.winpos{4} = sscanf(value,'%d');
             else
-                sendtobinoc = 1;
+                sendtobinoc = oldsend;
                 donestr = 0;
+                codetype = 0;
             end
-        elseif strncmp(s, 'stepperxy', 8)
-        elseif strncmp(s, 'penwinxy', 8)
-        elseif strncmp(s, 'optionwinxy', 8)
+        elseif sum(strncmp(s, {'stepperxy' 'penwinxy' 'optionwinxy'}, 8))
+            codetype = -1;
+            sendtobinoc = 0;
         elseif strncmp(s, 'verbose=', 8)
             v = sscanf(s(9:end),'%d');
             DATA.verbose(1:length(v)) = v;
+            sendtobinoc = 0;
+            codetype = -1; %don't forward string as is to binoc
+            SendCode(DATA,'verbose');
         elseif strncmp(s,'winpos=',7)
             DATA.winpos{1} = sscanf(value,'%d');
+            codetype = -1;
+            sendtobinoc = 0;
         elseif strncmp(s, 'slider', 6)
+            codetype = -1;
+            sendtobinoc = 0;
         else
             donestr = 0;
         end
@@ -812,10 +825,6 @@ for j = 1:length(strs{1})
     elseif strncmp(s,'nt=',3)
         DATA.nstim(1) = sscanf(s,'nt=%d');
         DATA.binoc{1}.(code) = str2num(value);
-    elseif strncmp(s,'uf=',3)
-        DATA.datafile = s(4:end);
-        DATA.binocstr.uf = DATA.datafile;
-        DATA.binoc{1}.uf = DATA.datafile;
     elseif strncmp(s,'pf=',3)
         s = strrep(s,'+2a','+afc');
         if s(end) == ':'
@@ -1103,7 +1112,7 @@ for j = 1:length(strs{1})
                     DATA.binoc{bid}.(code) = s(id(1)+1:end);
                 end
                 if 1 && DATA.togglecodesreceived
-                    fprintf('Code %s not in comcodes\n',code);
+                    fprintf('%s:Code %s not in comcodes\n',datestr(now),code);
                     codematches = strcmp(code,{DATA.comcodes.code});
                 end
                 SetCode(DATA,code);
@@ -1234,15 +1243,24 @@ function DATA = ReadExptLines(DATA, strs, src)
         end
   %if filename set before monkey, set monkeyname first
         if strncmp(tline,'uf=',3) && strcmp(DATA.binoc{1}.monkey,'none')
-            DATA.binoc{1}.monkey = GetMonkeyName(DATA.datafile);
-            SendCode(DATA,'monkey');
+            monkey = GetMonkeyName(DATA.binoc{1}.uf);
+            if ~isempty(monkey)
+                DATA.binoc{1}.monkey = monkey;
+                SendCode(DATA,'monkey');
+            else
+                myprintf(DATA.frombinocfid,'Can''t find Monkey Name in %s\n',tline)
+            end
         end
         if DATA.over
             DATA.overcmds = {DATA.overcmds{:} tline};
         else
-            if ~strncmp(tline,'!mat',4) %don't send !mat lines to binoc
-            tline = CheckLineForBinoc(tline);
-            outprintf(DATA,'%s\n',tline);
+            if type >= 0 %don't send these lines to binoc
+                tline = CheckLineForBinoc(tline);
+                outprintf(DATA,'%s\n',tline);
+            else
+                if DATA.verbose(4)
+                    fprintf('%s Not sent\n',tline);
+                end                 
             end
         end
     end
@@ -1386,7 +1404,11 @@ if fid > 0
         DATA = ReadExptLines(DATA,a{1},'fromstim');
     end
 else
+    try
     msgbox(sprintf('Can''t read stimfile %s',name),'Stimfile Read Error','error');
+    catch
+        fprintf('Can''t read stimfile %s\n',name)
+    end
 end
 if setall
     DATA = ReadVergFile(DATA, DATA.layoutfile);
@@ -1450,7 +1472,7 @@ function SendState(DATA, varargin)
             outprintf(DATA,'%s=%s\n',f{j},DATA.binocstr.(f{j}));
         end
     end
-    outprintf(DATA,'uf=%s\n',DATA.datafile);
+    outprintf(DATA,'uf=%s\n',DATA.binoc{1}.uf);
     
     if DATA.showxy(3)
         outprintf(DATA,'ch12+\n'); %R
@@ -1494,7 +1516,9 @@ function SendState(DATA, varargin)
             fprintf('Not sending %s\n',f{j});
             end
         elseif sum(strcmp(f{j},DATA.redundantcodes))
-            fprintf('Not sending %s\n',f{j});
+            if DATA.verbose(4)
+                fprintf('Not sending %s\n',f{j});
+            end
         elseif ischar(DATA.binoc{1}.(f{j}))
         outprintf(DATA,'%s=%s\n',f{j},DATA.binoc{1}.(f{j}));
         else
@@ -1569,7 +1593,7 @@ function SaveExpt(DATA, name)
     fprintf(fid,'st=%s\n',DATA.stimulusnames{DATA.stimtype(1)});
     fprintf(fid,'%s\n',CodeText(DATA, 'expts'));
     fprintf(fid,'%s\n',CodeText(DATA, 'nr'));
-    fprintf(fid,'uf=%s\n',DATA.datafile);
+    fprintf(fid,'uf=%s\n',DATA.binoc{1}.uf);
     
     fprintf(fid,'mo=back\n');
     fprintf(fid,'st=%s\n',DATA.stimulusnames{DATA.stimtype(2)});
@@ -1849,7 +1873,7 @@ DATA.stimflags{1}.nc = 1;
 DATA.stimflagnames.nc = 'Black Dots';
 DATA.stimflagnames.pc = 'White Dots';
 if ~isfield(DATA,'verbose')
-    DATA.verbose = [0 0 0 0 0 1];
+    DATA.verbose = [0 0 0 0 0 1 0];
 end
 DATA = SetField(DATA,'matexpt','');
 DATA = SetField(DATA,'perfmonitor',0);
@@ -1860,7 +1884,7 @@ DATA.commands = {};
 DATA.commandctr = 1;
 DATA.historyctr = 0;
 DATA.inexpt = 0;
-DATA.datafile = [];
+DATA.binoc{1}.uf = '';
 DATA.electrodestrings = {'Not Set'};
 DATA.userstrings = {'bgc' 'ali' 'ink' 'agb'};
 DATA.monkeystrings = {'Icarus' 'Junior Barnes' 'Lemieux' 'Pepper' 'Rufus' };
@@ -2231,7 +2255,7 @@ function DATA = InitInterface(DATA)
     
     bp(1) = bp(1)+bp(3);
     bp(3) = 1-bp(1)-0.1;
-    uicontrol(gcf,'style','edit','string',DATA.datafile, ...
+    uicontrol(gcf,'style','edit','string',DATA.binoc{1}.uf, ...
         'units', 'norm', 'position',bp,'value',1,'Tag','DataFileName','callback',{@TextGui, 'uf'});
     bp(1) = bp(1)+bp(3);
     bp(3) = 0.1;
@@ -2513,7 +2537,7 @@ function DATA = InitInterface(DATA)
     xm = uimenu(sm,'Label','To Binoc', 'Callback', {@SetVerbose, 1});
     SetMenuCheck(xm, DATA.verbose(1));
     xm = uimenu(sm,'Label','From Binoc','Callback', {@SetVerbose, 2});
-    SetMenuCheck(xm, DATA.verbose(2));
+    SetMenuCheck(xm, DATA.verbose(7));
     xm = uimenu(sm,'Label','Trial Data', 'Callback',{@SetVerbose, 3});
     SetMenuCheck(xm, DATA.verbose(3));
     xm = uimenu(sm,'Label','verg state', 'Callback',{@SetVerbose, 4});
@@ -3383,6 +3407,9 @@ function SetMenuToggle(a,b,flag)
      
 function SetVerbose(a,b, flag)
      DATA = GetDataFromFig(a);
+%verbose(4) Prints each trial outcome to console
+%verbose(2) is sent to binoc controls prints/NSlogs there
+%verbose(7) makes verg print what it receives from binoo
 
      if flag == 0
          DATA.verbose = zeros(size(DATA.verbose));
@@ -3752,7 +3779,7 @@ end
     if DATA.verbose(5)
         fprintf('Binoc status%d:%s\n',status,str);
         fprintf('Read took %.3f,%.3f\n',took,mytoc(ts));
-    elseif DATA.verbose(2) && ~strncmp(str,'SENDING000000',13)
+    elseif DATA.verbose(7) && ~strncmp(str,'SENDING000000',13)
         fprintf('Binoc status%d:%s\n',status,str);
     end
     if isempty(str)
@@ -3816,13 +3843,13 @@ end
      if DATA.outid <= 1
          return;
      end
-     if verbose(2)
+     if verbose(7)
      fprintf('%s:',datestr(now,'HH:MM:SS.FFF'))
      end
      myprintf(DATA.frombinocfid,'ReadBinoc %.3f\n',mytoc(DATA.starttime));
      outprintf(DATA,'whatsup\n');
      a = fread(DATA.inid,14);
-     if verbose(2)
+     if verbose(7)
          fprintf('OK\n');
      end
      if expecting && strcmp(char(a'),'SENDING000000')
@@ -3866,12 +3893,12 @@ end
              [DATA, lastts] = CheckForNewBinoc(DATA, lastts);
          end
      end
-     if verbose(2)
+     if verbose(7)
      fprintf('Need %d bytes\n',nbytes);
      end
      if nbytes > 0
          a = fread(DATA.inid,nbytes);
-         if verbose(2)
+         if verbose(7)
          fprintf('%s',char(a'));
          fprintf('Read %d bytes took %.2f\n',length(a),mytoc(ts));
          end
@@ -5590,6 +5617,8 @@ if strcmp(code,'optionflag')
         s = [s sprintf('e2=%s\ni2=%s\nm2=%6f\nn2=%d\n',DATA.exptype{2},DATA.binoc{1}.i2,DATA.mean(2),DATA.nstim(2))];
         s = [s sprintf('e3=%s\ni3=%s\nm3=%.6f\nn3=%d\n',DATA.exptype{3},DATA.binoc{1}.i3,DATA.mean(3),DATA.nstim(3))];
         s = AddCustomStim(DATA,s,1);
+    elseif strcmp(code,'verbose')
+        s = sprintf('verbose=%d\n',DATA.verbose(2));
     elseif strcmp(code,'st')
         s = sprintf('st=%s',DATA.stimulusnames{DATA.stimtype(cstim)});
     elseif strcmp(code,'vve')

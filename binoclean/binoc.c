@@ -6266,7 +6266,7 @@ int next_frame(Stimulus *st)
         expt_over(CANCEL_EXPT);
         stimstate = STIMSTOPPED;
     }
-    if (expt.verbose > 1){
+    if (expt.verbose[3]){
         fprintf(stderr,"Stimstate %d at %s\n",stimstate,binocTimeString());
     }
     
@@ -6386,12 +6386,12 @@ int next_frame(Stimulus *st)
             }
             ReadCommandFile(expt.cmdinfile);
             t2 = timediff(&now,&lastcleartime);
-            if (expt.verbose && t2 > 1){
+            if (expt.verbose[0] && t2 > 1){
                 sprintf(buf,"status=Stopped at %s\n",binocTimeString());
                 notify(buf);
                 memcpy(&lastcleartime,&now,sizeof(struct timeval));
             }
-            else if (expt.verbose == 0)
+            else if (expt.verbose[0] == 0)
                 memcpy(&lastcleartime,&now,sizeof(struct timeval));
             break;
         case INTERTRIAL:
@@ -7267,7 +7267,7 @@ int next_frame(Stimulus *st)
                 gettimeofday(&lastcleartime,NULL);
             }
             if (laststate != stimstate){
-                expt.verbose = 1;
+                expt.verbose[0] = 1;
                     memcpy(&lastcleartime,&now,sizeof(struct timeval));
             }
             paint_frame(WHOLESTIM,1);
