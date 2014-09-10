@@ -38,7 +38,7 @@ while j <= length(varargin)
     elseif strcmp(varargin{j},'new')
         checkforrestart = 0;
     elseif strcmp(varargin{j},'record')
-        DATA = OpenBinocLog(DATA);
+        DATA = OpenBinocLog(DATA,'both');
     elseif strcmp(varargin{j},'verbose')
         if length(varargin) > j && isnumeric(varargin{j+1})
             j = j+1;
@@ -48,9 +48,9 @@ while j <= length(varargin)
         else
             verbose = 1;
         end
-        DATA = OpenBinocLog(DATA);
+        DATA = OpenBinocLog(DATA,'frombinoc');
     elseif strcmp(varargin{j},'monitor')
-        DATA = OpenBinocLog(DATA);
+        DATA = OpenBinocLog(DATA, 'frombinoc');
         DATA.perfmonitor = 1;
     end
     j = j+1;
@@ -141,7 +141,9 @@ if isempty(it)
     set(DATA.toplevel,'UserData',DATA);
     vpath = which('verg'); %make sure local matlab/expts is in path too
     vpath = strrep(vpath,'verg.m','expts');
-    addpath(vpath);
+    if exist(vpath,'dir')
+        addpath(vpath);
+    end
 else
     DATA = get(it,'UserData');
 end
@@ -151,16 +153,7 @@ end
 j = 1;
 while j <= length(varargin)
     if strncmpi(varargin{1},'close',5)
-        if DATA.pipelog
-            system([GetFilePath('perl') '/pipelog end']);
-        end
-        if isfield(DATA,'timerobj') & isvalid(DATA.timerobj)
-            stop(DATA.timerobj);
-        end
-        for j = 2:length(DATA.windownames)
-            CloseTag(DATA.windownames{j});
-        end
-        CloseTag(DATA.windownames{1});
+        ExitVerg(DATA);
         return;
     elseif strncmpi(varargin{j},'getstate',5)
         ts = now;
@@ -205,15 +198,53 @@ if autoquit
 end
 
 
-function DATA = OpenBinocLog(DATA)
+function ExitVerg(DATA)
+    if DATA.pipelog
+        system([GetFilePath('perl') '/pipelog end']);
+    end
+    if isfield(DATA,'timerobj') & isvalid(DATA.timerobj)
+        stop(DATA.timerobj);
+    end
+    for j = 2:length(DATA.windownames)
+        CloseTag(DATA.windownames{j});
+    end
+    CloseTag(DATA.windownames{1});
+    fids = fopen('all');
+    for j = 1:length(fids)
+        name = fopen(fids(j));
+        if cellstrfind(name, {'frombinoc.txt' 'binoccmdhistory' 'tobinoc'})
+            if DATA.verbose(4)
+                fprintf('Closing %s\n',name);
+            end
+            fclose(fids(j));
+        else
+            fprintf('Not closing file %s\n',name);
+        end
+    end
 
+function DATA = OpenBinocLog(DATA, type)
+
+    if nargin == 1
+        type = 'frombinoc';
+    end
+    
+if sum(strcmp(type,{'frombinoc','both'}))    
 if DATA.frombinocfid <= 0
     DATA.frombinocfid = fopen('/local/frombinoc.txt','a');
     myprintf(DATA.frombinocfid,'Log openened %s\n',datestr(now));
 else
-    fprintf('Binoc log already open\n');
+    fprintf('FromBinoc log already open\n');
+end
 end
 
+if sum(strcmp(type,{'tobinoc','both'}))    
+if DATA.tobinocfid <= 0
+    DATA.tobinocfid = fopen('/local/tobinoc.txt','a');
+    myprintf(DATA.tobinocfid,'Log openened %s\n',datestr(now));
+else
+    fprintf('ToBinoc log already open\n');
+end
+end
 
 
 function DATA = CheckStateAtStart(DATA)
@@ -513,7 +544,7 @@ for j = 1:length(strs{1})
     
     elseif sum(strncmp(s,{'NewBinoc' 'confirm' 'exvals' 'fontsiz' 'fontname' 'layout' ...
             'localmatdir' 'netmatdir', 'oldelectrode' 'TOGGLE' 'rptexpts' 'STIMTYPE' ...
-            'SENDING' 'SCODE=' 'status' 'stimdir' 'STIMC '},6))
+            'SENDING' 'SCODE=' 'status' 'stimdir' 'STIMC ' 'Unrecogn'},6))
         if strncmp(s,'NewBinoc',7)
             DATA = CheckForNewBinoc(DATA);
             DATA.newbinoc = 1;
@@ -630,6 +661,11 @@ for j = 1:length(strs{1})
             if DATA.verbose(3)
                 fprintf('%s\n',s);
             end
+        elseif strncmp(s,'Unrecog',7)
+            if DATA.verbose(4)
+                fprintf('%s\n',s);
+            end
+            DATA.Statuslines{end+1} = s(8:end);
 
 
 
@@ -996,11 +1032,6 @@ for j = 1:length(strs{1})
     elseif strncmp(s, 'Bs', 2)
              DATA.stimtype(2) = find(strcmp(s(4:end),DATA.stimulusnames));
              DATA.binoc{1}.Bs = DATA.stimulusnames{DATA.stimtype(2)};
-    elseif strncmp(s,'Unrecog',7)
-        if DATA.verbose(4)
-            fprintf('%s\n',s);
-        end
-        DATA.Statuslines{end+1} = s(8:end);
     else
         gotstr = 0;
         codematches = strcmp(code,{DATA.comcodes.code});
@@ -1233,8 +1264,11 @@ function DATA = ReadExptLines(DATA, strs, src)
             fprintf('Substituting imload for immode\n');
             tline = 'imload=preload';
         end
-        if strncmp(tline,'openbinoclog',15)
-            DATA = OpenBinocLog(DATA);
+        if strncmp(tline,'openbinoclog',12)
+            DATA = OpenBinocLog(DATA,'frombinoc');
+            if strncmp(tline,'openbinoclogs',13)
+                DATA = OpenBinocLog(DATA,'tobinoc');
+            end
         else
             [DATA, type] = InterpretLine(DATA,tline, src);
         end
@@ -3295,6 +3329,9 @@ function MenuGui(a,b)
              if DATA.verbose(1)
                  fprintf('%s\n',str);
              end
+             if(DATA.tobinocfid > 0)
+                 fprintf(DATA.tobinocfid,'%s:%s\n',datestr(now),str);
+             end
              ts = now;
              [bstr, status] = urlread(str,'Timeout',2);
              if ~isempty(bstr)
@@ -3340,7 +3377,7 @@ function MenuGui(a,b)
      DATA = GetDataFromFig(a);
 
     if strcmp(flag,'openlog')
-        DATA = OpenBinocLog(DATA);
+        DATA = OpenBinocLog(DATA,'frombinoc');
         SetData(DATA);
     elseif flag == 2
          ts = now;
@@ -3379,7 +3416,7 @@ function MenuGui(a,b)
          else
              DATA.verbose = 2;
              set(a,'Label','Quiet pipes');
-             DATA = OpenBinocLog(DATA);
+             DATA = OpenBinocLog(DATA,'frombinoc');
          end
          outprintf(DATA,'verbose=%d\n',DATA.verbose(2));
          set(DATA.toplevel,'UserData',DATA);

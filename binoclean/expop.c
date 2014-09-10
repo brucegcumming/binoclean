@@ -1735,7 +1735,7 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
     ex->trials_per_stim = 1;
     ex->plotcluster = 1;
     ex->bwptr = &thebwstruct;
-    ex->bwptr->nchans = 16; // must be < MAXCHANS
+    ex->bwptr->nchans = 13; // must be < MAXCHANS. Only need 10,11,12 now (XY plots)
     /* Default Color Scheme */
     ex->bwptr->colors[0] = 14; /*Bright Green */
     ex->bwptr->colors[1] = 13; /* Bright Red */
@@ -6927,10 +6927,9 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
             cbuf[0] = 0;
             for(i = 10; i < expt.bwptr->nchans; i++)
             {
-                sprintf(temp,"ch%d%c,%2s%.2f,%.2s%d\n",i, 
+                sprintf(temp,"ch%d%c,%2s%.2f\n",i,
                         (expt.bwptr->cflag & (1<<i)) ? '+' : '-',
-                        channel_strings[EYESCALE_CODE],expt.bwptr->fsd[i],
-                        channel_strings[EYECOLOR_CODE],expt.bwptr->colors[i]);
+                        channel_strings[EYESCALE_CODE],expt.bwptr->fsd[i]);
                 strcat(cbuf,temp);
             }
             /*
@@ -14117,7 +14116,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             fprintf(stdout,buf);
             if(seroutfile)
                 fputs(buf,seroutfile);
-//            notify(buf);
+            notify(buf);
             break;
         case JUMP_SF_COMPONENTS:
             for(i = 0; i < expt.st->nfreqs; i++)
