@@ -49,7 +49,29 @@ Crasher in teststate part of event loop at home, were 0 in ShowTest crashes
 	=15 with31 in showtest: crash after 695
 	 = 15 with 2 crashes after 560
 	 15 with 0  goes 33k
-	 15 / 2 again 
+	 15 / 2 again goes 33k
+	        repeat 3k
+		identical code 30k, 4k
+	15/0  14k, 11k, 33k
+	5/0   13k, 1.4k
+	1/0   30k
+	0/0  3k
+above was all setting stimstate to INTERTRIAL in WAIT_FOR_RESPONSE
+Set stimstate to PRESTIMULUS at end of WAIT_FOR_RERPONSE. (460/12)  Does 55k no error. 39k no error
+    	      	 INTERTRIAL crash at 42k
+		 PREFIXATION  crash at 7.1k (460/12 2/3)
+stimstate set to PREFIXATION. Crahser in Prefixation
+	  31 (ony 1 & 2 do anything when not check fix) 4.4k
+had to modify a little to make sreu stimtae ->PRESIM for crasher = 0; then
+       	   0 stopped at 28.7k
+	   2 crash at 14k
+ 	  1 crash at 25k. Stopped after 39k
+	  2 , with StartTrial commented out crash at 18
+	  2 with StartTrial amd memcpy commented out. 29k. But this really is same as 0!!
+	  0 again  41k
+	  2 with all lines 3.2k
+	  
+
 
 POSTTRIAL 12
 POSTSTIMINTRIAL 13
