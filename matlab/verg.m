@@ -817,7 +817,7 @@ for j = 1:length(strs{1})
         elseif strncmp(s,'exp=',4)
             DATA.binoc{1}.exp = value;
         end
-    elseif sum(strncmp(s,{ 'mo=' 'pf=' 'qe='},3))
+    elseif sum(strncmp(s,{ 'mo=' 'pf=' 'qe=' 'nt='},3))
 
     if strncmp(s,'mo=fore',7)
         DATA.currentstim = 1;
@@ -859,7 +859,6 @@ for j = 1:length(strs{1})
         end
         end
     elseif strncmp(s,'nt=',3)
-        DATA.nstim(1) = sscanf(s,'nt=%d');
         DATA.binoc{1}.(code) = str2num(value);
     elseif strncmp(s,'pf=',3)
         s = strrep(s,'+2a','+afc');
@@ -988,7 +987,7 @@ for j = 1:length(strs{1})
                 if DATA.togglecodesreceived
                     fprintf('No Code for %s\n',s(id(k):end-1));
                 else
-                    fprintf('Cant set Code %s - have not received list from binoc\n',s(id(k):end-1));                    
+                    myprintf(DATA.frombinocfid,'-show','Cant set Code %s - have not received list from binoc\n',s(id(k):end-1));                    
                 end
             elseif s(id(k)) == '+'
             DATA.optionflags.(f{code}) = 1;
@@ -1926,6 +1925,7 @@ DATA.monkeystrs = {'ica' 'jbe' 'lem' 'ppr' 'ruf' };
 DATA.binoc{1}.Electrode = 'default';
 DATA.binoc{1}.monkey = 'none';
 DATA.binoc{1}.lo = '';
+DATA.binoc{1}.nt = 1;
 DATA.binoc{1}.st = 'none'; % make sure this field comes early
 DATA.penid = 0;
 DATA.stimulusnames{1} = 'none';
@@ -1969,7 +1969,7 @@ DATA.cmdfid = 0;
 DATA = SetField(DATA,'frombinocfid', 0);
 DATA.tobinocfid = 0;
 DATA.incr = [0 0 0];
-DATA.nstim = [0 0 0];
+DATA.nstim = [1 1 1];
 DATA.quickexpts = [];
 DATA.helpfiles = [];
 DATA.stepsize = [20 10];
@@ -2380,7 +2380,7 @@ function DATA = InitInterface(DATA)
     uicontrol(gcf,'style','text','string','N stim',  'units', 'norm', 'position',bp);
     bp(1) = bp(1)+bp(3)+0.01;
     bp(3) = cw;
-    uicontrol(gcf,'style','edit','string',num2str(DATA.nstim(1)), ...
+    uicontrol(gcf,'style','edit','string',num2str(DATA.binoc{1}.nt), ...
         'units', 'norm', 'position',bp,'value',1,'Tag','Expt1Nstim','callback',{@TextGui, 'nt'});
     bp(1) = bp(1)+bp(3)+0.01;
     uicontrol(gcf,'style','edit','string',num2str(DATA.nstim(2)), ...
@@ -3274,8 +3274,7 @@ function MenuGui(a,b)
              LogCommand(DATA,sprintf('cm=%s',str));
              set(a,'string','');
          case 'nt'
-             DATA.nstim(1) = str2num(str);
-             outprintf(DATA,'nt=%d\n',DATA.nstim(1));
+             outprintf(DATA,'nt=%d\n',str2num(str));
              ReadFromBinoc(DATA);
          case 'n2'
              DATA.nstim(2) = str2num(str);
@@ -3542,7 +3541,7 @@ end
         PauseRead(DATA,1);
      end
     DATA= CheckExptMenus(DATA);
-    SetTextItem(DATA.toplevel,'Expt1Nstim',DATA.nstim(1));
+    SetTextItem(DATA.toplevel,'Expt1Nstim',DATA.binoc{1}.nt);
     SetTextItem(DATA.toplevel,'Expt2Nstim',DATA.nstim(2));
     SetTextItem(DATA.toplevel,'Expt3Nstim',DATA.nstim(3));
     SetTextItem(DATA.toplevel,'Expt1Incr',DATA.binoc{1}.ei);
@@ -4876,7 +4875,7 @@ function SendManualExpt(DATA)
         
     if isfield(X,'exvals')
         a = unique(X.exvals(:,1));
-        DATA.nstim(1) = length(a);
+        DATA.binoc{1}.nt = length(a);
         SendCode(DATA,'nt');
         for j = 1:length(a)
             outprintf(DATA,'EA%d=%s\n',j-1,num2str(a(j)));
@@ -5650,7 +5649,7 @@ if strcmp(code,'optionflag')
         id = strmatch(code,{'et' 'e2' 'e3'});
         s = sprintf('%s=%s',code,DATA.exptype{id});
     elseif strcmp(code,'expts')
-        s = sprintf('et=%s\nei=%s\nem=%.6f\nnt=%d\n',DATA.exptype{1},DATA.binoc{1}.ei,DATA.mean(1),DATA.nstim(1));
+        s = sprintf('et=%s\nei=%s\nem=%.6f\nnt=%d\n',DATA.exptype{1},DATA.binoc{1}.ei,DATA.mean(1),DATA.binoc{1}.nt);
         s = [s sprintf('e2=%s\ni2=%s\nm2=%6f\nn2=%d\n',DATA.exptype{2},DATA.binoc{1}.i2,DATA.mean(2),DATA.nstim(2))];
         s = [s sprintf('e3=%s\ni3=%s\nm3=%.6f\nn3=%d\n',DATA.exptype{3},DATA.binoc{1}.i3,DATA.mean(3),DATA.nstim(3))];
         s = AddCustomStim(DATA,s,1);
