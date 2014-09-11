@@ -7816,7 +7816,8 @@ Thisstim *getexpval(int stimi)
         expt1crit = expt.mean;
     else
         expt1crit = 0;
-    i = i % expt.nstim[3];
+    if (expt.nstim[3] > 1)
+        i = i % expt.nstim[3];
     if(i < expt.nstim[2])
         stimret.interleave = 1;
     else

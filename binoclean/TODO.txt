@@ -98,3 +98,11 @@ Expt restart - get penlog info
 Parse Stim durations in Verg, to look into frame dropping
 Check out Grating AA. ? Draw Lines Twice? 
 Spped up interpret line. Have case/ifelse by first letter?  Force use of = sign so that can always have exact code? 
+dont send status=stopped repeatedly.  Have status line sent in Getstate/Querystate
+get trialctr to increment when checkfix is off.  Why is initial value still so high all the time? Need to send STIMC lines
+When verg reads a stim file, codesend SAVE_STATE codes shouled ? not be sent to binoc, unless we are reloading a saved state?
+?or sort this out when saving stim files? 
+write a quick stimfile cleaner. Just reads lines, and writes them out again, omitting bad codes. ? standalone?
+add a status= line to DescribeState?  GetCurrentStatus function. Or use statusstring? should work.
+Sort out ability to add codes manually to the list of what is tracked in psychfile.  Could even extend this to have and R7 line for each trial.
+Try $MNK in stimdir path 
