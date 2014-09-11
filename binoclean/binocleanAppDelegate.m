@@ -23,6 +23,9 @@ static NSColor * textColor;
 static NSColor * textBGColor;
 
 int outPipe = 0;
+int innotify = 0;
+int ReadingInputPipe = 0;
+extern int AddingToInputPipe;
 NSMutableArray * inputPipeBuffer;
 NSString * outputPipeBuffer;
 NSMutableDictionary *bold12Attribs;
@@ -111,7 +114,7 @@ void sendNotification()
     NSString * s = [NSString stringWithFormat:@"SENDING%06d\n", [outputPipeBuffer length]];
     //    WriteToOutputPipe(s);
     if ([outputPipeBuffer length]>0) {
-        if (expt.verbose)
+        if (expt.verbose[2])
         NSLog(@"%d : %@", strlen([outputPipeBuffer UTF8String]), outputPipeBuffer);
         WriteToOutputPipe([NSString stringWithFormat:@"%@%@", s, outputPipeBuffer]);
         outputPipeBuffer = [[NSString alloc] init] ;
@@ -125,6 +128,7 @@ void ReadInputPipe()
 {
     if(dataReadyInInputPipe)
     {
+        ReadingInputPipe = 1;
         dataReadyInInputPipe = NO;
         for (int i = 0; i < inputPipeBuffer.count; i++)
         {
@@ -148,8 +152,12 @@ void ReadInputPipe()
                 }
             }
         }
+        if (AddingToInputPipe ==1){
+            NSLog(@"INput Pipe busy");
+        }
         inputLineChars = NULL;
         [inputPipeBuffer removeAllObjects];
+        ReadingInputPipe = 0;
     }
 }
 
@@ -163,7 +171,7 @@ void WriteToOutputPipe(NSString * ns)
     dispatch_async(q, ^{
         write(outPipe, [ns UTF8String], strlen([ns UTF8String]));
         ioctl(outPipe,TCOFLUSH);
-        if (expt.verbose)
+        if (expt.verbose[2])
         NSLog(@"Output Pipe:%d: %s", strlen([ns UTF8String]), [ns UTF8String]);
     });
     //close(outPipe);
@@ -171,10 +179,12 @@ void WriteToOutputPipe(NSString * ns)
 
 void notify(char * s)
 {
+    innotify = 1;
     if (!outputPipeBuffer) {
         outputPipeBuffer = [[NSString alloc] init];
     }
     outputPipeBuffer = [NSString stringWithFormat:@"%@%s", outputPipeBuffer, s] ;
+    innotify = 0;
 }
 
 
@@ -362,10 +372,13 @@ int  processUIEvents()
     WriteToOutputPipe(@"SENDINGstart1\n");
 }
 
+/*
+ * dataReadyToRead not called in network mode. Only for named pipes
+ */
 - (void) dataReadyToRead:(NSNotification *) notification
 {
     NSString * s = [[NSString alloc] initWithData:[[notification userInfo] objectForKey:NSFileHandleNotificationDataItem] encoding:NSASCIIStringEncoding];
-    if (expt.verbose)
+    if (expt.verbose[2])
     NSLog(@"Input Pipe: %@", s);
     if (!inputPipeBuffer) {
         inputPipeBuffer = [[NSMutableArray alloc] init];
@@ -394,7 +407,7 @@ int  processUIEvents()
     gettimeofday(&btime,NULL);
     aval = timediff(&btime,&atime); //time since last call
 
-  ReadInputPipe();
+    ReadInputPipe();
     gettimeofday(&atime,NULL);
     bval = timediff(&atime,&btime); // time taken in ReadInputPipe
     if (freeToGo) {

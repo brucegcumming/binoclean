@@ -1,0 +1,9 @@
+op=+Rcd-hX
+n2=1
+m2=10
+nt=2
+em=0
+ei=90
+tgtdur=-1 #up during isi
+is=0.5
+psychfile=/local/data/psych/lem/ChoiceFlipDATE

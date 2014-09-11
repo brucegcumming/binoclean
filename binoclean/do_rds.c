@@ -13,7 +13,7 @@
 #define myrand myrnd_i
 
 //Ali
-char * VERSION_NUMBER;
+extern char * VERSION_STRING;
 
 
 int dispcounts[MAXDISPS];
@@ -1828,9 +1828,9 @@ void paint_rds(Stimulus *st, int mode)
     }
     nsaved++;
     if(testflags[SAVE_IMAGES] == 5)
-      fprintf(fd,"BinocDisps RDS %s px %.4f\n",VERSION_NUMBER,deg2pix(1));
+      fprintf(fd,"BinocDisps RDS %s px %.4f\n",VERSION_STRING,deg2pix(1));
     else if(testflags[SAVE_IMAGES] != 6)
-      fprintf(fd,"BinocFrame RDS %s\n",VERSION_NUMBER);
+      fprintf(fd,"BinocFrame RDS %s\n",VERSION_STRING);
         
         
     offset[0] = pos->xy[0] + st->disp;

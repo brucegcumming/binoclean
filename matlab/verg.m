@@ -35,11 +35,10 @@ while j <= length(varargin)
     elseif strcmp(varargin{j},'host')
         j = j+1;
         DATA.ip = ['http://' varargin{j} ':1110/'];
-    elseif strcmp(varargin{j},'getstate')
     elseif strcmp(varargin{j},'new')
         checkforrestart = 0;
     elseif strcmp(varargin{j},'record')
-        DATA = OpenBinocLog(DATA);
+        DATA = OpenBinocLog(DATA,'both');
     elseif strcmp(varargin{j},'verbose')
         if length(varargin) > j && isnumeric(varargin{j+1})
             j = j+1;
@@ -49,9 +48,9 @@ while j <= length(varargin)
         else
             verbose = 1;
         end
-        DATA = OpenBinocLog(DATA);
+        DATA = OpenBinocLog(DATA,'frombinoc');
     elseif strcmp(varargin{j},'monitor')
-        DATA = OpenBinocLog(DATA);
+        DATA = OpenBinocLog(DATA, 'frombinoc');
         DATA.perfmonitor = 1;
     end
     j = j+1;
@@ -75,15 +74,17 @@ if isempty(it)
     if length(varargin) && exist(varargin{1},'file')
         DATA = OpenPipes(DATA, 0);
         if DATA.togglecodesreceived == 0
-            cprintf('red','Binoclean did not send Toggle Codes\n');
+            cprintf('red','Binoclean did not send Toggle Codes within %.2f\n',DATA.readdur);
         end
         tt = TimeMark(tt, 'Pipes');
         DATA.stimfilename = varargin{1};
         SendState(DATA); %params loaded from verg.setup, binoc.setup etc
+        tt = TimeMark(tt, 'SendState');
         DATA = ReadStimFile(DATA, '/local/verg.setup'); %make sure these go to binoc
+        tt = TimeMark(tt, 'VergSetup');
         DATA = ReadStimFile(DATA,varargin{1}, 'init');
-        SendCode(DATA,'vve'); %send verg version
         tt = TimeMark(tt, 'Read');
+        SendCode(DATA,'vve'); %send verg version
         DATA.rptexpts = 0;  %can't set this in startup files, only quickmenus
         if exist(DATA.binoc{1}.lo,'file')
             DATA = ReadLogFile(DATA, DATA.binoc{1}.lo);
@@ -97,7 +98,7 @@ if isempty(it)
 
         j = 2;
         while j <= length(varargin)
-            if ischar(varargin{j})
+            if ischar(varargin{j}) && sum(strncmp(varargin{j},{'new'},3)) == 0
                 outprintf(DATA,'%s\n',varargin{j});
             end
             j = j+1;
@@ -132,7 +133,7 @@ if isempty(it)
     
     DATA.cmdfid = fopen(cmdfile,'a');
     myprintf(DATA.cmdfid,'Reopened %s\n',datestr(now));
-    if DATA.frombinocfid > 0
+    if DATA.frombinocfid > 0 || DATA.verbose(4)
         TimeMark(tt,2);
     end
     DATA = CheckStateAtStart(DATA);
@@ -140,7 +141,9 @@ if isempty(it)
     set(DATA.toplevel,'UserData',DATA);
     vpath = which('verg'); %make sure local matlab/expts is in path too
     vpath = strrep(vpath,'verg.m','expts');
-    addpath(vpath);
+    if exist(vpath,'dir')
+        addpath(vpath);
+    end
 else
     DATA = get(it,'UserData');
 end
@@ -150,19 +153,12 @@ end
 j = 1;
 while j <= length(varargin)
     if strncmpi(varargin{1},'close',5)
-        if DATA.pipelog
-            system([GetFilePath('perl') '/pipelog end']);
-        end
-        if isfield(DATA,'timerobj') & isvalid(DATA.timerobj)
-            stop(DATA.timerobj);
-        end
-        for j = 2:length(DATA.windownames)
-            CloseTag(DATA.windownames{j});
-        end
-        CloseTag(DATA.windownames{1});
+        ExitVerg(DATA);
         return;
     elseif strncmpi(varargin{j},'getstate',5)
-        DATA = GetState(DATA);
+        ts = now;
+        DATA = GetState(DATA,'commandline');
+        mytoc(ts);
     elseif strncmpi(varargin{j},'quick',5)
         j = j+1;
         ts = now;
@@ -172,7 +168,7 @@ while j <= length(varargin)
         if DATA.verbose(4) mytoc(ts); end
         DATA = AddTextToGui(DATA, ['qe=' varargin{j}]);
         if DATA.verbose(4) mytoc(ts); end
-        DATA = GetState(DATA);
+        DATA = GetState(DATA,'quickexpt');
         if DATA.verbose(4) mytoc(ts); end
         SetGui(DATA,'ifneed');
         if DATA.verbose(4) mytoc(ts); end
@@ -202,15 +198,53 @@ if autoquit
 end
 
 
-function DATA = OpenBinocLog(DATA)
+function ExitVerg(DATA)
+    if DATA.pipelog
+        system([GetFilePath('perl') '/pipelog end']);
+    end
+    if isfield(DATA,'timerobj') & isvalid(DATA.timerobj)
+        stop(DATA.timerobj);
+    end
+    for j = 2:length(DATA.windownames)
+        CloseTag(DATA.windownames{j});
+    end
+    CloseTag(DATA.windownames{1});
+    fids = fopen('all');
+    for j = 1:length(fids)
+        name = fopen(fids(j));
+        if cellstrfind(name, {'frombinoc.txt' 'binoccmdhistory' 'tobinoc'})
+            if DATA.verbose(4)
+                fprintf('Closing %s\n',name);
+            end
+            fclose(fids(j));
+        else
+            fprintf('Not closing file %s\n',name);
+        end
+    end
 
+function DATA = OpenBinocLog(DATA, type)
+
+    if nargin == 1
+        type = 'frombinoc';
+    end
+    
+if sum(strcmp(type,{'frombinoc','both'}))    
 if DATA.frombinocfid <= 0
     DATA.frombinocfid = fopen('/local/frombinoc.txt','a');
-    fprintf(DATA.frombinocfid,'Log openened %s\n',datestr(now));
+    myprintf(DATA.frombinocfid,'Log openened %s\n',datestr(now));
 else
-    fprintf('Binoc log already open\n');
+    fprintf('FromBinoc log already open\n');
+end
 end
 
+if sum(strcmp(type,{'tobinoc','both'}))    
+if DATA.tobinocfid <= 0
+    DATA.tobinocfid = fopen('/local/tobinoc.txt','a');
+    myprintf(DATA.tobinocfid,'Log openened %s\n',datestr(now));
+else
+    fprintf('ToBinoc log already open\n');
+end
+end
 
 
 function DATA = CheckStateAtStart(DATA)
@@ -236,16 +270,28 @@ setlist = 0;  %% don't update gui for every line read.
 codetype = 0;
 frombinoc = 0;
 sendtobinoc =0;
+paused = 0;
 src = 'unknown';
+srcchr = 'U';
 j = 1;
 while j <= length(varargin)
     if strncmpi(varargin{j},'from',4)
         src = varargin{j};
         if strcmp(src,'frombinoc')
             frombinoc = 1;
+            srcchr = 'B';
+        elseif strcmp(src,'frombinocT') %timer initiate read
+            frombinoc = 2;
+            srcchr = 'T';
+        elseif strcmp(src,'fromgetstate')
+            srcchr = 'G';
+            frombinoc = 3;
         end
     elseif strncmpi(varargin{j},'tobinoc',4)
         sendtobinoc = 1;
+        srcchr = 'V';
+    elseif strncmpi(varargin{j},'paused',6)
+        paused = 1;
     end
     j = j+1;
 end
@@ -255,7 +301,9 @@ if nargin < 2 || isempty(line)
 end
 
 pstr = '';
-PauseRead(DATA, 1);
+if frombinoc ~= 2 && paused == 0 %don't pause reading when called from timee
+    PauseRead(DATA, 1);
+end
 ts = now;
 strs = textscan(line,'%s','delimiter','\n');
 
@@ -266,7 +314,9 @@ end
 for j = 1:length(strs{1})
  %   fprintf('%s\n', strs{1}{j});
     s = regexprep(strs{1}{j},'\s+\#.*$','');
+%    s = strs{1}{j};
     eid = strfind(s,'=');
+    codematches=0;
     codelen = 0;
     if ~isempty(eid)
         code = s(1:eid(1)-1);
@@ -279,27 +329,23 @@ for j = 1:length(strs{1})
         value = [];
         code = s;
     end
-    if frombinoc && (DATA.verbose(2) || DATA.frombinocfid > 0)
+    if frombinoc && (DATA.verbose(7) || DATA.frombinocfid > 0)
         if ~strncmp(strs{1}{j},'SENDING00000',12)
-            if DATA.verbose(2)
+            if DATA.verbose(7)
                 fprintf('%s**\n',strs{1}{j});
             end
-            myprintf(DATA.frombinocfid,'%s %s\n',datestr(now),strs{1}{j});
+            myprintf(DATA.frombinocfid,'%s%c%d %s\n',datestr(now),srcchr,DATA.inexpt,strs{1}{j});
         end
     end
-    if DATA.savestrs > 0
-        fprintf(savestrs,'%s%s\n',strs{1}{j},src);
-    end
-    if sendtobinoc 
-        tline = CheckLineForBinoc(strs{1}{j});
-        outprintf(DATA,'%s\n',tline);
-    end
     
-    if strcmp(src,'fromstim') %Check for some old strings and update
-    end
-    if length(s) == 0
-    elseif frombinoc == 0 && sum(strncmp(s,{'!mat=' 'timerperiod' 'read=' 'pause' 'user='},5))
-        if strncmp(s,'!mat',4) && ~isempty(value)
+    donestr = 0;
+    if frombinoc == 0
+        donestr = 1;
+        oldsend = sendtobinoc;
+        if sum(strncmp(s,{'!mat=' 'timerperiod' 'read=' 'pause' 'user='},5))
+            sendtobinoc = 0;
+            codetype = -1;
+            if strncmp(s,'!mat',4) && ~isempty(value)
                 DATA.matexpres = [];
                 if strcmp(src,'fromstim')
                     DATA.matexpt = value;
@@ -314,36 +360,74 @@ for j = 1:length(strs{1})
                 SendCode(DATA, 'exp');
             elseif strncmp(s,'timerperiod',10) %verg special
                 DATA.timerperiod = sscanf(value,'%f');
-        elseif strncmp(s,'read',4) %read a set of instructions
-            fid = fopen(value,'r');
-        elseif strncmp(s,'user',4)
-            estr = s(eid(1)+1:end);
-            DATA.userstrings = {DATA.userstrings{:} estr};
-        elseif strncmp(s,'pause',5)
-            if ~isempty(value)
-                DATA.readpause = str2num(value);
+                sendtobinoc=0;
+            elseif strncmp(s,'read',4) %read a set of instructions
+                %            fid = fopen(value,'r');
+            elseif strncmp(s,'user',4)
+                estr = s(eid(1)+1:end);
+                DATA.userstrings = {DATA.userstrings{:} estr};
+                sendtobinoc=oldsend;
+                codetype =0;
+            elseif strncmp(s,'pause',5)
+                if ~isempty(value)
+                    DATA.readpause = str2num(value);
+                end
+                %       pause(DATA.readpause);
+                DATA.pausetime = now;
+            end  %end of NotBinoc group
+        elseif codelen > 8  % long lines from files
+            sendtobinoc = 0;
+            codetype = -1;
+            if length(code) > 4 & sum(strcmp(code,DATA.windownames))
+                iw = find(strcmp(code,DATA.windownames));
+                DATA.winpos{iw} = sscanf(value,'%d');
+            elseif strncmp(s,'mainwindow=',10) %old style
+                DATA.winpos{1} = sscanf(value,'%d');
+            elseif strncmp(s,'autoreopen=',10)
+                DATA.autoreopen = sscanf(value,'%d');
+            elseif strncmp(s,'optionwinpos=',10)
+                DATA.winpos{2} = sscanf(value,'%d');
+            elseif strncmp(s,'softoffwinpos=',10)
+                DATA.winpos{3} = sscanf(value,'%d');
+            elseif strncmp(s,'penlogwinpos=',10)
+                DATA.winpos{4} = sscanf(value,'%d');
+            else
+                sendtobinoc = oldsend;
+                donestr = 0;
+                codetype = 0;
             end
-     %       pause(DATA.readpause);
-            DATA.pausetime = now;
-        end  %end onf NotBinoc group
-    elseif frombinoc == 0 && codelen > 8  % long lines from files
-        if length(code) > 4 & sum(strcmp(code,DATA.windownames))
-            iw = find(strcmp(code,DATA.windownames));
-            DATA.winpos{iw} = sscanf(value,'%d');
-        elseif strncmp(s,'mainwindow=',10) %old style
-            DATA.winpos{1} = sscanf(value,'%d');            
-        elseif strncmp(s,'autoreopen=',10)
-            DATA.autoreopen = sscanf(value,'%d');
+        elseif sum(strncmp(s, {'stepperxy' 'penwinxy' 'optionwinxy'}, 8))
+            codetype = -1;
+            sendtobinoc = 0;
+        elseif strncmp(s, 'verbose=', 8)
+            v = sscanf(s(9:end),'%d');
+            DATA.verbose(1:length(v)) = v;
+            sendtobinoc = 0;
+            codetype = -1; %don't forward string as is to binoc
+            SendCode(DATA,'verbose');
         elseif strncmp(s,'winpos=',7)
             DATA.winpos{1} = sscanf(value,'%d');
-        elseif strncmp(s,'optionwinpos=',10)
-            DATA.winpos{2} = sscanf(value,'%d');
-        elseif strncmp(s,'softoffwinpos=',10)
-            DATA.winpos{3} = sscanf(value,'%d');
-        elseif strncmp(s,'penlogwinpos=',10)
-            DATA.winpos{4} = sscanf(value,'%d');
+            codetype = -1;
+            sendtobinoc = 0;
+        elseif strncmp(s, 'slider', 6)
+            codetype = -1;
+            sendtobinoc = 0;
+        else
+            donestr = 0;
         end
         
+    end
+    
+    
+    if sendtobinoc
+        tline = CheckLineForBinoc(strs{1}{j});
+        outprintf(DATA,'%s\n',tline);
+    end
+
+    
+    gotstr = 1; %default. set to 0 at end of elseifs
+    if length(s) == 0 || donestr == 1
+       
         
     elseif s(1) == '#' %defines stim code/label
         [a,b] = sscanf(s,'#%d %s');
@@ -361,15 +445,17 @@ for j = 1:length(strs{1})
         end
         DATA.Statuslines{end+1} = s;
         DATA.lastmsg = s;
-    elseif sum(strncmp(s,{'NewBinoc' 'confirm' 'exvals' 'fontsiz' 'fontname' 'layout' ...
-            'localmatdir' 'netmatdir', 'oldelectrode' 'TOGGLE' 'rptexpts' 'STIMTYPE' ...
-            'SENDING' 'SCODE=' 'CODE OVER' 'status' 'stimdir'},6))
-        if strncmp(s,'NewBinoc',7)
-            DATA = CheckForNewBinoc(DATA);
-            DATA.newbinoc = 1;
-            if DATA.optionflags.do %only do this when reopen pipes
-                %                outprintf(DATA,'\\go\n');
-            end
+
+        
+        
+        
+        
+    elseif sum(strncmp(s,{'EXPTSTART' 'EXPTOVER' 'EXPTRUNNING' 'TESTOVER' 'CODE OVER'},8))
+        if strncmp(s,'EXPTSTART',8)
+            DATA.inexpt = 1;
+            tic; PsychMenu(DATA); 
+            tic; SetGui(DATA,'set'); 
+            if DATA.verbose(4) fprintf('%s\n',s); end
         elseif strncmp(s,'CODE OVER',8)
             for j = 1:length(DATA.comcodes)
                 if isempty(DATA.comcodes(j).code)
@@ -383,6 +469,87 @@ for j = 1:length(strs{1})
                         fprintf('No help for %s\n',code);
                     end
                 end
+            end
+        elseif strncmp(s,'EXPTRUNNING',8) %from GetState
+            DATA.inexpt = 1;
+        elseif strncmp(s,'EXPTOVER',8) %called at end or cancel
+            if DATA.inexpt %in case reopen pipes mied expt
+                DATA.optionflags.do = 0;
+            end
+            wasexpt = DATA.inexpt;
+            DATA.inexpt = 0;
+            if DATA.nexpts > 0  %may be 0 here if verg is fired up after a crash
+            DATA.Expts{DATA.nexpts}.End = now;
+            DATA.Expts{DATA.nexpts}.last = length(DATA.Trials);
+            end
+    %        tic; DATA = GetState(DATA); toc  %binoc sends state at end expt,
+    %        before sending ExptOver
+            tic; PsychMenu(DATA); 
+            tic; SetGui(DATA,'set'); 
+            ShowStatus(DATA);
+            if ismember(frombinoc,[1 2]) && ~strncmp(s,'EXPTOVERSTATE',12)
+                if ~wasexpt
+                    myprintf(DATA.frombinocfid,'-show','Got EXPTOVER(%c), but not in Expt\n',srcchr);
+                else
+                    myprintf(DATA.frombinocfid,'-show','Expt over at %s\n',datestr(now));
+                end
+            end
+            if strcmp(s,'EXPTOVERSTATE') %just reporting state, not an event
+                exptover = 0; %put a check in here to resolve confusions
+            else
+                exptover = 1;
+            end
+            if DATA.exptstoppedbyuser  
+            %if user hist cancal/stop, dont repeat or move on to automatic next expt
+                DATA.exptstoppedbyuser = 0;
+                DATA.seqline = 0;
+            elseif DATA.seqline > 0 && exptover
+                myprintf(DATA.cmdfid,'-show','Sequence continuing from line %d',DATA.seqline);
+%                if DATA.restartbinoc && wasexpt  %if inexpt ==0, may be anew restart
+%                    DATA = RestartBinoc(DATA);
+%                end
+                DATA = ContinueSequence(DATA);
+            elseif DATA.exptnextline > 0 && exptover
+                DATA = ReadExptLines(DATA,{},'fromseq');
+                DATA = RunButton(DATA,[],1);
+            elseif DATA.rptexpts > 0 && wasexpt
+                DATA.inexpt = 0;
+                fprintf('Repeating Expt. %d to go\n',DATA.rptexpts)
+                PauseRead(DATA, 1);
+                if DATA.restartbinoc && wasexpt  %if inexpt ==0, may be anew restart
+                    DATA = RestartBinoc(DATA);
+                end
+                myprintf(DATA.frombinocfid,'-show','Running Next of %d expts\n',DATA.rptexpts);
+                outprintf(DATA,'#Nrpt is %d\n',DATA.rptexpts);
+                DATA.rptexpts = DATA.rptexpts-1;
+                it = findobj(DATA.toplevel,'Tag','RptExpts');
+                set(it,'string',num2str(DATA.rptexpts));
+                DATA = uipause(now, DATA.binoc{1}.seqpause, 'Fixed Delay for repeats', DATA);
+                PauseRead(DATA, 0);
+                DATA = RunButton(DATA,[],1);
+            end
+            DATA.matlabwasrun = 0;
+            if DATA.verbose(4) fprintf('%s:%d\n',s,DATA.inexpt); end
+            DATA.newbinoc = 0;
+            myprintf(DATA.frombinocfid,'INexpt Set to %d\n',DATA.inexpt);
+        elseif strncmp(s,'TESTOVER',8)
+           if isfield(DATA,'reopenstr') && ~isempty(DATA.reopenstr) && DATA.optionflags.do
+               outprintf(DATA,'%s\n',DATA.reopenstr);
+           end
+        end  %8 char codes 
+
+        
+        
+        
+    
+    elseif sum(strncmp(s,{'NewBinoc' 'confirm' 'exvals' 'fontsiz' 'fontname' 'layout' ...
+            'localmatdir' 'netmatdir', 'oldelectrode' 'TOGGLE' 'rptexpts' 'STIMTYPE' ...
+            'SENDING' 'SCODE=' 'status' 'stimdir' 'STIMC ' 'Unrecogn'},6))
+        if strncmp(s,'NewBinoc',7)
+            DATA = CheckForNewBinoc(DATA);
+            DATA.newbinoc = 1;
+            if DATA.optionflags.do %only do this when reopen pipes
+                %                outprintf(DATA,'\\go\n');
             end
             
         elseif strncmp(s,'confirm',7)
@@ -473,81 +640,40 @@ for j = 1:length(strs{1})
         end
         if strncmp(s,'status=Grid is',14)
             DATA = AddTextToGui(DATA,s(8:end));
+        elseif strncmp(s,'status=TestStimulus',19)
+            ns = sscanf(s,'status=TestStimulus %d');
+            if mod(ns,20) == 0
+                DATA = GetState(DATA,'test');
+            end
         end
         fid = strfind(s,'Frames:');
         if ~isempty(fid) && ~isempty(DATA.Trials)
             nf = sscanf(s(fid(1)+8:end),'%d');
             DATA.Trials(length(DATA.Trials)).nf = nf;
         end
-%        fprintf(s);
+        %        fprintf(s);
+        elseif strncmp(s,'STIMC ',6)
+            DATA.trialcounts = sscanf(s(7:end),'%f');
+            if length(DATA.trialcounts) < 8
+                DATA.trialcounts(8) = 0;
+            end
+            ShowStatus(DATA);
+            if DATA.verbose(3)
+                fprintf('%s\n',s);
+            end
+        elseif strncmp(s,'Unrecog',7)
+            if DATA.verbose(4)
+                fprintf('%s\n',s);
+            end
+            DATA.Statuslines{end+1} = s(8:end);
+
+
 
 %can ignore SENDING'            
         end  %6 char codes
         
-        elseif sum(strncmp(s,{'EXPTSTART' 'EXPTOVER' 'TESTOVER'},8))
-           if strncmp(s,'EXPTSTART',8)
-            DATA.inexpt = 1;
-            tic; PsychMenu(DATA); 
-            tic; SetGui(DATA,'set'); 
-            if DATA.verbose(4) fprintf('%s\n',s); end
-        elseif strncmp(s,'EXPTOVER',8) %called at end or cancel
-            if DATA.inexpt %in case reopen pipes mied expt
-                DATA.optionflags.do = 0;
-            end
-            wasexpt = DATA.inexpt;
-            DATA.inexpt = 0;
-            if DATA.nexpts > 0  %may be 0 here if verg is fired up after a crash
-            DATA.Expts{DATA.nexpts}.End = now;
-            DATA.Expts{DATA.nexpts}.last = length(DATA.Trials);
-            end
-    %        tic; DATA = GetState(DATA); toc  %binoc sends state at end expt,
-    %        before sending ExptOver
-            tic; PsychMenu(DATA); 
-            tic; SetGui(DATA,'set'); 
-            ShowStatus(DATA);
-            if ~wasexpt
-                myprintf(DATA.frombinocfid,'Got EXPTOVER, but not in Expt\n');
-            end
-            if DATA.exptstoppedbyuser  
-            %if user hist cancal/stop, dont repeat or move on to automatic next expt
-                DATA.exptstoppedbyuser = 0;
-                DATA.seqline = 0;
-            elseif DATA.seqline > 0 
-                myprintf(DATA.cmdfid,'Sequence continuing from line %d',DATA.seqline);
-%                if DATA.restartbinoc && wasexpt  %if inexpt ==0, may be anew restart
-%                    DATA = RestartBinoc(DATA);
-%                end
-                DATA = ContinueSequence(DATA);
-            elseif DATA.exptnextline > 0
-                DATA = ReadExptLines(DATA,{},'fromseq');
-                DATA = RunButton(DATA,[],1);
-            elseif DATA.rptexpts > 0 && wasexpt
-                DATA.inexpt = 0;
-                fprintf('Repeating Expt. %d to go\n',DATA.rptexpts)
-                PauseRead(DATA, 1);
-                if DATA.restartbinoc && wasexpt  %if inexpt ==0, may be anew restart
-                    DATA = RestartBinoc(DATA);
-                end
-                myprintf(DATA.frombinocfid,'-show','Running Next of %d expts\n',DATA.rptexpts);
-                outprintf(DATA,'#Nrpt is %d\n',DATA.rptexpts);
-                DATA.rptexpts = DATA.rptexpts-1;
-                it = findobj(DATA.toplevel,'Tag','RptExpts');
-                set(it,'string',num2str(DATA.rptexpts));
-                DATA = uipause(now, DATA.binoc{1}.seqpause, 'Fixed Delay for repeats', DATA);
-                PauseRead(DATA, 0);
-                DATA = RunButton(DATA,[],1);
-            end
-            DATA.matlabwasrun = 0;
-            if DATA.verbose(4) fprintf('%s:%d\n',s,DATA.inexpt); end
-            DATA.newbinoc = 0;
-            myprintf(DATA.frombinocfid,'INexpt Set to %d\n',DATA.inexpt);
-        elseif strncmp(s,'TESTOVER',8)
-           if isfield(DATA,'reopenstr') && ~isempty(DATA.reopenstr) && DATA.optionflags.do
-               outprintf(DATA,'%s\n',DATA.reopenstr);
-           end
-        end  %8 char codes 
         
-    elseif sum(strncmp(s,{'Expts'},5))
+    elseif sum(strncmp(s,{'Expts' 'xyfsd' 'EDONE'},5))
         if strncmp(s,'Expts1',6)
             DATA.extypes{1} = sscanf(s(8:end),'%d');
             DATA.extypes{1} = DATA.extypes{1}+1;
@@ -560,32 +686,114 @@ for j = 1:length(strs{1})
             DATA.extypes{3} = sscanf(s(8:end),'%d');
             DATA.extypes{3} = DATA.extypes{3}+1;
             DATA = SetExptMenus(DATA);
+    elseif strncmp(s, 'EDONE', 5) %finished listing expt stims
+        if isfield(DATA,'toplevel')
+            it = findobj(DATA.toplevel,'Tag','Expt3StimList','style','edit');
+            if length(it) == 1
+                set(it,'string',DATA.exptstimlist{3});
+            end
+            it = findobj(DATA.toplevel,'Tag','Expt2StimList','style','edit');
+            if length(it) == 1
+                ival = get(it,'value');
+                ival = min([size(DATA.exptstimlist{2},2) ival]);
+                if ival <1
+                    ival = 1;
+                end
+                set(it,'string',DATA.exptstimlist{2},'value',ival);
+            end
+            
+            it = findobj(DATA.toplevel,'Tag','Expt1StimList','style','edit');
+            if length(it) == 1
+                set(it,'string',DATA.exptstimlist{1});
+            end
         end
-    elseif strncmp(s,'CODE',4)
-        id = strfind(s,' ');
-        code = str2num(s(id(2)+1:id(3)-1))+1;
-        if ismember(code,[DATA.comcodes.code])
-           x = 1; 
+        if isfield(DATA,'exptstimlist')
+            for j = 1:length(DATA.exptstimlist)
+                S = DATA.exptstimlist{j};
+                for m = 1:length(S)
+                    [val,n] = sscanf(S{m},'%f');
+                    if n == 1
+                        DATA.expvals{j}(m) = val;
+                    end
+                end
+                
+            end
         end
-        str = s(id(1)+1:id(2)-1);
-        if ~strcmp(str,'xx') && sum(strcmp(str,{DATA.comcodes.code}))
-            x = strcmp(str,{DATA.comcodes.code});
-        end
-       
-        DATA.comcodes(code).label = s(id(3)+1:id(end)-2);
-        DATA.comcodes(code).code = s(id(1)+1:id(2)-1);
-        DATA.comcodes(code).const = code;
-        DATA.comcodes(code).type = s(id(end)-1);
-        DATA.comcodes(code).group = str2num(s(id(end)+1:end));
-        try
-        DATA.codeids.(DATA.comcodes(code).code) = code; %index of codes
-        catch
-            fprintf('Invalid field name %s\n',str);
-        DATA.codeids.xx = code; %index of codes
-        DATA.comcodes(code).code = 'xx';
-        end
-    elseif strncmp(s,'cwd=',4)
-        DATA.cwd = value;
+        elseif strncmp(s,'xyfsd',5)
+            x = sscanf(value,'%f');
+            DATA.binoc{1}.xyfsd = x(1);
+            if length(x) == 4
+                DATA.showxy = x(2:4);
+            end
+        end %end of 5 char codes
+    elseif sum(strncmp(s,{'CODE' 'cwd=' 'TRES' 'over'},4))
+        if strncmp(s,'CODE',4)
+            id = strfind(s,' ');
+            code = str2num(s(id(2)+1:id(3)-1))+1;
+            if ismember(code,[DATA.comcodes.code])
+                x = 1;
+            end
+            str = s(id(1)+1:id(2)-1);
+            if ~strcmp(str,'xx') && sum(strcmp(str,{DATA.comcodes.code}))
+                x = strcmp(str,{DATA.comcodes.code});
+            end
+            
+            DATA.comcodes(code).label = s(id(3)+1:id(end)-2);
+            DATA.comcodes(code).code = s(id(1)+1:id(2)-1);
+            DATA.comcodes(code).const = code;
+            DATA.comcodes(code).type = s(id(end)-1);
+            DATA.comcodes(code).group = str2num(s(id(end)+1:end));
+            try
+                DATA.codeids.(DATA.comcodes(code).code) = code; %index of codes
+            catch
+                fprintf('Invalid field name %s\n',str);
+                DATA.codeids.xx = code; %index of codes
+                DATA.comcodes(code).code = 'xx';
+            end
+        elseif strncmp(s,'cwd=',4)
+            DATA.cwd = value;
+        elseif strncmp(s,'over',4)
+            DATA.over = 1;
+        elseif strncmp(s,'TRES',4)
+            if s(6) == 'G' || s(6) == 'W'
+                a = sscanf(s(7:end),'%f');
+            else
+                a = 0;
+            end
+            if(s(6) == 'G' || s(6) == 'F')
+                DATA.Trial.good = 1;
+            elseif(s(6) == 'W')
+                DATA.Trial.good = -1;
+            else
+                DATA.Trial.good = 0;
+            end
+            DATA.Trial.RespDir = a(1);
+            if length(a) > 1
+                DATA.Trial.tr = a(2);
+            end
+            DATA.Trial.rw = DATA.binoc{1}.rw;
+            DATA = SetTrial(DATA, DATA.Trial);
+            DATA.nt = DATA.nt+1;
+            DATA.Trial.Trial = DATA.nt;
+            id = findstr(s,' ');
+            if length(id) > 1
+                DATA.Trial.id = sscanf(s(id(2)+1:end),'%d');
+            end
+            if DATA.verbose(3)
+                fprintf('%s t%dR%d Ex%s\n',s,DATA.nt,DATA.Trial.RespDir,sprintf(' %.3f',DATA.Trial.sv));
+            end
+            if isfield(DATA.Trial,'RespDir')
+                %Dont plot if there are more results still in the pipeline
+                if length(strs{1}) < 20 || max(find(strncmp('TRES',strs{1},4))) <= j
+                    pts = now;
+                    DATA = PlotPsych(DATA);
+                    pstr = sprintf('Psych took %.2f',mytoc(pts));
+                    
+                end
+            end
+            
+            
+        end %end of 4 char codes
     elseif strncmpi(s,'exp',3)
         if strncmp(s,'exps',4)
             ex = 1;
@@ -609,56 +817,9 @@ for j = 1:length(strs{1})
         elseif strncmp(s,'exp=',4)
             DATA.binoc{1}.exp = value;
         end
-            
+    elseif sum(strncmp(s,{ 'mo=' 'pf=' 'qe='},3))
 
-    elseif strncmp(s,'TRES',4)
-        if s(6) == 'G' || s(6) == 'W'
-            a = sscanf(s(7:end),'%f');
-        else
-            a = 0;
-        end
-        if(s(6) == 'G' || s(6) == 'F')
-            DATA.Trial.good = 1;
-        elseif(s(6) == 'W')
-            DATA.Trial.good = -1;
-        else
-            DATA.Trial.good = 0;
-        end
-        DATA.Trial.RespDir = a(1);
-        if length(a) > 1
-            DATA.Trial.tr = a(2);
-        end
-        DATA.Trial.rw = DATA.binoc{1}.rw;
-        DATA = SetTrial(DATA, DATA.Trial);
-        DATA.nt = DATA.nt+1;
-        DATA.Trial.Trial = DATA.nt;
-        id = findstr(s,' ');
-        if length(id) > 1
-            DATA.Trial.id = sscanf(s(id(2)+1:end),'%d');
-        end
-        if DATA.verbose(3)
-            fprintf('%s t%dR%d Ex%s\n',s,DATA.nt,DATA.Trial.RespDir,sprintf(' %.3f',DATA.Trial.sv));
-        end
-        if isfield(DATA.Trial,'RespDir')
-%Dont plot if there are more results still in the pipeline
-            if length(strs{1}) < 20 || max(find(strncmp('TRES',strs{1},4))) <= j
-                pts = now;
-                DATA = PlotPsych(DATA);
-                pstr = sprintf('Psych took %.2f',mytoc(pts));
-                
-            end
-        end
-
-    elseif strncmp(s,'STIMC ',6)
-        DATA.trialcounts = sscanf(s(7:end),'%f');
-        if length(DATA.trialcounts) < 8
-            DATA.trialcounts(8) = 0;
-        end     
-        ShowStatus(DATA);
-        if DATA.verbose(3)
-            fprintf('%s\n',s);
-        end
-    elseif strncmp(s,'mo=fore',7)
+    if strncmp(s,'mo=fore',7)
         DATA.currentstim = 1;
     elseif strncmp(s,'mo=back',7)
         DATA.currentstim = 2;
@@ -666,8 +827,40 @@ for j = 1:length(strs{1})
         DATA.currentstim = 3;
     elseif strncmp(s,'mo=ChoiceD',10)
         DATA.currentstim = 4;
-    elseif strncmp(s,'over',4)
-        DATA.over = 1;
+    elseif strncmp(s,'qe=',3)
+        
+        id = strfind(s,'"');
+        if length(id) > 1
+            submenu = s(id(1)+1:id(2)-1);
+            s = s(id(end)+1:end);
+        else
+            submenu = '';
+            s = s(4:end);
+        end
+        if ~strcmp(s,'NotSet')
+        [a,b,c] = fileparts(s);
+        b = [b c];
+        if s(1) ~= '/'
+            if isfield(DATA.binoc{1},'stimdir')
+                s = [DATA.binoc{1}.stimdir '/' s];
+            elseif isfield(DATA,'stimfilename')
+                s = [fileparts(DATA.stimfilename) '/' s];
+            end
+        end
+        id = [];
+        if isfield(DATA.quickexpts,'filename') %check we don't alreayd have this
+        id = find(strcmp(s,{DATA.quickexpts.filename}));
+        end
+        if isempty(id)
+        n = length(DATA.quickexpts)+1;
+        DATA.quickexpts(n).name = b;
+        DATA.quickexpts(n).filename = s;
+        DATA.quickexpts(n).submenu = submenu;
+        end
+        end
+    elseif strncmp(s,'nt=',3)
+        DATA.nstim(1) = sscanf(s,'nt=%d');
+        DATA.binoc{1}.(code) = str2num(value);
     elseif strncmp(s,'pf=',3)
         s = strrep(s,'+2a','+afc');
         if s(end) == ':'
@@ -705,7 +898,7 @@ for j = 1:length(strs{1})
                     nflag = nflag+1;
                 end
                 if DATA.togglecodesreceived
-                fprintf('No Code for %s\n,',s(id(k):end));
+                fprintf('No Code for %s\n',s(id(k):end));
                 end
             elseif isempty(code)
 %                fprintf('No Code for %s\n,',s(id(k):end));                
@@ -721,7 +914,10 @@ for j = 1:length(strs{1})
                 end
             end
         end
-        DATA.binoc{1}.pf = ShowFlagString(DATA);
+        if DATA.togglecodesreceived
+            DATA.binoc{1}.pf = ShowFlagString(DATA);
+        end
+    end %end of 3 char codes
     elseif strncmp(s,'helpfile=',9)
         s = s(10:end);
         id = strfind(s,'"');
@@ -737,50 +933,6 @@ for j = 1:length(strs{1})
             DATA.helpfiles(n).filename = s(id(end)+1:end);
             DATA.helpfiles(n).label = s(2:id(end)-1);
         end
-    elseif strncmp(s,'xyfsd',5)
-        x = sscanf(value,'%f');
-        DATA.binoc{1}.xyfsd = x(1);
-        if length(x) == 4
-            DATA.showxy = x(2:4);
-        end
-    elseif strncmp(s,'qe=',3)
-        
-        id = strfind(s,'"');
-        if length(id) > 1
-            submenu = s(id(1)+1:id(2)-1);
-            s = s(id(end)+1:end);
-        else
-            submenu = '';
-            s = s(4:end);
-        end
-        if ~strcmp(s,'NotSet')
-        [a,b,c] = fileparts(s);
-        b = [b c];
-        if s(1) ~= '/'
-            if isfield(DATA.binoc{1},'stimdir')
-                s = [DATA.binoc{1}.stimdir '/' s];
-            elseif isfield(DATA,'stimfilename')
-                s = [fileparts(DATA.stimfilename) '/' s];
-            end
-        end
-        id = [];
-        if isfield(DATA.quickexpts,'filename') %check we don't alreayd have this
-        id = find(strcmp(s,{DATA.quickexpts.filename}));
-        end
-        if isempty(id)
-        n = length(DATA.quickexpts)+1;
-        DATA.quickexpts(n).name = b;
-        DATA.quickexpts(n).filename = s;
-        DATA.quickexpts(n).submenu = submenu;
-        end
-        end
-    elseif strncmp(s,'nt=',3)
-        DATA.nstim(1) = sscanf(s,'nt=%d');
-        DATA.binoc{1}.(code) = str2num(value);
-    elseif strncmp(s,'uf=',3)
-        DATA.datafile = s(4:end);
-        DATA.binocstr.uf = DATA.datafile;
-        DATA.binoc{1}.uf = DATA.datafile;
     elseif sum(strncmp(s, {'et' 'e2' 'e3' 'n2' 'n3' 'em' 'm2' 'm3' 'op' 'ei' 'i2' 'i3' },2))
     if strncmp(s,'et',2)
         DATA.exptype{1} = sscanf(s,'et=%s');
@@ -832,8 +984,12 @@ for j = 1:length(strs{1})
                 end
             end
             
-            if isempty(code)
-                fprintf('No Code for %s\n,',s(id(k):end-1));
+            if isempty(code) 
+                if DATA.togglecodesreceived
+                    fprintf('No Code for %s\n',s(id(k):end-1));
+                else
+                    fprintf('Cant set Code %s - have not received list from binoc\n',s(id(k):end-1));                    
+                end
             elseif s(id(k)) == '+'
             DATA.optionflags.(f{code}) = 1;
             else
@@ -854,11 +1010,6 @@ for j = 1:length(strs{1})
     elseif strncmp(s,'ch12',4) %binoc XY
         DATA.showxy(3) = strfind('-+',s(5))-1;
     end
-    elseif strncmp(s, 'stepperxy', 8)
-    elseif strncmp(s, 'penwinxy', 8)
-    elseif strncmp(s, 'optionwinxy', 8)
-    elseif strncmp(s, 'slider', 6)
-        id = find(strcmp(s(4:end),DATA.stimulusnames));
 
     elseif strncmp(s, 'st=', 3)
         id = find(strcmp(deblank(s(4:end)),DATA.stimulusnames));
@@ -867,60 +1018,28 @@ for j = 1:length(strs{1})
         DATA.binocstr.st = deblank(s(4:end));
         DATA.binoc{DATA.currentstim}.st = deblank(s(4:end));
         end
-    elseif sum(strcmp(code,{DATA.strcodes.code}))
-        id = strfind(s,'=');
-        if id
-            sid = find(strcmp(code,{DATA.strcodes.code}));
-            if isempty(sid)
-                DATA.binocstr.(code)=s(id(1)+1:end);
-            else
-                DATA.binocstr.(DATA.strcodes(sid).code)=s(id(1)+1:end);
-            end
-        end
+      %strcodes not used any more
+%    elseif sum(strcmp(code,{DATA.strcodes.code}))
+%        id = strfind(s,'=');
+%        if id
+%            sid = find(strcmp(code,{DATA.strcodes.code}));
+%            if isempty(sid)
+%                DATA.binocstr.(code)=s(id(1)+1:end);
+%            else
+%                DATA.binocstr.(DATA.strcodes(sid).code)=s(id(1)+1:end);
+%           end
+%       end
     elseif strncmp(s, 'Bs', 2)
              DATA.stimtype(2) = find(strcmp(s(4:end),DATA.stimulusnames));
              DATA.binoc{1}.Bs = DATA.stimulusnames{DATA.stimtype(2)};
-    elseif strncmp(s, 'EDONE', 5) %finished listing expt stims
-        if isfield(DATA,'toplevel')
-            it = findobj(DATA.toplevel,'Tag','Expt3StimList','style','edit');
-            if length(it) == 1
-                set(it,'string',DATA.exptstimlist{3});
-            end
-            it = findobj(DATA.toplevel,'Tag','Expt2StimList','style','edit');
-            if length(it) == 1
-                ival = get(it,'value');
-                ival = min([size(DATA.exptstimlist{2},2) ival]);
-                if ival <1
-                    ival = 1;
-                end
-                set(it,'string',DATA.exptstimlist{2},'value',ival);
-            end
-            
-            it = findobj(DATA.toplevel,'Tag','Expt1StimList','style','edit');
-            if length(it) == 1
-                set(it,'string',DATA.exptstimlist{1});
-            end
-        end
-        if isfield(DATA,'exptstimlist')
-            for j = 1:length(DATA.exptstimlist)
-                S = DATA.exptstimlist{j};
-                for m = 1:length(S)
-                    [val,n] = sscanf(S{m},'%f');
-                    if n == 1
-                        DATA.expvals{j}(m) = val;
-                    end
-                end
-                
-            end
-        end
-    elseif strncmp(s,'Unrecog',7)
-        if DATA.verbose(4)
-            fprintf('%s\n',s);
-        end
-        DATA.Statuslines{end+1} = s(8:end);
+    else
+        gotstr = 0;
+        codematches = strcmp(code,{DATA.comcodes.code});
+    end
         
-    elseif sum(strcmp(code,{DATA.comcodes.code}))
-        cid = find(strcmp(code,{DATA.comcodes.code}));
+    if gotstr ==1 %already processed
+    elseif sum(codematches)
+        cid = find(codematches);
         code = DATA.comcodes(cid(1)).code;
         id = strfind(s,'=');
         if id
@@ -1023,9 +1142,13 @@ for j = 1:length(strs{1})
                 else
                     DATA.binoc{bid}.(code) = s(id(1)+1:end);
                 end
+                if 1 && DATA.togglecodesreceived
+                    fprintf('%s:Code %s not in comcodes\n',datestr(now),code);
+                    codematches = strcmp(code,{DATA.comcodes.code});
+                end
                 SetCode(DATA,code);
             else
-                cprintf('red','Cannot Interpret %s: %s',src,strs{1}{j});
+                cprintf('red','Cannot Interpret %s: %s\n',src,deblank(strs{1}{j}));
             end
         end
     end
@@ -1034,7 +1157,9 @@ dur = mytoc(ts);
 if dur > 1
     fprintf('Reading %d lines took %.2f%s\n',length(strs{1}),dur,pstr);
 end
-PauseRead(DATA,0);
+if frombinoc ~= 2 && paused == 0
+    PauseRead(DATA,0);
+end
 
 
 
@@ -1042,17 +1167,18 @@ function DATA = SetCode(DATA,code)
 %DATA = SetCode(DATA,val)
 % Does additional steps needed for some codes, like 'Electrode'
 
-if DATA.currentstim == 1
-val = GetValue(DATA,code);
-if strcmp(code,'Electrode')
-    id = find(strcmp(val,DATA.electrodestrings));
-    if isempty(id)
-        DATA.electrodestrings{end+1} = deblank(val);
-        DATA.electrodeid = length(DATA.electrodestrings);
-    else
-        DATA.electrodeid = id;
+if DATA.currentstim == 1 && sum(strcmp(code,{'Electrode'}))
+%don't call GetValue unles needed - wastest time
+    val = GetValue(DATA,code);
+    if strcmp(code,'Electrode')
+        id = find(strcmp(val,DATA.electrodestrings));
+        if isempty(id)
+            DATA.electrodestrings{end+1} = deblank(val);
+            DATA.electrodeid = length(DATA.electrodestrings);
+        else
+            DATA.electrodeid = id;
+        end
     end
-end
 end
 
 
@@ -1093,7 +1219,9 @@ function str =  ShowFlagString(DATA)
     str = 'pf=';
     for j = 1:length(DATA.showflagseq)
         f = DATA.showflagseq{j};
-        if DATA.showflags.(f)
+        if ~isfield(DATA.showflags,f)
+            fprintf('Showflags no field %s\n',f);
+        elseif DATA.showflags.(f)
             str = [str '+' f];
         end
     end
@@ -1127,12 +1255,23 @@ function DATA = ReadExptLines(DATA, strs, src)
             DATA.exptnextline = j;
             break;
         end
+        if ~ischar(DATA.binoc{1}.monkey)
+            fprintf('Monkeyame corrupted (%s)\n',tline);
+        elseif ~isempty(strfind(tline,'$MNK')) && ~isempty(DATA.binoc{1}.monkey)
+            tline = strrep(tline,'$MNK',DATA.binoc{1}.monkey);
+        end
         if strcmp(tline,'immode=preload')
             fprintf('Substituting imload for immode\n');
             tline = 'imload=preload';
         end
-        
-        [DATA, type] = InterpretLine(DATA,tline, src);
+        if strncmp(tline,'openbinoclog',12)
+            DATA = OpenBinocLog(DATA,'frombinoc');
+            if strncmp(tline,'openbinoclogs',13)
+                DATA = OpenBinocLog(DATA,'tobinoc');
+            end
+        else
+            [DATA, type] = InterpretLine(DATA,tline, src);
+        end
         if DATA.perfmonitor
             myprintf(DATA.frombinocfid,'%.3f file %s\n',mytoc(DATA.starttime),tline);
         end
@@ -1144,9 +1283,13 @@ function DATA = ReadExptLines(DATA, strs, src)
         if DATA.over
             DATA.overcmds = {DATA.overcmds{:} tline};
         else
-            if ~strncmp(tline,'!mat',4) %don't send !mat lines to binoc
-            tline = CheckLineForBinoc(tline);
-            outprintf(DATA,'%s\n',tline);
+            if type >= 0 %don't send these lines to binoc
+                tline = CheckLineForBinoc(tline);
+                outprintf(DATA,'%s\n',tline);
+            else
+                if DATA.verbose(4)
+                    fprintf('%s Not sent\n',tline);
+                end                 
             end
         end
     end
@@ -1165,7 +1308,8 @@ function DATA = ReadExptLines(DATA, strs, src)
 
 function vergwarning(s, varargin)
 
-newwindow =1;    
+newwindow = 0;
+toconsole = 1;
     j = 1;
     while j <= length(varargin)
         if strncmpi(varargin{j},'newwin',3)
@@ -1173,16 +1317,28 @@ newwindow =1;
         end
         j = j+1;
     end
+   OldPos = [];
    beep;
    CreateStruct.Interpreter = 'tex';
-   if newwindow
+   if newwindow == 0
+        OldFig=findobj(0,'Type','figure','Tag','Msgbox_Binoc Warning','Name','Binoc Warning');
+        if ~isempty(OldFig)
+           OldPos = get(OldFig(1),'position');
+        end
         CreateStruct.WindowStyle='replace';
    else
         CreateStruct.WindowStyle='non-modal';
    end
    try
-   h = msgbox(s,'Binoc Warning','warn',CreateStruct);
-   ScaleWindow(h,2);
+       h = msgbox(s,'Binoc Warning','warn',CreateStruct);
+       ScaleWindow(h,2);
+
+       if ~isempty(OldPos)
+           set(h,'Position', OldPos);
+       end
+       if toconsole
+        fprintf('WARNING: %s at %s\n',s,datestr(now));
+       end
    end
    
 function line = CheckLineForBinoc(tline)
@@ -1277,7 +1433,11 @@ if fid > 0
         DATA = ReadExptLines(DATA,a{1},'fromstim');
     end
 else
+    try
     msgbox(sprintf('Can''t read stimfile %s',name),'Stimfile Read Error','error');
+    catch
+        fprintf('Can''t read stimfile %s\n',name)
+    end
 end
 if setall
     DATA = ReadVergFile(DATA, DATA.layoutfile);
@@ -1341,7 +1501,7 @@ function SendState(DATA, varargin)
             outprintf(DATA,'%s=%s\n',f{j},DATA.binocstr.(f{j}));
         end
     end
-    outprintf(DATA,'uf=%s\n',DATA.datafile);
+    outprintf(DATA,'uf=%s\n',DATA.binoc{1}.uf);
     
     if DATA.showxy(3)
         outprintf(DATA,'ch12+\n'); %R
@@ -1352,6 +1512,9 @@ function SendState(DATA, varargin)
     if DATA.showxy(1)
         outprintf(DATA,'ch10+\n'); %B
     end
+%send op first, as it may change the way what follows is interpreted
+% eg if op=+bf (back fixed)
+    SendCode(DATA,{'optionflag'}); 
 
     if length(DATA.binoc) > 1 && isstruct(DATA.binoc{2})
     f = fields(DATA.binoc{2});
@@ -1382,7 +1545,9 @@ function SendState(DATA, varargin)
             fprintf('Not sending %s\n',f{j});
             end
         elseif sum(strcmp(f{j},DATA.redundantcodes))
-            fprintf('Not sending %s\n',f{j});
+            if DATA.verbose(4)
+                fprintf('Not sending %s\n',f{j});
+            end
         elseif ischar(DATA.binoc{1}.(f{j}))
         outprintf(DATA,'%s=%s\n',f{j},DATA.binoc{1}.(f{j}));
         else
@@ -1457,7 +1622,7 @@ function SaveExpt(DATA, name)
     fprintf(fid,'st=%s\n',DATA.stimulusnames{DATA.stimtype(1)});
     fprintf(fid,'%s\n',CodeText(DATA, 'expts'));
     fprintf(fid,'%s\n',CodeText(DATA, 'nr'));
-    fprintf(fid,'uf=%s\n',DATA.datafile);
+    fprintf(fid,'uf=%s\n',DATA.binoc{1}.uf);
     
     fprintf(fid,'mo=back\n');
     fprintf(fid,'st=%s\n',DATA.stimulusnames{DATA.stimtype(2)});
@@ -1544,24 +1709,41 @@ else
 end
 end
 outprintf(DATA,'NewMatlab\n');
-pause(0.01);
-DATA = ReadFromBinoc(DATA,'reset','expect');
+ts = now;
+DATA = ReadFromBinoc(DATA,'reset');
+n = 1;
+while DATA.togglecodesreceived == 0 && mytoc(ts) < 4
+    pause(0.01);
+    DATA = ReadFromBinoc(DATA);
+    n = n+1;
+end
+DATA.readdur = mytoc(ts);
+if DATA.verbose(4)
+    fprintf('Reading binoc took %.2f, %d attempts\n',DATA.readdur,n);
+end
 if readflag
-    DATA = GetState(DATA);
+    DATA = GetState(DATA,'OpenPipe');
 end
 SetGui(DATA,'set');
  
     
-function DATA = GetState(DATA, verbose)
-    if nargin == 1
+function DATA = GetState(DATA, caller, verbose)
+    if nargin < 3
         verbose = 0;
+    end
+    if nargin < 2
+        caller = 'unknown';
     end
     if DATA.network
         str = [DATA.ip 'getstate'];
         ts = now;
+        myprintf(DATA.frombinocfid,'Getstate caller: %s\n,',caller)
         [bstr, status] = urlread(str);
         a = mytoc(ts); %getting here is fast. Its interpretline that is slow.
-         DATA = InterpretLine(DATA, bstr,'frombinoc');
+        if isempty(bstr)
+            vergwarning('GetState Return is Emtpy');
+        end
+         DATA = InterpretLine(DATA, bstr,'fromgetstate');
          if verbose
              fprintf('Read/Interpret took %.3f,%.3f\n',a,mytoc(ts));
          end
@@ -1589,7 +1771,7 @@ function DATA = SetTrial(DATA, T)
     end
     
     if isfield(DATA.binoc{1},'id')
-        if ~isfield(T,'id') | DATA.binoc{1}.id > T.id
+        if ~isfield(T,'id') | isempty(T.id) | DATA.binoc{1}.id > T.id
         DATA.Trials(nt).id = DATA.binoc{1}.id;
         end
     end
@@ -1642,7 +1824,7 @@ DATA = SetField(DATA,'ip','http://localhost:1110/');
 DATA.network = 1;
 DATA.lastmsg = '';
 DATA.errors(1) = 0; %keep track of  erros received, so only acknowlge first
-DATA.confused = 1;
+DATA.confused = 0;
 DATA.servodata.alldepths = [];
 DATA.servodata.alltimes = [];
 DATA.servodata.stepsize = 0;
@@ -1651,6 +1833,8 @@ DATA.Trial.rw = 0;
 DATA.newbinoc = 2;
 DATA.ready = 0;
 DATA.timerperiod = 0.05;
+DATA.runsequence = 0;
+DATA.canceltimer = 0;
 DATA.pausereading = 0;  %stop timer driven reads when want to control
 DATA.binocisup = 0;
 DATA.savestrs = 0;
@@ -1718,7 +1902,7 @@ DATA.stimflags{1}.nc = 1;
 DATA.stimflagnames.nc = 'Black Dots';
 DATA.stimflagnames.pc = 'White Dots';
 if ~isfield(DATA,'verbose')
-    DATA.verbose = [0 0 0 0 0 1];
+    DATA.verbose = [0 0 0 0 0 1 0];
 end
 DATA = SetField(DATA,'matexpt','');
 DATA = SetField(DATA,'perfmonitor',0);
@@ -1729,7 +1913,7 @@ DATA.commands = {};
 DATA.commandctr = 1;
 DATA.historyctr = 0;
 DATA.inexpt = 0;
-DATA.datafile = [];
+DATA.binoc{1}.uf = '';
 DATA.electrodestrings = {'Not Set'};
 DATA.userstrings = {'bgc' 'ali' 'ink' 'agb'};
 DATA.monkeystrings = {'Icarus' 'Junior Barnes' 'Lemieux' 'Pepper' 'Rufus' };
@@ -1896,11 +2080,15 @@ function [strs, Keys] = ReadHelp(DATA)
             code = code(2:end);
             Keys.options.(code) = str;
             lastcode = code;
-        elseif txt{j}(1) == '#' && ~isempty(lastcode)
-            if isfield(Keys.extras,lastcode)
-                Keys.extras.(lastcode){end+1} = txt{j}(2:end);
+        elseif txt{j}(1) == '#' 
+            if ~isempty(lastcode)
+                if isfield(Keys.extras,lastcode)
+                    Keys.extras.(lastcode){end+1} = txt{j}(2:end);
+                else
+                    Keys.extras.(lastcode){1} = txt{j}(2:end);
+                end
             else
-                Keys.extras.(lastcode){1} = txt{j}(2:end);
+                code
             end
         elseif ~isempty(code) && txt{j}(1) ~= '#'
             if isfield(strs,code) && DATA.verbose(4)
@@ -2026,8 +2214,8 @@ function DATA = InitInterface(DATA)
                 set(cntrl_box,'DefaultUIControlFontSize',DATA.font.FontSize);
                 set(cntrl_box,'DefaultUIControlFontName',DATA.font.FontName);
 
-
-    if isfield(DATA.showflags,'do')
+%?? do we still need to do this? 
+    if isfield(DATA.showflags,'do') && DATA.togglecodesreceived == 0 
     DATA.showflags = rmfield(DATA.showflags,'do');
     end
     f = fields(DATA.showflags);
@@ -2101,7 +2289,7 @@ function DATA = InitInterface(DATA)
     
     bp(1) = bp(1)+bp(3);
     bp(3) = 1-bp(1)-0.1;
-    uicontrol(gcf,'style','edit','string',DATA.datafile, ...
+    uicontrol(gcf,'style','edit','string',DATA.binoc{1}.uf, ...
         'units', 'norm', 'position',bp,'value',1,'Tag','DataFileName','callback',{@TextGui, 'uf'});
     bp(1) = bp(1)+bp(3);
     bp(3) = 0.1;
@@ -2373,7 +2561,6 @@ function DATA = InitInterface(DATA)
     subm = uimenu(cntrl_box,'Label','Pipes');
     uimenu(subm,'Label','Reopen Pipes','Callback',{@ReadIO, 6});
     uimenu(subm,'Label','reopenserial','Callback',{@SendStr, '\reopenserial'});
-    uimenu(subm,'Label','Test','Callback',{@TestIO});
     uimenu(subm,'Label','Read','Callback',{@ReadIO, 1});
     uimenu(subm,'Label','GetState','Callback',{@ReadIO, 2});
     uimenu(subm,'Label','NewStart','Callback',{@ReadIO, 3});
@@ -2384,7 +2571,7 @@ function DATA = InitInterface(DATA)
     xm = uimenu(sm,'Label','To Binoc', 'Callback', {@SetVerbose, 1});
     SetMenuCheck(xm, DATA.verbose(1));
     xm = uimenu(sm,'Label','From Binoc','Callback', {@SetVerbose, 2});
-    SetMenuCheck(xm, DATA.verbose(2));
+    SetMenuCheck(xm, DATA.verbose(7));
     xm = uimenu(sm,'Label','Trial Data', 'Callback',{@SetVerbose, 3});
     SetMenuCheck(xm, DATA.verbose(3));
     xm = uimenu(sm,'Label','verg state', 'Callback',{@SetVerbose, 4});
@@ -2399,6 +2586,8 @@ function DATA = InitInterface(DATA)
     sm = uimenu(subm,'Label','Restart Binoc between Expts','Callback',{@SetMenuToggle, 'restartbinoc'});
     sm = uimenu(subm,'Label','Send Expt Trigger to Spike2','Callback',{@SendStr, '!expttrigger'});
     uimenu(subm,'Label','Log Inputs','Callback',{@ReadIO, 'openlog'});
+    sm = uimenu(subm,'Label','Tests');
+    uimenu(sm,'Label','Run/Cancel','Callback',{@TestIO, 'cancel'});
 
     subm = uimenu(hm,'Label','&Software Offset');
     uimenu(subm,'Label','&Null','Callback',{@SendStr, 'sonull'},'accelerator','E');
@@ -2410,6 +2599,7 @@ function DATA = InitInterface(DATA)
     uimenu(hm,'Label','Clear Drawn Lines','Callback',{@SendStr, '!clearlines'});
     uimenu(hm,'Label','BlackScreen (shake)','Callback',{@MenuHit, 'setshake'},'accelerator','B');
     uimenu(hm,'Label','pipelog','Callback',{@MenuHit, 'pipelog'});
+    uimenu(hm,'Label','Update Network Psych Files','Callback',{@MenuHit, 'updatepsych'});
     uimenu(hm,'Label','freereward','Callback',{@MenuHit, 'freereward'},'accelerator','R');
     uimenu(hm,'Label','Run One Trial','Callback',{@MenuHit, 'onetrial'},'accelerator','1');
 %    hm = uimenu(cntrl_box,'Label','Mark');
@@ -2593,6 +2783,8 @@ function MenuHit(a,b, arg)
         set(DATA.toplevel,'UserData',DATA);
     elseif strcmp(arg,'freereward')
         outprintf(DATA,'freerwd\n');
+    elseif strcmp(arg,'updatepsych')
+        UpdatePsychFile(DATA.binoc{1}.psychfile);
     elseif strcmp(arg,'onetrial')
         outprintf(DATA,'!onetrial\n');
     elseif strcmp(arg,'pipelog')       
@@ -2607,8 +2799,12 @@ function MenuHit(a,b, arg)
         outprintf(DATA,'usershake\n');
         
     elseif strcmp(arg,'showpsych')
+        DATA = SetFigure('VergPsych', DATA);
         DATA.psych.blockmode = 'Current';
-        PlotPsych(DATA);
+        DATA = PlotPsych(DATA);
+        if ~isempty(DATA.err)
+            fprintf('%s\n',DATA.err);
+        end
         set(DATA.toplevel,'UserData',DATA);
     end
     
@@ -3133,6 +3329,9 @@ function MenuGui(a,b)
              if DATA.verbose(1)
                  fprintf('%s\n',str);
              end
+             if(DATA.tobinocfid > 0)
+                 fprintf(DATA.tobinocfid,'%s:%s\n',datestr(now),str);
+             end
              ts = now;
              [bstr, status] = urlread(str,'Timeout',2);
              if ~isempty(bstr)
@@ -3178,11 +3377,11 @@ function MenuGui(a,b)
      DATA = GetDataFromFig(a);
 
     if strcmp(flag,'openlog')
-        DATA = OpenBinocLog(DATA);
+        DATA = OpenBinocLog(DATA,'frombinoc');
         SetData(DATA);
     elseif flag == 2
          ts = now;
-         DATA = GetState(DATA,1);
+         DATA = GetState(DATA,'ReadIO',1);
          fprintf('Manual State took %.2f',mytoc(ts));
          set(DATA.toplevel,'UserData',DATA);
          SetGui(DATA);
@@ -3205,7 +3404,7 @@ function MenuGui(a,b)
         stop(DATA.timerobj);
          DATA = OpenPipes(DATA, 0);
          SendState(DATA,'all');
-         DATA = GetState(DATA);
+         DATA = GetState(DATA,'Reopen');
          SetGui(DATA);
          StartTimer(DATA);
          set(DATA.toplevel,'UserData',DATA);
@@ -3217,7 +3416,7 @@ function MenuGui(a,b)
          else
              DATA.verbose = 2;
              set(a,'Label','Quiet pipes');
-             DATA = OpenBinocLog(DATA);
+             DATA = OpenBinocLog(DATA,'frombinoc');
          end
          outprintf(DATA,'verbose=%d\n',DATA.verbose(2));
          set(DATA.toplevel,'UserData',DATA);
@@ -3245,6 +3444,9 @@ function SetMenuToggle(a,b,flag)
      
 function SetVerbose(a,b, flag)
      DATA = GetDataFromFig(a);
+%verbose(4) Prints each trial outcome to console
+%verbose(2) is sent to binoc controls prints/NSlogs there
+%verbose(7) makes verg print what it receives from binoo
 
      if flag == 0
          DATA.verbose = zeros(size(DATA.verbose));
@@ -3301,7 +3503,11 @@ function StartTimer(DATA, onoff)
 function onoff = PauseRead(DATA, onoff)
 %onoff 1 = pause is ON.
 if isfield(DATA,'toplevel') && isfigure(DATA.toplevel)
+    current_state = getappdata(DATA.toplevel,'PauseReading');
     if nargin == 2
+        if onoff == current_state
+            fprintf('Pause is already %d\n',onoff);
+        end
         setappdata(DATA.toplevel,'PauseReading',onoff);
         if isfield(DATA,'timerobj') & isvalid(DATA.timerobj)
             on = strcmp(get(DATA.timerobj,'Running'),'on');
@@ -3312,7 +3518,7 @@ if isfield(DATA,'toplevel') && isfigure(DATA.toplevel)
             end
         end
     else
-        onoff = getappdata(DATA.toplevel,'PauseReading');
+        onoff = current_state;
     end
 end
         
@@ -3331,7 +3537,10 @@ end
          end
          j = j+1;
      end
-     PauseRead(DATA,1);
+     paused = PauseRead(DATA); %get current state
+     if paused ==0
+        PauseRead(DATA,1);
+     end
     DATA= CheckExptMenus(DATA);
     SetTextItem(DATA.toplevel,'Expt1Nstim',DATA.nstim(1));
     SetTextItem(DATA.toplevel,'Expt2Nstim',DATA.nstim(2));
@@ -3443,7 +3652,9 @@ end
         fprintf('SetGUI: Ex%d\n',DATA.inexpt);
     end
     DATA.guiset = 1;
-    PauseRead(DATA,0);
+    if paused == 0 %only release pause if we weren't paused at the start.
+        PauseRead(DATA,0);
+    end
 
     
     
@@ -3508,10 +3719,23 @@ function CheckInput(a,b, fig, varargin)
     end
     if DATA.confused
         fprintf('Getting State from binoc\n');
-        DATA = GetState(get(DATA.toplevel,'UserData'));
+        DATA = GetState(get(DATA.toplevel,'UserData'),'Confused');
         DATA.confused = 0;
         SetData(DATA);
         fprintf('inexpt is now %d\n',DATA.inexpt);
+    end
+    if DATA.canceltimer > 0 
+        if isfield(DATA,'Expts') && ~isempty(DATA.Expts)
+        if DATA.inexpt
+            if(now-DATA.Expts{end}.Start > (DATA.canceltimer ./ (24 * 60* 60)));            
+                DATA = RunButton(DATA,'Cancel',1);
+            end
+        else
+            if(now-DATA.Expts{end}.End > (DATA.canceltimer ./ (24 * 60* 60)));            
+                DATA = RunButton(DATA,'Run',1);
+            end            
+        end
+        end
     end
     if DATA.verbose(1) > 1
     fprintf('Timer read over at %s\n',datestr(now));
@@ -3526,6 +3750,7 @@ silent = 1;
 str = [];
 persistent httpbusy;
 persistent lastts;
+srcchr = '';
      
 if isempty(lastts)
     lastts = 0;
@@ -3534,6 +3759,7 @@ end
 if isempty(httpbusy)
     httpbusy = 0;
 end
+    args = {};
     while j <= length(varargin)
          if strncmpi(varargin{j},'verbose',5)
              verbose(1) = 1;
@@ -3544,15 +3770,22 @@ end
                 j = j+1;
                 expecttime = varargin{j};
             end
+         elseif strncmpi(varargin{j},'auto',4)
+             srcchr = 'T';
+         elseif strncmpi(varargin{j},'paused',4)
+             args = {args{:} varargin{j}};
          elseif strncmpi(varargin{j},'reset',5)
              httpbusy = 0;
          end
          j = j+1;
     end
 
+    DATA.httpbusy = httpbusy;
+    DATA.readdur = 0;
      if httpbusy
          return;
      end
+     
      ts = now;
     [str, status] = urlread([DATA.ip 'whatsup']);
     if expecting && DATA.verbose(4) %verg state
@@ -3579,16 +3812,17 @@ end
      end
 
     took = mytoc(ts);
+    DATA.readdur = took;
     if DATA.verbose(5)
         fprintf('Binoc status%d:%s\n',status,str);
         fprintf('Read took %.3f,%.3f\n',took,mytoc(ts));
-    elseif DATA.verbose(2) && ~strncmp(str,'SENDING000000',13)
+    elseif DATA.verbose(7) && ~strncmp(str,'SENDING000000',13)
         fprintf('Binoc status%d:%s\n',status,str);
     end
     if isempty(str)
         [DATA,lastts] = CheckForNewBinoc(DATA,lastts);
     else
-        DATA = InterpretLine(DATA,str,'frombinoc');
+        DATA = InterpretLine(DATA,str,['frombinoc' srcchr],args{:});
     end
 %    myprintf(DATA.frombinocfid,'ReadBinoc%s:  %s',datestr(now),str);
     if ~isfield(DATA,'trialcounts')
@@ -3646,13 +3880,13 @@ end
      if DATA.outid <= 1
          return;
      end
-     if verbose(2)
+     if verbose(7)
      fprintf('%s:',datestr(now,'HH:MM:SS.FFF'))
      end
      myprintf(DATA.frombinocfid,'ReadBinoc %.3f\n',mytoc(DATA.starttime));
      outprintf(DATA,'whatsup\n');
      a = fread(DATA.inid,14);
-     if verbose(2)
+     if verbose(7)
          fprintf('OK\n');
      end
      if expecting && strcmp(char(a'),'SENDING000000')
@@ -3661,7 +3895,7 @@ end
      end
      rbusy = 0;
      if DATA.frombinocfid > 0 && ~isempty(a)
-         fprintf(DATA.frombinocfid,'%s %s',datestr(now),char(a'));
+         fprintf(DATA.frombinocfid,'%sB %s',datestr(now),char(a'));
      end
      if strncmp(char(a'),'SENDINGstart1',12)
         a = fread(DATA.inid,14);
@@ -3696,12 +3930,12 @@ end
              [DATA, lastts] = CheckForNewBinoc(DATA, lastts);
          end
      end
-     if verbose(2)
+     if verbose(7)
      fprintf('Need %d bytes\n',nbytes);
      end
      if nbytes > 0
          a = fread(DATA.inid,nbytes);
-         if verbose(2)
+         if verbose(7)
          fprintf('%s',char(a'));
          fprintf('Read %d bytes took %.2f\n',length(a),mytoc(ts));
          end
@@ -3775,14 +4009,35 @@ function Expt = ExptSummary(DATA)
         
 function DATA = RunButton(a,b, type)
         DATA = GetDataFromFig(a);
-        fprintf('Run Hit Inexpt %d, type %d %s\n',DATA.inexpt,type,datestr(now));
+        if isstruct(a)
+            if ~isempty(b)
+                caller = b;
+            else
+                caller = ['Seq'];
+            end
+        else
+            caller = get(a,'String');
+            if sum(strcmp(caller,{'Cancel' 'Finish'})) %really hit button
+                DATA.canceltimer = 0;
+            end
+        end
+        ts = now;
+        myprintf(DATA.frombinocfid,'-show','%s Hit Inexpt %d, type %d %s\n',caller,DATA.inexpt,type,datestr(now));
         PauseRead(DATA,1);
+        pauseread = getappdata(DATA.toplevel, 'PauseReading');
+        if pauseread ==0
+            myprintf(DATA.frombinocfid,'PAUSE ERROR pause %d\n',pauseread);
+        end
 
         DATA.newexptdef = 0;
         DATA.matexpres = [];
         inexpt = 0;
         if type == 1
             if DATA.inexpt == 0 %sarting a new one. Increment counter
+        pauseread = getappdata(DATA.toplevel, 'PauseReading');
+        if pauseread ==0
+            myprintf(DATA.frombinocfid,'PAUSE ERROR pause %d\n',pauseread);
+        end
                 if DATA.optionflags.exm && ~isempty(DATA.matexpt)
                     fprintf('Running %s\n',DATA.matexpt);
                     DATA.matexpres = eval(DATA.matexpt);
@@ -3803,8 +4058,7 @@ function DATA = RunButton(a,b, type)
                 DATA.Expts{DATA.nexpts} = ExptSummary(DATA);
                 DATA.optionflags.do = 1;
                 DATA.exptstoppedbyuser = 0;
-                DATA = ReadFromBinoc(DATA,'expect');
-                CheckExptIsGood(DATA);
+                caller = 'Run';
                 inexpt = 1;
                 %            DATA = GetState(DATA);
             else
@@ -3813,29 +4067,12 @@ function DATA = RunButton(a,b, type)
                 if DATA.verbose(4)
                     fprintf('Before Cancel: Inexpt %d\n',DATA.inexpt);
                 end
-                outprintf(DATA,'\\ecancel\n');
-                [DATA, str] = ReadFromBinoc(DATA,'expect', 4);
-                if DATA.verbose(4)
-                    fprintf('Cancel: Inexpt %d %s\n',DATA.inexpt,str);
-                end
-                DATA = AddTextToGui(DATA,'Cancelled','norec');
-                if DATA.nexpts > 0
-                DATA.Expts{DATA.nexpts}.last = DATA.Trial.Trial;
-                DATA.Expts{DATA.nexpts}.End = now;
-                end
-                DATA.optionflags.do = 0;
                 DATA.exptstoppedbyuser = 1;
+                outprintf(DATA,'\\ecancel\n');
             end
         elseif type == 2
-            outprintf(DATA,'\\estop\n');
-            DATA = ReadFromBinoc(DATA,'expect',4);
-            DATA.rptexpts = 0;
-            DATA.Expts{DATA.nexpts}.last = DATA.Trial.Trial;
-            DATA.Expts{DATA.nexpts}.End = now;
-            ti = 1 + DATA.Trial.Trial-DATA.Expts{DATA.nexpts}.first;
-            DATA.optionflags.do = 0;
-            DATA = AddTextToGui(DATA,['Stopped after ' num2str(ti) ' Trials']);
             DATA.exptstoppedbyuser = 1;
+            outprintf(DATA,'\\estop\n');
             inexpt = 0;
         end
 %if expt is over, EXPTOVER should be received. - query state then
@@ -3844,38 +4081,71 @@ function DATA = RunButton(a,b, type)
     if DATA.verbose(4)
         fprintf('RunButton: Inexpt %d\n',DATA.inexpt);
     end
-    DATA = GetState(DATA);
-    if DATA.inexpt ~= inexpt; %not caught up yet
-        myprintf(DATA.frombinocfid,'-show','Expt Button Confused Inexpt is %d. Trying again\n',DATA.inexpt);
-        DATA = ReadFromBinoc(DATA,'expect',0.5);
-        DATA = GetState(DATA);
+%    DATA = GetState(DATA,'Runbutton');
+    x(1) = mytoc(ts);
+    ts = now;
+    while DATA.inexpt ~= inexpt  && mytoc(ts) < 10 %not caught up yet
+        pauseread = getappdata(DATA.toplevel, 'PauseReading');
+        if pauseread ==0
+            myprintf(DATA.frombinocfid,'PAUSE ERROR pause %d\n',pauseread);
+        end
+        DATA = ReadFromBinoc(DATA,'RunButton','paused');
+        myprintf(DATA.frombinocfid,'Read Done %.2f %s. DATA.inexpt %d\n',mytoc(ts),datestr(now),DATA.inexpt);
         if DATA.inexpt ~= inexpt
-            myprintf(DATA.frombinocfid,'-show','Still Confused\n');
-            DATA.confused = 1;
+            pause(0.5);
         end
     end
+    x(2) = mytoc(ts);
+    if sum(strcmp(caller,{'Cancel' 'Seqcancel'}))
+          DATA = AddTextToGui(DATA,'Cancelled','norec');
+                if DATA.nexpts > 0
+                DATA.Expts{DATA.nexpts}.last = DATA.Trial.Trial;
+                DATA.Expts{DATA.nexpts}.End = now;
+                end
+                DATA.optionflags.do = 0;
+                if strcmp(caller,'Cancel')
+                    DATA.exptstoppedbyuser = 1;
+                end
+    elseif strcmp(caller,'Run')
+       CheckExptIsGood(DATA);
+    elseif strcmp(caller,'Finish')
+            DATA.rptexpts = 0;
+            DATA.Expts{DATA.nexpts}.last = DATA.Trial.Trial;
+            DATA.Expts{DATA.nexpts}.End = now;
+            ti = 1 + DATA.Trial.Trial-DATA.Expts{DATA.nexpts}.first;
+            DATA.optionflags.do = 0;
+            DATA = AddTextToGui(DATA,['Stopped after ' num2str(ti) ' Trials']);
+            DATA.exptstoppedbyuser = 1;
+    end
+    if DATA.inexpt ~= inexpt
+            myprintf(DATA.frombinocfid,'-show','Expt Button (%s) Confused Inexpt is %d,%d. Trying again\n',caller,DATA.inexpt,inexpt);
+            DATA = GetState(DATA, 'RunButton');
+            if DATA.inexpt ~= inexpt
+                DATA.confused = 1;
+            end
+    else
+        DATA.confused = 0;
+    end
     set(DATA.toplevel,'UserData',DATA);    
+    pauseread = getappdata(DATA.toplevel, 'PauseReading');
+    if pauseread == 0
+        myprintf(DATA.frombinocfid,'PAUSE ERROR pause %d\n',pauseread);
+    end
+    myprintf(DATA.frombinocfid,'Runbutton Done %.2f pause %d\n',x,pauseread);
     SetGui(DATA);
     PauseRead(DATA,0);
 
     CheckTimer(DATA);
      
-    function TestIO(a,b)
+    function TestIO(a,b, str)
         
         DATA = GetDataFromFig(a);
- %       if DATA.outid > 0
- %           fclose(DATA.outid);
- %       end
-        %fclose('all');
         if ~isfield(DATA,'outpipe')
             DATA = OpenPipes(DATA, 1);
         end
-        if DATA.outid <= 0
-        DATA.outid = fopen(DATA.outpipe,'w');
+        if strcmp(str,'cancel')
+            DATA.canceltimer = 10;
         end
-        outprintf(DATA,'ed+10\n');
-%        fclose(DATA.outid);
-%        DATA.outid = 0;
         set(DATA.toplevel,'UserData',DATA);
         
 function ElectrodeMoved(F, pos, varargin) %called by ServoDrive
@@ -4239,10 +4509,9 @@ function CodesPopup(a,b, type)
           end
           if isfield(DATA.helpstrs,code)
               if isfield(DATA.helpkeys.extras,code)
-                  s = [s '*   ;*  ' DATA.helpstrs.(code)];
-              else
-                  s = [s '   ;   ' DATA.helpstrs.(code)];
+                  s = regexprep(s,' ',' *','once');
               end
+              s = [s '   ;   ' DATA.helpstrs.(code)];
               keys{j+nl} = DATA.helpkeys.KeyWords.(code);
           end
           a(nc+nl,1:length(s)) = s;
@@ -4327,6 +4596,8 @@ setappdata(GetFigure(lst),'OldText',a);
 
 if strcmp(type,'popuphelp')
     CodesPopup(helpmenu,b,'byhelp');
+elseif strcmp(type,'popup')
+    CodesPopup(helpmenu,b,'bycode');
 end
 
 function HelpHit(a,b)
@@ -4334,16 +4605,18 @@ DATA = GetDataFromFig(a);
 
 str = get(a,'string');
 l = get(a,'value');
-code = str(l,:);
-code = regexprep(code,'\s.*','');
-fpos = get(GetFigure(a),'position');
-if isfield(DATA.helpkeys.extras,code)
-    cm = uicontextmenu;
-    X = DATA.helpkeys.extras.(code);
-    for j = 1:length(X)
-        uimenu(cm,'label',X{j});
+if length(l) == 1
+    code = str(l,:);
+    code = regexprep(code,'\s.*','');
+    fpos = get(GetFigure(a),'position');
+    if isfield(DATA.helpkeys.extras,code)
+        cm = uicontextmenu;
+        X = DATA.helpkeys.extras.(code);
+        for j = 1:length(X)
+            uimenu(cm,'label',X{j});
+        end
+        set(cm,'position', [50 fpos(4)/2],'visible','on');
     end
-    set(cm,'position', [50 fpos(4)/2],'visible','on');
 end
 
 
@@ -4517,6 +4790,9 @@ function DATA = RunExptSequence(DATA, str, line)
         lastline = runlines(end);
     end
     firstline = line;
+    if DATA.runsequence == 0
+        return;
+    end
  
     if line > lastline
         if DATA.rptexpts > 0
@@ -4549,9 +4825,11 @@ for j = line:length(str)
         fprintf('From Seq window %s\n',str{j});
     end
     nread = 1+j-line;
+    rptstogo = DATA.rptexpts;
     DATA = InterpretLine(DATA,str{j},'fromseq');
     DATA = uipause(DATA.pausetime,DATA.readpause,'Pause in sequence', DATA); %for pauses set in window
     DATA.readpause = 0;
+    DATA.rptexpts = rptstogo; %don't let stimfiles change this
     if strncmp(str{j},'!expt',5)
 %need to do this before sending !expt to binoc, so that UserData is set
 % before binoc calls back with settings
@@ -4559,7 +4837,7 @@ for j = line:length(str)
             DATA.matlabwasrun = 1;
         end
         if firstline > 1
-            fprintf('Pausing for Next Expt in Sequnce %s\n',datestr(now));
+            fprintf('Pausing for Next Expt in Sequnce Line %d %s\n',j,datestr(now));
             DATA= uipause(now, DATA.binoc{1}.seqpause,'Fixed Sequence Pause', DATA);
         end
   %if mat was called in the sequence file, don't want it overridden by the matept file
@@ -4627,6 +4905,11 @@ function DATA = uipause(start, secs, msg, DATA)
     if secs <= 0
         return;
     end
+    args = {'frompause'};
+    paused = getappdata(DATA.toplevel,'PauseReading');
+    if paused
+        args = {args{:} 'paused'};
+    end
     days = secs/(24 * 60 * 60);
     wh = waitbar(0,sprintf('%.1f sec %s at %s',secs,msg,datestr(start)));
     while (now - start) < days
@@ -4634,7 +4917,7 @@ function DATA = uipause(start, secs, msg, DATA)
         wdur = (now-start) * (24 * 60 * 60);
         waitbar(dt,wh,sprintf('%.1f/%.1f sec %s at %s',wdur,secs,msg,datestr(start)));
         if nargin > 3
-            DATA = ReadFromBinoc(DATA);
+            DATA = ReadFromBinoc(DATA, args{:});
         end
     end
     delete(wh);
@@ -4643,7 +4926,7 @@ function DATA = uipause(start, secs, msg, DATA)
 function DATA = ContinueSequence(DATA)
   cntrl_box = findobj('Tag',DATA.windownames{8},'type','figure');
   lst = findobj(cntrl_box,'Tag','SequenceList');
-  if DATA.newbinoc == 0 %don't call this when just parsing initial state
+  if DATA.newbinoc == 0 && ~isempty(lst) %don't call this when just parsing initial state
       DATA = RunExptSequence(DATA,get(lst,'string'),DATA.seqline+1);
   end
 
@@ -4678,8 +4961,12 @@ function SequencePopup(a,exptlines,type)
   cntrl_box = findobj('Tag',DATA.windownames{8},'type','figure');
   if ~strcmp(type,'popup')
       if strcmp(type,'run')
+          DATA.runsequence = 1;
           lst = findobj(cntrl_box,'Tag','SequenceList');
           RunExptSequence(DATA,get(lst,'string'),1);
+      elseif strcmp(type,'pause')
+          DATA.runsequence = 0;
+          SetData(DATA);
       end
       return;
   end
@@ -4700,6 +4987,10 @@ bp(3) = 1./nc;
 bp(4) = 1./nr;
 uicontrol(gcf,'style','pushbutton','string','Run', ...
     'Callback', {@SequencePopup, 'run'} ,...
+    'units', 'norm', 'position',bp,'value',1);
+bp(1) = bp(1)+bp(3)+0.01;
+uicontrol(gcf,'style','pushbutton','string','Pause', ...
+    'Callback', {@SequencePopup, 'pause'} ,...
     'units', 'norm', 'position',bp,'value',1);
 
 lst = uicontrol(gcf, 'Style','edit','String', 'sequence',...
@@ -5363,6 +5654,8 @@ if strcmp(code,'optionflag')
         s = [s sprintf('e2=%s\ni2=%s\nm2=%6f\nn2=%d\n',DATA.exptype{2},DATA.binoc{1}.i2,DATA.mean(2),DATA.nstim(2))];
         s = [s sprintf('e3=%s\ni3=%s\nm3=%.6f\nn3=%d\n',DATA.exptype{3},DATA.binoc{1}.i3,DATA.mean(3),DATA.nstim(3))];
         s = AddCustomStim(DATA,s,1);
+    elseif strcmp(code,'verbose')
+        s = sprintf('verbose=%d\n',DATA.verbose(2));
     elseif strcmp(code,'st')
         s = sprintf('st=%s',DATA.stimulusnames{DATA.stimtype(cstim)});
     elseif strcmp(code,'vve')
@@ -5372,7 +5665,7 @@ if strcmp(code,'optionflag')
         f = fields(DATA.showflags);
         s = sprintf('pf=%s',sprintf('+%s',f{:}));
     elseif isfield(DATA.binoc{cstim},code)
-        id = strmatch(code,{DATA.comcodes.code},'exact');
+        id = find(strcmp(code,{DATA.comcodes.code}));
         if length(id) ==1 && DATA.comcodes(id).type == 'C'
             s = sprintf('%s=%s',code,DATA.binoc{cstim}.(code));
         else
@@ -5885,7 +6178,8 @@ function ClearTaggedChecks(it, tags)
 function ChoosePsych(a,b, mode)
     DATA = GetDataFromFig(a);
     onoff = {'off' 'on'};
-    
+    F = GetFigure(a);
+    Expts = getappdata(F,'Expts');
     if strncmp(mode,'Expt',4)
         e = sscanf(mode,'Expt%d');
         if length(DATA.plotexpts) < e
@@ -5894,7 +6188,7 @@ function ChoosePsych(a,b, mode)
             DATA.plotexpts(e) = ~DATA.plotexpts(e);
         end
         DATA.psych.blockmode = 'Select';
-        PlotPsych(DATA);
+        PlotPsych(DATA, Expts);
         if strmatch(DATA.psych.blockmode,'OneOnly')
             c = get(get(a,'parent'),'children');
             set(c,'checked','off');
@@ -5937,6 +6231,17 @@ function ChoosePsych(a,b, mode)
         DATA.psych.(mode) = ~DATA.psych.(mode);
         set(a,'Checked',onoff{DATA.psych.(mode)+1});
         PlotPsych(DATA);
+    elseif strmatch(mode,'choosepsychfile')
+        [name, path] = uigetfile(['/local/data/psych/' DATA.binoc{1}.monkey '/*.*'],'select psych data file');
+        if name
+            Expts = ReadPsychFile([path '/' name]);
+            setappdata(gcf,'Expts',Expts);
+            PsychMenu(DATA,Expts);
+        end
+    elseif strmatch(mode,'readpsychfile')
+        Expts = ReadPsychFile(DATA.binoc{1}.psychfile);
+        setappdata(gcf,'Expts',Expts);
+        PsychMenu(DATA,Expts);
     elseif strcmp(mode,'savetrials');
         [outname, pathname] = uiputfile(['/local/' DATA.binoc{1}.monkey '/PsychDat.mat']);
         if outname
@@ -5967,6 +6272,8 @@ function DATA = SetFigure(tag, DATA)
             sm = uimenu(hm,'Label','Separate by Block','callback', {@ChoosePsych, 'showblocks'},...
                 'checked',onoff{DATA.psych.showblocks+1});
             sm = uimenu(hm,'Label','Save Trial Data','callback', {@ChoosePsych, 'savetrials'});
+            sm = uimenu(hm,'Label','Read Todays PsychFile','callback', {@ChoosePsych, 'readpsychfile'});
+            sm = uimenu(hm,'Label','Read Previous PsychFile','callback', {@ChoosePsych, 'choosepsychfile'});
             set(a,'UserData',DATA.toplevel);
             set(a,'DefaultUIControlFontSize',DATA.font.FontSize);
             set(a,'DefaultUIControlFontName',DATA.font.FontName);
@@ -5975,17 +6282,26 @@ function DATA = SetFigure(tag, DATA)
         set(DATA.toplevel,'UserData',DATA);
     end
 
-function PsychMenu(DATA)    
+function PsychMenu(DATA, varargin)    
+    
+    Expts = DATA.Expts;
+    j = 1; 
+    while j <= length(varargin)
+        if iscell(varargin{j})
+            Expts = varargin{j};
+        end
+        j = j+1;
+    end
     if ~isfield(DATA,'figs')
         return;
     end
     hm = findobj(DATA.figs.VergPsych,'tag','ExptMenu');
     c = get(hm,'children');
     delete(c);
-    for j = 1:length(DATA.Expts)
-        if isfield(DATA.Expts{j},'Trials')
-        nt = length(DATA.Expts{j}.Trials);
-        sm = uimenu(hm,'Label', sprintf('Expt%d %s %d',j,Expt2Name(DATA.Expts{j}),nt),'CallBack', {@ChoosePsych, sprintf('Expt%d',j)});
+    for j = 1:length(Expts)
+        if isfield(Expts{j},'Trials')
+        nt = length(Expts{j}.Trials);
+        sm = uimenu(hm,'Label', sprintf('Expt%d %s %d',j,Expt2Name(Expts{j}),nt),'CallBack', {@ChoosePsych, sprintf('Expt%d',j)});
         if j < length(DATA.plotexpts) && DATA.plotexpts(j)
             set(sm,'Checked','on');
         end
@@ -6010,17 +6326,24 @@ function DATA = CheckExpts(DATA)
         DATA.Expts{j}.Header.rc = 0; %Cant' do rc online at the moment
     end
     
-function DATA = PlotPsych(DATA)
+function DATA = PlotPsych(DATA, Expts)
     
+    if nargin ==1
+        Expts = {};
+    end
     
-    
-    if isempty(DATA.Expts) || isempty(DATA.Trials)
+    DATA.err = '';
+    if (isempty(DATA.Expts) || isempty(DATA.Trials)) && isempty(Expts)
+        DATA.err = sprintf('No Trials/Expts');
         return;
     end
     if strmatch(DATA.psych.blockmode,'None')
+        DATA.err = sprintf('Plotting Off - See ''Expts'' Menu');
         return;
     end
-    DATA = CheckExpts(DATA);
+    if isempty(Expts)
+        DATA = CheckExpts(DATA);
+        Expts = DATA.Expts;
 
     Expt = [];
     e = length(DATA.Expts);
@@ -6063,6 +6386,7 @@ function DATA = PlotPsych(DATA)
     end
     id = unique(allid);
     if length(id) < 2
+        DATA.err = sprintf('Too Few Trials(%d)',length(id));
         return;
     end
     Expt.Trials = DATA.Trials(id);
@@ -6079,8 +6403,11 @@ function DATA = PlotPsych(DATA)
         if isfield(DATA.binoc{1},f{j})
             Expt.Stimvals.(f{j}) = DATA.binoc{1}.(f{j});
         end
+    end
+    else
+        expts = find(DATA.plotexpts);
+        Expt = CombineExpts(Expts(expts));
     end    
-    
     
     if DATA.psych.show
         for j = 1:length(Expt.Trials)
@@ -6100,7 +6427,7 @@ function DATA = PlotPsych(DATA)
             datetick('x','hh:mm');
             axis('tight');
         elseif DATA.psych.showblocks
-            ExptPsych(DATA.Expts(expts),'labelblock',eargs{:});
+            ExptPsych(Expts(expts),'labelblock','nmin',2, 'mintrials', 2, 'shown', eargs{:});
         else
         np = sum(abs([Expt.Trials.RespDir]) ==1); %psych trials
         Expt = FillTrials(Expt,Expt.Stimvals.et);
@@ -6118,7 +6445,8 @@ function DATA = PlotPsych(DATA)
             try
                 [a,b] = ExptPsych(Expt,'nmin',1,'mintrials',2,'shown',eargs{:});
             catch ME
-                fprintf('Error In ExptPsych %s\n',ME.message);
+                DATA.err = sprintf('Error In ExptPsych %s',ME.message);
+                fprintf('%s\n',DATA.err);
             end
             id = find(strcmp(Expt.Stimvals.et,{DATA.comcodes.code}));
             if length(id) == 1

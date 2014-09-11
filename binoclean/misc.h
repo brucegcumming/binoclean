@@ -5,7 +5,7 @@
 FILE *my_r_open();
 FILE *my_Zopen();
 FILE *uncompress();
-char *useenv();
+//char *useenv();
 char *fgetl();
 char *strup();
 char *strflush();

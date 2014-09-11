@@ -503,7 +503,9 @@
 #define STIMULUSDIR (MAXSAVECODES+41)
 #define HELPDIR (MAXSAVECODES+42)
 #define TOTAL_REWARD (MAXSAVECODES+43)
-#define MAXTOTALCODES (MAXSAVECODES+44)  //436
+#define CHOICE_TARGET_OVERLAP (MAXSAVECODES+44)
+#define MAXTOTALCODES (MAXSAVECODES+45)  //437
+#define VERSION_NUMBER (MAXSAVECODES+46)
 
 
 /*
@@ -873,7 +875,7 @@ char *bwtoggle_codes[] = {
 #define SAVE_NEVER 0
 
 // SEND_READ_ONLY = not sent to verg or Spike2 - purely internal
-
+// must be internal to binoc. If verg needs to read code, set to SEND_VERG_ONLY
 ValueCode valstrings[] = {
   {"xo","X offset",  XPOS, 1, 'N' ,2, SEND_EXPT, SAVE_ALWAYS},
     {"yo","Y offset",  YPOS, 1, 'N' ,2, SEND_EXPT, SAVE_ALWAYS},
@@ -948,7 +950,7 @@ ValueCode valstrings[] = {
   {"ch",     "channel Set code",CHANNEL_CODE, 32 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
 // {"sv",     "Static Vergence",STATIC_VERGENCE, 0 , 'N' ,2, SEND_NON_ZERO, SAVE_ALWAYS},
 //  {"wf",     "mean fixation period",WURTZ_DURATION_CODE, 8 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
-  {"bt",     "BW Time",UFF_TIME, 0 , 'N' ,2, SEND_READ_ONLY, SAVE_NEVER},
+  {"bt",     "BW Time",UFF_TIME, 0 , 'N' ,4, SEND_VERG_ONLY, SAVE_NEVER},
   {"Bc",     "Background Contrast",BACK_CONTRAST, 4+INDIRECT, 'N' ,3, SEND_VERG_ONLY, SAVE_NEVER},
   {"ei",     "Expt incr", EXPT_INCR, 16 , 'N' ,5, SEND_EXPT, SAVE_ALWAYS},
   {"em",     "Expt Mean", EXPT_MEAN, 16 , 'N' ,5, SEND_EXPT, SAVE_ALWAYS},
@@ -1270,13 +1272,14 @@ ValueCode valstrings[] = {
   {"posinc",     "Position Displacement per frame",FRAME_DISPLACEMENT, 513 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
   {"aOp",     "absolute OrthoPos",ABS_ORTHOG_POS, 256+512 , 'N' ,2, SEND_EXPLICIT, SAVE_NEVER},
   {"aPp",     "absolute ParaPos",ABS_PARA_POS, 256+512, 'N' ,2, SEND_EXPLICIT, SAVE_NEVER},
-  {"verbose", "Verbosity", VERBOSE_CODE, 128 , 'N' ,2, SEND_EXPLICIT, SAVE_STATE},
+  {"verbose", "Verbosity", VERBOSE_CODE, 128 , 'N' ,0, SEND_EXPLICIT, SAVE_STATE},
     {  "seof", "Seed Offst", SEEDOFFSET, 0, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "serange", "Seed Range", SEEDRANGE, 0, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "nimplaces", "NumDigits for image name", NIMPLACES, 0, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "fixcolors", "Fixpt colors for special tasks", FIXCOLORS, 0, 'N', 0, SEND_VERG_ONLY, SAVE_ALWAYS},
     {  "usenewdirs", "Try different targe location rules", USENEWDIRS, 0, 'N', 0, SEND_VERG_ONLY, SAVE_ALWAYS},
     {  "choicedur", "Choice target persistance", CHOICE_TARGET_DURATION, 0, 'N', 2, SEND_VERG_ONLY, SAVE_ALWAYS},
+    {  "tgtdur", "Choice target Duration in trial", CHOICE_TARGET_OVERLAP, 0, 'N', 2, SEND_VERG_ONLY, SAVE_ALWAYS},
     {  "cha", "Choice target Angle", FORCE_CHOICE_ANGLE, 0, 'N', 2, SEND_EXPT, SAVE_ALWAYS},
     {  "imi", "Image Index", IMAGEINDEX, 0, 'N', 0, SEND_EXPT, SAVE_ALWAYS},
     {  "adapter", "Adapter", CHAMBER_ADAPTER, 0, 'C', 0, SEND_EXPLICIT, SAVE_STATE},

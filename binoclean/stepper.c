@@ -661,6 +661,8 @@ void NewPosition(int pos)
 #endif
     int old = electrodeDepth;
     int portstate;
+// Now disabled. Just return.
+    return;
     
     if(motorinvert){
         while((electrodeDepthOffset-pos) <= 0){

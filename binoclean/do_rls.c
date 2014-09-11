@@ -16,7 +16,7 @@ extern FILE *seroutfile;
 extern Expt expt;
 
 //Ali
-char * VERSION_NUMBER;
+extern char * VERSION_STRING;
 
 
 int init_rls(Stimulus *st,  Substim *sst, float density);
@@ -2063,9 +2063,9 @@ int SaveRls(Stimulus *st, FILE *fd)
     }
     
     if(testflags[SAVE_IMAGES] == 5)
-        fprintf(fd,"BinocDisps RLS %s px %.4f\n",VERSION_NUMBER,deg2pix(1));
+        fprintf(fd,"BinocDisps RLS %s px %.4f\n",VERSION_STRING,deg2pix(1));
     else   if(testflags[SAVE_IMAGES] != 6)
-        fprintf(fd,"BinocFrame RLS %s\n",VERSION_NUMBER);
+        fprintf(fd,"BinocFrame RLS %s\n",VERSION_STRING);
     
     
     offset[0] = pos->xy[0] + st->disp;

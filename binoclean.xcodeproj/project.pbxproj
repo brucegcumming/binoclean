@@ -92,7 +92,6 @@
 		41BF8E3413A174FE00C8B6BA /* cyber.c in Sources */ = {isa = PBXBuildFile; fileRef = 41BF8E0113A174FE00C8B6BA /* cyber.c */; };
 		41BF8E3613A174FE00C8B6BA /* confirm.c in Sources */ = {isa = PBXBuildFile; fileRef = 41BF8E0413A174FE00C8B6BA /* confirm.c */; };
 		41BF8E3713A174FE00C8B6BA /* miscw.c in Sources */ = {isa = PBXBuildFile; fileRef = 41BF8E0513A174FE00C8B6BA /* miscw.c */; };
-		41BF8E3813A174FE00C8B6BA /* useenv.c in Sources */ = {isa = PBXBuildFile; fileRef = 41BF8E0C13A174FE00C8B6BA /* useenv.c */; };
 		41BF8E3A13A174FE00C8B6BA /* myscopy.c in Sources */ = {isa = PBXBuildFile; fileRef = 41BF8E0E13A174FE00C8B6BA /* myscopy.c */; };
 		41BF8E3B13A174FE00C8B6BA /* serial.c in Sources */ = {isa = PBXBuildFile; fileRef = 41BF8E0F13A174FE00C8B6BA /* serial.c */; };
 		41BF8E3C13A174FE00C8B6BA /* stair.c in Sources */ = {isa = PBXBuildFile; fileRef = 41BF8E1913A174FE00C8B6BA /* stair.c */; };
@@ -355,7 +354,6 @@
 		41BF8E0913A174FE00C8B6BA /* stimdefs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stimdefs.h; sourceTree = "<group>"; };
 		41BF8E0A13A174FE00C8B6BA /* fpslider.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fpslider.h; sourceTree = "<group>"; };
 		41BF8E0B13A174FE00C8B6BA /* commdefs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = commdefs.h; sourceTree = "<group>"; };
-		41BF8E0C13A174FE00C8B6BA /* useenv.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = useenv.c; sourceTree = "<group>"; };
 		41BF8E0E13A174FE00C8B6BA /* myscopy.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = myscopy.c; sourceTree = "<group>"; };
 		41BF8E0F13A174FE00C8B6BA /* serial.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = serial.c; sourceTree = "<group>"; };
 		41BF8E1013A174FE00C8B6BA /* WinDefs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WinDefs.h; sourceTree = "<group>"; };
@@ -571,7 +569,6 @@
 				41BF8E0113A174FE00C8B6BA /* cyber.c */,
 				41BF8E0413A174FE00C8B6BA /* confirm.c */,
 				41BF8E0513A174FE00C8B6BA /* miscw.c */,
-				41BF8E0C13A174FE00C8B6BA /* useenv.c */,
 				41BF8E0E13A174FE00C8B6BA /* myscopy.c */,
 				41BF8E0F13A174FE00C8B6BA /* serial.c */,
 				41BF8E1913A174FE00C8B6BA /* stair.c */,
@@ -1260,7 +1257,6 @@
 				41BF8E3713A174FE00C8B6BA /* miscw.c in Sources */,
 				41A8DF9B18D0D8A500511F72 /* DDData.m in Sources */,
 				41A8E01118D0D8A500511F72 /* DDASLLogger.m in Sources */,
-				41BF8E3813A174FE00C8B6BA /* useenv.c in Sources */,
 				41A8E01618D0D8A500511F72 /* DispatchQueueLogFormatter.m in Sources */,
 				41BF8E3A13A174FE00C8B6BA /* myscopy.c in Sources */,
 				41A8DFA518D0D8A500511F72 /* HTTPAsyncFileResponse.m in Sources */,

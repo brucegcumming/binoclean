@@ -93,8 +93,13 @@
 #define ZERO 0
 #define MANUALEVENT 1
 #define TRUE 1
+
+
+#define LONGBUF (BUFSIZ*100)
+
+
 #import "stimuli.h"
-char * VERSION_NUMBER;
+extern char * VERSION_STRING;
 
 
 #define MAXRF 10
@@ -290,7 +295,7 @@ extern Log thelog;
 extern struct BWSTRUCT thebwstruct;
 extern FILE *testfd;
 extern struct timeval signaltime,now,endstimtime,firstframetime,zeroframetime,frametime,alarmstart;
-extern struct timeval calctime,paintframetime,changeframetime,paintfinishtime;
+extern struct timeval calctime,paintframetime,changeframetime,paintfinishtime,sessiontime;
 extern vcoord conjpos[],fixpos[];
 static time_t lastcmdread;
 static struct timeval lastcmdtime;
@@ -1463,25 +1468,32 @@ float ufftime(struct timeval *thetime)
 
 void PrintCodes(int mode)
 {
-    char s[BUFSIZ*2],tmp[BUFSIZ],ctype = 'N';
+    char s[LONGBUF],tmp[BUFSIZ],ctype = 'N';
     int i,showcode = 1;
     
     sprintf(s,"");
     for(i = 0; i < expt.totalcodes; i++)
     {
         if(valstrings[i].codesend < SEND_READ_ONLY || valstrings[i].codesend == SEND_VERG_ONLY){
-        sprintf(tmp,"CODE %s %d %s%c %d\n",valstrings[i].code,valstrings[i].icode,valstrings[i].label,valstrings[i].ctype,valstrings[i].group);
-        notify(tmp);
+            sprintf(tmp,"CODE %s %d %s%c %d\n",valstrings[i].code,valstrings[i].icode,valstrings[i].label,valstrings[i].ctype,valstrings[i].group);
+            if (strlen(s)+strlen(tmp) < LONGBUF)
+                strcat(s,tmp);
+        }
+        else{
+//           printf("Code %s not (%s) for verg\n",valstrings[i].code,valstrings[i].label);
         }
     }
-    sprintf(tmp,"CODE OVER\n");
-    notify(tmp);
+    i = strlen(s);
+    strcat(s,"CODE OVER\n");
+    notify(s);
+    sprintf(s,"");
     i = 0;
     while(commstrings[i].code != NULL){
         sprintf(tmp,"SCODE %s %d %s\n",commstrings[i].code,commstrings[i].icode,commstrings[i].label);
-        notify(tmp);
+        strcat(s,tmp);
         i++;
     }
+    notify(s);
     SendExptTypesToGui();
     SendToggleCodesToGui();
 }
@@ -1490,15 +1502,17 @@ void PrintCodes(int mode)
 int SendToggleCodesToGui()
 {
     int i;
-    char buf[BUFSIZ],tmp[BUFSIZ];
+    char buf[LONGBUF],tmp[BUFSIZ];
     
     i = 0;
+    sprintf(buf,"");
     while(togglestrings[i].code != NULL){
-        sprintf(buf,"TOGGLE %s %s\n",togglestrings[i].code,togglestrings[i].label);
-        notify(buf);
+        sprintf(tmp,"TOGGLE %s %s\n",togglestrings[i].code,togglestrings[i].label);
+        strcat(buf,tmp);
         i++;
     }
-    notify("TOGGLEEND\n");
+    strcat(buf,"TOGGLEEND\n");
+    notify(buf);
     for (i = 0; i < N_STIMULUS_TYPES; i++){
         sprintf(buf,"STIMTYPE %d %s\n",i,stimulus_names[i]);
         notify(buf);
@@ -1691,7 +1705,9 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
     pgimage.ptr = NULL;
     pgimage.name = NULL;
     ex->codevalue = NOTSET;
-    ex->verbose = 0;  //controls NSlog
+    for (i = 0; i < 10; i++)
+        ex->verbose[i] = 0;  //controls NSlog
+    ex->verbose[2] = 1;  //defualt - show clashes in ReadInput threads
     ex->biasedreward = 0;
     ex->backim.name = NULL;
     ex->backim.ptr = NULL;
@@ -1719,7 +1735,7 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
     ex->trials_per_stim = 1;
     ex->plotcluster = 1;
     ex->bwptr = &thebwstruct;
-    ex->bwptr->nchans = 16; // must be < MAXCHANS
+    ex->bwptr->nchans = 13; // must be < MAXCHANS. Only need 10,11,12 now (XY plots)
     /* Default Color Scheme */
     ex->bwptr->colors[0] = 14; /*Bright Green */
     ex->bwptr->colors[1] = 13; /* Bright Red */
@@ -1832,6 +1848,8 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
 
     afc_s.lasttrial = -(BAD_TRIAL);
     afc_s.targsize = 20;
+    afc_s.respdir = '?';
+    afc_s.rt = 0;
     if(ex->nstim[0] <= 0)
     {
         ex->nstim[0] = 5;
@@ -1856,8 +1874,6 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
         {
             if(i > MAXTOTALCODES)
                 printf("Expt %s %d(%d) > MAXTOTALCODES\n",firstmenu[j].label,j,i);
-            else
-                printf("Expt %s %d(%d,%s: %s) > MAXSERIALCODES\n",firstmenu[j].label,j,i,serial_strings[i],serial_names[i]);
         }
         j++;
     }
@@ -1867,8 +1883,6 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
         {
             if(i > MAXTOTALCODES)
                 printf("Expt %s %d(%d) > MAXTOTALCODES\n",secondmenu[j].label,j,i);
-            else
-                printf("Expt %s %d(%d,%s: %s) > MAXSERIALCODES\n",secondmenu[j].label,j,i,serial_strings[i],serial_names[i]);
         }
         j++;
     }
@@ -2630,7 +2644,7 @@ int OpenNetworkFile(Expt expt)
     }
     tval = time(NULL);
     if (netoutfile != NULL){
-        fprintf(netoutfile,"Reopened %s by binoc Version %s",ctime(&tval),VERSION_NUMBER);
+        fprintf(netoutfile,"Reopened %s by binoc Version %s",ctime(&tval),VERSION_STRING);
         if (seroutfile != NULL)
             fprintf(seroutfile,"Network Record to %s\n",name);
         sprintf(buf,"status=Network Record to %s\n",name);
@@ -2807,7 +2821,7 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
                 if((seroutfile = fopen(sfile,"a")) != NULL){
                     sprintf(buf,"Serial Out to %s/%s",expt.cwd,sfile);
                     statusline(buf);
-                    fprintf(seroutfile,"Reopened %s by binoc Version %s",ctime(&tval),VERSION_NUMBER);
+                    fprintf(seroutfile,"Reopened %s by binoc Version %s",ctime(&tval),VERSION_STRING);
                     sprintf(buf,"Reopened %s",ctime(&tval));
                     SerialString(buf,NULL);
                 }
@@ -2851,22 +2865,22 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
                     sprintf(outbuf,"Psych Log: %s\n",buf);
                     statusline(outbuf);
                     strcpy(nbuf,buf);
-                    if(seroutfile){
-                        fprintf(seroutfile,"Psych Log: %s\n",buf);
-                    }
                     psychfile = fopen(buf,"a");
                     sprintf(buf,"%s.log",s);
                     psychfilelog = fopen(buf,"a");
                 }
                 else{
-                    psychfile = fopen(nonewline(s),"w");
+                    psychfile = fopen(nonewline(s),"a");
                     sprintf(nbuf,"%s",nonewline(s));
                 }
                 if (psychfile == NULL){
                     sprintf(buf,"Can't open %s\n",nbuf);
                     acknowledge(buf,NULL);
                 }
-            break;
+                else if(seroutfile){
+                    fprintf(seroutfile,"Psych Log: %s\n",nbuf);
+                }
+                break;
 
         case ELECTRODE_TYPE:
             i = 0;
@@ -2886,6 +2900,11 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
             SendPenInfo();
             break;
         case LOGFILE_CODE:
+            if (strncmp("gin",s,3) ==NULL)
+            {
+                sprintf(buf,"Setting Suspicious logname:%s",s);
+                acknowledge(buf,NULL);
+            }
             if(expt.logfile == NULL || strcmp(s,expt.logfile))
             {
                 expt.logfile = (char *)myscopy(expt.logfile,nonewline(s));
@@ -3001,8 +3020,11 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
             expt.biasedreward = val;
             break;
         case VERBOSE_CODE:
-            expt.verbose = (int)(val);
-            break;
+            expt.verbose[0] = ival & 1;
+            expt.verbose[1] = ival & 2;
+            expt.verbose[2] = ival & 4;
+            expt.verbose[3] = ival & 8;
+           break;
         case BACK_PPOS:
             if(expt.st->next)
                 SetStimulus(expt.st->next,val,PARA_POS, NOEVENT);
@@ -3196,7 +3218,7 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
             setstimuli(1);
             break;
         case PURSUIT_INCREMENT:
-            expt.vals[flag] = val;
+            expt.vals[flag] = val/mon.framerate;
             break;
         case INITIAL_MOVEMENT:
             expt.vals[flag] = val;
@@ -3749,10 +3771,15 @@ float GetProperty(Expt *exp, Stimulus *st, int code)
 float ExptProperty(Expt *exp, int flag)
 {
     float val=0;
+    int ival,i;
     Position x;
     
     switch(flag)
     {
+        case UFF_TIME:
+            gettimeofday(&now,NULL);
+            val = timediff(&now,&sessiontime);
+            break;
         case IMAGEJUMPS:
             val = expt.st->jumps;
             break;
@@ -3760,7 +3787,12 @@ float ExptProperty(Expt *exp, int flag)
             val = expt.biasedreward;
             break;
         case VERBOSE_CODE:
-            val = expt.verbose;
+            ival = expt.verbose[0];
+            for (i = 1; i < 10; i++){
+                if (expt.verbose[i])
+                ival |= (1<<i);
+            }
+            val = ival;
             break;
         case BACK_OPOS:
             if(expt.st->next)
@@ -3912,7 +3944,7 @@ float ExptProperty(Expt *exp, int flag)
             val = expt.hightype;
             break;
         case PURSUIT_INCREMENT:
-            val = expt.vals[flag];
+            val = expt.vals[flag] * mon.framerate;
             break;	
         case PENNUMCOUNTER:
             val = expt.ipen;
@@ -4413,7 +4445,7 @@ int ReadCommand(char *s)
         if(expt.st->mode & EXPTPENDING) // if verg sends cancel, but not in expt, ignore
             cancelflag = 1; // call cancel when trial over
         else {
-            notify("\nEXPTOVER\n");
+            notify("\nEXPTOVER (cancel)\n");
         }
     }
     else if(!strncasecmp(s,"expt",4)){
@@ -5233,6 +5265,7 @@ void ResetExpt()
 void checkstimbuffers(int nstim, int nreps)
 {
     int *temp;
+    static int csnalloc = 0;
     
     if(nstim+1 > nisset)
     {
@@ -5241,7 +5274,7 @@ void checkstimbuffers(int nstim, int nreps)
         nisset = nstim+1;
         isset = (int *)malloc(sizeof(int) * nisset);
         memcpy(isset, temp, sizeof(int) * nisset);
-        
+        csnalloc++;
     }
     if(nstim*(nreps+1) > nstimorder)
     {
@@ -5250,6 +5283,7 @@ void checkstimbuffers(int nstim, int nreps)
         nstimorder = nstim * (nreps+1);
         stimorder = (int *)malloc(sizeof(int) * nstimorder);
         memcpy(stimorder, temp, sizeof(int) * nstimorder);
+        csnalloc++;
     }
 }
 
@@ -6399,7 +6433,7 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
     
     char *scode = valstrings[valstringindex[code]].code; //char code matching icode code
     char temp[BUFSIZ],cadd[BUFSIZ];
-    float val;
+    float val,version;
     double *f;
     int ret = 0,ival =0,i,pcflag =0,nstim = 0,icode = 0;
     time_t tval;
@@ -6415,6 +6449,7 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
     icode = valstringindex[code];
     if (icode < 0)
         return(-1);
+    
     switch(code)
     {
         case SET_SF_COMPONENTS:
@@ -6486,9 +6521,13 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
             sprintf(cbuf,"%s%s%.6f %.6f", scode,
                     temp,expt.mon->trapscale[0], expt.mon->trapscale[2]);
             break;
+        case VERSION_NUMBER:
+            sscanf(VERSION_STRING,"binoclean.%f",&version);
+            sprintf(cbuf,"%s%s%.4f",serial_strings[VERSION_CODE],temp, version);
+            break;
         case VERSION_CODE:
             sprintf(cbuf,"%s%s%s", scode,
-                    temp,VERSION_NUMBER);
+                    temp,VERSION_STRING);
             break;
         case EARLY_RWTIME:
             sprintf(cbuf,"%s=%.2f %.2f", scode,expt.vals[EARLY_RWTIME],expt.vals[EARLY_RWSIZE]);
@@ -6556,8 +6595,15 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
             break;
             
         case LOGFILE_CODE:
-            if(expt.logfile != NULL)
+            
+            if(expt.logfile != NULL){
+                    if (strncmp("gin",expt.logfile,3) ==NULL)
+                    {
+                        sprintf(cbuf,"Setting Suspicious logname:%s",expt.logfile);
+                        acknowledge(cbuf,NULL);
+                    }
                 sprintf(cbuf,"%s%s%s",serial_strings[LOGFILE_CODE],temp,expt.logfile);
+            }
             else
                 ret = -1;
             break;
@@ -6881,10 +6927,9 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
             cbuf[0] = 0;
             for(i = 10; i < expt.bwptr->nchans; i++)
             {
-                sprintf(temp,"ch%d%c,%2s%.2f,%.2s%d\n",i, 
+                sprintf(temp,"ch%d%c,%2s%.2f\n",i,
                         (expt.bwptr->cflag & (1<<i)) ? '+' : '-',
-                        channel_strings[EYESCALE_CODE],expt.bwptr->fsd[i],
-                        channel_strings[EYECOLOR_CODE],expt.bwptr->colors[i]);
+                        channel_strings[EYESCALE_CODE],expt.bwptr->fsd[i]);
                 strcat(cbuf,temp);
             }
             /*
@@ -7318,17 +7363,20 @@ void InitExpt()
     afc_s.nmags = expt.nstim[0];
     afc_s.stairsign = 1;
     afc_s.signflipp = 0;
+    tval = expt.vals[CHOICE_TARGET_OVERLAP];
+    if (tval == 0){
+        tval = GetProperty(&expt,expt.st,STIMULUS_DURATION_CODE);
+        tval = tval*1.1;
+    }
+    afc_s.target_in_trial = 0;
     if (optionflags[CHOICE_BY_ICON]){
         afc_s.signflipp = 0.5;
-        afc_s.target_in_trial = 1;
     }
     else{
         afc_s.signflipp = 0;
-        afc_s.target_in_trial = 0;
     }
     if (optionflags[ICON_IN_TRIAL]){
-        afc_s.target_in_trial = 1;
-        
+        afc_s.target_in_trial = tval;
     }
     
     
@@ -7559,7 +7607,7 @@ void InitExpt()
     }
     if(psychfilelog){
         tstart = time(NULL);
-        fprintf(psychfilelog,"Expt at %s by binoc Version %s\n",nonewline(ctime(&tstart)),VERSION_NUMBER);
+        fprintf(psychfilelog,"Expt at %s by binoc Version %s\n",nonewline(ctime(&tstart)),VERSION_STRING);
         fprintf(psychfilelog,"\nStimulus %s\n",DescribeStim(expt.st));
         for(j = 0; j < expt.totalcodes; j++){
             cbuf[0] = 0;
@@ -11944,7 +11992,6 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
 }
 
 
-#define LONGBUF (BUFSIZ*10)
 int CheckStimDuration(int retval)
 {
     int i = 0,j =0, n = 0, rpt =0,nrpt = 0,nf=0,k=0;
@@ -13682,10 +13729,10 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     else if(!strncmp(line,"QueryState",9)){
         SendAllToGui();
         if(!(expt.st->mode & EXPTPENDING)){ //if not in expt make sure verg knows 
-            notify("\nEXPTOVER\n");
+            notify("\nEXPTOVERSTATE\n");
         }
         else
-            notify("\nEXPTSTART\n");
+            notify("\nEXPTRUNNING\n");
         return(0);
     }
     else if(!strncmp(line,"usershake",9)){
@@ -13727,7 +13774,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     else if(!strncmp(line,"optionwinxy",6)  && (s = strchr(line,'=')) != 0){
         return(0);
     }
-    else if(!strncmp(line,"psychfile",6)  && (s = strchr(line,'=')) != 0){
+    else if(!strncmp(line,"xxpsychfile",6)  && (s = strchr(line,'=')) != 0){
         if (strlen(s) < 2){
             sprintf(outbuf,"psychfile=%s\n",psychfilename);
             notify(outbuf);
@@ -13749,20 +13796,22 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             sprintf(outbuf,"Psych Log: %s\n",buf);
             statusline(outbuf);
             strcpy(nbuf,buf);
-            if(seroutfile){
-                fprintf(seroutfile,"Psych Log: %s\n",buf);
-            }
             psychfile = fopen(buf,"a");
             sprintf(buf,"%s.log",s);
             psychfilelog = fopen(buf,"a");
         }
        else{
-            psychfile = fopen(nonewline(s),"w");
+            psychfile = fopen(nonewline(s),"a");
             sprintf(nbuf,"%s",nonewline(s));
         }
         if (psychfile == NULL){
             sprintf(buf,"Can't open %s\n",nbuf);
             acknowledge(buf,NULL);
+        }
+        else{
+            if(seroutfile){
+                fprintf(seroutfile,"Psych Log: %s\n",nbuf);
+            }
         }
         return(0);
     }
@@ -14067,7 +14116,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             fprintf(stdout,buf);
             if(seroutfile)
                 fputs(buf,seroutfile);
-//            notify(buf);
+            notify(buf);
             break;
         case JUMP_SF_COMPONENTS:
             for(i = 0; i < expt.st->nfreqs; i++)
@@ -14794,6 +14843,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             case SACCADE_DETECTED:
             case PENETRATION_TEXT:
             case FIXCOLORS:
+            case VERBOSE_CODE:
                 break;
         }
     }
@@ -14862,11 +14912,11 @@ int ButtonResponse(int button, int revise, vcoord *locn)
         if(expt.type2 != EXPTYPE_NONE)
             sprintf(rbuf," %s=%4f",serial_strings[expt.type2],stp->vals[1]);
         else
-            sprintf(rbuf,"");
+            sprintf(rbuf," xx=0");
         if(expt.type3 != EXPTYPE_NONE)
             sprintf(sbuf," %s=%.4f",serial_strings[expt.type3],stp->vals[2]);
         else
-            sprintf(sbuf,"");
+            sprintf(sbuf," xx=0");
         
         framesum += framesdone;
         realframesum += realframes;
@@ -14912,8 +14962,8 @@ int ButtonResponse(int button, int revise, vcoord *locn)
 char *DescribeStim(Stimulus *st)
 {
     int i,n,code;
-    static char dbuf[512];
-    char buf[256];
+    static char dbuf[BUFSIZ*5];
+    char buf[BUFSIZ];
     float val = 0,a,b,c,d;
     
     if(stimdurn > 0)
@@ -15038,6 +15088,9 @@ char *DescribeStim(Stimulus *st)
         sprintf(buf,"\nStep X=%.4f (T=%.0f, dt=%.0f) every %.1f ms = %.2f deg/sec\n",a,d,c,b,(a * 1000)/b);
         strcat(dbuf,buf);
     }
+    i = strlen(dbuf);
+    if (i > BUFSIZ * 5)
+        fprintf(stderr,"DescribeStim length Too lond %d\n",i);
     return(dbuf);
 }
 
@@ -15072,13 +15125,13 @@ int PrintPsychData(char *filename)
         fprintf(fd,"\nExperiment %d:* %s\n",expt.plotcluster+(int)(expt.tl),expname);
     else
         fprintf(fd,"\nExperiment %d: %s\n",expt.plotcluster+(int)(expt.tl),expname);
-    fprintf(fd,"\nVersion %s\n",VERSION_NUMBER);
+    fprintf(fd,"\nVersion %s\n",VERSION_STRING);
     fprintf(fd,"\nStimulus %s\n",DescribeStim(expt.st));
     cbuf[0] = 0;
     MakeString(OPTION_CODE,cbuf, &expt, expt.st, TO_FILE);
     fprintf(fd,"%s\n",cbuf);
     if(psychlog){
-        fprintf(psychlog,"\nVersion %s\n",VERSION_NUMBER);
+        fprintf(psychlog,"\nVersion %s\n",VERSION_STRING);
         fprintf(psychlog,"\nStimulus %s\n",DescribeStim(expt.st));
         fprintf(psychlog,"%s\n",cbuf);
     }

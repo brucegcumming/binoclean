@@ -12,13 +12,14 @@
 #import "DDNumber.h"
 #import "HTTPLogging.h"
 
-Expt expt;
+extern Expt expt;
 extern NSMutableArray * inputPipeBuffer;
 NSString * outputPipeBuffer;
 BOOL dataReadyInInputPipe;
-char *DescribeState();
-extern int inexptstim;
-
+char *DescribeState(char caller);
+extern int inexptstim,innotify,ReadingInputPipe;
+int AddingToInputPipe = 0;
+static int notifyclash = 0;
 
 // Log levels : off, error, warn, info, verbose
 // Other flags: trace
@@ -52,36 +53,57 @@ static const int httpLogLevel = HTTP_LOG_LEVEL_WARN; // | HTTP_LOG_FLAG_TRACE;
 {
     NSData *outputdata = [@"" dataUsingEncoding:NSASCIIStringEncoding];
     NSString * s = @"";
+    int readloop = 0;
 
-//    if (inexptstim == 1){
-//        return [[HTTPDataResponse alloc] initWithData:outputdata];
-//    }
     if ([method isEqualToString:@"GET"]) {
         if (request.url){
             if (request.url.pathComponents){
                 if ([request.url.pathComponents count]>1){
                     //NSString * pq = [request.url.pathComponents[1] componentsSeparatedByString:@"="][1];
                     NSString * command = [[request.url.relativeString substringFromIndex:1] stringByReplacingPercentEscapesUsingEncoding:NSASCIIStringEncoding]; //request.url.pathComponents[1];
-                    if (expt.verbose){
+                    if (expt.verbose[0] > 1){
                         NSLog(@"Input Pipe: %@", command);
                     }
                     NSArray * sLines = [command componentsSeparatedByCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"\r\n"]];
                     for (int i = 0; i < [sLines count]; i++) {
                         if (strncmp([[sLines objectAtIndex:i] UTF8String], "whatsup", 7) == 0){
-                            s = [NSString stringWithFormat:@"SENDING%06d\n%@", [outputPipeBuffer length], outputPipeBuffer];
+                            if (innotify == 1){
+                                notifyclash++;
+                                NSLog(@"http request while notify is writing.");
+                                s = [NSString stringWithFormat:@"NOTIFYCLASH%06d\n", notifyclash];
+                            }
+                            else{
+                                s = [NSString stringWithFormat:@"SENDING%06d\n%@", [outputPipeBuffer length], outputPipeBuffer];
+                                outputPipeBuffer = @"";
+                                notifyclash = 0;
+                            }
                             outputdata = [s dataUsingEncoding:NSASCIIStringEncoding];
-                            outputPipeBuffer = @"";
                         }
                         else if (strncmp([[sLines objectAtIndex:i] UTF8String], "getstate", 8) == 0){
-                            char * cs =DescribeState();
+                            char * cs =DescribeState('1');
+                            s = [[NSString alloc] initWithBytes:cs length:strlen(cs) encoding:NSASCIIStringEncoding];
                             s = [NSString stringWithUTF8String:cs];
+                            if([s length] == 0){
+                                NSLog(@"Empty String conversion in GetState. But strlen(*cs) is%d", strlen(cs));
+                            }
                             outputdata = [s dataUsingEncoding:NSASCIIStringEncoding];
                         }
                         else{
                             if (!inputPipeBuffer) {
                                 inputPipeBuffer = [[NSMutableArray alloc] init];
                             }
+                            while (ReadingInputPipe && readloop < 100){
+                                if (readloop %10 ==0 && expt.verbose[2]){
+                                    NSLog(@"http request while ReadInputPipe is Reading(%d).", readloop);
+                                }
+                                readloop++;
+                                usleep(100);
+                            }
+                            if (readloop > 0) { //? need to re-fetch the http suff?
+                            }
+                            AddingToInputPipe = 1;
                             [inputPipeBuffer addObject:[sLines objectAtIndex:i]];
+                            AddingToInputPipe = 0;
                         }
                     }
                     dataReadyInInputPipe = YES;

@@ -17,7 +17,7 @@
 #define ROOT2 1.4142
 #define MINSTAIRVALUE 0.01
 #define MAXSTAIRVALUE 1.00
-#define PERF_STRING_LENGTH 90
+#define PERF_STRING_LENGTH 2048
 #define BLANK 1
 #define SEARCH 2
 
@@ -88,6 +88,7 @@ typedef struct{
     int stimid,type,magid,nmags,stairsign;
     double jsignval,signflipp,target_in_trial;
     char respdir;
+    double rt;
 }AFCstructure;
 
 #define SACCREQD(x) (x.abssac[0] != 0 || x.abssac[1] != 0)

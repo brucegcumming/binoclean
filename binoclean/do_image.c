@@ -78,15 +78,26 @@ int PreloadPGM(char *name, Stimulus *st, Substim *sst, int frame){
     FILE *imfd;
     char buf[BUFSIZ];
     static char lastname[BUFSIZ];
+    static struct timeval lastreadwarning;
+    struct timeval(now);
+    static int readwasgood = -1;
+    float val;
     int w,h,imax,x,y,silly = 0;
     
-    static int *astate = NULL;
+    
+    if (readwasgood == -1){ //first call
+        gettimeofday(&lastreadwarning,NULL);
+        readwasgood = 1;
+    }
     
     if((imfd = fopen(name,"r")) == NULL){
         if(strncmp(name,lastname,strlen(name)-5) != 0){
             sprintf(buf,"Can't Read Image %s\n",name);
-            if(astate == NULL || *astate == 0){ // no confirmer up now
-                acknowledge(buf);                
+            gettimeofday(&now,NULL);
+            if (readwasgood && (val = timediff(&now, &lastreadwarning)) > 1){
+                acknowledge(buf);
+                gettimeofday(&lastreadwarning,NULL);
+                readwasgood = 0;
             }
             fputs(buf,stderr);
             if(seroutfile)
@@ -97,6 +108,7 @@ int PreloadPGM(char *name, Stimulus *st, Substim *sst, int frame){
             fprintf(stderr,"Can't Read Image %s\n",name);
         return(0);
     }
+    readwasgood = 1;
     fgets(buf, BUFSIZ, imfd);
     sscanf(buf,"P5 %d %d %d",&w,&h,&imax);
     imagews[frame] = w;
