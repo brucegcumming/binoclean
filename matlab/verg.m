@@ -311,8 +311,8 @@ if nargin < 2 || isempty(line)
 end
 
 pstr = '';
-if frombinoc ~= 2 && paused == 0 %don't pause reading when called from timee
-    PauseRead(DATA, 1);
+if frombinoc ~= 2 
+    paused = PauseRead(DATA, 1);
 end
 ts = now;
 strs = textscan(line,'%s','delimiter','\n');
@@ -1172,7 +1172,7 @@ dur = mytoc(ts);
 if dur > 1
     fprintf('Reading %d lines took %.2f%s\n',length(strs{1}),dur,pstr);
 end
-if frombinoc ~= 2 && paused == 0
+if frombinoc ~= 2 && paused == 0 %wasnt paused before this call.
     PauseRead(DATA,0);
 end
 
@@ -1701,7 +1701,7 @@ rbusy = 0;
 
 [a, pstr] = system('ps -e | grep binoclean');
 if isempty(strfind(pstr, 'binoclean.app'))
-    fprintf('Binoc is Not Runnig');
+    fprintf('Binoc is Not Running');
     binocisrunning = 0;
 else
     binocisrunning = 1;
@@ -1745,14 +1745,14 @@ else
 end
 outprintf(DATA,'NewMatlab\n');
 ts = now;
-DATA = ReadFromBinoc(DATA,'reset');
+[DATA, str] = ReadFromBinoc(DATA,'reset');
 n = 1;
 while DATA.togglecodesreceived == 0 && mytoc(ts) < 4
     pause(0.01);
     if binocisrunning == 0
         outprintf(DATA,'NewMatlab\n');
     end
-    DATA = ReadFromBinoc(DATA);
+    [DATA, str] = ReadFromBinoc(DATA);
     n = n+1;
 end
 DATA.readdur = mytoc(ts);
@@ -3543,12 +3543,17 @@ function StartTimer(DATA, onoff)
         end
     end
          
-function onoff = PauseRead(DATA, onoff)
+function current_state = PauseRead(DATA, onoff)
+%current_state = PauseRead(DATA, onoff)
 %onoff 1 = pause is ON.
+%returns the state BEFORE the call. It always sets the desired state
 if isfield(DATA,'toplevel') && isfigure(DATA.toplevel)
     current_state = getappdata(DATA.toplevel,'PauseReading');
+    if isempty(current_state)
+        current_state = 0;
+    end
     if nargin == 2
-        if onoff == current_state
+        if onoff == current_state && current_state == 0
             fprintf('Pause is already %d\n',onoff);
         end
         setappdata(DATA.toplevel,'PauseReading',onoff);
@@ -3563,6 +3568,8 @@ if isfield(DATA,'toplevel') && isfigure(DATA.toplevel)
     else
         onoff = current_state;
     end
+else
+    current_state = 0;
 end
         
  function SetGui(DATA,varargin)
@@ -3783,6 +3790,33 @@ function CheckInput(a,b, fig, varargin)
     if DATA.verbose(1) > 1
     fprintf('Timer read over at %s\n',datestr(now));
     end
+ function [DATA, fullstr] = DrainBinocPipe(DATA)
+
+     fullstr = '';
+     if isfield(DATA,'toplevel')
+         pausestate = getappdata(DATA.toplevel,'PauseReading');
+     else
+         pausestate = 1; % do nothing
+     end
+     if pausestate == 0
+         PauseRead(DATA,1);
+     end
+     newmagic = DATA.binoc{1}.magic+1;
+     outprintf(DATA,'magic=%d\n',newmagic);
+     outprintf(DATA,'magic=');
+     ts = now;
+     while DATA.binoc{1}.magic ~= newmagic && mytoc(ts) < DATA.draintimeout
+         [DATA, str] = ReadHttp(DATA);
+         fullstr = [fullstr str];
+         myprintf(DATA.frombinocfid,'Drain at %s\n',datestr(now));
+     end
+     DATA.readdur = mytoc(ts);
+     if DATA.readdur >= DATA.draintimeout
+         fprintf('Read timed out after %.2f sec\n',DATA.readdur);
+     end
+     if pausestate == 0
+         PauseRead(DATA,0);
+     end
     
     
 function [DATA, str] = ReadHttp(DATA, varargin)
@@ -3873,31 +3907,6 @@ end
     lastts = ts;
 httpbusy = 0;
  
- function DATA = DrainBinocPipe(DATA)
-
-     if isfield(DATA,'toplevel')
-         pausestate = getappdata(DATA.toplevel,'PauseReading');
-     else
-         pausestate = 1; % do nothing
-     end
-     if pausestate == 0
-         PauseRead(DATA,1);
-     end
-     newmagic = DATA.binoc{1}.magic+1;
-     outprintf(DATA,'magic=%d\n',newmagic);
-     outprintf(DATA,'magic=');
-     ts = now;
-     while DATA.binoc{1}.magic ~= newmagic && mytoc(ts) < DATA.draintimeout
-         [DATA, str] = ReadFromBinoc(DATA);
-         myprintf(DATA.frombinocfid,'Drain at %s\n',datestr(now));
-     end
-     DATA.readdur = mytoc(ts);
-     if DATA.readdur >= DATA.draintimeout
-         fprintf('Read timed out after %.2f sec\n',DATA.readdur);
-     end
-     if pausestate == 0
-         PauseRead(DATA,0);
-     end
      
      
  function [DATA, str] = ReadFromBinoc(DATA, varargin)
@@ -4037,12 +4046,19 @@ if nargin > 1
              lastts = now;
              go = 1;
          elseif (now-d.datenum) > 1/(24 * 60) % more than a minute with no binco
+%shoudl only get here if verg gets no response from binoc. If that is true and 
+%/tmp/binocisnew is old, it suggests binoc has died.  But double check
+%before autorestarting
              if DATA.autorestart
-                 if DATA.autoreopen == 0
-                     DATA.autoreopen = 2;
+                 [a, pstr] = system('ps -e | grep binoclean');
+                 if isempty(strfind(pstr, 'binoclean.app'))
+                     fprintf('Binoc is Not Running - ');
+                     if DATA.autoreopen == 0
+                         DATA.autoreopen = 2;
+                     end
+                     myprintf(DATA.frombinocfid,'-show','Restarting Binoc at %s',datestr(now));
+                     [a,b] = system('open /local/bin/binoclean.app');
                  end
-                 myprintf(DATA.frombinocfid,'-show','Restarting Binoc at %s',datestr(now));
-                 [a,b] = system('open /local/bin/binoclean.app');
              end
          end
          
@@ -4163,18 +4179,22 @@ function DATA = RunButton(a,b, type)
 %    DATA = GetState(DATA,'Runbutton');
     x(1) = mytoc(ts);
     ts = now;
+%Waiting for expt end is special case. Binoc may return info before the final
+%trial ends, and state is still in expt. So wait for binoc to report that
+%expt state has changed.
     while DATA.inexpt ~= inexpt  && mytoc(ts) < 10 %not caught up yet
         pauseread = getappdata(DATA.toplevel, 'PauseReading');
         if pauseread ==0
             myprintf(DATA.frombinocfid,'PAUSE ERROR pause %d\n',pauseread);
         end
-        DATA = ReadFromBinoc(DATA,'RunButton','paused');
+        [DATA, str] = ReadFromBinoc(DATA,'RunButton','paused');
         myprintf(DATA.frombinocfid,'Read Done %.2f %s. DATA.inexpt %d\n',mytoc(ts),datestr(now),DATA.inexpt);
         if DATA.inexpt ~= inexpt
             pause(0.5);
         end
     end
     x(2) = mytoc(ts);
+
     if sum(strcmp(caller,{'Cancel' 'Seqcancel'}))
           DATA = AddTextToGui(DATA,'Cancelled','norec');
                 if DATA.nexpts > 0
@@ -4936,6 +4956,8 @@ for j = line:length(str)
         outprintf(DATA,'%s\n',str{j}); %this runs expt in binoc
         DATA.Statuslines{end+1} = sprintf('RunSequence Line %d. at %s %d Repeats left',line,datestr(now,'hh:mm.ss'),DATA.rptexpts);
         return;
+    elseif strncmp(str{j},'!mat',4)
+        DATA.Statuslines{end+1} = sprintf('RunSequence Line %d: %s',str{j});
     end
     if ~sum(strncmp(str{j},'expt',4)) %don't send these lines to binoc
         outprintf(DATA,'%s #RunSeq\n',str{j});
@@ -5144,7 +5166,7 @@ function helpdata = loadhelp(name)
     first = DATA.Trials(1).Start;
     last = DATA.Trials(end).Start;
     dur = (last-first)./24;
-    fprintf(fid,'%s %d Trials, %.2f hrs %s to %s Rw %.1f. User %s\n',datestr(now),length(DATA.Trials),dur,datestr(first),datestr(last),DATA.binoc{1}.Trw,DATA.binoc{1}.ui);
+    fprintf(fid,'%s %d Trials, %.2f hrs %s to %s Rw %.1f. User %s/%s\n',datestr(now),length(DATA.Trials),dur,datestr(first),datestr(last),DATA.binoc{1}.Trw,DATA.binoc{1}.ui,GetUserName());
     fclose(fid);
 
 

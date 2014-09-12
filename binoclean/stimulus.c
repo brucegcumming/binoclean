@@ -276,6 +276,18 @@ Stimulus *NewStimulus(Stimulus *st)
     new->last->ptr = 0;
     new->type = -1;
     new->corrmix = -1;
+    new->left->ptr->imalloc = new->left->ptr->xalloc = new->left->ptr->yalloc = 0;
+    new->right->ptr->imalloc = new->right->ptr->xalloc = new->right->ptr->yalloc = 0;
+    new->left->ptr->xbelln = new->left->ptr->xlen = new->left->ptr->ylen = 0;
+    new->right->ptr->xbelln = new->right->ptr->xlen = new->right->ptr->ylen = 0;
+    new->right->ptr->carrayn = new->left->ptr->carrayn = 0;
+    new->right->ptr->im = new->left->ptr->im = NULL;
+    new->right->ptr->iim = new->left->ptr->iim = NULL;
+    new->right->ptr->imb = new->left->ptr->imb = NULL;
+    new->right->ptr->xbell = new->left->ptr->xbell= NULL;
+    new->right->ptr->carray = new->left->ptr->carray = NULL;
+
+    new->right->ptr->carrayn = new->left->ptr->carrayn = 0;
     new->left->im = new->left->xpos = new->left->ypos = new->left->xposa = NULL;
     new->right->im = new->right->xpos = new->right->ypos = new->right->xposa = NULL;
     new->left->yposa = NULL;

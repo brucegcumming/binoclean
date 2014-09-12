@@ -182,7 +182,8 @@ void notify(char * s)
     int pipestate = AddingToOutputPipe; // record this in case it changes during crash
     
     if (AddingToOutputPipe > 0){
-        NSLog(@"Notify Called while adding to outputpipe");
+//        NSLog(@"Notify Called while adding to outputpipe: %s",s);
+                NSLog(@"Notify Called while adding to outputpipe");
     }
     if (expt.verbose[3]){
         NSLog(@"Notify%s",s);
