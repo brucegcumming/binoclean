@@ -1694,7 +1694,7 @@ rbusy = 0;
 
 [a, pstr] = system('ps -e | grep binoclean');
 if isempty(strfind(pstr, 'binoclean.app'))
-    msgbox('Binoc is Not Runnig');
+    fprintf('Binoc is Not Runnig');
     binocisrunning = 0;
 else
     binocisrunning = 1;
@@ -1705,7 +1705,14 @@ if DATA.network
     if binocisrunning == 0 && DATA.autorestart
         fprintf('Please Wait while I start binoc....\n');
         [DATA.binoncisup,b] = system('open /local/bin/binoclean.app');        
-        fprintf('Thank you. Binoc is running now\n');
+        if DATA.binocisup %launch succeeded. Wait until its ready
+            d = [];
+            while isempty(d)
+             d = dir('/tmp/binocisnew');
+             pause(0.1);
+            end
+            fprintf('Thank you. Binoc is running now\n');       
+        end
     end
     warning('off','MATLAB:urlread:ReplacingSpaces');
 else
@@ -1735,6 +1742,9 @@ DATA = ReadFromBinoc(DATA,'reset');
 n = 1;
 while DATA.togglecodesreceived == 0 && mytoc(ts) < 4
     pause(0.01);
+    if binocisrunning == 0
+        outprintf(DATA,'NewMatlab\n');
+    end
     DATA = ReadFromBinoc(DATA);
     n = n+1;
 end
