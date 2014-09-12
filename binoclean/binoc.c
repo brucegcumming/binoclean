@@ -1270,6 +1270,16 @@ char *DescribeState(char caller)
     i = strlen(str);
     if (i >= MAXCHARS)
         acknowledge("Status String too Long", NULL);
+    if (caller == '2'){
+        for (i = 0; i < strlen(str); i++){
+            if(!isprint(str[i]) && str[i] != '\n'){
+                fprintf(stderr,"DescribeStim: Char %d is %d\n",i,(int)(str[i]));
+                if (seroutfile)
+                    fprintf(seroutfile,"DescribeStim: Char %d is %d\n",i,(int)(str[i]));
+                str[i] = 0;
+            }
+        }
+    }
         return(str);
 
 }
@@ -6269,7 +6279,7 @@ int next_frame(Stimulus *st)
         expt_over(CANCEL_EXPT);
         stimstate = STIMSTOPPED;
     }
-    if (expt.verbose[3]){
+    if (expt.verbose[4]){
         fprintf(stderr,"Stimstate %d at %s\n",stimstate,binocTimeString());
     }
     

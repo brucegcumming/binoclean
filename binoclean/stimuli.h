@@ -168,6 +168,8 @@ typedef struct ONESTIM{
     float sx, *xbell;
     int x;
     int *carray;
+    int xbelln,carrayn,xlen,ylen;
+    int imalloc,xalloc,yalloc;
     float radius,rsigma;
     int numdots, fixdots; 				        
     float dotsize[XY], olddotsize[XY];
@@ -233,6 +235,7 @@ typedef struct SUBSTIM{
     float tf;
     float boundarypos;
     float boundaryV;
+    int imalloc;
 
 } Substim;
 
@@ -442,6 +445,7 @@ struct EXPERIMENT{
     int codesent;
     char *loadfile;
     float codevalue;
+    int magicnumber;
 };
 
 typedef struct EXPERIMENT Expt;

@@ -25,7 +25,7 @@ static NSColor * textBGColor;
 int outPipe = 0;
 int innotify = 0;
 int ReadingInputPipe = 0;
-extern int AddingToInputPipe;
+extern int AddingToInputPipe,AddingToOutputPipe;
 NSMutableArray * inputPipeBuffer;
 NSString * outputPipeBuffer;
 NSMutableDictionary *bold12Attribs;
@@ -126,7 +126,10 @@ void sendNotification()
 
 void ReadInputPipe()
 {
-    if(dataReadyInInputPipe)
+    if (AddingToInputPipe ==1){
+        NSLog(@"INput Pipe busy");
+    }
+    if(dataReadyInInputPipe && AddingToInputPipe == 0)
     {
         ReadingInputPipe = 1;
         dataReadyInInputPipe = NO;
@@ -152,9 +155,6 @@ void ReadInputPipe()
                 }
             }
         }
-        if (AddingToInputPipe ==1){
-            NSLog(@"INput Pipe busy");
-        }
         inputLineChars = NULL;
         [inputPipeBuffer removeAllObjects];
         ReadingInputPipe = 0;
@@ -179,6 +179,15 @@ void WriteToOutputPipe(NSString * ns)
 
 void notify(char * s)
 {
+    int pipestate = AddingToOutputPipe; // record this in case it changes during crash
+    
+    if (AddingToOutputPipe > 0){
+//        NSLog(@"Notify Called while adding to outputpipe: %s",s);
+                NSLog(@"Notify Called while adding to outputpipe");
+    }
+    if (expt.verbose[3]){
+        NSLog(@"Notify%s",s);
+    }
     innotify = 1;
     if (!outputPipeBuffer) {
         outputPipeBuffer = [[NSString alloc] init];

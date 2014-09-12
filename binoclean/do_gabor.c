@@ -66,6 +66,7 @@ void init_gabor(Stimulus *st,  Substim *sst)
 	OneStim *gb = (OneStim *)sst->ptr;
 	short *p;
 	int i,j,w,h;
+    static int nalloc = 0;
 	double val,xval,yval,x,y,cval,cm,deg,sx,sy,disp;
 	float iscale[2];
     
@@ -75,29 +76,38 @@ void init_gabor(Stimulus *st,  Substim *sst)
 	lumscale = st->background * pos->contrast;
     
 	/* need new memory */
-	if(w * h >  pos->size[0] * pos->size[1] || gb->im == NULL)
+	if(w * h >  sst->imlen || sst->im == NULL)
 	{
-		if(gb->im != NULL)
-			free(gb->im);
-		gb->im = (float *)malloc((w+1) * (h+1) * sizeof(float));
+        sst->imlen = (w * h) * 2;
+        sst->imalloc++;
+		if(sst->im != NULL)
+			free(sst->im);
+		sst->im = (float *)malloc(sst->imlen * sizeof(float));
 		if(gb->xpos != NULL)
             free(gb->xpos);
 		if(gb->ypos != NULL)
             free(gb->ypos);
-		gb->ypos = (vcoord *)malloc((w+1) * (h+1) * sizeof(vcoord));
-		gb->xpos = (vcoord *)malloc((w+1) * (h+1) * sizeof(vcoord));
+        gb->xlen = sst->imlen;
+        gb->ylen = sst->imlen;
+		gb->ypos = (vcoord *)malloc(sst->imlen * sizeof(vcoord));
+		gb->xpos = (vcoord *)malloc(sst->imlen * sizeof(vcoord));
 	}
-	if(w > pos->size[0] || gb->xbell == NULL)
+        gb->im = sst->im;
+	if(w >  gb->xbelln || gb->xbell == NULL)
 	{
+        gb->xalloc++;
 		if(gb->xbell != NULL)
 			free(gb->xbell);
-		gb->xbell = (int *)malloc((w+1) * sizeof(float));
+        gb->xbelln = w*2;
+		gb->xbell = (int *)malloc(gb->xbelln * sizeof(float));
 	}
-	if(h > pos->size[1] || gb->carray == NULL)
+	if(h > gb->carrayn || gb->carray == NULL)
 	{
+        gb->yalloc++;
 		if(gb->carray != NULL)
 			free(gb->carray);
-		gb->carray = (int *)malloc((h+GAUSSEXTRA) * sizeof(int));
+        gb->carrayn = h*2;
+		gb->carray = (int *)malloc(gb->carrayn * sizeof(int));
 	}
     /*
      * above code checks for differences b/w st->pos and gb->pos to
