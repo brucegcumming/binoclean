@@ -180,6 +180,8 @@ while j <= length(varargin)
     elseif strcmp(varargin{j},'autoreopen')
         DATA.autoreopen = 1;
         set(DATA.toplevel,'UserData',DATA);
+    elseif strncmpi(varargin{j},'updatelog',5)
+        DATA = UpdateLogFile(DATA);        
     elseif strcmp(varargin{j},'checkstart')
         DATA = CheckStateAtStart(DATA);
     elseif isfield(varargin{j},'Trials')
@@ -199,6 +201,9 @@ end
 
 
 function ExitVerg(DATA)
+    
+    
+    UpdateLogFile(DATA);
     if DATA.pipelog
         system([GetFilePath('perl') '/pipelog end']);
     end
@@ -5050,6 +5055,29 @@ function helpdata = loadhelp(name)
         helpdata.help{nh} = hlp;
     end
         
+    
+ function DATA = UpdateLogFile(DATA)
+  
+     if ~isfield(DATA.binoc{1},'lo') || isempty(DATA.binoc{1}.lo)
+         return;
+     end
+     name = DATA.binoc{1}.lo;
+     if isfield(DATA,'Trials')
+         if length(DATA.Trials) < 10
+             return;
+         end
+     end
+    fid = fopen(name,'a');
+    if fid < 0
+        fprintf('Cannot Append to %s\n',name);
+        return;
+    end
+    first = DATA.Trials(1).Start;
+    last = DATA.Trials(end).Start;
+    dur = (last-first)./24;
+    fprintf(fid,'%s %d Trials, %.2f hrs %s to %s Rw %.1f. User %s\n',datestr(now),length(DATA.Trials),dur,datestr(first),datestr(last),DATA.binoc{1}.Trw,DATA.binoc{1}.ui);
+    fclose(fid);
+
 
 function DATA = ReadLogFile(DATA, name)
 
@@ -5082,6 +5110,7 @@ function DATA = ReadLogFile(DATA, name)
             end
         end
     end
+    fclose(fid);
     
 function MonkeyLogPopup(a,b, type, channel)
   DATA = GetDataFromFig(a);
