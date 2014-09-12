@@ -1272,6 +1272,8 @@ char *DescribeState(char caller)
         for (i = 0; i < strlen(str); i++){
             if(!isprint(str[i]) && str[i] != '\n'){
                 fprintf(stderr,"DescribeStim: Char %d is %d\n",i,(int)(str[i]));
+                if (seroutfile)
+                    fprintf(seroutfile,"DescribeStim: Char %d is %d\n",i,(int)(str[i]));
                 str[i] = 0;
             }
         }
