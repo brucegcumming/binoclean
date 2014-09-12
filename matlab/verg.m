@@ -155,6 +155,8 @@ while j <= length(varargin)
     if strncmpi(varargin{1},'close',5)
         ExitVerg(DATA);
         return;
+    elseif strncmpi(varargin{j},'checkhelp',8)
+        CheckCodeHelp(DATA, 'update');
     elseif strncmpi(varargin{j},'getstate',5)
         ts = now;
         DATA = GetState(DATA,'commandline');
@@ -252,15 +254,44 @@ function DATA = CheckStateAtStart(DATA)
         str = 'You Can define A "reset" stimfile that is Run before loading each new Expt. Put ereset=path in verg.setup or your stimfile';
         msgbox(str);
     end
-    if DATA.verbose(4)
+    
+ function txt = InsertLine(txt, line, s)
+ 
+     txt(line+1:end+1) = txt(line:end);
+     txt{line} = s;
+     
+function CheckCodeHelp(DATA, type)
+    
+    if nargin ==1
+        type = 'list';
+    end
+    [scodes,sid] = sort({DATA.comcodes.code});
+    helpfile = [DATA.localmatdir '/helpstrings.txt'];
+    txt = scanlines(helpfile);
     for j = 1:length(DATA.comcodes)
-       if ~isfield(DATA.helpstrs,DATA.comcodes(j).code) 
-           if ~strcmp('xx',DATA.comcodes(j).code)
-               fprintf('No help for %s\n',DATA.comcodes(j).code);
+        k = sid(j);
+       if ~isfield(DATA.helpstrs,DATA.comcodes(k).code) 
+           if ~strcmp('xx',DATA.comcodes(k).code)
+               fprintf('No help for %s\n',DATA.comcodes(k).code);
+               if strcmp(type,'update')
+               prevcode = DATA.comcodes(sid(j-1)).code;
+               id = find(strncmp(prevcode,txt,length(prevcode)));
+               if ~isempty(id)
+                   InsertLine(txt,id(1)+1,[DATA.comcodes(k).code ' ' DATA.comcodes(k).label]);
+               end
+               end
            end
        end
     end
+    if strcmp(type,'update')
+        outfile = strrep(helpfile,'.txt','.new');
+        fid = fopen(outfile,'w');
+        for j = 1:length(txt)
+            fprintf(fid,'%s\n',txt{j});
+        end
+        fclose(fid);
     end
+        
     
 function [DATA, codetype] = InterpretLine(DATA, line, varargin)
 
@@ -1276,9 +1307,14 @@ function DATA = ReadExptLines(DATA, strs, src)
             myprintf(DATA.frombinocfid,'%.3f file %s\n',mytoc(DATA.starttime),tline);
         end
   %if filename set before monkey, set monkeyname first
-        if strncmp(tline,'uf=',3) && strcmp(DATA.binoc{1}.monkey,'none') && ~isempty(DATA.datafile)
-            DATA.binoc{1}.monkey = GetMonkeyName(DATA.datafile);
-            SendCode(DATA,'monkey');
+        if strncmp(tline,'uf=',3) && strcmp(DATA.binoc{1}.monkey,'none')
+            monkey = GetMonkeyName(DATA.binoc{1}.uf);
+            if ~isempty(monkey)
+                DATA.binoc{1}.monkey = monkey;
+                SendCode(DATA,'monkey');
+            else
+                myprintf(DATA.frombinocfid,'Can''t find Monkey Name in %s\n',tline)
+            end
         end
         if DATA.over
             DATA.overcmds = {DATA.overcmds{:} tline};

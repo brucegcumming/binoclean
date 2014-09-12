@@ -1438,21 +1438,26 @@ void glstatusline(char *s, int line)
 void statusline(char *s)
 {
     //prints a line in the binoc control window, and sends it to verg.
-    char buf[BUFSIZ];
+    char buf[LONGBUF];
     
     
-    if(s != NULL && strlen(s) > LONGBUF)
-        statusstring = myscopy(statusstring,s);
-    else
+    if(s != NULL) {
+        if (strlen(s) > LONGBUF-10){
+            fprintf(stderr,"STATUS%s\n",s);
+            sprintf(statusstring,"status=too lonng %d\n",strlen(s));
+        }
+        else{
+            sprintf(statusstring,"status=%s\n",s);
+        }
+        notify(statusstring);
+    }
+    else{
+// no need to send again in binoclean
         s = statusstring;
+    }
 //    glstatusline(s,1);
 //    printString(s, strlen(s)); //Need this? removed May 2013
 
-    notify("status=");
-    notify(s);
-    notify("\n");
-    if(mode & HOLD_STATUS)
-        return;
     
 }
 

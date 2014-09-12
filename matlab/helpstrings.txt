@@ -61,6 +61,8 @@ bl number of correct trials before reward increases
 bpos position of texture defined boundary, in degrees from center of stimulus (RLS)
 Br Set up a different update rate in FastSequences for parameter 2. V dangerous #reverse correlation revcor 
 bs Divide expt into blocks where each stimulus is shown N (=bs) times, before any stim is shown N+1. 
+bt Current time of clock in spike2
+Bc Contrast of Background stimulus
 Bs sets background stimulus type 
 Bh height of background
 Bw width of background
@@ -99,6 +101,7 @@ dr changes RDS dispaity deg/sec
 Dr When RDS is made of random disparity samples, each ramdom pick generates Dr Dots of the same disparity. For RLS Dr places an upper limit on the number of consecutive lines with the same color, if check enable with sM =30.
 ds interocular SF difference. sfR = sf-ds/2, sfL = sf+ds/2# SF disparity
 dS Sets what variable is adjusted for mimic microstimulation
+du sets stimuus duration in seconds. Actually just sets nf based on CURRENT frame rate
 dt For Stroboscopic Pulfrich Expts. Should be 0 otherwise #Psychophysics
 dw If +aa is not set, gets rounded to nearest pixel size. Dots are square. 
 Dw Number of different stimuli comprising random distribution for Dc expts. See Also Dc, Ri, Dm
@@ -199,6 +202,7 @@ nR Internal counter. Leave.
 nr present each stimulus this many times
 ns frame on whcih a change in seed/velocity is applied. For RDS/RLS, sl=1 and op=+rp, then the seed changes on this frame (and multiples). For Cylinders this is the frame where any initial disparity is removed.
 nsf a list of sf components for Nsine stimuli
+nt Number ot stimulus to use fr expt 1
 nT Internal for recording Trial statistics 
 ntf a list of tf values for Nsine stimuli
 O2 second orientation used for the Radial stimulus type (very rare)
