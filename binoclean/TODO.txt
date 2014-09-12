@@ -106,3 +106,4 @@ write a quick stimfile cleaner. Just reads lines, and writes them out again, omi
 add a status= line to DescribeState?  GetCurrentStatus function. Or use statusstring? should work.
 Sort out ability to add codes manually to the list of what is tracked in psychfile.  Could even extend this to have and R7 line for each trial.
 Try $MNK in stimdir path 
+rls sy>0 seems broken by xstep = 0;

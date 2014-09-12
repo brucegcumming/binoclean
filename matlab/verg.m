@@ -277,7 +277,7 @@ function CheckCodeHelp(DATA, type)
                prevcode = DATA.comcodes(sid(j-1)).code;
                id = find(strncmp(prevcode,txt,length(prevcode)));
                if ~isempty(id)
-                   InsertLine(txt,id(1)+1,[DATA.comcodes(k).code ' ' DATA.comcodes(k).label]);
+                   txt = InsertLine(txt,id(1)+1,['#*' DATA.comcodes(k).code ' ' DATA.comcodes(k).label]);
                end
                end
            end

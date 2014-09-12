@@ -1434,7 +1434,7 @@ void glstatusline(char *s, int line)
 void statusline(char *s)
 {
     //prints a line in the binoc control window, and sends it to verg.
-    char buf[LONGBUF];
+    char buf[BUFSIZ];
     
     
     if(s != NULL) {
