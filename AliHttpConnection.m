@@ -61,7 +61,7 @@ static const int httpLogLevel = HTTP_LOG_LEVEL_WARN; // | HTTP_LOG_FLAG_TRACE;
                 if ([request.url.pathComponents count]>1){
                     //NSString * pq = [request.url.pathComponents[1] componentsSeparatedByString:@"="][1];
                     NSString * command = [[request.url.relativeString substringFromIndex:1] stringByReplacingPercentEscapesUsingEncoding:NSASCIIStringEncoding]; //request.url.pathComponents[1];
-                    if (expt.verbose[0] > 1){
+                    if (expt.verbose[4] > 0){
                         NSLog(@"Input Pipe: %@", command);
                     }
                     NSArray * sLines = [command componentsSeparatedByCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"\r\n"]];
@@ -81,11 +81,11 @@ static const int httpLogLevel = HTTP_LOG_LEVEL_WARN; // | HTTP_LOG_FLAG_TRACE;
                         }
                         else if (strncmp([[sLines objectAtIndex:i] UTF8String], "getstate", 8) == 0){
                             char * cs =DescribeState('1');
-                            s = [[NSString alloc] initWithBytes:cs length:strlen(cs) encoding:NSASCIIStringEncoding];
                             s = [NSString stringWithUTF8String:cs];
                             if([s length] == 0){
-                                NSLog(@"Empty String conversion in GetState. But strlen(*cs) is%d", strlen(cs));
+                                NSLog(@"Empty String conversion in GetState. But strlen(*cs) is%d\n%s", strlen(cs),cs);
                             }
+                            s = [[NSString alloc] initWithBytes:cs length:strlen(cs) encoding:NSASCIIStringEncoding];
                             outputdata = [s dataUsingEncoding:NSASCIIStringEncoding];
                         }
                         else{
@@ -100,6 +100,9 @@ static const int httpLogLevel = HTTP_LOG_LEVEL_WARN; // | HTTP_LOG_FLAG_TRACE;
                                 usleep(100);
                             }
                             if (readloop > 0) { //? need to re-fetch the http suff?
+                            }
+                            if (strncmp([[sLines objectAtIndex:i] UTF8String], "favico", 6) == 0){
+                                NSLog(@"Supsicious Inputpipe %@", command);
                             }
                             AddingToInputPipe = 1;
                             [inputPipeBuffer addObject:[sLines objectAtIndex:i]];

@@ -1415,21 +1415,17 @@ void glstatusline(char *s, int line)
         glDrawBuffer(GL_FRONT_AND_BACK);
     if (optionflag & SHOW_STIMVAL_BIT)
         setmask(ALLPLANES);
-	mycmv(x);
+
 	if(s != NULL){
         printStringOnMonkeyView(s, strlen(s));
     }
 	else if(lines[line] != NULL)
         printStringOnMonkeyView(lines[line], strlen(lines[line]));
 	if(states[EXPT_PAUSED]){
-        x[1] = -winsiz[1] + 150;
-        mycmv(x);
-        statusline("Paused");
+//        statusline("Paused");
 	}
 	if(freezeexpt){
-        x[1] = -winsiz[1] + 150;
-        mycmv(x);
-        statusline("Expt Frozen");
+//        statusline("Expt Frozen");
 	}
     if (s != NULL)
         glDrawBuffer(GL_BACK);
@@ -6291,6 +6287,10 @@ int next_frame(Stimulus *st)
                 i = 0;
             TheStim->fixcolor = expt.vals[BLANKCOLOR_CODE];
             markercolor = 1.0;
+            if (laststate != stimstate){
+                sprintf(buf,"status=Stopped at %s\n",binocTimeString());
+                notify(buf);
+            }
             if(TheStim->mode & EXPTPENDING && mode & ANIMATE_BIT)
                 stimstate = INTERTRIAL;
             if(timeout_type == SHAKE_TIMEOUT_PART2){
@@ -6393,13 +6393,9 @@ int next_frame(Stimulus *st)
             }
             ReadCommandFile(expt.cmdinfile);
             t2 = timediff(&now,&lastcleartime);
+            memcpy(&lastcleartime,&now,sizeof(struct timeval));
             if (expt.verbose[0] && t2 > 1){
-                sprintf(buf,"status=Stopped at %s\n",binocTimeString());
-                notify(buf);
-                memcpy(&lastcleartime,&now,sizeof(struct timeval));
             }
-            else if (expt.verbose[0] == 0)
-                memcpy(&lastcleartime,&now,sizeof(struct timeval));
             break;
         case INTERTRIAL:
 #ifdef NIDAQ
@@ -6700,8 +6696,10 @@ int next_frame(Stimulus *st)
                     }
                     
                     if(!(option2flag & PSYCHOPHYSICS_BIT) && !(optionflag & FIXATION_CHECK) && stimstate != INTERTRIAL){
-                        if (demomode == 0)
+                        if (demomode == 0){
                             fixstate = RESPONDED;
+                            totaltrials++;
+                        }
                         stimstate = WAIT_FOR_RESPONSE;
                         
                         gettimeofday(&endtrialtime, NULL);
@@ -11703,8 +11701,8 @@ void Stim2PsychFile(int state)
             *(r-4) = 0;
 
         r = binocTimeString();
-        fprintf(psychfile,"R7 binoclean=%s time=%s ", s, &r[1]);
-        j = 2;
+        fprintf(psychfile,"R7 binoclean=%s time=%s %s", s, &r[1],StimString(OPTION_CODE));
+        j = 3;
         for (i = 0; i < NTRACKCODES; i++){
             if(trackcodes[i] >= 0){
                 if(j%12 ==0)

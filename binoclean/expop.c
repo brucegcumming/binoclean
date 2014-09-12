@@ -3368,7 +3368,10 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
             else
                 new = 0;
             if(flag == NTRIALS_CODE){
-                exp->nstim[0] = (int)val;
+                if (val > 1)
+                    exp->nstim[0] = (int)val;
+                else
+                    exp->nstim[0] = 1;
                 optionflags[CUSTOM_EXPVAL] = 0;
             }
             if(flag == EXPT3_NSTIM){
@@ -5599,7 +5602,10 @@ void setstimulusorder(int warnings)
 
     
     ifcstimno = 0;
-    expt.nstim[3] = nstim;
+    if (nstim > 1)
+        expt.nstim[3] = nstim;
+    else
+        expt.nstim[3] = 1;
     SetExpVals();
     
     
@@ -6179,6 +6185,8 @@ void setstimuli(int flag)
         expt.nstim[3] = (expt.nstim[0] * expt.nstim[1]) + expt.nstim[2];
     else
         expt.nstim[3] = expt.nstim[0]+ expt.nstim[2];
+    if (expt.nstim[3] < 1)
+        expt.nstim[3] = 1;
     switch(expt.type3){
             
         case MICROSTIM_EXPT:
@@ -7816,7 +7824,8 @@ Thisstim *getexpval(int stimi)
         expt1crit = expt.mean;
     else
         expt1crit = 0;
-    i = i % expt.nstim[3];
+    if (expt.nstim[3] > 1)
+        i = i % expt.nstim[3];
     if(i < expt.nstim[2])
         stimret.interleave = 1;
     else
@@ -10366,9 +10375,6 @@ int ExpStimOver(int retval, int lastchar)
     {
         sprintf(buf,"EndStim %d ss %d i %d!!",fixstate,stimstate,lastchar);
         i = CheckBW(END_STIM,buf);
-        if(seroutfile){
-            fprintf(seroutfile,"PR %p %d\n",expt.plot,expt.plot->nstim[5]);
-        }
     }
     else if(optionflag & WAIT_FOR_BW_BIT && expstate == 0 && retval != BAD_TRIAL)
     {
