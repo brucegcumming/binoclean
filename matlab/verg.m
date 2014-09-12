@@ -1746,6 +1746,8 @@ function DATA = GetState(DATA, caller, verbose)
         a = mytoc(ts); %getting here is fast. Its interpretline that is slow.
         if isempty(bstr)
             vergwarning('GetState Return is Emtpy');
+        elseif strncmp('STATEX',bstr,6)
+            vergwarning('GetState Fault Rectified');
         end
          DATA = InterpretLine(DATA, bstr,'fromgetstate');
          if verbose
@@ -2687,6 +2689,10 @@ function ShowHelp(a,b,file)
         uimenu(hm,'Label',DATA.helpfiles(j).label,'Callback',{@ShowHelp, DATA.helpfiles(j).filename});
     end
    uimenu(hm,'Label',sprintf('Version %s',strrep(DATA.vergversion,'verg.','')));
+   if isfield(DATA.binoc{1},'ve') && ~isempty(DATA.binoc{1}.ve)
+       v = strrep(DATA.binoc{1}.ve,'binoclean.','');
+       uimenu(hm,'Label',sprintf('Binoc Version %s',v))
+   end
  
   function OptionMenu(a,b,tag)     
       DATA = GetDataFromFig(a);
@@ -3372,7 +3378,7 @@ function MenuGui(a,b)
      DATA = GetDataFromFig(a);
      CheckTimer(DATA);
     
- function ReadIO(a,b, flag)
+ function DATA = ReadIO(a,b, flag)
      DATA = GetDataFromFig(a);
 
     if strcmp(flag,'openlog')
@@ -3976,7 +3982,7 @@ if go && DATA.newbinoc ~= 2
          if go ==1 %if received NewBinoc, no need to pause
              pause(1);
          end
-         ReadIO(DATA,[],6);
+         DATA = ReadIO(DATA,[],6);
          if isfield(DATA,'reopenstr') && ~isempty(DATA.reopenstr)
              outprintf(DATA,'%s\n',DATA.reopenstr);
          end

@@ -1268,6 +1268,14 @@ char *DescribeState(char caller)
     i = strlen(str);
     if (i >= MAXCHARS)
         acknowledge("Status String too Long", NULL);
+    if (caller == '2'){
+        for (i = 0; i < strlen(str); i++){
+            if(!isprint(str[i]) && str[i] != '\n'){
+                fprintf(stderr,"DescribeStim: Char %d is %d\n",i,(int)(str[i]));
+                str[i] = 0;
+            }
+        }
+    }
         return(str);
 
 }

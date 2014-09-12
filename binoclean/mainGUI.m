@@ -63,6 +63,9 @@ Expt expt;
 
 - (IBAction) elPosButton:(id)sender
 {
+    printString("Electrode Now Controlled in Matlab\n");
+    NSLog(@"Electrode Now Controlled in Matlab");
+    return;
     NSLog(@"Opening Electrode Position Control Window");
     if(!self.sw)
     {
@@ -77,6 +80,9 @@ Expt expt;
 
 - (IBAction) penLogButton:(id)sender
 {
+    printString("Penlog Now  Matlab\n");
+    NSLog(@"Penlog now in Matlab");
+    return;
     NSLog(@"Opening PenLog Window");
     if (!self.pl) {
         self.pl = [[penLog alloc] initWithWindowNibName:@"penLogWindow"];

@@ -18,7 +18,7 @@ NSString * outputPipeBuffer;
 BOOL dataReadyInInputPipe;
 char *DescribeState(char caller);
 extern int inexptstim,innotify,ReadingInputPipe;
-int AddingToInputPipe = 0;
+int AddingToInputPipe = 0,AddingToOutputPipe = 0;;
 static int notifyclash = 0;
 
 // Log levels : off, error, warn, info, verbose
@@ -64,6 +64,7 @@ static const int httpLogLevel = HTTP_LOG_LEVEL_WARN; // | HTTP_LOG_FLAG_TRACE;
                     if (expt.verbose[4] > 0){
                         NSLog(@"Input Pipe: %@", command);
                     }
+                    AddingToOutputPipe = 1;
                     NSArray * sLines = [command componentsSeparatedByCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"\r\n"]];
                     for (int i = 0; i < [sLines count]; i++) {
                         if (strncmp([[sLines objectAtIndex:i] UTF8String], "whatsup", 7) == 0){
@@ -82,8 +83,10 @@ static const int httpLogLevel = HTTP_LOG_LEVEL_WARN; // | HTTP_LOG_FLAG_TRACE;
                         else if (strncmp([[sLines objectAtIndex:i] UTF8String], "getstate", 8) == 0){
                             char * cs =DescribeState('1');
                             s = [NSString stringWithUTF8String:cs];
-                            if([s length] == 0){
+                            if([s length] > 0){
                                 NSLog(@"Empty String conversion in GetState. But strlen(*cs) is%d\n%s", strlen(cs),cs);
+                                cs[5] = 'X'; //let verg know
+                                DescribeState('2');
                             }
                             s = [[NSString alloc] initWithBytes:cs length:strlen(cs) encoding:NSASCIIStringEncoding];
                             outputdata = [s dataUsingEncoding:NSASCIIStringEncoding];
@@ -107,9 +110,10 @@ static const int httpLogLevel = HTTP_LOG_LEVEL_WARN; // | HTTP_LOG_FLAG_TRACE;
                             AddingToInputPipe = 1;
                             [inputPipeBuffer addObject:[sLines objectAtIndex:i]];
                             AddingToInputPipe = 0;
+                            dataReadyInInputPipe = YES;
                         }
                     }
-                    dataReadyInInputPipe = YES;
+                    AddingToOutputPipe = 0;
                 }
             }
         }
