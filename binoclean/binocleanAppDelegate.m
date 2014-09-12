@@ -184,6 +184,9 @@ void notify(char * s)
     if (AddingToOutputPipe > 0){
         NSLog(@"Notify Called while adding to outputpipe");
     }
+    if (expt.verbose[3]){
+        NSLog(@"Notify%s",s);
+    }
     innotify = 1;
     if (!outputPipeBuffer) {
         outputPipeBuffer = [[NSString alloc] init];

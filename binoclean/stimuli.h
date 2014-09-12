@@ -442,6 +442,7 @@ struct EXPERIMENT{
     int codesent;
     char *loadfile;
     float codevalue;
+    int magicnumber;
 };
 
 typedef struct EXPERIMENT Expt;

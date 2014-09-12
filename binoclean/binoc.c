@@ -6272,7 +6272,7 @@ int next_frame(Stimulus *st)
         expt_over(CANCEL_EXPT);
         stimstate = STIMSTOPPED;
     }
-    if (expt.verbose[3]){
+    if (expt.verbose[4]){
         fprintf(stderr,"Stimstate %d at %s\n",stimstate,binocTimeString());
     }
     

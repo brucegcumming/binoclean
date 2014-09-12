@@ -78,6 +78,9 @@ if isempty(it)
         end
         tt = TimeMark(tt, 'Pipes');
         DATA.stimfilename = varargin{1};
+        PauseRead(DATA,1);
+%why do we neeed to send state before reading stim files?
+%.e. which parameters is this for. Could just send a short list...
         SendState(DATA); %params loaded from verg.setup, binoc.setup etc
         tt = TimeMark(tt, 'SendState');
         DATA = ReadStimFile(DATA, '/local/verg.setup'); %make sure these go to binoc
@@ -86,6 +89,8 @@ if isempty(it)
         tt = TimeMark(tt, 'Read');
         SendCode(DATA,'vve'); %send verg version
         DATA.rptexpts = 0;  %can't set this in startup files, only quickmenus
+        DATA = DrainBinocPipe(DATA);
+        PauseRead(DATA,0);
         if exist(DATA.binoc{1}.lo,'file')
             DATA = ReadLogFile(DATA, DATA.binoc{1}.lo);
         end
@@ -393,6 +398,8 @@ for j = 1:length(strs{1})
                 if DATA.autoreopen == 3
                     DATA.autoreopen=1;
                     DATA.autorestart = 1;
+                else
+                    DATA.autorestart = 0;
                 end
             elseif strncmp(s,'optionwinpos=',10)
                 DATA.winpos{2} = sscanf(value,'%d');
@@ -1940,8 +1947,9 @@ end
 DATA = SetField(DATA,'matexpt','');
 DATA = SetField(DATA,'perfmonitor',0);
 DATA = SetField(DATA,'togglecodesreceived',0);
-DATA = SetField(DATA,'autoreopen', 0);;
-DATA = SetField(DATA,'autorestart', 0);;
+DATA = SetField(DATA,'autoreopen', 0);
+DATA = SetField(DATA,'autorestart', 0);
+DATA = SetField(DATA,'draintimeout', 4);
 
 DATA.commands = {};
 DATA.commandctr = 1;
@@ -2039,6 +2047,7 @@ DATA.binoc{1}.nr = 1;
 DATA.binoc{1}.rw = 0;
 DATA.binoc{1}.seqpause = 10;
 DATA.binoc{1}.ereset = 'NotSet';
+DATA.binoc{1} = SetField(DATA.binoc{1},'magic',0);
 
 DATA.binocstr.monitor = '/local/monitors/Default';
 DATA.completestr = '';
@@ -2910,7 +2919,8 @@ function DATA = LoadLastSettings(DATA, varargin)
         end
         if go
             txt = scanlines(d.name);
-            for s = {'id' 'se' 'ed' 'Rx' 'Ry' 'Ro' 'Rw' 'Rh' 'Xp' 'Yp' 'Pn' 'Electrode' 'hemi' 'ui' 'ePr' 'eZ' 'monkey' 'coarsemm' 'adapter'}
+            for s = {'id' 'se' 'ed' 'Rx' 'Ry' 'Ro' 'Rw' 'Rh' 'Xp' 'Yp' 'Pn' 'Electrode' 'hemi'...
+                    'ui' 'ePr' 'eZ' 'monkey' 'coarsemm' 'adapter' 'Trw' 'Tg' 'nT' 'Tb'}
             id = find(strncmp(s,txt,length(s{1})));
             if ~isempty(id)
                 cprintf('blue','Setting %s from %s\n',txt{id(1)},d.name);
@@ -3863,6 +3873,33 @@ end
     lastts = ts;
 httpbusy = 0;
  
+ function DATA = DrainBinocPipe(DATA)
+
+     if isfield(DATA,'toplevel')
+         pausestate = getappdata(DATA.toplevel,'PauseReading');
+     else
+         pausestate = 1; % do nothing
+     end
+     if pausestate == 0
+         PauseRead(DATA,1);
+     end
+     newmagic = DATA.binoc{1}.magic+1;
+     outprintf(DATA,'magic=%d\n',newmagic);
+     outprintf(DATA,'magic=');
+     ts = now;
+     while DATA.binoc{1}.magic ~= newmagic && mytoc(ts) < DATA.draintimeout
+         [DATA, str] = ReadFromBinoc(DATA);
+         myprintf(DATA.frombinocfid,'Drain at %s\n',datestr(now));
+     end
+     DATA.readdur = mytoc(ts);
+     if DATA.readdur >= DATA.draintimeout
+         fprintf('Read timed out after %.2f sec\n',DATA.readdur);
+     end
+     if pausestate == 0
+         PauseRead(DATA,0);
+     end
+     
+     
  function [DATA, str] = ReadFromBinoc(DATA, varargin)
      global rbusy;
      persistent lastts;
@@ -6160,7 +6197,7 @@ if showbinoc
            end
        end
        if length(id)
-        str = DATA.comcodes(id(1)).label;
+        str = [DATA.comcodes(id(1)).label ',#' num2str(DATA.comcodes(id(1)).const-1)];
        end
     elseif strmatch(code,{'nr' 'nt' 'n2' 'n3' 'et' 'e2' 'e3' })
        txt = ['?' CodeText(DATA, code)];       

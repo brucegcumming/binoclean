@@ -110,7 +110,7 @@ extern FILE *imidxfd;
 extern char *replay_expt, ImageOutDir[],timeoutstring[];
 extern int rfctr,mimic_fixation;
 extern char *rcname;
-extern int wurtzctr,*fixed,lasteyecheck,avglen;
+extern int wurtzctr,*fixed,lasteyecheck,avglen,totaltrials;
 extern float calcdur,paintdur,swapwait,changeframedur;
 extern int debug,timeout_type;
 extern double olddisp,oldvelocity;
@@ -3016,6 +3016,9 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
         case IMAGEJUMPS:
             expt.st->jumps = (int)val;
             break;
+        case TRIAL_COUNT:
+            totaltrials = (int)val;
+            break;
         case REWARD_BIAS:
             expt.biasedreward = val;
             break;
@@ -3779,9 +3782,15 @@ float ExptProperty(Expt *exp, int flag)
     
     switch(flag)
     {
+        case MAGIC_ID:
+            val = (float)expt.magicnumber;
+            break;
         case UFF_TIME:
             gettimeofday(&now,NULL);
             val = timediff(&now,&sessiontime);
+            break;
+        case TRIAL_COUNT:
+            val = (float)totaltrials;
             break;
         case IMAGEJUMPS:
             val = expt.st->jumps;
@@ -7326,6 +7335,7 @@ char *SerialSend(int code)
         case STIMULUS_TYPE_CODE:
             SerialString(cbuf,0);
             break;
+        case TOTAL_REWARD:
         case CHANNEL_CODE:
             i = 0; //for debugger
         default:
@@ -12262,7 +12272,7 @@ int CheckBW(int signal, char *msg)
          */
         if(signal == END_STIM && c == BAD_FIXATION){
             if (seroutfile){
-            fprintf(seroutfile,"End/Bad combination %d %.2f %d",trialcnt,ufftime(&now),stimstate);
+            fprintf(seroutfile,"End/Bad combination %d %.2f %d",totaltrials,ufftime(&now),stimstate);
             }
             endbadctr++;
             glstatusline("End/Bad",3);
@@ -12317,7 +12327,7 @@ int CheckBW(int signal, char *msg)
                 sprintf(s,"Trial %d %s Serial Line Not Responding",stimno,signame);
                 if(seroutfile != NULL){
                     val = timediff(&now,&bwtime);
-                    fprintf(seroutfile,"Endstim Error %d %.2f",trialcnt,ufftime(&now));
+                    fprintf(seroutfile,"Endstim Error %d %.2f",totaltrials,ufftime(&now));
                     ShowLastCodes();
                 }
                 //Ali w = 
@@ -14124,6 +14134,9 @@ int InterpretLine(char *line, Expt *ex, int frompc)
                 fputs(buf,seroutfile);
             notify(buf);
             break;
+        case MAGIC_ID:
+            sscanf(s,"%d",&expt.magicnumber);
+            break;
         case JUMP_SF_COMPONENTS:
             for(i = 0; i < expt.st->nfreqs; i++)
                 expt.st->componentjumps[i] = 1;
@@ -14579,7 +14592,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             break;
         case QUERY_STATE:
             gettimeofday(&now,NULL);
-            sprintf(buf,"%s\nfs%d\nss%d\nes%d tc%d %.2f",&line[2],fixstate,stimstate,expstate,trialcnt,ufftime(&now));
+            sprintf(buf,"%s\nfs%d\nss%d\nes%d tc%d %.2f",&line[2],fixstate,stimstate,expstate,totaltrials,ufftime(&now));
             acknowledge(buf,NULL);
             if(seroutfile)
                 fprintf(seroutfile,"%2s%s\n",valstrings[icode].code,buf);
@@ -14755,7 +14768,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             SetExptProperty(ex, TheStim,code, val,0);
             break;
         case TRIAL_COUNT:
-            sscanf(s,"%d",&trialcnt);
+            sscanf(s,"%d",&totaltrials);
             break;
         case SACCADE_DETECTED:
             sscanf(s,"%f",&val);
@@ -14781,6 +14794,10 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             SetProperty(ex, TheStim,code, val);
             if (i > 1 && fval > 0)
                 expt.vals[EARLY_RWSIZE] = fval;
+            break;
+        case TOTAL_REWARD:
+            sscanf(s,"%f",&val);
+            expt.vals[code]= val;
             break;
         case TF:
             if(!strncmp(s,"tf",2)){
@@ -14857,8 +14874,13 @@ int InterpretLine(char *line, Expt *ex, int frompc)
         notify(line);
         notify("\n");
     }
-    else if(frompc ==2 && code >= 0){
- //       SendToGui(code); // would like this only when readval uses another property.  Let verg figure this out
+    else if(frompc ==2 && code >= 0){ //came from verg. Some of these need -> spike2
+        switch(code){
+            case TOTAL_REWARD:
+                SerialSend(code);
+                break;
+        //       SendToGui(code); // would like this only when readval uses another property.  Let verg figure this out
+        }
     }
     return(code);
 }

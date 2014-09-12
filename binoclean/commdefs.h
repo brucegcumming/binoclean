@@ -275,6 +275,7 @@
 #define STIMULUS_TAG (LAST_STIMULUS_CODE+172)
 #define STIM3_TYPE (LAST_STIMULUS_CODE+173)
 #define SCREEN_VOFFSET (LAST_STIMULUS_CODE+174)
+#define TOTAL_REWARD (LAST_STIMULUS_CODE+175)
 //Add above here anything that needs to go to Spike2
 
 
@@ -502,10 +503,11 @@
 #define SEQUENCE_PAUSE (MAXSAVECODES+40)
 #define STIMULUSDIR (MAXSAVECODES+41)
 #define HELPDIR (MAXSAVECODES+42)
-#define TOTAL_REWARD (MAXSAVECODES+43)
+
 #define CHOICE_TARGET_OVERLAP (MAXSAVECODES+44)
-#define MAXTOTALCODES (MAXSAVECODES+45)  //437
-#define VERSION_NUMBER (MAXSAVECODES+46)
+#define VERSION_NUMBER (MAXSAVECODES+45)
+#define MAGIC_ID MAXSAVECODES+46
+#define MAXTOTALCODES (MAXSAVECODES+47)  //437
 
 
 /*
@@ -567,8 +569,9 @@
 #define END_TIMEOUT MAXTOTALCODES +71
 #define TOTALCODES MAXTOTALCODES+72
 /*
- *  TOTALCODES is the total numer of CHAMBER_AD in Expt 
+ *  TOTALCODES is the total number of CHAMBER_AD in Expt
  * anything not needed in Expt is > TOTALCODES
+ * if verg needs is, needs ot be less that MAXTOTALCODES
  */
 
 
@@ -1313,6 +1316,7 @@ ValueCode valstrings[] = {
     {"seqpause","Pause between computer repeated blocks",  SEQUENCE_PAUSE, 16, 'N', 2, SEND_VERG_ONLY, SAVE_ALWAYS},
     {"xyfsd", "XY window width (degrees)", XY_FSD, 0, 'N', 1, SEND_EXPLICIT, SAVE_ALWAYS},
     {"netpref","Prefix for Network Data Record",  NETWORK_PREFIX, 16, 'C', 2, SEND_VERG_ONLY, SAVE_ALWAYS},
+    {"magic","Magic Number",  MAGIC_ID, INTERNALCOMMAND, 'N', 0, SEND_EXPLICIT, SAVE_NEVER},
     { NULL, NULL, -1, -1 ,0 ,0, 0},
 };
 
