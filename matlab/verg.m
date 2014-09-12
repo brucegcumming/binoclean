@@ -372,7 +372,7 @@ for j = 1:length(strs{1})
                 estr = s(eid(1)+1:end);
                 DATA.userstrings = {DATA.userstrings{:} estr};
                 sendtobinoc=oldsend;
-                codetype =0;
+                codetype =-1; %dont send to binoc
             elseif strncmp(s,'pause',5)
                 if ~isempty(value)
                     DATA.readpause = str2num(value);
@@ -390,6 +390,10 @@ for j = 1:length(strs{1})
                 DATA.winpos{1} = sscanf(value,'%d');
             elseif strncmp(s,'autoreopen=',10)
                 DATA.autoreopen = sscanf(value,'%d');
+                if DATA.autoreopen == 3
+                    DATA.autoreopen=1;
+                    DATA.autorestart = 1;
+                end
             elseif strncmp(s,'optionwinpos=',10)
                 DATA.winpos{2} = sscanf(value,'%d');
             elseif strncmp(s,'softoffwinpos=',10)
@@ -1452,6 +1456,7 @@ if setall
     DATA = ReadVergFile(DATA, DATA.layoutfile);
 end
 DATA.newexptdef = 1;
+DATA.userstrings = unique(DATA.userstrings);
 
 
 function DATA = ReadVergFile(DATA, name, varargin)
@@ -1686,36 +1691,43 @@ DATA.outpipe = '/tmp/binocinputpipe';
 DATA.inpipe = '/tmp/binocoutputpipe';
 
 rbusy = 0;
-if DATA.network
-    DATA.binocisup = 1;
-    warning('off','MATLAB:urlread:ReplacingSpaces');
-else
-
-if DATA.outid > 0
-    fclose(DATA.outid);
-end
-if DATA.inid > 0
-    fclose(DATA.inid);
-end
 
 [a, pstr] = system('ps -e | grep binoclean');
 if isempty(strfind(pstr, 'binoclean.app'))
     msgbox('Binoc is Not Runnig');
     binocisrunning = 0;
 else
-    binocisrunning = 1;    
+    binocisrunning = 1;
 end
-if exist(DATA.outpipe)  && binocisrunning
-%if binoc crashed out leaving pipes behind, this will freeze.    
-    DATA.outid = fopen(DATA.outpipe,'w');
+
+if DATA.network
+    DATA.binocisup = 1;
+    if binocisrunning == 0 && DATA.autorestart
+        fprintf('Please Wait while I start binoc....\n');
+        [DATA.binoncisup,b] = system('open /local/bin/binoclean.app');        
+        fprintf('Thank you. Binoc is running now\n');
+    end
+    warning('off','MATLAB:urlread:ReplacingSpaces');
 else
-    DATA.outid = 1;
-end
-if exist(DATA.inpipe) && binocisrunning
-    DATA.inid = fopen(DATA.inpipe,'r');
-else
-    DATA.inid = 1;
-end
+    
+    if DATA.outid > 0
+        fclose(DATA.outid);
+    end
+    if DATA.inid > 0
+        fclose(DATA.inid);
+    end
+    
+    if exist(DATA.outpipe)  && binocisrunning
+        %if binoc crashed out leaving pipes behind, this will freeze.
+        DATA.outid = fopen(DATA.outpipe,'w');
+    else
+        DATA.outid = 1;
+    end
+    if exist(DATA.inpipe) && binocisrunning
+        DATA.inid = fopen(DATA.inpipe,'r');
+    else
+        DATA.inid = 1;
+    end
 end
 outprintf(DATA,'NewMatlab\n');
 ts = now;
@@ -1734,7 +1746,7 @@ if readflag
     DATA = GetState(DATA,'OpenPipe');
 end
 SetGui(DATA,'set');
- 
+
     
 function DATA = GetState(DATA, caller, verbose)
     if nargin < 3
@@ -1919,6 +1931,7 @@ DATA = SetField(DATA,'matexpt','');
 DATA = SetField(DATA,'perfmonitor',0);
 DATA = SetField(DATA,'togglecodesreceived',0);
 DATA = SetField(DATA,'autoreopen', 0);;
+DATA = SetField(DATA,'autorestart', 0);;
 
 DATA.commands = {};
 DATA.commandctr = 1;
@@ -1926,7 +1939,7 @@ DATA.historyctr = 0;
 DATA.inexpt = 0;
 DATA.binoc{1}.uf = '';
 DATA.electrodestrings = {'Not Set'};
-DATA.userstrings = {'bgc' 'ali' 'ink' 'agb'};
+DATA.userstrings = {'bgc' 'ali' 'ink' 'agb' 'pla' 'sid'};
 DATA.monkeystrings = {'Icarus' 'Junior Barnes' 'Lemieux' 'Pepper' 'Rufus' };
 DATA.monkeystrs = {'ica' 'jbe' 'lem' 'ppr' 'ruf' };
 DATA.binoc{1}.Electrode = 'default';
@@ -3976,7 +3989,16 @@ if nargin > 1
          if d.datenum > lastts || isempty(lastts)
              lastts = now;
              go = 1;
+         elseif (now-d.datenum) > 1/(24 * 60) % more than a minute with no binco
+             if DATA.autorestart
+                 if DATA.autoreopen == 0
+                     DATA.autoreopen = 2;
+                 end
+                 myprintf(DATA.frombinocfid,'-show','Restarting Binoc at %s',datestr(now));
+                 [a,b] = system('open /local/bin/binoclean.app');
+             end
          end
+         
      end
 else
     go = 2;

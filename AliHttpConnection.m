@@ -84,7 +84,7 @@ static const int httpLogLevel = HTTP_LOG_LEVEL_WARN; // | HTTP_LOG_FLAG_TRACE;
                             char * cs =DescribeState('1');
                             s = [NSString stringWithUTF8String:cs];
                             if([s length] == 0){
-                                NSLog(@"Empty String conversion in GetState. But strlen(*cs) is%d\n%s", strlen(cs),cs);
+                                NSLog(@"Empty String conversion in GetState. strlen(*cs) is%d\n%s", strlen(cs),cs);
                                 cs[5] = 'X'; //let verg know
                                 DescribeState('2');
                             }
