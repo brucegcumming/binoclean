@@ -575,6 +575,7 @@ long rnd_i(void);
     #define srand48 drandinit
     #define myrnd_init randinit
     #define myrnd_i random_l
+
     uint64_t random_l();
     #define myrnd_u random_l
     double drand64(void);

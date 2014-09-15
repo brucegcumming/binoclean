@@ -766,7 +766,7 @@ ToggleCode togglestrings[] = {
     {"Random Contrast",    "rC",  0, RANDOM_CONTRAST, 3},
     {"Random Correlation",    "rI",  0, RANDOM_CORRELATION, 3},
     //   {"AutoCopy",    "cd",  0, AUTO_COPY_ONLINE_FILES, 3},
-    {"Custom Vals Expt2",    "cb", 0, CUSTOM_EXPVALB, 3},
+    {"Custom Vals Expt2",    "cex2", 0, CUSTOM_EXPVALB, 4},
     {"Search..",    "sm", 0, SEARCH_MODE_BIT, 1},
     {"Online Data",    "da",  0, ONLINE_DATA, 3},
 
@@ -832,6 +832,7 @@ ToggleCode togglestrings[] = {
     {"Record RLS",    "srls",  0, SAVE_RLS, 3},
     {"Manual Expt",    "exm",  0, MANUAL_EXPT, 3},
     {"Reverse Back Contrast",    "bac",  0, MANUAL_EXPT, 3},
+    {"Custom Values Expt 1",    "cex1",  0, CUSTOM_EXPVAL, 4},
     //   {"Auto Plot",    "ap", 0, AUTO_PLOT, 1},
     //   {"PreBack",    "pb", 0, BACKGROUND_IN_PREPERIOD, 1},
     //   {"Show Val",    "pw", 0, PLOT_WURTZ_BIT, 1},

@@ -1,5 +1,5 @@
 //
-//  AliHttpConnection.m
+//  AXiHttpConnection.m
 //  TCPtest
 //
 //  Created by Ali Moeeny on 3/12/14.
@@ -18,6 +18,7 @@ NSString * outputPipeBuffer;
 BOOL dataReadyInInputPipe;
 char *DescribeState(char caller);
 extern int inexptstim,innotify,ReadingInputPipe;
+extern FILE *seroutfile;
 int AddingToInputPipe = 0,AddingToOutputPipe = 0;;
 static int notifyclash = 0;
 
@@ -90,6 +91,15 @@ static const int httpLogLevel = HTTP_LOG_LEVEL_WARN; // | HTTP_LOG_FLAG_TRACE;
                             }
                             s = [[NSString alloc] initWithBytes:cs length:strlen(cs) encoding:NSASCIIStringEncoding];
                             outputdata = [s dataUsingEncoding:NSASCIIStringEncoding];
+                        }
+                        else if (strncmp([[sLines objectAtIndex:i] UTF8String], "login", 5) == 0){
+// s http requet that seems to come to this port occasionally. ??? fro matlab or elsewhere?
+                            NSLog(@"Login Request %@", command);
+                            [[NSNotificationCenter defaultCenter] postNotificationName:@"updatecommandhistory" object:nil userInfo:[NSDictionary dictionaryWithObject:[NSString stringWithUTF8String:"Login Requested!!"] forKey:@"text"]];
+                            if (seroutfile){
+                                fprintf(seroutfile,"#HTTP%s\n",[[sLines objectAtIndex:i] UTF8String]);
+                                fflush(seroutfile);
+                            }
                         }
                         else{
                             if (!inputPipeBuffer) {

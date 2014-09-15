@@ -67,6 +67,7 @@ static int nostore = 0;
 static float pursued = 0;
 int lastbutton = -1000;
 int renderoff;
+char *chartrack;
 
 static int track_resets[] = {XPOS, YPOS, FIXPOS_X, FIXPOS_Y, -1};
 
@@ -2393,6 +2394,21 @@ void one_event_loop()
     }
 }
 
+
+int CrashCheck(char *caller)
+{
+    
+    if (expt.verbose[5] == 0)
+        return(NULL);
+    char *smon;
+    
+    smon = expt.strings[MONITOR_FILE];
+    if (!isprint(*smon)){
+        fprintf(stderr,"Monitor file error %s\n",caller);
+    }
+    
+}
+
 #pragma mark Event_Loop
 
 int event_loop(float delay)
@@ -2401,7 +2417,7 @@ int event_loop(float delay)
 	vcoord end[2],mpos[2];
 	short rgbvec[3],*pl;
 	/* Ali KeySym */ int sym;
-	char c,s[256], *ser;
+	char c,s[256], *ser,*smon;
 	float angle = 90;
 	float sina,cosa,aval;
 	float val;
@@ -2419,6 +2435,7 @@ int event_loop(float delay)
     if (nftime.tv_sec == 0)
         firstcall = 1;
 
+    CrashCheck("EVloop1");
     val = timediff(&then,&nftime); //time since next frame exited
 //    if (stimstate == POSTSTIMINTRIAL || stimstate == POSTPOSTSTIMULUS)
 //        fprintf(stdout,"loop delay %.5f\n",val);
@@ -2516,6 +2533,8 @@ int event_loop(float delay)
         notify("NewBinoc\n");
     }
     gettimeofday(&nftime,NULL);
+    CrashCheck("EVLoop2");
+
     return(stimstate);
 }
 
@@ -6241,7 +6260,7 @@ int next_frame(Stimulus *st)
         exptchr = ' ';
     
     markercolor = 1.0;
-    glstatusline(NULL,1);
+    glstatusline(NULL,1); //? put this in runbetweentrials?
     if (optionflags[MONITOR_STATE]){
         if(seroutfile && (laststate != stimstate || (optionflags[WATCH_TIMES] && laststate != STIMSTOPPED))){
             fprintf(seroutfile,"#State %d %d VS%.1f%c %.2f,%.2f\n",stimstate,fixstate,afc_s.sacval[1],exptchr,t2,t3);
@@ -6284,7 +6303,7 @@ int next_frame(Stimulus *st)
     if (expt.verbose[4]){
         fprintf(stderr,"Stimstate %d at %s\n",stimstate,binocTimeString());
     }
-    
+    CrashCheck("nextframe");
     switch(stimstate)
     {
         case STIMSTOPPED:
@@ -7259,6 +7278,8 @@ int next_frame(Stimulus *st)
             }
             
             redraw_overlay(expt.plot);
+            glstatusline(NULL,1); //? put this in runbetweentrials?
+
             if(timeout_type == SHAKE_TIMEOUT_PART2 && 0)
                 ShowTime();
             change_frame();
@@ -10848,7 +10869,7 @@ int GotChar(char c)
                 fixx[wurtzctr%avglen] = expt.stimvals[FIXPOS_X];
                 fixy[wurtzctr%avglen] = expt.stimvals[FIXPOS_Y];
                 
-                fixed[wurtzctr+1] = -1;
+                fixed[(wurtzctr+1)%avglen] = -1;
 			    if(c== WURTZ_OK){
                     if(goodtrials %50 == 0 && goodtrials > 0 && penlog)
                         fprintf(penlog,"Rewards %d of %d\n",goodtrials,totaltrials);
