@@ -3707,7 +3707,6 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
         case VERGENCE_WINDOW:
         case STATIC_VERGENCE:
         case ELECTRODE_DEPTH:
-        case SPIKE_GAIN:
         case REWARD_SIZE:
         case PREWARD:
         case WURTZ_RT_CODE:

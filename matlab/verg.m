@@ -162,6 +162,8 @@ while j <= length(varargin)
         return;
     elseif strncmpi(varargin{j},'checkhelp',8)
         CheckCodeHelp(DATA, 'update');
+    elseif strncmpi(varargin{j},'checkstim',8)
+        CheckStimFile(DATA, 'update');
     elseif strncmpi(varargin{j},'getstate',5)
         ts = now;
         DATA = GetState(DATA,'commandline');
@@ -269,7 +271,20 @@ function DATA = CheckStateAtStart(DATA)
  
      txt(line+1:end+1) = txt(line:end);
      txt{line} = s;
+
      
+function CheckStimFile(DATA, type)
+    txt = scanlines(DATA.stimfilename);
+    for j = 1:length(txt)
+        [DATA, code, badcodes] = InterpretLine(DATA, txt{j}, 'test');
+        if code < -1 
+            badlines(j) = 1;
+        elseif ~isempty(badcodes)
+            
+        end
+    end
+
+
 function CheckCodeHelp(DATA, type)
     
     if nargin ==1
@@ -281,7 +296,7 @@ function CheckCodeHelp(DATA, type)
     for j = 1:length(DATA.comcodes)
         k = sid(j);
        if ~isfield(DATA.helpstrs,DATA.comcodes(k).code) 
-           if ~strcmp('xx',DATA.comcodes(k).code)
+           if ~strcmp('xx',DATA.comcodes(k).code) && ~bitand(DATA.comcodes(k).group,1024)
                fprintf('No help for %s\n',DATA.comcodes(k).code);
                if strcmp(type,'update')
                prevcode = DATA.comcodes(sid(j-1)).code;
@@ -303,7 +318,7 @@ function CheckCodeHelp(DATA, type)
     end
         
     
-function [DATA, codetype] = InterpretLine(DATA, line, varargin)
+function [DATA, codetype, badcodes] = InterpretLine(DATA, line, varargin)
 
     
     
@@ -314,6 +329,7 @@ sendtobinoc =0;
 paused = 0;
 src = 'unknown';
 srcchr = 'U';
+badcodes = {};
 j = 1;
 while j <= length(varargin)
     if strncmpi(varargin{j},'from',4)
@@ -328,6 +344,9 @@ while j <= length(varargin)
             srcchr = 'G';
             frombinoc = 3;
         end
+    elseif strncmpi(varargin{j},'test',4)
+        frombinoc = 0;
+        sendtobinoc = 0;
     elseif strncmpi(varargin{j},'tobinoc',4)
         sendtobinoc = 1;
         srcchr = 'V';
@@ -1032,7 +1051,8 @@ for j = 1:length(strs{1})
             
             if isempty(code) 
                 if DATA.togglecodesreceived
-                    fprintf('No Code for %s\n',s(id(k):end-1));
+                    badcodes{end+1} = s(id(k):end-1);
+                    fprintf('No Code for %s\n',badcodes{end});
                 else
                     myprintf(DATA.frombinocfid,'-show','Cant set Code %s - have not received list from binoc\n',s(id(k):end-1));                    
                 end
@@ -1195,6 +1215,7 @@ for j = 1:length(strs{1})
                 SetCode(DATA,code);
             else
                 cprintf('red','Cannot Interpret %s: %s\n',src,deblank(strs{1}{j}));
+                codetype = -2;
             end
         end
     end
@@ -4627,8 +4648,10 @@ function CodesPopup(a,b, type)
       for j = 1:length(b)
           if b(j) == 0
               code = '';
+              codetype = 0;
           else
               code = DATA.comcodes(b(j)).code;
+              codetype = DATA.comcodes(b(j)).group;
           end
           if ~strcmp(code,'xx')
           ns = max([5 - length(code) 1]);          
@@ -4641,6 +4664,9 @@ function CodesPopup(a,b, type)
               a(nc+nl,1) = ' ';
               nl = nl+1;
               s = labels{nlab};
+          end
+          if bitand(codetype,1024)
+              s = [s '  (Internal)'];
           end
           if isfield(DATA.helpstrs,code)
               if isfield(DATA.helpkeys.extras,code)
