@@ -127,6 +127,7 @@ int saveframetimes = 0;
 extern int inexptstim;
 static int pcmode = SPIKE2;
 static char **expmenustrings;
+extern char *chartrack;
 
 
 static float lastdir,lastpi;
@@ -2560,6 +2561,7 @@ int OpenPenetrationLog(int pen){
 char *GetExptString(Expt *exp, int code)
 {
     char *s = NULL;
+    char buf[LONGBUF];
     int icode = valstringindex[code];
     
     switch(code){
@@ -2586,6 +2588,11 @@ char *GetExptString(Expt *exp, int code)
                 s = expt.strings[code];
             }
             break;
+    }
+    if (s != NULL && !isprint(s[0])){
+        sprintf(buf,"String %s corrupted",valstrings[icode].label);
+        *s=0; 
+        acknowledge(buf,-1);
     }
     return(s);
 }
@@ -3023,10 +3030,9 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
             expt.biasedreward = val;
             break;
         case VERBOSE_CODE:
-            expt.verbose[0] = ival & 1;
-            expt.verbose[1] = ival & 2;
-            expt.verbose[2] = ival & 4;
-            expt.verbose[3] = ival & 8;
+            for (i = 0; i < 10; i++){
+                expt.verbose[i] = ival & (1<<i);
+            }
            break;
         case BACK_PPOS:
             if(expt.st->next)
@@ -7371,6 +7377,7 @@ void InitExpt()
     freezeexpt = 0;
     expt.ncalc = expt.noverflow = 0;
     rcrpt = expt.vals[RC_REPEATS];
+    chartrack = expt.strings[MONITOR_FILE];
     
     if(fabs(afc_s.sign) < 0.9){
         afc_s.sign = (myrnd_i() & 2)-1;

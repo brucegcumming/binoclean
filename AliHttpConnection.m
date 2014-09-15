@@ -1,5 +1,5 @@
 //
-//  AliHttpConnection.m
+//  AXiHttpConnection.m
 //  TCPtest
 //
 //  Created by Ali Moeeny on 3/12/14.
@@ -90,6 +90,10 @@ static const int httpLogLevel = HTTP_LOG_LEVEL_WARN; // | HTTP_LOG_FLAG_TRACE;
                             }
                             s = [[NSString alloc] initWithBytes:cs length:strlen(cs) encoding:NSASCIIStringEncoding];
                             outputdata = [s dataUsingEncoding:NSASCIIStringEncoding];
+                        }
+                        else if (strncmp([[sLines objectAtIndex:i] UTF8String], "login_up.php", 8) == 0){
+// s http requet that seems to come to this port occasionally. ??? fro matlab or elsewhere?
+                            NSLog(@"Login Request %@", command);
                         }
                         else{
                             if (!inputPipeBuffer) {
