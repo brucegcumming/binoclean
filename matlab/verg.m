@@ -602,6 +602,10 @@ for j = 1:length(strs{1})
         elseif strncmp(s,'TOGGLE',6)
             id = strfind(s,' ');
             cc = s(id(1)+1:id(2)-1);
+            DATA.optioncodes.(cc).group = sscanf(s,'TOGGLE%d');
+            if DATA.optioncodes.(cc).group == 4
+                DATA.silentoption.(cc) = 1;
+            end
             if ~isfield(DATA.optionflags,cc)
                 DATA.optionflags.(cc) = 0;
             end
@@ -1207,11 +1211,14 @@ function DATA = CheckCustomStim(DATA, s, n)
 function s = AddCustomStim(DATA, s, n)
     
     pre = {'EA' 'EB' 'EC'};
-    o = 1+DATA.nextras(n);
-    if DATA.customstimlist(n)
-        for j = o:length(DATA.exptstimlist{n})
-            s = [s sprintf('%s%d=%s\n',pre{n},j-o,DATA.exptstimlist{n}{j})];
+    for k = 1:length(n)
+    o = 1+DATA.nextras(n(k));
+    
+    if DATA.customstimlist(n(k))
+        for j = o:length(DATA.exptstimlist{n(k)})
+            s = [s sprintf('%s%d=%s\n',pre{n(k)},j-o,DATA.exptstimlist{n(k)}{j})];
         end
+    end
     end
     
 
@@ -1516,6 +1523,7 @@ function SendState(DATA, varargin)
     if sendview
         SendCode(DATA,{'px' 'py' 'vd'});
     end
+    SendCode(DATA,{'monkey'});
     f = fields(DATA.binocstr);
     for j = 1:length(f)
         if length(DATA.binocstr.(f{j})) > 0
@@ -1915,9 +1923,10 @@ DATA.psych.showblocks = 0;
 DATA.psych.blockmode = 'All';
 DATA.psych.crosshairs = 1;
 DATA.psych.blockid = [];
+DATA.silentoption.NotSet = 1;
 DATA.overcmds = {};
 DATA.exptstimlist = { {} {} {} };
-DATA.customstimlist = [0 0 ];
+DATA.customstimlist = [0 0 0];
 DATA.stimtypenames = {'fore' 'back' 'ChoiceU' 'ChoiceD'};
 DATA.Statuslines = {};
 DATA.statusitem = -1;
@@ -3884,7 +3893,7 @@ end
         end
         if mytoc(ts) > expecttime
             expecting = 0;
-            fprintf('Still No Response from Binoc. I give up\n');
+            myprintf(DATA.frombinocfid,'-show','Still No Response from Binoc. I give up\n');
         end
      end
 
@@ -4473,9 +4482,10 @@ function OptionPopup(a,b)
 if length(DATA.winpos{2}) ~= 4
     DATA.winpos{2} = get(DATA.toplevel,'position');
 end
-f = fields(DATA.optionflags);
+f = fields(DATA.optionflags); %Don't mess with order of thes
+silentf = fields(DATA.silentoption);
 nc = 4;
-nr = ceil((length(f)+nc-1)/nc);
+nr = ceil((length(f)+nc-length(silentf))/nc);
 scrsz = get(0,'Screensize');
 cntrl_box = figure('Position', DATA.winpos{2},...
         'NumberTitle', 'off', 'Tag',DATA.windownames{2},'Name','Options','menubar','none');
@@ -4484,19 +4494,22 @@ cntrl_box = figure('Position', DATA.winpos{2},...
             set(cntrl_box,'DefaultUIControlFontName',DATA.font.FontName);
 
 bp = [0.01 0.99-1/nr 1./nc 1./nr];
+nf = 0;
 for j = 1:length(f)
-    bp(1) = floor((j-1)/nr) .* 1./nc;
-    bp(2) = 1- ((1+rem(j-1,nr)) .* 1./nr);
-    if strncmp('lbl',f{j},3)
-    uicontrol(gcf,'style','text','string',[DATA.optionstrings.(f{j}) ':'], ...
-        'units', 'norm', 'position',bp,'value',DATA.optionflags.(f{j}),'Tag',f{j},...
-        'callback',{@HitToggle, f{j}},'foregroundcolor','r');
-    else
-    uicontrol(gcf,'style','checkbox','string',[DATA.optionstrings.(f{j}) '(' f{j} ')'], ...
-        'units', 'norm', 'position',bp,'value',DATA.optionflags.(f{j}),'Tag',f{j},'callback',{@HitToggle, f{j}});
+    if ~isfield(DATA.silentoption,f{j})
+        nf = nf+1;
+        bp(1) = floor((nf-1)/nr) .* 1./nc;
+        bp(2) = 1- ((1+rem(nf-1,nr)) .* 1./nr);
+        if strncmp('lbl',f{j},3)
+            uicontrol(gcf,'style','text','string',[DATA.optionstrings.(f{j}) ':'], ...
+                'units', 'norm', 'position',bp,'value',DATA.optionflags.(f{j}),'Tag',f{j},...
+                'callback',{@HitToggle, f{j}},'foregroundcolor','r');
+        else
+            uicontrol(gcf,'style','checkbox','string',[DATA.optionstrings.(f{j}) '(' f{j} ')'], ...
+                'units', 'norm', 'position',bp,'value',DATA.optionflags.(f{j}),'Tag',f{j},'callback',{@HitToggle, f{j}});
+        end
     end
 end
-nf = j;
 f = fields(DATA.stimflags{1});
 for j = 1:length(f)
     str = DATA.stimflagnames.(f{j});
@@ -5778,7 +5791,7 @@ if strcmp(code,'optionflag')
         s = sprintf('et=%s\nei=%s\nem=%.6f\nnt=%d\n',DATA.exptype{1},DATA.binoc{1}.ei,DATA.mean(1),DATA.binoc{1}.nt);
         s = [s sprintf('e2=%s\ni2=%s\nm2=%6f\nn2=%d\n',DATA.exptype{2},DATA.binoc{1}.i2,DATA.mean(2),DATA.nstim(2))];
         s = [s sprintf('e3=%s\ni3=%s\nm3=%.6f\nn3=%d\n',DATA.exptype{3},DATA.binoc{1}.i3,DATA.mean(3),DATA.nstim(3))];
-        s = AddCustomStim(DATA,s,1);
+        s = AddCustomStim(DATA,s,[1:3]);
     elseif strcmp(code,'verbose')
         s = sprintf('verbose=%d\n',DATA.verbose(2));
     elseif strcmp(code,'st')
@@ -6145,6 +6158,7 @@ if isempty(txt)
 return;
 end
 
+paused = PauseRead(DATA,1);
 id = strfind(txt,'=');
 if isstrprop(txt(1),'digit') || txt(1) == '-'
     txt = [DATA.lastcmd txt];
@@ -6179,16 +6193,22 @@ end
 
 SetTextUI(DATA,'');
 showbinoc = 0; % display value binoc returns
+
+%Currently, binoc does NOT echo back everything verg sends.
+%So only expect something if input produces a response
+readargs = {};
 if txt(end) ~= '='
     DATA = InterpretLine(DATA,txt);
 else
+    readargs = {readargs{:} 'expect'};
     showbinoc = 1;
 end
-if ~isempty(regexp(txt,'=[A-z]+[+-]')) && ~isempty(code)
+if ~isempty(regexp(txt,'=[A-z]+[+-]')) && ~isempty(code) %what is this for?
     outprintf(DATA,'%s=\n',code);
     showbinoc = 2;
+    readargs = {readargs{:} 'expect'};
 end
-DATA = ReadFromBinoc(DATA,'from TextEntered ','expect');
+DATA = ReadFromBinoc(DATA,'from TextEntered ',readargs{:});
 if showbinoc
 %    code = txt(1:end-1);
     if sum(strcmp(code,{'uf' 'monkey'}))
@@ -6266,7 +6286,9 @@ set(DATA.txtrec,'listboxtop',n+1);
 DATA = LogCommand(DATA, txt, 'norec');
 set(DATA.toplevel,'UserData',DATA);
 SetGui(DATA);
-
+if paused
+    paused = PauseRead(DATA,0);
+end
 
 function DATA = AddTextToGui(DATA, txt, varargin)
     if ~isfield(DATA,'txtrec') || ~ishandle(DATA.txtrec)

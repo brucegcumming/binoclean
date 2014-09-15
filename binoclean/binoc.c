@@ -6251,7 +6251,7 @@ int next_frame(Stimulus *st)
         exptchr = ' ';
     
     markercolor = 1.0;
-    glstatusline(NULL,1);
+    glstatusline(NULL,1); //? put this in runbetweentrials?
     if (optionflags[MONITOR_STATE]){
         if(seroutfile && (laststate != stimstate || (optionflags[WATCH_TIMES] && laststate != STIMSTOPPED))){
             fprintf(seroutfile,"#State %d %d VS%.1f%c %.2f,%.2f\n",stimstate,fixstate,afc_s.sacval[1],exptchr,t2,t3);
@@ -7269,6 +7269,8 @@ int next_frame(Stimulus *st)
             }
             
             redraw_overlay(expt.plot);
+            glstatusline(NULL,1); //? put this in runbetweentrials?
+
             if(timeout_type == SHAKE_TIMEOUT_PART2 && 0)
                 ShowTime();
             change_frame();

@@ -1508,7 +1508,7 @@ int SendToggleCodesToGui()
     i = 0;
     sprintf(buf,"");
     while(togglestrings[i].code != NULL){
-        sprintf(tmp,"TOGGLE %s %s\n",togglestrings[i].code,togglestrings[i].label);
+        sprintf(tmp,"TOGGLE%d %s %s\n",togglestrings[i].group,togglestrings[i].code,togglestrings[i].label);
         strcat(buf,tmp);
         i++;
     }
@@ -2828,6 +2828,7 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
                 if((seroutfile = fopen(sfile,"a")) != NULL){
                     sprintf(buf,"Serial Out to %s/%s",expt.cwd,sfile);
                     statusline(buf);
+                    fprintf(stderr,"%s\n",buf);
                     fprintf(seroutfile,"Reopened %s by binoc Version %s",ctime(&tval),VERSION_STRING);
                     sprintf(buf,"Reopened %s",ctime(&tval));
                     SerialString(buf,NULL);
@@ -6815,7 +6816,7 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
                 i = 0;
                 while(togglestrings[i].code != NULL)
                 {
-                    if (togglestrings[i].group == 3)
+                    if (togglestrings[i].group == 3 || togglestrings[i].group == 4)
                     {
                         if(optionflags[togglestrings[i].icode] == 1){ //CHECK_FRAMECOUNTS  can be 2. 
                             sprintf(temp,"+%s",togglestrings[i].code);
@@ -13037,7 +13038,7 @@ int ShowFlag(char *s, int flag)
         bit = togglestrings[i].icode;
     else if(togglestrings[i].group ==2)
         bit2 = togglestrings[i].icode;
-    else if(togglestrings[i].group ==3)
+    else if(togglestrings[i].group ==3 || togglestrings[i].group ==4)
     {
         j = togglestrings[i].icode;
         if(j >= MAXALLFLAGS){
@@ -13163,7 +13164,7 @@ int ChangeFlag(char *s)
 //            CheckOption(i);
 
     }
-    else if(togglestrings[i].group ==3)
+    else if(togglestrings[i].group ==3 || togglestrings[i].group ==4)
     {
         if(c == '+'){
             optionflags[togglestrings[i].icode] = 1;
