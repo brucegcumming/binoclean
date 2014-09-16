@@ -260,6 +260,7 @@ void clearlogitem(int code);
 void addcodetobuf(char *buf, int code);
 void SaveUnitLog();
 void StimStringRecord(FILE *buf, Expt *ex);
+char *StimString(int code);
 char *DescribeExpStims(void);
 char *EyeCoilString(void);
 void SetWPanel();
