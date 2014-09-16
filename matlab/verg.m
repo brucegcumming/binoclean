@@ -275,15 +275,28 @@ function DATA = CheckStateAtStart(DATA)
      
 function CheckStimFile(DATA, type)
     txt = scanlines(DATA.stimfilename);
+    goodlines = ones(size(txt));
     for j = 1:length(txt)
         [DATA, code, badcodes] = InterpretLine(DATA, txt{j}, 'test');
         if code < -1 
-            badlines(j) = 1;
+            goodlines(j) = 0;
         elseif ~isempty(badcodes)
-            
+            for k = 1:length(badcodes)
+                id = regexp(badcodes{k},'[+-]')
+                if length(id) > 1
+                    badcode = badcodes{k}(1:id(2)-1);
+                    regexprep(badcodes{k},'[a-Z]+[+-].*','$1');
+                else
+                    badcode = badcodes{k};
+                end
+                txt{j} = strrep(txt{j},badcode,'');
+            end
         end
     end
-
+txt = txt(find(goodlines));
+outfile = strrep(DATA.stimfilename,'.stm','');
+outfile = [outfile '.new'];
+WriteText(txt, outfile);
 
 function CheckCodeHelp(DATA, type)
     
@@ -308,14 +321,20 @@ function CheckCodeHelp(DATA, type)
            end
        end
     end
+    
     if strcmp(type,'update')
         outfile = strrep(helpfile,'.txt','.new');
-        fid = fopen(outfile,'w');
+        WriteText(txt, outfile);
+    end
+    
+function WriteText(txt, name, varargin)
+        fid = fopen(name,'w');
+        if fid > 0
         for j = 1:length(txt)
             fprintf(fid,'%s\n',txt{j});
         end
         fclose(fid);
-    end
+        end
         
     
 function [DATA, codetype, badcodes] = InterpretLine(DATA, line, varargin)
