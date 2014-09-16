@@ -4391,7 +4391,7 @@ int SaveImage(Stimulus *st, int type)
 
 int ReadCommand(char *s)
 {
-    int retval = 0, line, start, stop,i,ival;
+    int retval = 0, line, start, stop,i,ival,nloops;
     char *r,buf[BUFSIZ],command_result[BUFSIZ],c;
     char imname[BUFSIZ];
     float val;
@@ -4445,10 +4445,10 @@ int ReadCommand(char *s)
         SendAll();
     }
     else if(!strncasecmp(s,"runtest",7)){
-        sscanf(s,"runtest%d",&i);
+        sscanf(s,"runtest%d %d",&i,&nloops);
         if (i > 0)
             testmode = i;
-        set_test_loop();
+        set_test_loop(nloops);
     }
     else if(!strncasecmp(s,"savefile=",9)){
         SaveExptFile(&s[9],0);
@@ -6456,7 +6456,7 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
     
     char *scode = valstrings[valstringindex[code]].code; //char code matching icode code
     char temp[BUFSIZ],cadd[BUFSIZ];
-    float val,version;
+    float val,version,subversion;
     double *f;
     int ret = 0,ival =0,i,pcflag =0,nstim = 0,icode = 0;
     time_t tval;
@@ -6468,10 +6468,20 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
         sprintf(temp,"");
     sprintf(cbuf,"");
     
-    
+/*
+ * in most cases will need icode to make the string
+ * but there are a few exceptions
+ */
     icode = valstringindex[code];
-    if (icode < 0)
-        return(-1);
+    if (icode < 0){
+        switch(code){
+            case VERSION_NUMBER:
+                break;
+            default:
+                return(-1);
+                
+        }
+    }
     
     switch(code)
     {
@@ -6545,8 +6555,9 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
                     temp,expt.mon->trapscale[0], expt.mon->trapscale[2]);
             break;
         case VERSION_NUMBER:
-            sscanf(VERSION_STRING,"binoclean.%f",&version);
-            sprintf(cbuf,"%s%s%.4f",serial_strings[VERSION_CODE],temp, version);
+            sscanf(VERSION_STRING,"binoclean.%f.%f",&version,&subversion);
+            subversion = subversion/pow(10,ceil(log10f(subversion)));
+            sprintf(cbuf,"%s%s%.4f",serial_strings[VERSION_CODE],temp, version+subversion/10);
             break;
         case VERSION_CODE:
             sprintf(cbuf,"%s%s%s", scode,
@@ -8478,6 +8489,8 @@ char *ShowStimVals(Thisstim *stp)
         sprintf(ebuf,"tr%.2f",expt.vals[TARGET_RATIO]);
     else
         sprintf(ebuf,"");
+    strcat(cbuf,StimString(STIMID));
+
     if (SACCREQD(afc_s)){
         if (stp->vals[EXP_PSYCHVAL] > 0){
             strcat(cbuf,"+");
@@ -11895,7 +11908,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
         }
     }
     
-//    CheckStimDuration(retval);
+//    CheckStimDuration(retval); //this is done from binoc.c now
     /*
      * also check if frames all done, but took too long (in case forcing all frames
      */
@@ -11912,6 +11925,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
         sprintf(buf,"%d frames took %.3f (stim %d at %s). %s",framesdone,frametimes[framesdone-1],stimno,binocTimeString(),tmp);
         acknowledge(buf,NULL);
         statusline(buf);
+        printString(buf,2);
     }
     
     if(rcfd && optionflags[WATCH_TIMES]){
@@ -12028,8 +12042,13 @@ int CheckStimDuration(int retval)
     sprintf(buf,"#du%.3f(%d:%.3f)\n",frametimes[framesdone],framesdone,(framesdone-0.5)/expt.mon->framerate);
     SerialString(buf,0);
     if (optionflags[FIXNUM_PAINTED_FRAMES]){
-        if(frametimes[framesdone]  > (framesdone-0.5)/expt.mon->framerate || saveframetimes){
-            fprintf(stderr,"%d frames took %.3f\n",framesdone,frametimes[framesdone]);
+        if(frametimes[framesdone]  > (framesdone-1.1)/expt.mon->framerate || saveframetimes){
+            sprintf(buf,"%d frames took %.3f",framesdone,frametimes[framesdone]);
+            fprintf(stderr,"%s\n",buf);
+            if (frametimes[framesdone]  > (framesdone-0.5)/expt.mon->framerate){
+                sprintf(buf,"%d frames took %.3f %s",framesdone,frametimes[framesdone],StimString(STIMID));
+                printString(buf,2);
+            }
             sprintf(buf,"%sFi=",serial_strings[MANUAL_TDR]);
             for( i = 1; i < framesdone-1; i++){
                 val = frametimes[i]-frametimes[i-1];

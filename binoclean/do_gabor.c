@@ -83,16 +83,21 @@ void init_gabor(Stimulus *st,  Substim *sst)
 		if(sst->im != NULL)
 			free(sst->im);
 		sst->im = (float *)malloc(sst->imlen * sizeof(float));
+        gb->im = sst->im;
+	}
+	if(sst->imlen >  gb->xlen){
 		if(gb->xpos != NULL)
             free(gb->xpos);
+        gb->xlen = sst->imlen;
+		gb->xpos = (vcoord *)malloc(sst->imlen * sizeof(vcoord));
+    }
+	if(sst->imlen >  gb->ylen){
 		if(gb->ypos != NULL)
             free(gb->ypos);
-        gb->xlen = sst->imlen;
         gb->ylen = sst->imlen;
 		gb->ypos = (vcoord *)malloc(sst->imlen * sizeof(vcoord));
-		gb->xpos = (vcoord *)malloc(sst->imlen * sizeof(vcoord));
-	}
-        gb->im = sst->im;
+    }
+
 	if(w >  gb->xbelln || gb->xbell == NULL)
 	{
         gb->xalloc++;
