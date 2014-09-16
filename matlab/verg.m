@@ -407,6 +407,8 @@ for j = 1:length(strs{1})
                 DATA.winpos{3} = sscanf(value,'%d');
             elseif strncmp(s,'penlogwinpos=',10)
                 DATA.winpos{4} = sscanf(value,'%d');
+            elseif strncmp(s,'pausetimeout=',10)
+                DATA.pausetimeout = sscanf(value,'%d');
             else
                 sendtobinoc = oldsend;
                 donestr = 0;
@@ -1959,6 +1961,7 @@ DATA = SetField(DATA,'togglecodesreceived',0);
 DATA = SetField(DATA,'autoreopen', 0);
 DATA = SetField(DATA,'autorestart', 0);
 DATA = SetField(DATA,'draintimeout', 4);
+DATA = SetField(DATA,'pausetimeout', 30);
 
 DATA.commands = {};
 DATA.commandctr = 1;
@@ -3424,6 +3427,7 @@ function MenuGui(a,b)
  function CheckTimerHit(a,b, flag)
      DATA = GetDataFromFig(a);
      CheckTimer(DATA);
+     PauseRead(DATA,0); 
     
  function DATA = ReadIO(a,b, flag)
      DATA = GetDataFromFig(a);
@@ -3438,6 +3442,7 @@ function MenuGui(a,b)
          set(DATA.toplevel,'UserData',DATA);
          SetGui(DATA);
          fprintf('  +GUI setting %.2f\n',mytoc(ts));
+         PauseRead(DATA,0); %force off here
      elseif flag == 3
          stop(DATA.timerobj)
          outprintf(DATA,'NewMatlab\n');
@@ -3760,6 +3765,7 @@ function CheckServo(a,b, fig, varargin);
     end
 
 function CheckInput(a,b, fig, varargin)
+    persistent lastread;
     DATA = get(fig,'UserData');
     
     pauseread = getappdata(DATA.toplevel, 'PauseReading');
@@ -3767,8 +3773,14 @@ function CheckInput(a,b, fig, varargin)
         if DATA.verbose(1)
             fprintf('Paused...');
         end
+        ts = mytoc(lastread);
+        if ts > DATA.pausetimeout
+            setappdata(DATA.toplevel,'PauseReading',0);
+            vergwarning(sprintf('Paused for %.2f seconds. Unlocking.',ts));
+        end
         return;
     end
+    lastread = now;
     try
         ReadFromBinoc(DATA, 'auto');
     catch ME
@@ -4973,7 +4985,7 @@ for j = line:length(str)
         DATA.Statuslines{end+1} = sprintf('RunSequence Line %d: %s',str{j});
     end
     if ~sum(strncmp(str{j},'expt',4)) %don't send these lines to binoc
-        outprintf(DATA,'%s #RunSeq\n',str{j});
+        outprintf(DATA,'%s#RunSeq\n',str{j});
     end
     DATA = LogCommand(DATA, str{j});
 end
@@ -6286,7 +6298,7 @@ set(DATA.txtrec,'listboxtop',n+1);
 DATA = LogCommand(DATA, txt, 'norec');
 set(DATA.toplevel,'UserData',DATA);
 SetGui(DATA);
-if paused
+if paused == 0 %wasn't paused at start
     paused = PauseRead(DATA,0);
 end
 

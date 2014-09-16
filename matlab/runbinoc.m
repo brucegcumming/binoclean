@@ -10,6 +10,8 @@ while j <= length(varargin)
         BinocCommand({'st=grating' 'bc=0.5' 'co=1' 'sz=5' 'sf=2' 'nf=100'});
         BinocCommand('uf=/local/test/painttest');
         BinocCommand(sprintf('!runtest11 %d',nloops));
+    else
+        BinocCommand(varargin{j});
     end
     j = j+1;
 end

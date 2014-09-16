@@ -6457,7 +6457,7 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
     
     char *scode = valstrings[valstringindex[code]].code; //char code matching icode code
     char temp[BUFSIZ],cadd[BUFSIZ];
-    float val,version;
+    float val,version,subversion;
     double *f;
     int ret = 0,ival =0,i,pcflag =0,nstim = 0,icode = 0;
     time_t tval;
@@ -6469,10 +6469,20 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
         sprintf(temp,"");
     sprintf(cbuf,"");
     
-    
+/*
+ * in most cases will need icode to make the string
+ * but there are a few exceptions
+ */
     icode = valstringindex[code];
-    if (icode < 0)
-        return(-1);
+    if (icode < 0){
+        switch(code){
+            case VERSION_NUMBER:
+                break;
+            default:
+                return(-1);
+                
+        }
+    }
     
     switch(code)
     {
@@ -6546,8 +6556,9 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
                     temp,expt.mon->trapscale[0], expt.mon->trapscale[2]);
             break;
         case VERSION_NUMBER:
-            sscanf(VERSION_STRING,"binoclean.%f",&version);
-            sprintf(cbuf,"%s%s%.4f",serial_strings[VERSION_CODE],temp, version);
+            sscanf(VERSION_STRING,"binoclean.%f.%f",&version,&subversion);
+            subversion = subversion/pow(10,ceil(log10f(subversion)));
+            sprintf(cbuf,"%s%s%.4f",serial_strings[VERSION_CODE],temp, version+subversion/10);
             break;
         case VERSION_CODE:
             sprintf(cbuf,"%s%s%s", scode,
