@@ -4392,7 +4392,7 @@ int SaveImage(Stimulus *st, int type)
 
 int ReadCommand(char *s)
 {
-    int retval = 0, line, start, stop,i,ival;
+    int retval = 0, line, start, stop,i,ival,nloops;
     char *r,buf[BUFSIZ],command_result[BUFSIZ],c;
     char imname[BUFSIZ];
     float val;
@@ -4446,10 +4446,10 @@ int ReadCommand(char *s)
         SendAll();
     }
     else if(!strncasecmp(s,"runtest",7)){
-        sscanf(s,"runtest%d",&i);
+        sscanf(s,"runtest%d %d",&i,&nloops);
         if (i > 0)
             testmode = i;
-        set_test_loop();
+        set_test_loop(nloops);
     }
     else if(!strncasecmp(s,"savefile=",9)){
         SaveExptFile(&s[9],0);

@@ -68,6 +68,7 @@ static float pursued = 0;
 int lastbutton = -1000;
 int renderoff;
 char *chartrack;
+int testloops = 0;
 
 static int track_resets[] = {XPOS, YPOS, FIXPOS_X, FIXPOS_Y, -1};
 
@@ -2400,6 +2401,35 @@ int CrashCheck(char *caller)
     
 }
 
+void run_stim_test_loop()
+{
+    int i,j;
+    char buf[BUFSIZ];
+    float frametimes[BUFSIZ];
+    
+    gettimeofday(&firstframetime,NULL);
+    for (i = 0; i < expt.st->nframes; i++){
+        paint_frame(WHOLESTIM, !(mode & FIXATION_OFF_BIT));
+        increment_stimulus(expt.st, &expt.st->pos);
+        change_frame();
+        if (i == 0)
+            gettimeofday(&firstframetime,NULL);
+        else{
+            gettimeofday(&now,NULL);
+            frametimes[i] =timediff(&now,&firstframetime);
+        }
+    }
+    sprintf(buf,"Took %.3f",timediff(&now,&firstframetime));
+    printString(buf,1);
+    if(seroutfile){
+        fprintf(seroutfile,"#du %.3f\nFrames: ",frametimes[i-1]);
+        for (i = 0; i < expt.st->nframes; i++){
+            fprintf(seroutfile," %.2f",frametimes[i]/mon.framerate);
+        }
+    }
+}
+
+
 #pragma mark Event_Loop
 
 int event_loop(float delay)
@@ -2486,6 +2516,8 @@ int event_loop(float delay)
             run_rds_test_loop();
         else if(testmode == 10)
             run_grating_test_loop();
+        else if(testmode == 11)
+            run_stim_test_loop();
         else if (testmode == 4){
             for (i = 0; i < 20; i++){
                 //                  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -2510,8 +2542,14 @@ int event_loop(float delay)
             run_polygon_test_loop();
 // Run tests just once then tell verg. Verg decides whether to repeat
 //Otherwise can freeze verg
+        if (--testloops <=0){
         mode &= (~TEST_PENDING);
         notify("TESTOVER");
+        }
+        else{
+                mode |= TEST_PENDING;
+            }
+    
     }
     else
         next_frame(TheStim);
@@ -7534,14 +7572,18 @@ void expfront()
 
 
 
-void set_test_loop()
+void set_test_loop(int nloops)
 {
+    
     if(mode & TEST_PENDING){
         mode &= (~TEST_PENDING);
         acknowledge("Testing OFF",NULL);
+        testloops = 0;
     }
-    else
+    else{
+        testloops = nloops;
         mode |= TEST_PENDING;
+    }
 }
 
 
