@@ -90,7 +90,7 @@ int stimflag = 0;
 double olddisp  = 0;
 int inexptstim = 0;
 int newmonoc = 0;
-float framehold = 0,calcdur,paintdur,swapwait,changeframedur;
+float framehold = 0,calcdur,paintdur,swapwait,changeframedur,extrapaintdur;
 float microsaccade = 0,microsaccdir = 0;
 char *replay_expt = NULL;
 int gotspikes = 0, endbadctr = 0;
@@ -2401,31 +2401,56 @@ int CrashCheck(char *caller)
     
 }
 
+
+#define TESTFRA
 void run_stim_test_loop()
 {
-    int i,j;
+    int i,j,maxid;
     char buf[BUFSIZ];
-    float frametimes[BUFSIZ];
+    float frametimes[MAXFRAMES],painttimes[MAXFRAMES],calctimes[MAXFRAMES],processtimes[MAXFRAMES],swaptimes[MAXFRAMES];
+    float maxcalc = 0, maxpaint =0, maxprocess=0;
+    struct timeval atime,btime,ctime;
+    float r = 0,tval,w;
+    int frame = 0;
     
+
+    
+    gettimeofday(&zeroframetime,NULL);
     gettimeofday(&firstframetime,NULL);
+    inexptstim = 1; // makes a HUGE difference because of glstatusline in paint_frame
     for (i = 0; i < expt.st->nframes; i++){
+        gettimeofday(&atime, NULL);
         paint_frame(WHOLESTIM, !(mode & FIXATION_OFF_BIT));
         increment_stimulus(expt.st, &expt.st->pos);
+        gettimeofday(&now,NULL);
+        processtimes[i] = timediff(&now,&atime);
         change_frame();
-        if (i == 0)
+        if (i == 0){
             gettimeofday(&firstframetime,NULL);
+        }
         else{
             gettimeofday(&now,NULL);
-            frametimes[i] =timediff(&now,&firstframetime);
+            frametimes[i] = timediff(&now,&firstframetime);
         }
+        painttimes[i] = paintdur;
+        calctimes[i] = calcdur;
+        swaptimes[i] = swapwait;
     }
+    inexptstim = 0;
     sprintf(buf,"Took %.3f",timediff(&now,&firstframetime));
     printString(buf,1);
+    glstatusline(buf,1);
     if(seroutfile){
         fprintf(seroutfile,"#du %.3f\nFrames: ",frametimes[i-1]);
         for (i = 0; i < expt.st->nframes; i++){
-            fprintf(seroutfile," %.2f",frametimes[i]/mon.framerate);
+            fprintf(seroutfile," %.2f",frametimes[i]*mon.framerate);
+            if (processtimes[i] > maxprocess){
+                maxprocess = processtimes[i];
+                maxid = i;
+            }
         }
+        fprintf(seroutfile,"\nLongest Processing:%.5f frame %d %.5f+%.5f+%.5f\n",maxprocess,maxid,calctimes[maxid],painttimes[maxid],swaptimes[maxid]);
+        fflush(seroutfile);
     }
 }
 
@@ -6100,6 +6125,7 @@ void paint_frame(int type, int showfix)
         w = tval+paintdur;
         
     }
+    extrapaintdur = timediff(&paintfinishtime,&btime);
 }
 
 int CheckFix()

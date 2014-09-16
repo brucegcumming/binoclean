@@ -4,7 +4,13 @@ function BinocCommand(str)
 
 DATA.verbose = 1;
 DATA.ip = 'http://localhost:1110/';
-outprintf(DATA,str);
+if iscellstr(str)
+    for j = 1:length(str)
+        outprintf(DATA,str{j});
+    end
+else
+    outprintf(DATA,str);
+end
  
 
 
