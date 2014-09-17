@@ -2405,10 +2405,10 @@ int CrashCheck(char *caller)
 #define TESTFRA
 void run_stim_test_loop()
 {
-    int i,j,maxid;
+    int i,j,maxid,maxframeid;
     char buf[BUFSIZ];
-    float frametimes[MAXFRAMES],painttimes[MAXFRAMES],calctimes[MAXFRAMES],processtimes[MAXFRAMES],swaptimes[MAXFRAMES];
-    float maxcalc = 0, maxpaint =0, maxprocess=0;
+    float frametimes[MAXFRAMES],painttimes[MAXFRAMES],calctimes[MAXFRAMES],processtimes[MAXFRAMES],swaptimes[MAXFRAMES],waittimes[MAXFRAMES];
+    float maxcalc = 0, maxpaint =0, maxprocess=0,maxframe = 0;
     struct timeval atime,btime,ctime;
     float r = 0,tval,w;
     int frame = 0;
@@ -2422,9 +2422,23 @@ void run_stim_test_loop()
         gettimeofday(&atime, NULL);
         paint_frame(WHOLESTIM, !(mode & FIXATION_OFF_BIT));
         increment_stimulus(expt.st, &expt.st->pos);
+        gettimeofday(&btime,NULL);
+        processtimes[i] = timediff(&btime,&atime);
+        if (testmode == 11){
+            change_frame();
+        }
+        else if (testmode == 12){
+            glFinishRenderAPPLE();
+            glSwapAPPLE();
+        }
+        else if (testmode == 13){
+            glSwapAPPLE();
+        }
+        else if (testmode == 14){
+            glFinishRenderAPPLE();
+        }
         gettimeofday(&now,NULL);
-        processtimes[i] = timediff(&now,&atime);
-        change_frame();
+        waittimes[i] = timediff(&now,&btime);
         if (i == 0){
             gettimeofday(&firstframetime,NULL);
         }
@@ -2437,8 +2451,10 @@ void run_stim_test_loop()
         swaptimes[i] = swapwait;
     }
     inexptstim = 0;
-    sprintf(buf,"Took %.3f",timediff(&now,&firstframetime));
+    sprintf(buf,"Took %.3f = %.2f frames testmode %d,%d",timediff(&now,&firstframetime),timediff(&now,&firstframetime)*mon.framerate,testmode,testloops);
     printString(buf,1);
+    glstatusline(buf,1);
+    strcpy(timeoutstring,buf);
     glstatusline(buf,1);
     if(seroutfile){
         fprintf(seroutfile,"#du %.3f\nFrames: ",frametimes[i-1]);
@@ -2448,12 +2464,90 @@ void run_stim_test_loop()
                 maxprocess = processtimes[i];
                 maxid = i;
             }
+            if (i > 0 && frametimes[i]-frametimes[i-1] > maxframe)
+            {
+                maxframe = frametimes[i]-frametimes[i-1];
+                maxframeid = i;
+            }
         }
-        fprintf(seroutfile,"\nLongest Processing:%.5f frame %d %.5f+%.5f+%.5f\n",maxprocess,maxid,calctimes[maxid],painttimes[maxid],swaptimes[maxid]);
+        fprintf(seroutfile,"\nTestmode%d Longest Processing:%.5f frame %d %.5f+%.5f+%.5f+%.5f Longest Frame %d %.3f, wait %.5f\n",testmode,maxprocess,maxid,calctimes[maxid],painttimes[maxid],swaptimes[maxid],waittimes[maxid],maxframeid,maxframe,waittimes[maxframeid]);
         fflush(seroutfile);
     }
 }
 
+void run_swap_test_loop()
+{
+    int i,j,maxid,maxframeid;
+    char buf[BUFSIZ];
+    float frametimes[MAXFRAMES],painttimes[MAXFRAMES],calctimes[MAXFRAMES],processtimes[MAXFRAMES],swaptimes[MAXFRAMES],waittimes[MAXFRAMES];
+    float maxcalc = 0, maxpaint =0, maxprocess=0,maxframe = 0;
+    struct timeval atime,btime,ctime;
+    float r = 0,tval,w,color = 0;
+    int frame = 0;
+    
+    
+    
+    gettimeofday(&zeroframetime,NULL);
+    gettimeofday(&firstframetime,NULL);
+    inexptstim = 1; // makes a HUGE difference because of glstatusline in paint_frame
+    for (i = 0; i < expt.st->nframes; i++){
+        gettimeofday(&atime, NULL);
+        color = (float)(i%2);
+        glClearColor(color, color, color, 1.0);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        gettimeofday(&btime,NULL);
+        processtimes[i] = timediff(&btime,&atime);
+        if (testmode == 11){
+            change_frame();
+        }
+        else if (testmode == 12){
+            glFinishRenderAPPLE();
+            glSwapAPPLE();
+        }
+        else if (testmode == 13){
+            glSwapAPPLE();
+        }
+        else if (testmode == 14){
+            glFinishRenderAPPLE();
+        }
+        gettimeofday(&now,NULL);
+        waittimes[i] = timediff(&now,&btime);
+        if (i == 0){
+            gettimeofday(&firstframetime,NULL);
+        }
+        else{
+            gettimeofday(&now,NULL);
+            frametimes[i] = timediff(&now,&firstframetime);
+        }
+        painttimes[i] = paintdur;
+        calctimes[i] = calcdur;
+        swaptimes[i] = swapwait;
+    }
+    inexptstim = 0;
+    sprintf(buf,"Took %.3f = %.2f frames testmode %d,%d",timediff(&now,&firstframetime),timediff(&now,&firstframetime)*mon.framerate,testmode,testloops);
+    printString(buf,1);
+    glstatusline(buf,1);
+    strcpy(timeoutstring,buf);
+    glstatusline(buf,1);
+    if(seroutfile){
+        fprintf(seroutfile,"#du %.3f\nFrames: ",frametimes[i-1]);
+        for (i = 0; i < expt.st->nframes; i++){
+            fprintf(seroutfile," %.2f",frametimes[i]*mon.framerate);
+            if (processtimes[i] > maxprocess){
+                maxprocess = processtimes[i];
+                maxid = i;
+            }
+            if (i > 0 && frametimes[i]-frametimes[i-1] > maxframe)
+            {
+                maxframe = frametimes[i]-frametimes[i-1];
+                maxframeid = i;
+            }
+        }
+        fprintf(seroutfile,"\nTestmode%d Longest Processing:%.5f frame %d %.5f+%.5f+%.5f+%.5f Longest Frame %d %.3f, wait %.5f\n",testmode,maxprocess,maxid,calctimes[maxid],painttimes[maxid],swaptimes[maxid],waittimes[maxid],maxframeid,maxframe,waittimes[maxframeid]);
+        fflush(seroutfile);
+    }
+}
 
 #pragma mark Event_Loop
 
@@ -2541,8 +2635,10 @@ int event_loop(float delay)
             run_rds_test_loop();
         else if(testmode == 10)
             run_grating_test_loop();
-        else if(testmode == 11)
+        else if(testmode == 11 || testmode == 12 || testmode == 13 || testmode == 14)
             run_stim_test_loop();
+        else if(testmode == 15 || testmode == 16 || testmode == 17 || testmode == 18)
+            run_swap_test_loop();
         else if (testmode == 4){
             for (i = 0; i < 20; i++){
                 //                  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -9040,7 +9136,7 @@ void run_general_test_loop()
     statusline(cbuf);
 }
 
-void run_swap_test_loop()
+void run_old_swap_test_loop()
 {
     int i,j;
     Locator *pos = &TheStim->pos;

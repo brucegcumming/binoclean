@@ -18,6 +18,8 @@ int winpos [2];
 int fullscreenmode;
 extern int useDIO;
 int freeToGo = 1;
+extern int inexptstim;
+extern int testloops;
 
 static NSColor * textColor;
 static NSColor * textBGColor;
@@ -408,26 +410,36 @@ int  processUIEvents()
 
 - (void) mainTimerFire:(NSTimer *)timer
 {
-    static struct timeval atime, btime;
+    static struct timeval atime, btime,xtime;
     float val,aval,bval;
     int stimstate = 0;
     time_t tval;
 
+    if (inexptstim){
+        gettimeofday(&btime,NULL);
+    }
     gettimeofday(&btime,NULL);
     aval = timediff(&btime,&atime); //time since last call
 
     ReadInputPipe();
-    gettimeofday(&atime,NULL);
-    bval = timediff(&atime,&btime); // time taken in ReadInputPipe
+    gettimeofday(&xtime,NULL);
+    bval = timediff(&xtime,&btime); // time taken in ReadInputPipe
     if (freeToGo) {
        stimstate = event_loop(bval);
     }
     else
     {
-//        fprintf(stderr,"waiting for freetogo\n");       
+        gettimeofday(&xtime,NULL);
+//        fprintf(stderr,"waiting for freetogo\n");
     }    
+//    if (testloops > 0){
+//        NSLog(@"#TimerFire at %.4f->%.4f",atime.tv_sec+atime.tv_usec/1000000.0,btime.tv_sec+btime.tv_usec/1000000.0);
+//    }
     gettimeofday(&atime,NULL);
     val = timediff(&atime,&btime);
+//    if (testloops > 0){
+//        NSLog(@"#TimerFire finish %.4f",atime.tv_sec+atime.tv_usec/1000000.0);
+//    }
     if (aval > 0.03 || bval > 0.001){
         tval = time(NULL);
         fprintf(stderr,"#############Long delay (%.8f,%.4f,%.6f) at %s in Timer\n",val,aval,bval,ctime(&tval));
