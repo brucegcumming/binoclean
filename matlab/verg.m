@@ -296,6 +296,7 @@ function CheckStimFile(DATA, type)
 txt = txt(find(goodlines));
 outfile = strrep(DATA.stimfilename,'.stm','');
 outfile = [outfile '.new'];
+fprintf('saving stim file to %s\n',outfile);
 WriteText(txt, outfile);
 
 function CheckCodeHelp(DATA, type)
@@ -401,9 +402,6 @@ for j = 1:length(strs{1})
         code = s(1:eid(1)-1);
         value = s(eid(1)+1:end);
         codelen = eid(1);
-    elseif strncmp(s,'SENDING',7)
-        value = [];
-        code = s;
     else
         value = [];
         code = s;
@@ -632,7 +630,10 @@ for j = 1:length(strs{1})
     elseif sum(strncmp(s,{'NewBinoc' 'confirm' 'exvals' 'fontsiz' 'fontname' 'layout' ...
             'localmatdir' 'netmatdir', 'oldelectrode' 'TOGGLE' 'rptexpts' 'STIMTYPE' ...
             'SENDING' 'SCODE=' 'status' 'stimdir' 'STIMC ' 'Unrecogn'},6))
-        if strncmp(s,'NewBinoc',7)
+        if strncmp(s,'SENDING',7)
+            %can ignore SENDING here            
+        else
+            if strncmp(s,'NewBinoc',7)
             DATA = CheckForNewBinoc(DATA);
             DATA.newbinoc = 1;
             if DATA.optionflags.do %only do this when reopen pipes
@@ -757,11 +758,9 @@ for j = 1:length(strs{1})
                 fprintf('%s\n',s);
             end
             DATA.Statuslines{end+1} = s(8:end);
-
-
-
-%can ignore SENDING'            
+            codetype = -2;
         end  %6 char codes
+        end
         
         
     elseif sum(strncmp(s,{'Expts' 'xyfsd' 'EDONE'},5))
@@ -1236,10 +1235,15 @@ for j = 1:length(strs{1})
                 if 1 && DATA.togglecodesreceived
                     fprintf('%s:Code %s not in comcodes\n',datestr(now),code);
                     codematches = strcmp(code,{DATA.comcodes.code});
+                    codetype = -2;
                 end
                 SetCode(DATA,code);
             else
                 cprintf('red','Cannot Interpret %s: %s\n',src,deblank(strs{1}{j}));
+                codetype = -2;
+            end
+        else
+            if strncmp(s,'cy',2) %obsolete codes
                 codetype = -2;
             end
         end
