@@ -2,8 +2,15 @@ function BinocCommand(str)
 % BinocCommand(str) Sends a single commnad to binoclean
 %useful to co-ordinate gamma calibration
 
+DATA.network = 0;
 DATA.verbose = 1;
 DATA.ip = 'http://localhost:1110/';
+DATA.outpipe = '/tmp/binocinputpipe';
+DATA.inpipe = '/tmp/binocoutputpipe';
+
+if DATA.network == 0
+    DATA.outid = fopen(DATA.outpipe,'w');
+end
 if iscellstr(str)
     for j = 1:length(str)
         outprintf(DATA,str{j});
@@ -16,6 +23,10 @@ end
 
 
 function outprintf(DATA,varargin)
+if DATA.network == 0
+    pipeprintf(DATA,varargin{:});
+    return;
+end
  %send to binoc.  ? reomve comments  like in expt read? 
      str = sprintf(varargin{:});
      strs = split(str,'\n');
@@ -32,5 +43,15 @@ function outprintf(DATA,varargin)
              elseif DATA.verbose
                  fprintf('Binoc returned in %.3f\n',mytoc(ts));
              end
+         end
+     end
+     
+function pipeprintf(DATA,varargin)
+ %send to binoc.  ? reomve comments  like in expt read? 
+     str = sprintf(varargin{:});
+     strs = split(str,'\n');
+     for j = 1:length(strs)
+         if ~isempty(strs{j})
+             fprintf(DATA.outid,'%s\n',strs{j});
          end
      end
