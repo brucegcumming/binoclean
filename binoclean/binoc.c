@@ -686,7 +686,6 @@ void SetPriority(int priority)
 
 
 
-
 binocmain(argc, argv)
 int argc;
 char **argv;
@@ -779,6 +778,8 @@ char **argv;
 
 	    }
     }
+    useDIO = 0;
+
     expt.mon = &mon;
 	i = 1;
 	psychoff[0] = winsiz[0]/2;
@@ -2469,6 +2470,10 @@ void run_stim_test_loop()
                 maxframe = frametimes[i]-frametimes[i-1];
                 maxframeid = i;
             }
+        }
+        fprintf(seroutfile,"\nWaits: ");
+        for (i = 0; i < expt.st->nframes; i++){
+            fprintf(seroutfile," %.2f",waittimes[i]*mon.framerate);
         }
         fprintf(seroutfile,"\nTestmode%d Longest Processing:%.5f frame %d %.5f+%.5f+%.5f+%.5f Longest Frame %d %.3f, wait %.5f\n",testmode,maxprocess,maxid,calctimes[maxid],painttimes[maxid],swaptimes[maxid],waittimes[maxid],maxframeid,maxframe,waittimes[maxframeid]);
         fflush(seroutfile);

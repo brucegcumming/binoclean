@@ -38,7 +38,7 @@ MTRandom64 * randEngine;
 MTRandom64 * drandEngine;
 #endif
 
-const BOOL networkMode = YES;
+const BOOL networkMode = NO;
 
 void quit_binoc()
 {
