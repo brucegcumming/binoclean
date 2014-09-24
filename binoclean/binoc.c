@@ -778,7 +778,6 @@ char **argv;
 
 	    }
     }
-    useDIO = 0;
 
     expt.mon = &mon;
 	i = 1;

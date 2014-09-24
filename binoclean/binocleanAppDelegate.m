@@ -38,7 +38,7 @@ MTRandom64 * randEngine;
 MTRandom64 * drandEngine;
 #endif
 
-const BOOL networkMode = NO;
+const BOOL networkMode = YES;
 
 void quit_binoc()
 {
@@ -380,7 +380,9 @@ int  processUIEvents()
     mainTimer = [NSTimer scheduledTimerWithTimeInterval:0.0100 target:self selector:@selector(mainTimerFire:) userInfo:nil repeats:YES];
     
     StartRunning();
-    WriteToOutputPipe(@"SENDINGstart1\n");
+    if(!networkMode){
+        WriteToOutputPipe(@"SENDINGstart1\n");
+    }
 }
 
 /*

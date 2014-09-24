@@ -68,9 +68,9 @@ long DIOFeedback(HANDLE hDevice, uint8 *inIOTypesDataBuff, long inIOTypesDataSiz
     if( (sendChars = LJUSB_Write(hDevice, sendBuff, (sendDWSize+commandBytes))) < sendDWSize+commandBytes )
     {
         if( sendChars == 0 )
-            printf("ehFeedback error : write failed\n");
+            fprintf(stderr,"ehFeedback error : write failed\n");
         else
-            printf("ehFeedback error : did not write all of the buffer\n");
+            fprintf(stderr,"ehFeedback error : did not write all of the buffer\n");
         ret = -1;
         goto cleanmem;
     }
@@ -113,8 +113,7 @@ int DIOWriteBit(int Channel, BYTE output)
     sendDataBuff[2] = 11;  //IOType is BitStateWrite
     sendDataBuff[3] = Channel + 128*((State > 0) ? 1 : 0);  //IONumber(bits 0-4) + State (bit 7)
     
-    DIOFeedback(hDevice, sendDataBuff, 4);
-    r=12;
+    r = DIOFeedback(hDevice, sendDataBuff, 4);
 
  //   r = LJUSB_Write(hDevice, sendBuff, 12);
 //    
@@ -164,9 +163,9 @@ int DIOWriteBit(int Channel, BYTE output)
 //            break;
 //    }
     
-    if (r!=12)
+    if (r < 0)
     {
-        printf("DIO ERROR while writing");
+        fprintf(stderr,"DIO ERROR while writing");
     }
     return 0;
 }
