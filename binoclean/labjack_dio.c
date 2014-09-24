@@ -165,6 +165,7 @@ int DIOWriteBit(int Channel, BYTE output)
     
     if (r < 0)
     {
+        acknowledge("DIO Write Error",NULL);
         fprintf(stderr,"DIO ERROR while writing");
     }
     return 0;
