@@ -56,7 +56,7 @@
 
 extern char * VERSION_STRING;
 extern char * SHORT_VERSION_NUMBER;
-
+extern float frametimes[];
 /*GLUquadricObj *gluq;*/
 static GLuint base,bigbase,mediumbase;
 static int eventstate = 0,window_is_mapped = 0;
@@ -5218,8 +5218,7 @@ void WriteSignal()
 	if(mode & LAST_FRAME_BIT)
     {
 #ifdef NIDAQ
-            DIOval = 0;
-            DIOWriteBit(2,0); 
+        DIOWriteBit(2,0);
 #endif        
         gettimeofday(&endstimtime,NULL);
  	    c = END_STIM;
@@ -6475,12 +6474,13 @@ int next_frame(Stimulus *st)
     switch(stimstate)
     {
         case STIMSTOPPED:
+// be sure these are off in case did uStim....
+//ideally would sample currentstate and change if necessary
 #ifdef NIDAQ
-            DIOval = 0;
             DIOWriteBit(2,  0);
             DIOWriteBit(1,  0);
             DIOWriteBit(0,  0);
-
+            
 #endif
             if(rdspair(expt.st))
                 i = 0;
@@ -10849,7 +10849,7 @@ int GotChar(char c)
 	}
 	else if(c== START_EXPT){ /* this is sent when BW starts up send everything */
         
-	    DIOval = 0;  DIOWrite(0);
+	    DIOval = 0;
         gettimeofday(&now,NULL);
         if(seroutfile)
             fprintf(seroutfile,"#StartExpt from Spike2 at %.4f\n",ufftime(&now));

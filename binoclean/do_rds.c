@@ -333,7 +333,7 @@ int calc_rds(Stimulus *st, Substim *sst)
 {
   int i,j,partdisp,ndots;
   float cval,f,sy,cm,deg,iscale[2],val[2];
-  float asq,bsq,csq,dsq,xsq,ysq,pixdisp[2],offset[2],eshift[0];
+  float asq,bsq,csq,dsq,xsq,ysq,pixdisp[2],offset[2],eshift[2];
   float dpos[2],htest;
   int *cend,yi,rnd,*pl,*p;
   vcoord *x,*y,w,h,xmv[2],truex,truey,dx,dy;

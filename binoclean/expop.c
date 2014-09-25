@@ -11154,7 +11154,7 @@ int RunHarrisStim(Stimulus *st, int n, /*Ali Display */ int D, /*Ali Window */ i
 }
 
 
-static float frametimes[MAXFRAMES],fframecounts[MAXFRAMES];
+float frametimes[MAXFRAMES],fframecounts[MAXFRAMES];
 static int framecounts[MAXFRAMES];
 static float postframetimes[MAXFRAMES];
 
