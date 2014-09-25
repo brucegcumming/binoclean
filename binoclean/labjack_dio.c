@@ -31,17 +31,21 @@ long DIOFeedback(HANDLE hDevice, uint8 *inIOTypesDataBuff, long inIOTypesDataSiz
 {
     uint8 *sendBuff, *recBuff;
     uint16 checksumTotal;
+    uint8 errorcode,errorframe;
     int sendChars, recChars, sendDWSize, recDWSize;
     int commandBytes, ret, i;
+    long outDataSize = 0;
     
     ret = 0;
     commandBytes = 6;
     
     if( ((sendDWSize = inIOTypesDataSize + 1)%2) != 0 )
         sendDWSize++;
-
+    if( ((recDWSize = outDataSize + 3)%2) != 0 )
+        recDWSize++;
     
     sendBuff = (uint8 *)malloc(sizeof(uint8)*(commandBytes + sendDWSize));
+    recBuff = (uint8 *)malloc(sizeof(uint8)*(commandBytes + recDWSize));
 
     if( sendBuff == NULL)
     {
@@ -75,7 +79,32 @@ long DIOFeedback(HANDLE hDevice, uint8 *inIOTypesDataBuff, long inIOTypesDataSiz
         goto cleanmem;
     }
     
+    if (1){
     
+    //Reading response from U3
+    if( (recChars = LJUSB_Read(hDevice, recBuff, (commandBytes+recDWSize))) < commandBytes+recDWSize )
+    {
+        if( recChars == -1 )
+        {
+            fprintf(stderr,"ehFeedback error : read failed\n");
+            ret = -1;
+            goto cleanmem;
+        }
+        else if( recChars < 8 )
+        {
+            fprintf(stderr,"ehFeedback error : response buffer is too small\n");
+            ret = -1;
+            goto cleanmem;
+        }
+        else
+            fprintf(stderr,"ehFeedback error : did not read all of the expected buffer (received %d, expected %d )\n", recChars, commandBytes+recDWSize);
+    }
+    errorcode = recBuff[6];
+    errorframe = recBuff[7];
+        if (errorcode > 0){
+            fprintf(stderr,"Labjack Read error %d,%d\n",errorcode,errorframe);
+        }
+    }
 cleanmem:
     free(sendBuff);
 

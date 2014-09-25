@@ -2493,29 +2493,35 @@ void run_swap_test_loop()
     
     gettimeofday(&zeroframetime,NULL);
     gettimeofday(&firstframetime,NULL);
+    setmask(ALLPLANES);
     inexptstim = 1; // makes a HUGE difference because of glstatusline in paint_frame
     for (i = 0; i < expt.st->nframes; i++){
         gettimeofday(&atime, NULL);
-        color = (float)(i%2);
+        color = (float)((1+i)%2); //start white
         glClearColor(color, color, color, 1.0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         gettimeofday(&btime,NULL);
         processtimes[i] = timediff(&btime,&atime);
-        if (testmode == 11){
+        if (testmode == 15){
             change_frame();
         }
-        else if (testmode == 12){
+        else if (testmode == 16){
             glFinishRenderAPPLE();
             glSwapAPPLE();
         }
-        else if (testmode == 13){
+        else if (testmode == 17){
             glSwapAPPLE();
+            glRectf(winsiz[0],winsiz[0]-1,winsiz[1],winsiz[1]-1);
+            glFinishRenderAPPLE(); /* block until buffer swapped */
         }
-        else if (testmode == 14){
+        else if (testmode == 18){
             glFinishRenderAPPLE();
         }
         gettimeofday(&now,NULL);
+        if (i==0 && useDIO){
+            DIOWriteBit(2,1);
+        }
         waittimes[i] = timediff(&now,&btime);
         if (i == 0){
             gettimeofday(&firstframetime,NULL);
@@ -2528,6 +2534,13 @@ void run_swap_test_loop()
         calctimes[i] = calcdur;
         swaptimes[i] = swapwait;
     }
+    glClearColor(0, 0, 0, 1.0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glSwapAPPLE();
+    if (useDIO){
+        DIOWriteBit(2,0);
+    }
+    
     inexptstim = 0;
     sprintf(buf,"Took %.3f = %.2f frames testmode %d,%d",timediff(&now,&firstframetime),timediff(&now,&firstframetime)*mon.framerate,testmode,testloops);
     printString(buf,1);
@@ -5339,7 +5352,7 @@ int change_frame()
 //Need to draw something AND call glFinishRnderApple (after swapbuffer above) to block CPU
 //Don't block CPU for STIMCHANGE pulses.  We can figure these out without, and it increases the risk
 //of droppping frames
-        if (!mode & STIMCHANGE_FRAME){
+        if (!(mode & STIMCHANGE_FRAME)){
             glRectf(winsiz[0],winsiz[0]-1,winsiz[1],winsiz[1]-1);
             glFinishRenderAPPLE(); /* block until buffer swapped */
         }
