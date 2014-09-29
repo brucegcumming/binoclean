@@ -1421,8 +1421,12 @@ void glstatusline(char *s, int line)
         return;
     if(line < 10 && s != NULL)
         lines[line] = myscopy(lines[line],s);
-    if(s != NULL) /* new string */
+    if(s != NULL){ /* new string */
         glDrawBuffer(GL_FRONT_AND_BACK);
+        if (line == 3){
+            strcpy(timeoutstring,s);
+        }
+    }
     if (optionflag & SHOW_STIMVAL_BIT)
         setmask(ALLPLANES);
 
@@ -1600,9 +1604,11 @@ void ButtonDrag(vcoord *start, vcoord *end, WindowEvent e)
     {
         stmode |= (MOVED_STIMULUS | DRAG_STIMULUS);
         LocateStimulus(stimptr, e.mouseX, e.mouseY);
-        sprintf(mssg,"at %.2f,%.2f\n",StimulusProperty(stimptr,SETZXOFF),
-                StimulusProperty(stimptr,SETZYOFF));
-        glstatusline(mssg,2);
+        sprintf(mssg,"at %.2f,%.2f (%s%.2f %s%.2f)",StimulusProperty(stimptr,SETZXOFF),
+                StimulusProperty(stimptr,SETZYOFF),
+                serial_strings[ABS_ORTHOG_POS],StimulusProperty(stimptr,ABS_ORTHOG_POS),
+        serial_strings[ABS_PARA_POS],StimulusProperty(stimptr,ABS_PARA_POS));
+        glstatusline(mssg,3);
     }
     else if(eventstate & MBUTTON)
     {
@@ -1611,8 +1617,8 @@ void ButtonDrag(vcoord *start, vcoord *end, WindowEvent e)
     {
         stmode |= (MOVED_STIMULUS | DRAG_STIMULUS);
         RotateStimulus(e.mouseX,e.mouseY);
-        sprintf(mssg,"Orientation %.1f\n",StimulusProperty(stimptr,ORIENTATION));
-        glstatusline(mssg,2);
+        sprintf(mssg,"Orientation %.1f",StimulusProperty(stimptr,ORIENTATION));
+        glstatusline(mssg,3);
     }
 }
 
@@ -1653,7 +1659,7 @@ void CntrlDrag(vcoord *start, vcoord *end,  WindowEvent e)
             pix2deg(expt.rf->size[0]),
             pix2deg(expt.rf->size[1]),
             expt.rf->angle);
-    glstatusline(s,2);
+    glstatusline(s,3);
     EndOverlay();
     glFinish();
 }
@@ -1721,10 +1727,12 @@ void ButtonReleased(vcoord *start, vcoord *end, WindowEvent e)
         {
             stmode |= MOVED_STIMULUS;
             mode |= NEWPOS;
-            sprintf(mssg,"At %.2f, %.2f, Ori %.1f",StimulusProperty(stimptr,SETZXOFF),
+            sprintf(mssg,"at %.2f,%.2f (%s%.2f %s%.2f)",StimulusProperty(stimptr,SETZXOFF),
                     StimulusProperty(stimptr,SETZYOFF),
-                    StimulusProperty(stimptr,ORIENTATION));
-            glstatusline(mssg,2);
+                    serial_strings[ABS_ORTHOG_POS],StimulusProperty(stimptr,ABS_ORTHOG_POS),
+                    serial_strings[ABS_PARA_POS],StimulusProperty(stimptr,ABS_PARA_POS));
+            glstatusline(mssg,3);
+
         }
     }
     if(e.mouseButton == Button2 && TheStim->type == STIM_NONE){
@@ -1903,7 +1911,7 @@ void CntrlButtonRelease(vcoord *start, vcoord *end, WindowEvent e)
             expt.rf->angle);
     
     statusline(s);
-    glstatusline(s,2);
+    glstatusline(s,3);
     ss = SendBoth(RF_DIMENSIONS,1);
     if(penlog)
         fprintf(penlog,"%s\n",ss);
