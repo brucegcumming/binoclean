@@ -8108,7 +8108,7 @@ void acklog(char *s, int flag)
 
 void ShuffleStimulus(int state)
 {
-    int i, temp, trialsleft;
+    int i, temp, trialsleft,itmp;
     int blklen = expt.nstim[3] * expt.blksize;
     char buf[BUFSIZ],*s;
     
@@ -8142,13 +8142,15 @@ void ShuffleStimulus(int state)
     }
     temp = stimorder[stimno];
     stimorder[stimno] = stimorder[stimno + i];
-    if (stimorder[stimno] > expt.nstim[5]){
-        sprintf(buf,"Swapfrom Stim %d (stimno %d+%d)larger that nstim %d",stimorder[stimno],stimno,i,expt.nstim[5]);
+    itmp = stimorder[stimno] & (~ORDER_BITS);
+    if (itmp > expt.nstim[5]){
+        sprintf(buf,"Swapfrom Stim %d (stimno %d+%d)larger that nstim %d",itmp,stimno,i,expt.nstim[5]);
         acklog(buf, NULL);
     }
     stimorder[stimno+i] = temp;
-    if (temp > expt.nstim[5]){
-        sprintf(buf,"Swapto Stim %d larger that nstim (%d)",temp,expt.nstim[5]);
+    itmp = temp & (~ORDER_BITS);
+    if (itmp > expt.nstim[5]){
+        sprintf(buf,"Swapto Stim %d larger that nstim (%d)",itmp,expt.nstim[5]);
         acklog(buf, NULL);
     }
     stimseq[trialctr].a = stimorder[stimno];
