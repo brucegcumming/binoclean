@@ -379,7 +379,9 @@ int  processUIEvents()
     mainTimer = [NSTimer scheduledTimerWithTimeInterval:0.0100 target:self selector:@selector(mainTimerFire:) userInfo:nil repeats:YES];
     
     StartRunning();
-    WriteToOutputPipe(@"SENDINGstart1\n");
+    if(!networkMode){
+        WriteToOutputPipe(@"SENDINGstart1\n");
+    }
 }
 
 /*

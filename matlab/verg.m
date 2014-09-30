@@ -583,6 +583,7 @@ for j = 1:length(strs{1})
                 exptover = 0; %put a check in here to resolve confusions
             else
                 exptover = 1;
+                CheckTrialDurations(DATA);
             end
             if DATA.exptstoppedbyuser  
             %if user hist cancal/stop, dont repeat or move on to automatic next expt
@@ -740,8 +741,10 @@ for j = 1:length(strs{1})
         end
         fid = strfind(s,'Frames:');
         if ~isempty(fid) && ~isempty(DATA.Trials)
-            nf = sscanf(s(fid(1)+8:end),'%d');
-            DATA.Trials(length(DATA.Trials)).nf = nf;
+            nf = sscanf(s(fid(1)+8:end),'%d/%d (%f');
+            DATA.Trials(length(DATA.Trials)).Nf = nf(1);
+            DATA.Trials(length(DATA.Trials)).nf = nf(2);
+            DATA.Trials(length(DATA.Trials)).dur = nf(3);
         end
         %        fprintf(s);
         elseif strncmp(s,'STIMC ',6)
@@ -2108,6 +2111,7 @@ DATA.tag.monkeylog = 'Monkey Log';
 DATA.tag.codes = 'Codelist';
 DATA.tag.psych = 'VergPsych';
 DATA.tag.status = 'StatusWindow';
+DATA.tag.plotwin = 'PlotWindow';
 %make sure the size field is defined, then it comes before wi,hi
 DATA.comcodes(1).label = 'Size';
 DATA.comcodes(1).code = 'sz';
@@ -2689,6 +2693,7 @@ function DATA = InitInterface(DATA)
     uimenu(subm,'Label','Status Lines','Callback',{@StatusPopup, 'popup'});
     uimenu(subm,'Label','Psych Window','Callback',{@MenuHit, 'showpsych'});
     uimenu(subm,'Label','Electrode Control','Callback',{@ElectrodePopup, 'popup'});
+    uimenu(subm,'Label','Check Trial Duratione','Callback',{@MenuHit, 'checkdur'});
     subm = uimenu(cntrl_box,'Label','Pipes');
     uimenu(subm,'Label','Reopen Pipes','Callback',{@ReadIO, 6});
     uimenu(subm,'Label','reopenserial','Callback',{@SendStr, '\reopenserial'});
@@ -2912,6 +2917,8 @@ function MenuHit(a,b, arg)
         CloseTag(DATA.windownames{1}); %%close main window last
     elseif strcmp(arg,'restartbinoc')
         RestartBinoc(DATA);
+    elseif strcmp(arg,'checkdur')
+        CheckTrialDurations(DATA,'hist');
     elseif strcmp(arg,'choosefont')
         fn = uisetfont;
         DATA.font = fn;
@@ -3184,6 +3191,35 @@ function SaveLayout(DATA, name)
     end
     fclose(fid);
 
+function CheckTrialDurations(DATA, varargin)
+    T = DATA.Trials;
+    plottype = 'none';
+    j = 1;
+    while j <= length(varargin)
+        if strcmp(varargin{j},'hist')
+            plottype = varargin{j};
+        end
+        j = j+1;
+    end
+    
+    if isfield(T,'Nf') && isfield(T,'dur')
+        Nf = [T.Nf];
+        nf = [T.nf];
+        durs = [T.dur];
+        id = find(Nf == nf+1); %completed.
+        err = 1+ durs(id).*DATA.binoc{1}.fz - Nf(id);
+        if strcmp(plottype,'hist')
+            GetFigure(DATA.tag.plotwin);
+            hist(err,[-10:0.5:10]);
+            title(sprintf('Real-Expected Duration at %.1fHz',DATA.binoc{1}.fz));
+            xlabel('frames');
+        end
+        if sum(err > 1) > length(err)/10 %10% trials are bad
+            vergwarning(sprintf('%d/%d trials were too long',sum(err > 1),length(err)));
+        end
+        fprintf('%d/%d trials were too long\n',sum(err > 1),length(err));
+    end
+    
 function TextCallback(a,b)
     SendManualVals(a);
 

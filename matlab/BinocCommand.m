@@ -1,12 +1,22 @@
-function BinocCommand(str)
+function BinocCommand(str, varargin)
 % BinocCommand(str) Sends a single commnad to binoclean
 %useful to co-ordinate gamma calibration
 
-DATA.network = 0;
+DATA.network = 1;
 DATA.verbose = 1;
 DATA.ip = 'http://localhost:1110/';
 DATA.outpipe = '/tmp/binocinputpipe';
 DATA.inpipe = '/tmp/binocoutputpipe';
+
+j = 1;
+while j <= length(varargin)
+    if strncmpi(varargin{j},'network',5)
+        DATA.network = 1;
+    elseif strncmpi(varargin{j},'pipes',4)
+        DATA.network = 0;
+    end
+    j = j+1;
+end
 
 if DATA.network == 0
     DATA.outid = fopen(DATA.outpipe,'w');

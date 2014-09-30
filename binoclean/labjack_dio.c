@@ -31,17 +31,21 @@ long DIOFeedback(HANDLE hDevice, uint8 *inIOTypesDataBuff, long inIOTypesDataSiz
 {
     uint8 *sendBuff, *recBuff;
     uint16 checksumTotal;
+    uint8 errorcode,errorframe;
     int sendChars, recChars, sendDWSize, recDWSize;
     int commandBytes, ret, i;
+    long outDataSize = 0;
     
     ret = 0;
     commandBytes = 6;
     
     if( ((sendDWSize = inIOTypesDataSize + 1)%2) != 0 )
         sendDWSize++;
-
+    if( ((recDWSize = outDataSize + 3)%2) != 0 )
+        recDWSize++;
     
     sendBuff = (uint8 *)malloc(sizeof(uint8)*(commandBytes + sendDWSize));
+    recBuff = (uint8 *)malloc(sizeof(uint8)*(commandBytes + recDWSize));
 
     if( sendBuff == NULL)
     {
@@ -68,14 +72,39 @@ long DIOFeedback(HANDLE hDevice, uint8 *inIOTypesDataBuff, long inIOTypesDataSiz
     if( (sendChars = LJUSB_Write(hDevice, sendBuff, (sendDWSize+commandBytes))) < sendDWSize+commandBytes )
     {
         if( sendChars == 0 )
-            printf("ehFeedback error : write failed\n");
+            fprintf(stderr,"ehFeedback error : write failed\n");
         else
-            printf("ehFeedback error : did not write all of the buffer\n");
+            fprintf(stderr,"ehFeedback error : did not write all of the buffer\n");
         ret = -1;
         goto cleanmem;
     }
     
+    if (1){
     
+    //Reading response from U3
+    if( (recChars = LJUSB_Read(hDevice, recBuff, (commandBytes+recDWSize))) < commandBytes+recDWSize )
+    {
+        if( recChars == -1 )
+        {
+            fprintf(stderr,"ehFeedback error : read failed\n");
+            ret = -1;
+            goto cleanmem;
+        }
+        else if( recChars < 8 )
+        {
+            fprintf(stderr,"ehFeedback error : response buffer is too small\n");
+            ret = -1;
+            goto cleanmem;
+        }
+        else
+            fprintf(stderr,"ehFeedback error : did not read all of the expected buffer (received %d, expected %d )\n", recChars, commandBytes+recDWSize);
+    }
+    errorcode = recBuff[6];
+    errorframe = recBuff[7];
+        if (errorcode > 0){
+            fprintf(stderr,"Labjack Read error %d,%d\n",errorcode,errorframe);
+        }
+    }
 cleanmem:
     free(sendBuff);
 
@@ -113,8 +142,7 @@ int DIOWriteBit(int Channel, BYTE output)
     sendDataBuff[2] = 11;  //IOType is BitStateWrite
     sendDataBuff[3] = Channel + 128*((State > 0) ? 1 : 0);  //IONumber(bits 0-4) + State (bit 7)
     
-    DIOFeedback(hDevice, sendDataBuff, 4);
-    r=12;
+    r = DIOFeedback(hDevice, sendDataBuff, 4);
 
  //   r = LJUSB_Write(hDevice, sendBuff, 12);
 //    
@@ -164,9 +192,10 @@ int DIOWriteBit(int Channel, BYTE output)
 //            break;
 //    }
     
-    if (r!=12)
+    if (r < 0)
     {
-        printf("DIO ERROR while writing");
+        acknowledge("DIO Write Error",NULL);
+        fprintf(stderr,"DIO ERROR while writing");
     }
     return 0;
 }

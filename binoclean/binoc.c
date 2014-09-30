@@ -56,7 +56,7 @@
 
 extern char * VERSION_STRING;
 extern char * SHORT_VERSION_NUMBER;
-
+extern float frametimes[];
 /*GLUquadricObj *gluq;*/
 static GLuint base,bigbase,mediumbase;
 static int eventstate = 0,window_is_mapped = 0;
@@ -688,7 +688,6 @@ void SetPriority(int priority)
 
 
 
-
 binocmain(argc, argv)
 int argc;
 char **argv;
@@ -781,6 +780,7 @@ char **argv;
 
 	    }
     }
+
     expt.mon = &mon;
 	i = 1;
 	psychoff[0] = winsiz[0]/2;
@@ -1425,8 +1425,12 @@ void glstatusline(char *s, int line)
         return;
     if(line < 10 && s != NULL)
         lines[line] = myscopy(lines[line],s);
-    if(s != NULL) /* new string */
+    if(s != NULL){ /* new string */
         glDrawBuffer(GL_FRONT_AND_BACK);
+        if (line == 3){
+            strcpy(timeoutstring,s);
+        }
+    }
     if (optionflag & SHOW_STIMVAL_BIT)
         setmask(ALLPLANES);
 
@@ -1609,9 +1613,11 @@ void ButtonDrag(vcoord *start, vcoord *end, WindowEvent e)
     {
         stmode |= (MOVED_STIMULUS | DRAG_STIMULUS);
         LocateStimulus(stimptr, e.mouseX, e.mouseY);
-        sprintf(mssg,"at %.2f,%.2f\n",StimulusProperty(stimptr,SETZXOFF),
-                StimulusProperty(stimptr,SETZYOFF));
-        glstatusline(mssg,2);
+        sprintf(mssg,"at %.2f,%.2f (%s%.2f %s%.2f)",StimulusProperty(stimptr,SETZXOFF),
+                StimulusProperty(stimptr,SETZYOFF),
+                serial_strings[ABS_ORTHOG_POS],StimulusProperty(stimptr,ABS_ORTHOG_POS),
+        serial_strings[ABS_PARA_POS],StimulusProperty(stimptr,ABS_PARA_POS));
+        glstatusline(mssg,3);
     }
     else if(eventstate & MBUTTON)
     {
@@ -1620,8 +1626,8 @@ void ButtonDrag(vcoord *start, vcoord *end, WindowEvent e)
     {
         stmode |= (MOVED_STIMULUS | DRAG_STIMULUS);
         RotateStimulus(e.mouseX,e.mouseY);
-        sprintf(mssg,"Orientation %.1f\n",StimulusProperty(stimptr,ORIENTATION));
-        glstatusline(mssg,2);
+        sprintf(mssg,"Orientation %.1f",StimulusProperty(stimptr,ORIENTATION));
+        glstatusline(mssg,3);
     }
 }
 
@@ -1662,7 +1668,7 @@ void CntrlDrag(vcoord *start, vcoord *end,  WindowEvent e)
             pix2deg(expt.rf->size[0]),
             pix2deg(expt.rf->size[1]),
             expt.rf->angle);
-    glstatusline(s,2);
+    glstatusline(s,3);
     EndOverlay();
     glFinish();
 }
@@ -1730,10 +1736,12 @@ void ButtonReleased(vcoord *start, vcoord *end, WindowEvent e)
         {
             stmode |= MOVED_STIMULUS;
             mode |= NEWPOS;
-            sprintf(mssg,"At %.2f, %.2f, Ori %.1f",StimulusProperty(stimptr,SETZXOFF),
+            sprintf(mssg,"at %.2f,%.2f (%s%.2f %s%.2f)",StimulusProperty(stimptr,SETZXOFF),
                     StimulusProperty(stimptr,SETZYOFF),
-                    StimulusProperty(stimptr,ORIENTATION));
-            glstatusline(mssg,2);
+                    serial_strings[ABS_ORTHOG_POS],StimulusProperty(stimptr,ABS_ORTHOG_POS),
+                    serial_strings[ABS_PARA_POS],StimulusProperty(stimptr,ABS_PARA_POS));
+            glstatusline(mssg,3);
+
         }
     }
     if(e.mouseButton == Button2 && TheStim->type == STIM_NONE){
@@ -1912,7 +1920,7 @@ void CntrlButtonRelease(vcoord *start, vcoord *end, WindowEvent e)
             expt.rf->angle);
     
     statusline(s);
-    glstatusline(s,2);
+    glstatusline(s,3);
     ss = SendBoth(RF_DIMENSIONS,1);
     if(penlog)
         fprintf(penlog,"%s\n",ss);
@@ -2479,6 +2487,10 @@ void run_stim_test_loop()
                 maxframeid = i;
             }
         }
+        fprintf(seroutfile,"\nWaits: ");
+        for (i = 0; i < expt.st->nframes; i++){
+            fprintf(seroutfile," %.2f",waittimes[i]*mon.framerate);
+        }
         fprintf(seroutfile,"\nTestmode%d Longest Processing:%.5f frame %d %.5f+%.5f+%.5f+%.5f Longest Frame %d %.3f, wait %.5f\n",testmode,maxprocess,maxid,calctimes[maxid],painttimes[maxid],swaptimes[maxid],waittimes[maxid],maxframeid,maxframe,waittimes[maxframeid]);
         fflush(seroutfile);
     }
@@ -2498,29 +2510,35 @@ void run_swap_test_loop()
     
     gettimeofday(&zeroframetime,NULL);
     gettimeofday(&firstframetime,NULL);
+    setmask(ALLPLANES);
     inexptstim = 1; // makes a HUGE difference because of glstatusline in paint_frame
     for (i = 0; i < expt.st->nframes; i++){
         gettimeofday(&atime, NULL);
-        color = (float)(i%2);
+        color = (float)((1+i)%2); //start white
         glClearColor(color, color, color, 1.0);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         gettimeofday(&btime,NULL);
         processtimes[i] = timediff(&btime,&atime);
-        if (testmode == 11){
+        if (testmode == 15){
             change_frame();
         }
-        else if (testmode == 12){
+        else if (testmode == 16){
             glFinishRenderAPPLE();
             glSwapAPPLE();
         }
-        else if (testmode == 13){
+        else if (testmode == 17){
             glSwapAPPLE();
+            glRectf(winsiz[0],winsiz[0]-1,winsiz[1],winsiz[1]-1);
+            glFinishRenderAPPLE(); /* block until buffer swapped */
         }
-        else if (testmode == 14){
+        else if (testmode == 18){
             glFinishRenderAPPLE();
         }
         gettimeofday(&now,NULL);
+        if (i==0 && useDIO){
+            DIOWriteBit(2,1);
+        }
         waittimes[i] = timediff(&now,&btime);
         if (i == 0){
             gettimeofday(&firstframetime,NULL);
@@ -2533,6 +2551,13 @@ void run_swap_test_loop()
         calctimes[i] = calcdur;
         swaptimes[i] = swapwait;
     }
+    glClearColor(0, 0, 0, 1.0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glSwapAPPLE();
+    if (useDIO){
+        DIOWriteBit(2,0);
+    }
+    
     inexptstim = 0;
     sprintf(buf,"Took %.3f = %.2f frames testmode %d,%d",timediff(&now,&firstframetime),timediff(&now,&firstframetime)*mon.framerate,testmode,testloops);
     printString(buf,1);
@@ -5210,8 +5235,7 @@ void WriteSignal()
 	if(mode & LAST_FRAME_BIT)
     {
 #ifdef NIDAQ
-            DIOval = 0;
-            DIOWriteBit(2,0); 
+        DIOWriteBit(2,0);
 #endif        
         gettimeofday(&endstimtime,NULL);
  	    c = END_STIM;
@@ -5344,7 +5368,7 @@ int change_frame()
 //Need to draw something AND call glFinishRnderApple (after swapbuffer above) to block CPU
 //Don't block CPU for STIMCHANGE pulses.  We can figure these out without, and it increases the risk
 //of droppping frames
-        if (!mode & STIMCHANGE_FRAME){
+        if (!(mode & STIMCHANGE_FRAME)){
             glRectf(winsiz[0],winsiz[0]-1,winsiz[1],winsiz[1]-1);
             glFinishRenderAPPLE(); /* block until buffer swapped */
         }
@@ -6467,12 +6491,13 @@ int next_frame(Stimulus *st)
     switch(stimstate)
     {
         case STIMSTOPPED:
+// be sure these are off in case did uStim....
+//ideally would sample currentstate and change if necessary
 #ifdef NIDAQ
-            DIOval = 0;
             DIOWriteBit(2,  0);
             DIOWriteBit(1,  0);
             DIOWriteBit(0,  0);
-
+            
 #endif
             if(rdspair(expt.st))
                 i = 0;
@@ -10734,7 +10759,11 @@ int PrintPsychLine(int presult, int sign)
             fprintf(psychfile,"R%d %s=%.5f %s=%.5f",
                     presult,serial_strings[expt.mode],expt.currentval[0],
                     serial_strings[expt.type2],expt.currentval[1]);
-        fprintf(psychfile," sn=%d %.2f %.2f %.2f",sign,start,down,expt.vals[REWARD_SIZE]);
+        if(optionflags[FLIP_FEEDBACK])
+            fprintf(psychfile," sn=%d.1",sign);
+        else
+            fprintf(psychfile," sn=%d",sign);
+        fprintf(psychfile," %.2f %.2f %.2f",start,down,expt.vals[REWARD_SIZE]);
         
         if(microsaccade >0)
             sprintf(str,"%s(%,4f)=%.2f",serial_strings[SACCADE_DETECTED],microsaccdir, microsaccade);
@@ -10837,7 +10866,7 @@ int GotChar(char c)
 	}
 	else if(c== START_EXPT){ /* this is sent when BW starts up send everything */
         
-	    DIOval = 0;  DIOWrite(0);
+	    DIOval = 0;
         gettimeofday(&now,NULL);
         if(seroutfile)
             fprintf(seroutfile,"#StartExpt from Spike2 at %.4f\n",ufftime(&now));
