@@ -4261,6 +4261,7 @@ void CheckExpts()
 GLubyte *GetStimImage(int x, int y, int w, int h, char eye)
 {
     static GLubyte *pix = NULL;
+    static long pixbuflen= 0;
     int i,len,j,size;
     
     glReadBuffer(GL_FRONT);
@@ -4269,7 +4270,17 @@ GLubyte *GetStimImage(int x, int y, int w, int h, char eye)
      */
     
     if(pix == NULL){
-        size = videocapture[2] * videocapture[2] * sizeof(GLubyte);
+        size = videocapture[2] * videocapture[3] * sizeof(GLubyte);
+        pixbuflen = size;
+        pix = (GLubyte *)malloc(size);
+    }
+    size = w * h * sizeof(GLubyte);
+    if (size > pixbuflen){
+        acknowledge("Increasing pixel buffer",NULL);
+        size = w * h * sizeof(GLubyte);
+        pixbuflen = size;
+        if (pix != NULL)
+            free(pix);
         pix = (GLubyte *)malloc(size);
     }
     if(pix != NULL){
@@ -4339,11 +4350,14 @@ int SaveImage(Stimulus *st, int type)
     
     }
     if(type & 1){
+        //type = 1 save screen (defined by videocapture[4])
+        //type = 5 save rectangle bounding the stimulus
+        if(!(type & 4)){
         h = videocapture[3];
         w = videocapture[2];
         x = videocapture[0];
         y = videocapture[1];
-
+        }
         for(i = 0; i < 2; i++){
             sprintf(imname,"%s/%sim%d%c.pgm",ImageOutDir,expname,imstimid,eyec[i]);
             if((pix = GetStimImage(x, y, w, h,eyec[i])) != NULL){
@@ -4537,6 +4551,12 @@ int ReadCommand(char *s)
                 fclose(imidxfd);
         }
 
+    }
+    else if(!strncasecmp(s,"screenshot",9)){
+        SaveImage(expt.st,1);
+    }
+    else if(!strncasecmp(s,"saveimage",9)){
+        SaveImage(expt.st,5);
     }
     else if(!strncasecmp(s,"saveim",6)){
         if(!testflags[PLAYING_EXPT]){
@@ -11604,7 +11624,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
              */
             if(testflags[SAVE_IMAGES] && expt.st->type != STIM_IMAGE){
                 if(testflags[SAVE_IMAGES] == 1){
-                    SaveImage(expt.st,1);
+                    SaveImage(expt.st,5);
                     rc = framesdone;
                 }
                 else if(testflags[SAVE_IMAGES] == 3 || testflags[SAVE_IMAGES] == 5 || testflags[SAVE_IMAGES] == 6){

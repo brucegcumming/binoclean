@@ -106,3 +106,5 @@ write a quick stimfile cleaner. Just reads lines, and writes them out again, omi
 add a status= line to DescribeState?  GetCurrentStatus function. Or use statusstring? should work.
 Sort out ability to add codes manually to the list of what is tracked in psychfile.  Could even extend this to have and R7 line for each trial.
 Try $MNK in stimdir path 
+add help for !commands
+allow searching of .hlp files.  E.g I would like to know where to find how to make movies....
