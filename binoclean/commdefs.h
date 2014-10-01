@@ -1226,7 +1226,7 @@ ValueCode valstrings[] = {
   {"Pn",     "penetration number",PENNUMCOUNTER, 128 , 'N' ,2, SEND_EXPT, SAVE_STATE},
   {  "Xp",     "Pen X",PENXPOS, 128 , 'N' ,2, SEND_EXPT, SAVE_STATE},
   {  "Yp",    "Pen y",PENYPOS, 128 , 'N' ,2, SEND_EXPT, SAVE_STATE},
-  {"Vn",     "Visual Area",VWHERE, 128 , 'N' ,2, SEND_EXPLICIT, SAVE_STATE},
+  {"Vn",     "Visual Area",VWHERE, 128 , 'C' ,2, SEND_EXPLICIT, SAVE_STATE},
   {"Is",     "Scale factor for IFC expts",IFCSCALE, 16 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
   {"hL",     "Height L",HEIGHT_L, 515 , 'N' ,2, SEND_EXPLICIT, SAVE_NEVER},
   {"hR",     "Height R",HEIGHT_R, 515 , 'N' ,2, SEND_EXPLICIT, SAVE_NEVER},

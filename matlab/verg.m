@@ -2854,6 +2854,10 @@ function MenuHit(a,b, arg)
         [a, prefix] = fileparts(DATA.binoc{1}.psychfile);
         prefix = regexprep(prefix,'[0-9][0-9][A-Z][a-z][a-z]20[0-9][0-9]','');
         prefix = regexprep(prefix,'DATE$','');
+        srcfile = DATA.binoc{1}.psychfile;
+        if ~exist(srcfile)
+            vergwarning(sprintf('Cannot Start pipelog until %s exists. Come back after running a trial',srcfile));
+        end
         system([GetFilePath('perl') '/pipelog ' DATA.binoc{1}.monkey ' ' prefix ' &']);
         DATA.pipelog = 1;
         DATA = AddTextToGui(DATA,['Pipelog ' prefix]);
@@ -3347,6 +3351,10 @@ function MenuGui(a,b)
              DATA.electrodeid = val;
          case 'NewPen'
              DATA = SetNewPenetration(DATA);
+         case 'VisualArea'
+             DATA.binoc{1}.Vn = str;
+             SendCode(DATA,'Vn');
+             myprintf(DATA.penid,'VisualArea %s\n',str);
      end
      set(DATA.toplevel,'UserData',DATA);
      
@@ -4175,6 +4183,7 @@ function DATA = RunButton(a,b, type)
         end
         ts = now;
         myprintf(DATA.frombinocfid,'-show','%s Hit Inexpt %d, type %d %s\n',caller,DATA.inexpt,type,datestr(now));
+        myprintf(DATA.cmdfid,'# %s Hit Inexpt %d, type %d %s\n',caller,DATA.inexpt,type,datestr(now));
         PauseRead(DATA,1);
         pauseread = getappdata(DATA.toplevel, 'PauseReading');
         if pauseread ==0
@@ -4485,19 +4494,30 @@ cntrl_box = figure('Position', DATA.winpos{9},...
 
     bp(2) = bp(2)-1./nr;
     bp(1) = 0.01;
-    bp(3) = 0.2;
+    bp(3) = 0.15;
     
     
     id = find(strcmp(DATA.binoc{1}.hemi,{'Left' 'Right' 'NotSet'}));
     if isempty(id)
         id = 1;
     end
+    
     uicontrol(gcf,'style','text','string','Hemisphere', ...
         'units', 'norm', 'position',bp);
     bp(1) = bp(1)+bp(3);
-    bp(3) = 0.2;
+    bp(3) = 0.15;
     uicontrol(gcf,'style','pop','string','Left|Right|Unknown', ...
         'units', 'norm', 'position',bp,'value',id,'Tag','hemisphere','callback',{@MenuGui});
+
+
+    bp(1) = bp(1)+bp(3);
+        uicontrol(gcf,'style','text','string','Area', ...
+        'units', 'norm', 'position',bp);
+    bp(1) = bp(1)+bp(3);
+    bp(3) = 0.2;
+    uicontrol(gcf,'style','pop','string','V1|V2|MT|V1 (calcarine)|Unknown', ...
+        'units', 'norm', 'position',bp,'value',5,'Tag','VisualArea','callback',{@MenuGui});
+
     
     bp(1) = 0.99-bp(3);
     uicontrol(gcf,'style','pushbutton','string','Apply', ...
@@ -5698,9 +5718,10 @@ function OpenPenLog(a,b, varargin)
         DATA.binoc{1}.eZ = Text2Val(findobj(F,'Tag','Impedance'));
         DATA.binoc{1}.adapter = get(findobj(F,'Tag','adapter'),'string');
         DATA.binoc{1}.hemi = Menu2Str(findobj(F,'Tag','hemisphere'));
+        DATA.binoc{1}.Vn = Menu2Str(findobj(F,'Tag','VisualArea'));
         DATA.binoc{1}.ui = Menu2Str(findobj(F,'Tag','Experimenter'));
         DATA.binoc{1}.coarsemm = Menu2Str(findobj(F,'Tag','coarsemm'));
-        SendCode(DATA,{'Pn' 'Xp' 'Yp' 'ui' 'Electrode' 'adapter' 'eZ' 'ePr' 'hemi' 'coarsemm'});
+        SendCode(DATA,{'Pn' 'Xp' 'Yp' 'ui' 'Electrode' 'adapter' 'eZ' 'ePr' 'hemi' 'coarsemm' 'Vn'});
         outprintf(DATA,'!openpen');
     elseif strcmp(btn,'PlotPen')
         name = sprintf('/local/%s/pen%d.log',DATA.binoc{1}.monkey,DATA.binoc{1}.Pn);
