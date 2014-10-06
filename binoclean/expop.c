@@ -1903,6 +1903,7 @@ char *ReadManualStim(char *file, int stimid){
     float val,imx[MAXFRAMES],imy[MAXFRAMES];
     Stimulus *st;
     static char cbuf[BUFSIZ*10];
+    static int lastresult = 0;
     
     manualprop[0] = -1;  //in case file error
     if(file == NULL)
@@ -1912,7 +1913,9 @@ char *ReadManualStim(char *file, int stimid){
     if((fin = fopen(file,"r")) == NULL)
     {
         sprintf(cbuf,"Can't read %s",file);
-        acklog(cbuf,0);
+        if (lastresult >= 0) // don't send multiple acks
+            acklog(cbuf,0);
+        lastresult = -1;
         return(NULL);
     }
     sprintf(cbuf,"%d:",stimid);
@@ -2032,7 +2035,7 @@ char *ReadManualStim(char *file, int stimid){
         }
         expt.st->next->preloaded = j;
     }
-        
+    lastresult = 0;   
     return(cbuf);
 }
 
