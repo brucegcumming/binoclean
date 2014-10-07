@@ -275,11 +275,12 @@
 #define STIMULUS_TAG (LAST_STIMULUS_CODE+172)
 #define STIM3_TYPE (LAST_STIMULUS_CODE+173)
 #define SCREEN_VOFFSET (LAST_STIMULUS_CODE+174)
-#define TOTAL_REWARD (LAST_STIMULUS_CODE+175)
+#define EXPT_SUBBLOCK (LAST_STIMULUS_CODE+175)
+#define TOTAL_REWARD (LAST_STIMULUS_CODE+176)
 //Add above here anything that needs to go to Spike2
 
 
-#define MAXSERIALCODES (LAST_STIMULUS_CODE+176)/* 218 */
+#define MAXSERIALCODES (LAST_STIMULUS_CODE+177)/* 218 */
 #define OPPOSITE_DELAY  MAXSERIALCODES
 #define FAST_SEQUENCE_RPT MAXSERIALCODES+1
 #define BRIGHTSHIFT_CODE MAXSERIALCODES+2
@@ -1303,7 +1304,8 @@ ValueCode valstrings[] = {
     {  "nsf", "SF Components", SET_SF_COMPONENTS, 0, 'N', 3, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "ntf", "TF Components", SET_TF_COMPONENTS, 0, 'N', 3, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "nco", "Component Contrasts", SET_SF_CONTRASTS, 0, 'N', 3, SEND_EXPLICIT, SAVE_ALWAYS},
-    {  "psychmon", "Psych Mon Vars", PSYCHMON_VARS, 0, 'C', 3, SEND_EXPLICIT, SAVE_ALWAYS},
+    {  "psychmon", "Psych Mon Vars", PSYCHMON_VARS, 0, 'C', 3, SEND_EXPLICIT, SAVE_NEVER},
+    {  "subexp", "Expt Sub-block index", EXPT_SUBBLOCK, 16, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {"impref", "prefix for image files", IMAGELOAD_PREFIX, 0, 'C', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {"Electrode", "Electrode Decsription", ELECTRODE_TYPE, 0, 'C', 0, SEND_EXPLICIT, SAVE_STATE},
     {"onlineprefix", "Folder for online files on Mac", ONLINEPREFIX, 0, 'C', 0, SEND_VERG_ONLY, SAVE_ALWAYS},

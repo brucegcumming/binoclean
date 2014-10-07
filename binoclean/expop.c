@@ -2707,6 +2707,10 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
                     expt.st->immode = 0;
                     expt.st->nimseed = 0;
                 }
+                else if(!strncmp(s,"twoeyes",4)){
+                    expt.st->immode = IMAGEMODE_LEFTRIGHT;
+                    expt.st->nimseed = 0;
+                }
                 else if(!strncmp(s,"binocular",4)){
                     expt.st->immode = BINOCULAR_PLAIN_IMAGES;
                     expt.st->nimseed = 0;

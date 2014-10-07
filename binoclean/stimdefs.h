@@ -650,6 +650,7 @@ long rnd_i(void);
 #define SIGNAL_STRENGTH 4
 
 //modes for image types = sets rules for building pathname
+#define IMAGEMODE_LEFTRIGHT 0
 #define IMAGEMODE_ORBW 1
 #define BINOCULAR_PLAIN_IMAGES 2
 
