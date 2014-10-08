@@ -108,3 +108,4 @@ Sort out ability to add codes manually to the list of what is tracked in psychfi
 Try $MNK in stimdir path 
 add help for !commands
 allow searching of .hlp files.  E.g I would like to know where to find how to make movies....
+? diable dx for "twoeyes" image mode, on theory that it shoud be done in the file?  Or use Pd/dp  to encode manual disparities done there.

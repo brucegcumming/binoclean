@@ -8777,12 +8777,13 @@ int PreLoadImages()
             st->framectr = i;
             j = floor(i/frpt);
             st->left->calculated = st->right->calculated = 0;
-            if (manualprop[0] == IMAGEINDEX)
-                expt.st->left->imagei = manualstimvals[0][j];
+            if (manualprop[0] == IMAGEINDEX){
+                expt.st->right->imagei = expt.st->left->imagei = manualstimvals[0][j];
+            }
             if (expt.st->type == STIM_IMAGE){
                 if((j = calc_image(expt.st,expt.st->left)) <0)
                     return(-1);
-                if(expt.st->flag & UNCORRELATE)
+                if(expt.st->flag & UNCORRELATE || expt.st->immode == IMAGEMODE_LEFTRIGHT)
                     j = calc_image(expt.st,expt.st->right);
                 for (j = 1; j < frpt; j++){
                     st->framectr = i+j;
