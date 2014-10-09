@@ -19,6 +19,7 @@ extern int verbose;
 static GLubyte *images[MAXFRAMES] = {NULL};
 static GLubyte *rightimages[MAXFRAMES] = {NULL};
 static int imagelengths[MAXFRAMES] = {0};
+static int rightimagelengths[MAXFRAMES] = {0};
 static int imagews[MAXFRAMES] = {0};
 static int imagehs[MAXFRAMES] = {0};
 int imageseed[MAXFRAMES] = {0};
@@ -122,17 +123,17 @@ int PreloadPGM(char *name, Stimulus *st, Substim *sst, int frame){
     }
     
     if (sst->mode & RIGHTMODE){
-        if(w * h > imagelengths[frame]){
+        if(w * h > rightimagelengths[frame] || rightimages[frame] == NULL){
             if(rightimages[frame] != NULL)
                 free(rightimages[frame]);
             rightimages[frame] = (GLubyte *)malloc(w * h);
-            imagelengths[frame] = w * h;
+            rightimagelengths[frame] = w * h;
         }
         else if(silly){
             if(rightimages[frame] != NULL)
                 free(rightimages[frame]);
             rightimages[frame] = (GLubyte *)malloc(w * h);
-            imagelengths[frame] = w * h;
+            rightimagelengths[frame] = w * h;
         }
         fread(rightimages[frame],1,w*h,imfd);
     }
@@ -383,6 +384,8 @@ int calc_image(Stimulus *st, Substim *sst)
         }
     }
     else if(sst->imagei > 0)
+        sprintf(imname,"%s%d%c.pgm",st->imprefix,sst->imagei,eye);
+    else if(sst->imagei > 0)
         sprintf(imname,"%s%.0f.%d%c.pgm",st->imprefix,sst->xshift,sst->imagei,eye);
     else
         sprintf(imname,"%s%.0f%c.pgm",st->imprefix,sst->xshift,eye);
@@ -543,7 +546,7 @@ int paint_image(Stimulus *st, Substim *sst)
         glRasterPos2f(sst->pos.xy[0]-w/2,sst->pos.xy[1]+h/2);
  //       glGetFloatv(GL_CURRENT_RASTER_POSITION,rasterpos);
         if(st->preload){
-            if (sst->mode == RIGHTMODE && st->flag & UNCORRELATE)
+            if (sst->mode == RIGHTMODE && (st->flag & UNCORRELATE || st->immode == IMAGEMODE_LEFTRIGHT))
                 glDrawPixels(imagews[frame], imagehs[frame], GL_LUMINANCE, GL_UNSIGNED_BYTE, rightimages[frame]);
             else
                 glDrawPixels(imagews[frame], imagehs[frame], GL_LUMINANCE, GL_UNSIGNED_BYTE, images[frame]);

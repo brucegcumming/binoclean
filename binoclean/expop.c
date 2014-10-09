@@ -1903,6 +1903,7 @@ char *ReadManualStim(char *file, int stimid){
     float val,imx[MAXFRAMES],imy[MAXFRAMES];
     Stimulus *st;
     static char cbuf[BUFSIZ*10];
+    static int lastresult = 0;
     
     manualprop[0] = -1;  //in case file error
     if(file == NULL)
@@ -1912,7 +1913,9 @@ char *ReadManualStim(char *file, int stimid){
     if((fin = fopen(file,"r")) == NULL)
     {
         sprintf(cbuf,"Can't read %s",file);
-        acklog(cbuf,0);
+        if (lastresult >= 0) // don't send multiple acks
+            acklog(cbuf,0);
+        lastresult = -1;
         return(NULL);
     }
     sprintf(cbuf,"%d:",stimid);
@@ -2032,7 +2035,7 @@ char *ReadManualStim(char *file, int stimid){
         }
         expt.st->next->preloaded = j;
     }
-        
+    lastresult = 0;   
     return(cbuf);
 }
 
@@ -2702,6 +2705,10 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
                     expt.st->immode = IMAGEMODE_ORBW;
                 else if(!strncmp(s,"plain",4)){
                     expt.st->immode = 0;
+                    expt.st->nimseed = 0;
+                }
+                else if(!strncmp(s,"twoeyes",4)){
+                    expt.st->immode = IMAGEMODE_LEFTRIGHT;
                     expt.st->nimseed = 0;
                 }
                 else if(!strncmp(s,"binocular",4)){
@@ -8769,12 +8776,13 @@ int PreLoadImages()
             st->framectr = i;
             j = floor(i/frpt);
             st->left->calculated = st->right->calculated = 0;
-            if (manualprop[0] == IMAGEINDEX)
-                expt.st->left->imagei = manualstimvals[0][j];
+            if (manualprop[0] == IMAGEINDEX){
+                expt.st->right->imagei = expt.st->left->imagei = manualstimvals[0][j];
+            }
             if (expt.st->type == STIM_IMAGE){
                 if((j = calc_image(expt.st,expt.st->left)) <0)
                     return(-1);
-                if(expt.st->flag & UNCORRELATE)
+                if(expt.st->flag & UNCORRELATE || expt.st->immode == IMAGEMODE_LEFTRIGHT)
                     j = calc_image(expt.st,expt.st->right);
                 for (j = 1; j < frpt; j++){
                     st->framectr = i+j;
