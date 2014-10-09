@@ -22,6 +22,7 @@ int DIOInit()
     }else {
         isok = 1;
         eDO(hDevice, 1, 0, 0);
+        isok = 2;
         return 0;
     }
 }
@@ -192,11 +193,15 @@ int DIOWriteBit(int Channel, BYTE output)
 //            break;
 //    }
     
-    if (r < 0)
+    if (r < 0 )
     {
-        acknowledge("DIO Write Error",NULL);
+        // can get errors from first write. ? when its resqesting the same state?
+        // so don't report an error until the second failure. isok is set to 2 at startup
+        if (isok ==1)
+            acknowledge("DIO Write Error",NULL);
         fprintf(stderr,"DIO ERROR while writing");
     }
+    isok = 1;
     return 0;
 }
 

@@ -13659,6 +13659,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             t = s;
         }
         neyevals = j;
+        return(-1);
     }
     else if(!strncmp(line,"xyfsd",3) && s != NULL){
     }
@@ -13672,6 +13673,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             t = s;
         }
         neyevals = j;
+        return(-1);
     }
     else if(!strncasecmp(line,"xyfsd",5)){
         sscanf(line,"xyfsd=%f",&val);
@@ -14185,11 +14187,19 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     else switch(code)
     {
         case -1:
-            sprintf(buf,"Unrecognized code %s (src%d)\n",line,frompc);
-            fprintf(stdout,buf);
-            if(seroutfile)
-                fputs(buf,seroutfile);
-            notify(buf);
+            i = strlen(line);
+            if (i < BUFSIZ){
+                sprintf(buf,"Unrecognized code %s (src%d)\n",line,frompc);
+                fprintf(stdout,buf);
+                if(seroutfile)
+                    fputs(buf,seroutfile);
+                notify(buf);
+            }
+            else{
+                fprintf(stderr,"Unrecognized code %s\n",line);
+                if(seroutfile)
+                    fprintf(seroutfile,"Unrecognized code %s\n",line);
+            }
             break;
         case MAGIC_ID:
             sscanf(s,"%d",&expt.magicnumber);
