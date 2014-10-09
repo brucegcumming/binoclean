@@ -108,3 +108,5 @@ Sort out ability to add codes manually to the list of what is tracked in psychfi
 Try $MNK in stimdir path 
 rls sy>0 seems broken by xstep = 0;
 remove XMIN/MAX SAMPLERATIO 
+add help for !commands
+allow searching of .hlp files.  E.g I would like to know where to find how to make movies....

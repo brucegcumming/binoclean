@@ -274,6 +274,7 @@ function DATA = CheckStateAtStart(DATA)
 
      
 function CheckStimFile(DATA, type)
+%remove out of date codes from a stim file
     txt = scanlines(DATA.stimfilename);
     goodlines = ones(size(txt));
     for j = 1:length(txt)
@@ -955,6 +956,7 @@ for j = 1:length(strs{1})
         DATA.binoc{1}.(code) = str2num(value);
     elseif strncmp(s,'pf=',3)
         s = strrep(s,'+2a','+afc');
+        s = strrep(s,'+4a','');
         if s(end) == ':'
             s = s(1:end-1);
         end
@@ -1012,19 +1014,7 @@ for j = 1:length(strs{1})
     end %end of 3 char codes
     elseif strncmp(s,'helpfile=',9)
         s = s(10:end);
-        id = strfind(s,'"');
-        if ~isempty(id)
-            n = [];
-            lbl = s(2:id(end)-1);
-            if isfield(DATA.helpfiles,'label')
-            n = find(strcmp(lbl,{DATA.helpfiles.label}));
-            end
-            if isempty(n)
-                n = length(DATA.helpfiles)+1;
-            end
-            DATA.helpfiles(n).filename = s(id(end)+1:end);
-            DATA.helpfiles(n).label = s(2:id(end)-1);
-        end
+        DATA = AddHelpFile(DATA,s);
     elseif sum(strncmp(s, {'et' 'e2' 'e3' 'n2' 'n3' 'em' 'm2' 'm3' 'op' 'ei' 'i2' 'i3' },2))
     if strncmp(s,'et',2)
         DATA.exptype{1} = sscanf(s,'et=%s');
@@ -2786,9 +2776,39 @@ function ShowHelp(a,b,file)
       fprintf('%s\n',lasterr)
   end
 
+  function DATA = AddHelpFile(DATA, s,varargin)
+      if isfield(DATA.binoc{1},'helpdir') && isdir(DATA.binoc{1}.helpdir)
+          prefix = DATA.binoc{1}.helpdir;
+      elseif isdir('/b/binoclean/help')
+          prefix = '/b/binoclean/help';
+      end
+      
+      id = strfind(s,'"');
+        if ~isempty(id)
+            n = [];
+            lbl = s(2:id(end)-1);
+            if isfield(DATA.helpfiles,'label')
+                n = find(strcmp(lbl,{DATA.helpfiles.label}));
+            end
+            if isempty(n)
+                n = length(DATA.helpfiles)+1;
+            end
+            if s(id(end)+1) == '/'                
+                filename = s(id(end)+1:end);
+            else
+                filename = [prefix '/' s(id(end)+1:end)];
+            end
+            if ~exist(filename)
+                cprintf('red','Cannot read Help File %s\n',filename)
+            else
+                DATA.helpfiles(n).filename = filename;
+                DATA.helpfiles(n).label = s(2:id(end)-1);
+            end
+        end
+
   
   function DATA = AddHelpFiles(DATA, varargin)
-      preifx = [];
+      prefix = [];
       if isfield(DATA.binoc{1},'helpdir') && isdir(DATA.binoc{1}.helpdir)
           prefix = DATA.binoc{1}.helpdir;
       elseif isdir('/b/binoclean/help')
@@ -2799,8 +2819,8 @@ function ShowHelp(a,b,file)
           for j = 1:length(d)
               if isempty(DATA.helpfiles) || ...
                       sum(cellstrfind({DATA.helpfiles.filename},d(j).name)) == 0 %new
-                  if ~strncmp(d(j).name,'.#',2)
                       filename = [prefix '/' d(j).name];
+                  if ~strncmp(d(j).name,'.#',2) && exist(filename)
                       DATA.helpfiles(end+1).filename = filename;
                       s = scanlines(filename);
                       if ~isempty(s) && length(s{1}) < 50
@@ -2818,7 +2838,7 @@ function ShowHelp(a,b,file)
         
       
    uimenu(hm,'Label','List All Codes','Callback',{@CodesPopup, 'popup'},'accelerator','L');
-   uimenu(hm,'Label','List Codes with Help','Callback',{@CodesPopup, 'popuphelp'});
+   %uimenu(hm,'Label','List Codes with Help','Callback',{@CodesPopup, 'popuphelp'});
    for j = 1:length(DATA.helpfiles)
         uimenu(hm,'Label',DATA.helpfiles(j).label,'Callback',{@ShowHelp, DATA.helpfiles(j).filename});
     end
@@ -2828,6 +2848,30 @@ function ShowHelp(a,b,file)
        uimenu(hm,'Label',sprintf('Binoc Version %s',v))
    end
  
+  function nfound = SearchHelpFiles(DATA,pattern)
+      txt = {};
+      nfound = 0;
+      F = findobj('type','figure','tag',DATA.windownames{4});
+      it = findobj(F,'tag','CodeListString');
+      fileids = [];
+      
+      for j = 1:length(DATA.helpfiles);
+        helptexts{j} = scanlines(DATA.helpfiles(j).filename);
+        [a,helpname] = fileparts(DATA.helpfiles(j).filename);
+        id = regexp(helptexts{j},   pattern);
+        gid = find(CellToMat(id));
+        for k = gid(:)'
+            fprintf('%s\n',helptexts{j}{k});
+            txt{end+1} = [helpname ': ' helptexts{j}{k}];
+            fileids(length(txt)) = j;
+        end
+      end
+      setappdata(F,'FileMatchIds',fileids);
+      nfound = length(txt);
+      if nfound
+          set(it,'string',char(txt),'value',1,'userdata',5);
+      end
+   
   function OptionMenu(a,b,tag)     
       DATA = GetDataFromFig(a);
       on = get(a,'checked');
@@ -4820,7 +4864,7 @@ function CodesPopup(a,b, type)
     hm = uimenu(cntrl_box,'Label','Search');
     sm = uimenu(hm,'Label','Ignore case','callback',{@SearchList, 'IgnoreCase'},'Tag','IgnoreCase','checked','on');
     
-    uicontrol(gcf,'style','pop','string','Search: All|Search: Codes|Search: Labels|Search: Help','tag','SearchMode',...
+    uicontrol(gcf,'style','pop','string','Search: All|Search: Codes|Search: Labels|Search: Help|Search: HelpFile','tag','SearchMode',...
         'units','norm', 'Position',[0 0.01 0.3 0.08]);
 
     srch = uicontrol(gcf, 'Style','edit','String', '',...
@@ -4866,15 +4910,27 @@ elseif strcmp(type,'popup')
 end
 
 function HelpHit(a,b)
-DATA = GetDataFromFig(a);
 
+ DATA = GetDataFromFig(get(a,'parent'));
+
+F = get(a,'parent');
+if isempty(DATA)
+    DATA = GetDataFromFig(F);
+end
 str = get(a,'string');
 l = get(a,'value');
+searchmode = get(a,'userdata');
+if isempty(searchmode)
+    searchmode = 0;
+end
 if length(l) == 1
     code = str(l,:);
     code = regexprep(code,'\s.*','');
     fpos = get(GetFigure(a),'position');
-    if isfield(DATA.helpkeys.extras,code)
+    if searchmode ==5 % in a help file - pop this up
+        x = getappdata(F,'FileMatchIds');
+        ShowHelp(DATA,[], DATA.helpfiles(x(l)).filename);
+    elseif isfield(DATA.helpkeys.extras,code)
         cm = uicontextmenu;
         X = DATA.helpkeys.extras.(code);
         for j = 1:length(X)
@@ -4941,14 +4997,14 @@ function SearchList(a,b, varargin)
     it = findobj(F,'tag','CodeListString');
     if isempty(findn) %hit return again
         findn = 1;
-    elseif ~strcmp(pttn,lastpttn)%new serach
+    elseif ~isempty(pttn) && ~strcmp(pttn,lastpttn)%new serach
         newpattn = 1;
     else
         setappdata(F,'findn',[]);
         if isappdata(F,'OldText')
             txt = getappdata(F,'OldText');
-            set(it,'string',txt);
-            set(F,'Name','Code List');
+            set(it,'string',txt,'userdata',0);
+            set(F,'Name','Code List');            
             return;
         end
     end
@@ -4969,6 +5025,15 @@ function SearchList(a,b, varargin)
         txt = get(it,'String');
         setappdata(F,'OldText',txt);
     end
+    
+    if searchmode ==5
+        DATA = GetDataFromFig(get(a,'parent'));
+        findn = SearchHelpFiles(DATA,pttn);
+        setappdata(F,'findn',findn);
+        set(F,'Name',sprintf('%d Matches in %d help files for %s',findn,length(DATA.helpfiles),pttn));
+        return;
+    end
+    
     keys = getappdata(F,'HelpKeyList');
     keys{size(txt,1)+1} = '';
     found = [];
@@ -4982,6 +5047,8 @@ function SearchList(a,b, varargin)
         elseif searchmode == 3 %just labels
             s = regexprep(t,'\s(.*):.*','$1');
         elseif searchmode == 4 %just help
+            s = regexprep(t,'.* : ','');
+        elseif searchmode == 5 %help files 
             s = regexprep(t,'.* : ','');
         else
             s = [txt(j,:) keys{j}];

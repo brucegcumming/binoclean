@@ -179,7 +179,10 @@ iF in seconds, sets ns accordingly
 Im For the first ns frames, the stimulus tranlates at speed Im, direction Fa.
 imi number to add to image prefix to build name. 
 imload "preload" = load images from disk befor starting trial. "normal" read on the fly
-immode "orbw" or "binocular" determines how imae names are build
+immode "orbw"|"binocular"|"twoeyes" determines how image names are build. see aslso impref, imload #images imload 
+#"orbw" build path using ori/sf/ori bandwidth/se%d.pgm for ORBW expts
+#"binocular" uses prefix%d.pgm where %d is imi. Shows same image to both eyes
+#"twoeyes" uses prefix%dL.pgm for left eye prefix%dR.pgm for R eye
 impref prefix (inlcuding path) for building image names
 imx horizontal position of background image Performed by rotating pixels in image
 imy vertical position of background image. Performed by rotating pixels in image

@@ -13,7 +13,7 @@
 #import <sys/time.h>
 #include <sys/resource.h>
 
-#define NOSTOPSCREENSAVER 0
+#define STOPSCREENSAVER 1
 
 int binocmain(int argc, char * argv[]);
 char * VERSION_STRING;
