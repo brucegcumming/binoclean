@@ -5354,7 +5354,7 @@ int change_frame()
     if(oldmode & LAST_FRAME_BIT && !(mode & LAST_FRAME_BIT))
         stimstate = POSTSTIMULUS;
 
-    if (testflags[SAVE_IMAGES] ==10){ //save images of screen
+    if (testflags[SAVE_IMAGES] ==10 || testflags[SAVE_IMAGES] ==11){ //save images of screen
 //        SaveImage(expt.st,0); // RE eye only
         SaveImage(expt.st,1); //Both Eyes
     }

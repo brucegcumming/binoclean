@@ -4336,6 +4336,14 @@ int SaveImage(Stimulus *st, int type)
         pcode = 1;
     else
         pcode = 0;
+    if (testflags[SAVE_IMAGES] == 11){
+            sprintf(imname,"%s/%s.i%d.rds",ImageOutDir,expname,done);
+            ofd = fopen(imname,"w");
+            n = SaveRds(st, ofd);
+            fclose(ofd);
+        done++;
+        return(done);
+    }
     
     if (type == 0){
         i = 1;  //R eye image
@@ -4380,7 +4388,7 @@ int SaveImage(Stimulus *st, int type)
         }
         n = st->left->ndots;
     }
-    if(type & (1<<1)){
+    if(type & (1<<1) || testflags[SAVE_IMAGES] ==11){
         if(imoutfd == NULL){
             sprintf(imname,"%s/%s.im.txt",ImageOutDir,expname);
             imoutfd = fopen(imname,"w");
@@ -4541,6 +4549,9 @@ int ReadCommand(char *s)
     else if(!strncasecmp(s,"debug",4)){
         sscanf(s,"%*s %d",&debug);
         sprintf(command_result,"debug %d",debug);
+    }
+    else if(!strncasecmp(s,"saverds",7)){ // toggle on/off saving screen images
+        testflags[SAVE_IMAGES] = 11;
     }
     else if(!strncasecmp(s,"savemovie",8)){ // toggle on/off saving screen images
         if ((r = strchr(s,'=')) != NULL)

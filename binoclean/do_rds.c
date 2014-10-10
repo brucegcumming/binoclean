@@ -1793,7 +1793,48 @@ void paint_rds(Stimulus *st, int mode)
     }
     glPopMatrix();
   }
+
+int SaveRdsTxt(Stimulus *st, FILE *fd)
+{
+    Locator *pos = &st->pos;
+    vcoord offset[2],xp[5000],yp[5000],disps[5000];
+    int *p,d,*end,i;
+    vcoord  w,h,*x,*y,fw,fh,*pdisp;
+    Substim *sst = st->left;
+    short colors[5000];
+    int ndots[2],sign = 1;
+    double pixmul;
+    static int nsaved = 0;
+    int rhbyte,rvbyte, lhbyte,lvbyte;
     
+    sst = st->right;
+    p = sst->iim;
+    x = sst->xpos;
+    y = sst->ypos;
+    end = (sst->iim+sst->ndots);
+    i = 0;
+    fprintf(fd,"L");
+    fprintf(fd,"\nR");
+    for(;p < end; p++,x++,y++)
+    {
+        if(*p & BLACKMODE)
+            colors[i] = 0;
+        else if(*p & WHITEMODE)
+            colors[i] = 1;
+        if(*p & RIGHTMODE){
+            rhbyte = *x+offset[0];
+            rvbyte = *y+offset[1];
+        }
+        else{
+            rhbyte = 0;
+            rvbyte = 0;
+        }
+        fprintf(fd,"%3x%3x",rvbyte,rhbyte);
+    }
+    fprintf(fd,"\n",rvbyte,rhbyte);
+    ndots[1] = i;
+   
+}
   int SaveRds(Stimulus *st, FILE *fd)
   {
     Locator *pos = &st->pos;
@@ -1806,7 +1847,11 @@ void paint_rds(Stimulus *st, int mode)
     double pixmul;
     static int nsaved = 0;
         
-        
+      
+      if (testflags[SAVE_IMAGES] ==11){
+          i = SaveRdsTxt(st, fd);
+          return(i);
+      }
         
     /*
      * divide pixm by 2 because this disparity is applied
