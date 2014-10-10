@@ -4233,6 +4233,12 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
                     st->left->ptr->density = val;
                 }	
             }
+            else{
+                if(val > 0) {
+                    pos->density=val;
+                    st->left->ptr->density = val;
+                }
+            }
             break;
         case XSAMPLES:/*j*/
             if(st->type == STIM_GRATING || st->type == STIM_GRATING2 || st->type == STIM_GABOR)
@@ -9740,7 +9746,7 @@ float StimulusProperty(Stimulus *st, int code)
             if(st->type == STIM_CYLINDER || st->type == STIM_CORRUG || st->type == STIM_SQCORRUG)
                 value = st->left->ptr->density;
             else
-                value = st->left->density;
+                value = st->pos.density;
             SetDotDistribution();
             break;
             

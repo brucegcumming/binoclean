@@ -1947,6 +1947,8 @@ DATA.servodata.alldepths = [];
 DATA.servodata.alltimes = [];
 DATA.servodata.stepsize = 0;
 DATA.Trial.rw = 0;
+DATA.Comments = [];
+
 
 DATA.newbinoc = 2;
 DATA.ready = 0;
@@ -2070,7 +2072,7 @@ DATA.badnames = {'2a' '4a' '72'};
 DATA.badreplacenames = {'afc' 'fc4' 'gone'};
 
 DATA.comcodes = [];
-DATA.windownames = {'vergwindow' 'optionwindow' 'softoffwindow'  'codelistwindow' 'statuswindow' 'logwindow' 'helpwindow' 'sequencewindow' 'penlogwindow' 'electrodewindow'};
+DATA.windownames = {'vergwindow' 'optionwindow' 'softoffwindow'  'codelistwindow' 'statuswindow' 'logwindow' 'helpwindow' 'sequencewindow' 'penlogwindow' 'electrodewindow' 'commentwindow'};
 DATA.winpos{1} = [10 scrsz(4)-480 300 450];
 DATA.winpos{2} = [10 scrsz(4)-680 400 50];  %options popup
 DATA.winpos{3} = [600 scrsz(4)-100 600 150]; %softoff
@@ -2081,6 +2083,7 @@ DATA.winpos{7} = [600 scrsz(4)-100 400 100]; %help
 DATA.winpos{8} = [600 scrsz(4)-100 400 100]; %sequence
 DATA.winpos{9} = [600 scrsz(4)-100 400 100]; %Penetraation log
 DATA.winpos{10} = [600 scrsz(4)-100 400 100]; %Electrode Moving
+DATA.winpos{11} = [600 scrsz(4)-100 400 100]; %Electrode Moving
 
 DATA.outid = 0;
 DATA.inid = 0;
@@ -2683,6 +2686,7 @@ function DATA = InitInterface(DATA)
     uimenu(subm,'Label','Status Lines','Callback',{@StatusPopup, 'popup'});
     uimenu(subm,'Label','Psych Window','Callback',{@MenuHit, 'showpsych'});
     uimenu(subm,'Label','Electrode Control','Callback',{@ElectrodePopup, 'popup'});
+    uimenu(subm,'Label','Comments','Callback',{@CommentPopup, 'popup'});
     uimenu(subm,'Label','Check Trial Duratione','Callback',{@MenuHit, 'checkdur'});
     subm = uimenu(cntrl_box,'Label','Pipes');
     uimenu(subm,'Label','Reopen Pipes','Callback',{@ReadIO, 6});
@@ -3481,7 +3485,16 @@ function MenuGui(a,b)
              myprintf(DATA.penid,'VisualArea %s\n',str);
      end
      set(DATA.toplevel,'UserData',DATA);
-     
+
+function DATA = AddComment(DATA, str, src)
+    
+    DATA.Comments(end+1).comment = str;
+    DATA.Comments(end).date = now;
+    DATA.Comments(end).src = src;
+    CommentPopup(DATA,[],'update');
+    if nargout == 0 %if ask for return, caller will Call SetData
+        SetData(DATA);
+    end
      
  function TextGui(a,b, type)
      DATA = GetDataFromFig(a);
@@ -3495,7 +3508,8 @@ function MenuGui(a,b)
              set(DATA.toplevel,'UserData',DATA);
          case 'cm'
              outprintf(DATA,'cm=%s\n',str);
-             LogCommand(DATA,sprintf('cm=%s',str));
+             DATA = AddComment(DATA,str,'user');
+             LogCommand(DATA,sprintf('cm=%s',str)); %sets data
              set(a,'string','');
          case 'nt'
              outprintf(DATA,'nt=%d\n',str2num(str));
@@ -3942,7 +3956,7 @@ function CheckInput(a,b, fig, varargin)
             fprintf('Paused...');
         end
         ts = mytoc(lastread);
-        if ts > DATA.pausetimeout
+        if ts > DATA.pausetimeout && DATA.pausetimeout > 0
             setappdata(DATA.toplevel,'PauseReading',0);
             vergwarning(sprintf('Paused for %.2f seconds. Unlocking.',ts));
         end
@@ -4661,6 +4675,7 @@ set(gcf,'CloseRequestFcn',{@CloseWindow, 9});
 
 function MarkComment(a,b,txt);
   DATA = GetDataFromFig(a);
+  AddComment(DATA,txt, 'penmenu');
   outprintf(DATA,'cm=%s\n',txt);
         
 
@@ -4712,6 +4727,71 @@ for j = 1:length(f)
         'units', 'norm', 'position',bp,'value',DATA.stimflags{1}.(f{j}),'Tag',f{j},'callback',{@StimToggle, f{j}});
 
 end
+
+function CommentPopup(a,b,type)
+  DATA = GetDataFromFig(a);
+  src = a;
+  
+  wn = find(strncmp(DATA.windownames,'comment',6));  
+  cntrl_box = findobj('Tag',DATA.windownames{wn},'type','figure');
+  if ~isempty(cntrl_box);
+      lst = findobj(cntrl_box,'tag','CommentList');
+  end
+  if sum(strcmp(type,{'showtime' 'showcomment'}))
+      f = strrep(type,'show','');
+      DATA.show.cpmment.(f) = ~DATA.show.comment.(f);
+      if DATA.whos.(f)
+          set(a,'checked','on');
+      else
+          set(a,'checked','off');
+      end
+  elseif strcmp(type,'update')
+      if ~isempty(cntrl_box);
+          strs = {};
+          for j = 1:length(DATA.Comments)
+              strs{j} = DATA.Comments(j).comment;
+              if DATA.show.comment.time
+                  strs{j} = [datestr(DATA.Comments(j).date,'hh:mm') ': ' strs{j}];
+              end                      
+          end
+          if ~isempty(strs)
+              set(lst,'string',strs);
+          end
+      end
+  end
+  if ~strncmp(type,'popup',5)
+      return;
+  end
+  
+  cntrl_box = findobj('Tag',DATA.windownames{wn},'type','figure');
+  if ~isempty(cntrl_box)
+      figure(cntrl_box);
+      return;
+  end
+  cntrl_box = figure('Position', DATA.winpos{wn},...
+        'NumberTitle', 'off', 'Tag',DATA.windownames{wn},'Name','Code list','menubar','none');
+    set(cntrl_box,'UserData',DATA.toplevel);
+    set(cntrl_box,'DefaultUIControlFontSize',DATA.font.FontSize);
+    set(cntrl_box,'DefaultUIControlFontName',DATA.font.FontName);
+
+    hm = uimenu(cntrl_box,'Label','Show');
+    sm = uimenu(hm,'Label','Comments','callback',{@CommentPopup, 'showcomments'},'checked','on');
+    sm = uimenu(hm,'Label','Time','callback',{@CommentPopup, 'showtime'},'checked','on');
+
+    lst = uicontrol(gcf, 'Style','list','String', 'Code List :* = more help with mouse click',...
+        'HorizontalAlignment','left',...
+        'Max',10,'Min',0,...
+        'Tag','CommentList',...
+        'callback',{@CommentPopup, 'help'},...
+        'units','norm', 'Position',[0.01 0.085 0.99 0.91]);
+    
+if ~isfield(DATA,'show') || ~isfield(DATA.show,'comment')    
+    DATA.show.comment.time = 1;
+    DATA.show.comment.comment = 1;
+    SetData(DATA);
+end
+CommentPopup(lst, [], 'update')
+
 
 function CodesPopup(a,b, type)  
 
