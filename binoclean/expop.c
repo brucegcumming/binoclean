@@ -2470,7 +2470,9 @@ char *DescribePen(){
     int protrudemm;
     
     sprintf(buf,"Experimenter %s\n",expt.username);
-    if(expt.hemisphere == 1)
+    if (expt.strings[HEMISPHERE] != NULL)
+        sprintf(xbits,"Hemisphere %s", expt.strings[HEMISPHERE]);
+    else if(expt.hemisphere == 1)
         sprintf(xbits,"Hemisphere Right");
     else if(expt.hemisphere == 2)
         sprintf(xbits,"Hemisphere Left");
@@ -2495,7 +2497,10 @@ char *DescribePen(){
         sprintf(xbits,"Electrode %s\n",electrodestrings[electrodeid]);
         strcat(buf, xbits);
     }
-
+    if (expt.strings[VWHERE] != NULL){
+        sprintf(xbits,"VisualArea=%s\n",expt.strings[VWHERE]);
+        strcat(buf, xbits);
+    }
     return(buf);
 }
 

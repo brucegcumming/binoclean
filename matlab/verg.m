@@ -219,6 +219,13 @@ function ExitVerg(DATA)
         CloseTag(DATA.windownames{j});
     end
     CloseTag(DATA.windownames{1});
+    if DATA.servofig
+        if isfield(DATA,'servotimer') & isvalid(DATA.servotimer)
+            stop(DATA.servotimer);
+        end
+        ServoDrive('close');
+    end
+
     fids = fopen('all');
     for j = 1:length(fids)
         name = fopen(fids(j));
@@ -2604,27 +2611,12 @@ function DATA = InitInterface(DATA)
             RecoverFile(x,[],'list');    
     hm = uimenu(cntrl_box,'Label','Quick','Tag','QuickMenu');
     BuildQuickMenu(DATA, hm);
-    hm = uimenu(cntrl_box,'Label','&Pop','Tag','PopMenu');
 %    uimenu(hm,'Label','Stepper','Callback',{@StepperPopup});
 %currently can do everything in binoc. Stick with this til need something
 %new....
-    subm = uimenu(hm,'Label','&Windows');
-    uimenu(subm,'Label','&Options','Callback',{@OptionPopup},'accelerator','O');
-    uimenu(subm,'Label','Penetration Log','Callback',{@PenLogPopup});
-    uimenu(subm,'Label','Monkey Log','Callback',{@MonkeyLogPopup, 'popup'});
-    uimenu(subm,'Label','List Codes','Callback',{@CodesPopup, 'popup'},'accelerator','L');
-    uimenu(subm,'Label','Status Lines','Callback',{@StatusPopup, 'popup'});
-    uimenu(subm,'Label','Psych Window','Callback',{@MenuHit, 'showpsych'});
-    uimenu(subm,'Label','Electrode Control','Callback',{@ElectrodePopup, 'popup'});
-    uimenu(subm,'Label','Comments','Callback',{@CommentPopup, 'popup'});
-    uimenu(subm,'Label','Check Trial Duratione','Callback',{@MenuHit, 'checkdur'});
-    subm = uimenu(cntrl_box,'Label','Pipes');
-    uimenu(subm,'Label','Reopen Pipes','Callback',{@ReadIO, 6});
-    uimenu(subm,'Label','reopenserial','Callback',{@SendStr, '\reopenserial'});
-    uimenu(subm,'Label','Read','Callback',{@ReadIO, 1});
-    uimenu(subm,'Label','GetState','Callback',{@ReadIO, 2});
-    uimenu(subm,'Label','NewStart','Callback',{@ReadIO, 3});
-    uimenu(subm,'Label','Stop Timer','Callback',{@ReadIO, 4});
+
+    
+    subm = uimenu(cntrl_box,'Label','&Pop','Tag','PopMenu');
     sm = uimenu(subm,'Label','Check Timer','Callback',{@CheckTimerHit, 0});
     sm = uimenu(subm,'Label','Start Timer','Callback',{@ReadIO, 5},'foregroundcolor',[0 0 0.5]);
     sm = uimenu(subm,'Label','Verbose');
@@ -2664,6 +2656,23 @@ function DATA = InitInterface(DATA)
     uimenu(hm,'Label','Run One Trial','Callback',{@MenuHit, 'onetrial'},'accelerator','1');
 %    hm = uimenu(cntrl_box,'Label','Mark');
 
+    subm = uimenu(cntrl_box,'Label','&Windows');
+    uimenu(subm,'Label','&Options','Callback',{@OptionPopup},'accelerator','O');
+    uimenu(subm,'Label','Penetration Log','Callback',{@PenLogPopup});
+    uimenu(subm,'Label','Monkey Log','Callback',{@MonkeyLogPopup, 'popup'});
+    uimenu(subm,'Label','List Codes','Callback',{@CodesPopup, 'popup'},'accelerator','L');
+    uimenu(subm,'Label','Status Lines','Callback',{@StatusPopup, 'popup'});
+    uimenu(subm,'Label','Psych Window','Callback',{@MenuHit, 'showpsych'});
+    uimenu(subm,'Label','Electrode Control','Callback',{@ElectrodePopup, 'popup'});
+    uimenu(subm,'Label','Comments','Callback',{@CommentPopup, 'popup'});
+    uimenu(subm,'Label','Check Trial Duratione','Callback',{@MenuHit, 'checkdur'});
+    subm = uimenu(cntrl_box,'Label','Pipes');
+    uimenu(subm,'Label','Reopen Pipes','Callback',{@ReadIO, 6});
+    uimenu(subm,'Label','reopenserial','Callback',{@SendStr, '\reopenserial'});
+    uimenu(subm,'Label','Read','Callback',{@ReadIO, 1});
+    uimenu(subm,'Label','GetState','Callback',{@ReadIO, 2});
+    uimenu(subm,'Label','NewStart','Callback',{@ReadIO, 3});
+    uimenu(subm,'Label','Stop Timer','Callback',{@ReadIO, 4});
     
     hm = uimenu(cntrl_box,'Label','Help','Tag','HelpMenu');
     DATA = AddHelpFiles(DATA); 
