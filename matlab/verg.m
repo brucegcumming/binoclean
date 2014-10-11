@@ -631,11 +631,8 @@ for j = 1:length(strs{1})
     
     elseif sum(strncmp(s,{'NewBinoc' 'confirm' 'exvals' 'fontsiz' 'fontname' 'layout' ...
             'localmatdir' 'netmatdir', 'oldelectrode' 'TOGGLE' 'rptexpts' 'STIMTYPE' ...
-            'SENDING' 'SCODE=' 'status' 'stimdir' 'STIMC ' 'Unrecogn'},6))
-        if strncmp(s,'SENDING',7)
-            %can ignore SENDING here            
-        else
-            if strncmp(s,'NewBinoc',7)
+            'SENDING' 'SCODE=' 'status' 'stimdir' 'STIMC ' 'Unrecogn' 'emxpos' 'emypos'},6))
+        if strncmp(s,'NewBinoc',7)
             DATA = CheckForNewBinoc(DATA);
             DATA.newbinoc = 1;
             if DATA.optionflags.do %only do this when reopen pipes
@@ -764,7 +761,7 @@ for j = 1:length(strs{1})
             DATA.Statuslines{end+1} = s(8:end);
             codetype = -2;
         end  %6 char codes
-        end
+        
         
         
     elseif sum(strncmp(s,{'Expts' 'xyfsd' 'EDONE'},5))

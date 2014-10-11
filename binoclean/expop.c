@@ -4312,6 +4312,8 @@ int SaveImage(Stimulus *st, int type)
     int x,y,w,h,i=0,done = 0,n = 0;
     static int imstimid = 0,pcode = 5;
     char eyec[3] = "LR";
+    static int ndone = 0;
+    
     Stimulus *rst = st;
     
     if(rdspair(st))
@@ -4337,11 +4339,13 @@ int SaveImage(Stimulus *st, int type)
     else
         pcode = 0;
     if (testflags[SAVE_IMAGES] == 11){
-            sprintf(imname,"%s/%s.i%d.rds",ImageOutDir,expname,done);
+            sprintf(imname,"%s/%s.i%d.rds",ImageOutDir,expname,ndone);
             ofd = fopen(imname,"w");
-            n = SaveRds(st, ofd);
+            n = SaveRdsTxt(st, ofd);
             fclose(ofd);
-        done++;
+        ndone++;
+        st = ReadRds(imname);
+        paint_rds(st,LEFTMODE);
         return(done);
     }
     
