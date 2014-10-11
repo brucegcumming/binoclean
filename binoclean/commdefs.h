@@ -806,7 +806,7 @@ ToggleCode togglestrings[] = {
 //   {"TGauss",    "tg",  0, TEMPORAL_GAUSS, 3},
     
     {"Special Options","lbl4",0,0, 0},
-    {"Spike Clear when Move",    "sp",  0, 1, STEP_CLEAR_SPIKES, 3},
+    {"Spike Clear when Move",    "sp",  0, STEP_CLEAR_SPIKES, 3},
    {"Check Frames",    "cF",  0, FRAMESWARN, 3},
    {"Always Backgr",    "ab",  0, BACKGROUND_ALWAYS, 3},
     {"Rnd FPdir",    "rd",  0, RAND_FP_DIR, 3},

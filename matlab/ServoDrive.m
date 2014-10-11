@@ -64,6 +64,9 @@ while j <= length(varargin)
         DATA.alltimes = [DATA.alltimes now];
         DATA.position = d;
         set(DATA.toplevel,'UserData',DATA);
+    elseif strncmpi(varargin{j},'close',5)
+        CloseServoPort(DATA);
+
     end
     j = j+1;
 end
@@ -519,7 +522,11 @@ for j = 1:nstep
     else
         DATA = SetNewPosition(DATA,positions(j));
         if j < nstep
+            if DATA.motorspeed > 0
             pause(edur./nstep);
+            else
+                pause(1);
+            end
         end
     end
 end
