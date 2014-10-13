@@ -3376,6 +3376,9 @@ function DATA = AddComment(DATA, str, src)
     DATA.Comments(end+1).comment = str;
     DATA.Comments(end).date = now;
     DATA.Comments(end).src = src;
+    if isfield(DATA.binoc{1},'ed')
+        DATA.Comments(end).ed = DATA.binoc{1}.ed;
+    end
     CommentPopup(DATA,[],'update');
     if nargout == 0 %if ask for return, caller will Call SetData
         SetData(DATA);
