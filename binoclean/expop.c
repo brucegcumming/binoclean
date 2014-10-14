@@ -2563,6 +2563,11 @@ int OpenPenetrationLog(int pen){
         fprintf(penlog,"%s",s);
     }
     fflush(penlog);
+    SendToGui(PENETRATION_TEXT);
+    
+    SendToGui(PENNUMCOUNTER);
+    SendToGui(PENXPOS);
+    SendToGui(PENYPOS);
     return(0);
 }
 
@@ -2620,6 +2625,7 @@ int OpenNetworkFile(Expt expt)
 {
     char *t,*r,buf[BUFSIZ],name[BUFSIZ],sfile[BUFSIZ],path[BUFSIZ],outbuf[BUFSIZ];
     char nbuf[BUFSIZ];
+    static int lastresult = 1;  // start as if was success
     time_t tval,nowtime;
 
     
@@ -2651,10 +2657,15 @@ int OpenNetworkFile(Expt expt)
     
         if (netoutfile == NULL){
             sprintf(buf,"Can't open Network record %s",name);
+            lastresult = 0;
             statusline(buf);
             getcwd(path,BUFSIZ);
             sprintf(name,"%s/%s.bnc",path,getfilename(sfile));
             netoutfile = fopen(name,"a");
+        }
+        else if (lastresult <= 0){
+            sprintf(buf,"Opened Netowrk param file %s",name);
+            acknowledge(buf,NULL);
         }
     }
     tval = time(NULL);
@@ -2669,7 +2680,7 @@ int OpenNetworkFile(Expt expt)
         sprintf(buf,"Can't open Network parameter record file\n %s\t or\n%s",nbuf,name);
         if (seroutfile != NULL)
             fprintf(seroutfile,"%s\n",buf);
-        
+        lastresult = -1;
         acknowledge(buf,0);
     }
 }
@@ -3162,10 +3173,14 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
         case EXPT_LINW:
             expt.linw  = (int)val;
             break;
+        case ELECTRODE_DEPTH:
+            if (expt.vals[flag] == 0 && val != 0)
+                SetStepperDepth((int)(val * 1000));
+            expt.vals[flag] = val;
+            break;
         case FP_MOVE_FRAME:
         case CHANGE_SEED:
         case FIX_LINW:
-        case ELECTRODE_DEPTH:
         case FIXATION_OVERLAP:
         case BACKJUMP:
         case FIXATION_SURROUND:
@@ -7202,10 +7217,10 @@ void runexpt(int w, Stimulus *st, int *cbs)
     {
         oldflag = optionflag;
         old2flag = option2flag;
-        if(optionflag & SEARCH_MODE_BIT && confirm_no("Sure You Don't want random Order?",NULL))
-            optionflag &= (~SEARCH_MODE_BIT);
-        if(option2flag & EXPT_INTERACTIVE && confirm_no("Sure You want interactive Expt?",NULL))
-            option2flag &= (~EXPT_INTERACTIVE);
+        if(optionflag & SEARCH_MODE_BIT)
+            acknowledge("Make Sure You want Nonrandom Order!!",NULL);
+        if(option2flag & EXPT_INTERACTIVE)
+            acknowledge("Make Sure You want interactive Expt!!",NULL);
         if(SACCREQD(afc_s) && !(option2flag & AFC) && confirm_no("Sure You Don't want AFC?",NULL))
             option2flag |= (AFC);
         if(optionflags[FAST_SEQUENCE] && expt.stimpertrial > 1){
@@ -14251,11 +14266,9 @@ int InterpretLine(char *line, Expt *ex, int frompc)
                     expt.st->fix.fixcolors[i] = in[i];
             break;
         case ELECTRODE_DEPTH:
-            if (*s == '+'){ //to add a negatvie step, use ed=+-step, so that simply reporting a negative number doesn't change value
-                sscanf(s,"%f",&fval);
-                stepproc(fval);
-                sprintf(buf,"%2s=%.3f\n",valstrings[icode].code,expt.vals[ELECTRODE_DEPTH]);
-                notify(buf);
+            sscanf(s,"%f",&fval);
+            if (expt.vals[ELECTRODE_DEPTH] == 0 ){
+                SetStepperDepth((int)(fval * 1000));
             }
             break;
             

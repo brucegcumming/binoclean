@@ -869,15 +869,16 @@ char *bwtoggle_codes[] = {
  *         2048 can't be an expt type. (Checked in setsecondexpt)
  *         4096 Verg only - ?deprecated. Binoc needs to know about all variables
  */
-#define VERGONLY 3096
+#define SAVE_ALWAYS 1
+#define SAVE_STATE 2  //program state, but not part of stim - e.g. id, Pen details
+#define SAVE_NEVER 0
+#define VERGONLY 4096
 #define INTERNALCOMMAND 1024
 #define INDIRECT 512
 #define RF_PROPERTIES 256
 #define COMPOUND_GRATING (4096 << 1)
 #define EXPTSTATE (4069 <<2) // things that count trials etc - only save in expt state files
-#define SAVE_ALWAYS 1
-#define SAVE_STATE 2  //program state, but not part of stim - e.g. id, Pen details
-#define SAVE_NEVER 0
+#define NOTFORVERG (4096<<3)
 
 // SEND_READ_ONLY = not sent to verg or Spike2 - purely internal
 // must be internal to binoc. If verg needs to read code, set to SEND_VERG_ONLY
@@ -1115,7 +1116,7 @@ ValueCode valstrings[] = {
   {"he", "helpfile ",HELPFILE_PATH, 128 , 'C' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
   {"xm", "XMAXSAMPLE_RATIO",	XMAXSAMPLE_RATIO, 1 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
   {"Sv", "Stim Version",STIMULUS_VERSION, 128 , 'N' ,2, SEND_STIMULUS, SAVE_ALWAYS},
-  {"pe", "Penetration Number",PENETRATION_TEXT, 128 , 'N' ,2, SEND_EXPLICIT, SAVE_STATE},
+  {"pe", "Penetration Number",PENETRATION_TEXT, 128|NOTFORVERG , 'N' ,2, SEND_EXPLICIT, SAVE_STATE},
   {"RP", "RF PARALELL ",RF_PARA, 512 , 'N' ,2, SEND_EXPLICIT, SAVE_NEVER},
   {"pl", "Size of Proximal Luminance Covariace ",PLC_MAG, 1 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
 //  {"To", "Target offset ",TARGET_OFFSET, 8 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
