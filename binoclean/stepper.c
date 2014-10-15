@@ -501,7 +501,7 @@ SerialSend(ELECTRODE_DEPTH);
 if(penlog){
     fprintf(penlog,"ed %d at %.1f\n",electrodeDepth,times[totalsteps]);
 }
-    notifyPositionChange(electrodeDepth);
+//    notifyPositionChange(electrodeDepth);
 
 }
 

@@ -85,7 +85,11 @@ if isempty(it)
         tt = TimeMark(tt, 'SendState');
         DATA = ReadStimFile(DATA, '/local/verg.setup'); %make sure these go to binoc
         tt = TimeMark(tt, 'VergSetup');
-        DATA = ReadStimFile(DATA,varargin{1}, 'init');
+        [DATA, details] = ReadStimFile(DATA,varargin{1}, 'init');
+        DATA.state.stimfile = varargin{1};
+        if details.badcodes > 1
+            DATA.state.stimfileerrs = details.badcodes;
+        end
         tt = TimeMark(tt, 'Read');
         SendCode(DATA,'vve'); %send verg version
         DATA.rptexpts = 0;  %can't set this in startup files, only quickmenus
@@ -160,6 +164,10 @@ while j <= length(varargin)
     if strncmpi(varargin{1},'close',5)
         ExitVerg(DATA);
         return;
+    elseif strncmpi(varargin{j},'checkhelp',8)
+        CheckCodeHelp(DATA, 'update');
+    elseif strncmpi(varargin{j},'checkstim',8)
+        CheckStimFile(DATA, 'update');
     elseif strncmpi(varargin{j},'getstate',5)
         ts = now;
         DATA = GetState(DATA,'commandline');
@@ -297,8 +305,73 @@ function DATA = CheckStateAtStart(DATA)
        end
     end
     end
+function CheckStimFile(DATA, type)
+%remove out of date codes from a stim file
+    txt = scanlines(DATA.stimfilename);
+    goodlines = ones(size(txt));
+    for j = 1:length(txt)
+        [DATA, code, badcodes] = InterpretLine(DATA, txt{j}, 'test');
+        if code < -1 
+            goodlines(j) = 0;
+        elseif ~isempty(badcodes)
+            for k = 1:length(badcodes)
+                id = regexp(badcodes{k},'[+-]')
+                if length(id) > 1
+                    badcode = badcodes{k}(1:id(2)-1);
+                    regexprep(badcodes{k},'[a-Z]+[+-].*','$1');
+                else
+                    badcode = badcodes{k};
+                end
+                txt{j} = strrep(txt{j},badcode,'');
+            end
+        end
+    end
+txt = txt(find(goodlines));
+outfile = strrep(DATA.stimfilename,'.stm','');
+outfile = [outfile '.new'];
+fprintf('saving stim file to %s\n',outfile);
+WriteText(txt, outfile);
+
+function CheckCodeHelp(DATA, type)
     
-function [DATA, codetype] = InterpretLine(DATA, line, varargin)
+    if nargin ==1
+        type = 'list';
+    end
+    [scodes,sid] = sort({DATA.comcodes.code});
+    helpfile = [DATA.localmatdir '/helpstrings.txt'];
+    txt = scanlines(helpfile);
+    for j = 1:length(DATA.comcodes)
+        k = sid(j);
+       if ~isfield(DATA.helpstrs,DATA.comcodes(k).code) 
+           if ~strcmp('xx',DATA.comcodes(k).code) && ~bitand(DATA.comcodes(k).group,1024)
+               fprintf('No help for %s\n',DATA.comcodes(k).code);
+               if strcmp(type,'update')
+               prevcode = DATA.comcodes(sid(j-1)).code;
+               id = find(strncmp(prevcode,txt,length(prevcode)));
+               if ~isempty(id)
+                   txt = InsertLine(txt,id(1)+1,['#*' DATA.comcodes(k).code ' ' DATA.comcodes(k).label]);
+               end
+               end
+           end
+       end
+    end
+    
+    if strcmp(type,'update')
+        outfile = strrep(helpfile,'.txt','.new');
+        WriteText(txt, outfile);
+    end
+    
+function WriteText(txt, name, varargin)
+        fid = fopen(name,'w');
+        if fid > 0
+        for j = 1:length(txt)
+            fprintf(fid,'%s\n',txt{j});
+        end
+        fclose(fid);
+        end
+
+        
+function [DATA, codetype, badcodes] = InterpretLine(DATA, line, varargin)
 
     
     
@@ -309,6 +382,8 @@ sendtobinoc =0;
 paused = 0;
 src = 'unknown';
 srcchr = 'U';
+badcodes = {};
+
 j = 1;
 while j <= length(varargin)
     if strncmpi(varargin{j},'from',4)
@@ -725,7 +800,7 @@ for j = 1:length(strs{1})
                 fprintf('%s\n',s);
             end
             DATA.Statuslines{end+1} = s(8:end);
-
+            codetype = -2;
 
 
 %can ignore SENDING'            
@@ -1045,6 +1120,7 @@ for j = 1:length(strs{1})
             if isempty(code) 
                 if DATA.togglecodesreceived
                     fprintf('No Code for %s\n',s(id(k):end-1));
+                    badcodes{end+1} = s(id(k):end-1);
                 else
                     myprintf(DATA.frombinocfid,'-show','Cant set Code %s - have not received list from binoc\n',s(id(k):end-1));                    
                 end
@@ -1203,10 +1279,16 @@ for j = 1:length(strs{1})
                 if 1 && DATA.togglecodesreceived
                     fprintf('%s:Code %s not in comcodes\n',datestr(now),code);
                     codematches = strcmp(code,{DATA.comcodes.code});
+                    codetype = -2;
                 end
                 SetCode(DATA,code);
             else
                 cprintf('red','Cannot Interpret %s: %s\n',src,deblank(strs{1}{j}));
+                codetype = -2;
+            end
+        else
+            if strncmp(s,'cy',2) %obsolete codes
+                codetype = -2;
             end
         end
     end
@@ -1301,7 +1383,7 @@ function DATA = CheckToggleCodes(DATA)
         end
     end
 
-function DATA = ReadExptLines(DATA, strs, src)
+function [DATA, details] = ReadExptLines(DATA, strs, src)
 
     if isempty(strs)
         strs = DATA.explines
@@ -1309,7 +1391,8 @@ function DATA = ReadExptLines(DATA, strs, src)
     else
         firstline = 1+DATA.exptnextline;
     end
-
+    badcodes = 0;
+    
     for j = firstline:length(strs)
         tline = strs{j};
         if strncmp(tline,'next',4)
@@ -1358,6 +1441,9 @@ function DATA = ReadExptLines(DATA, strs, src)
                 end                 
             end
         end
+        if type == -2
+            badcodes = badcodes+1;
+        end
     end
     if j >= length(DATA.exptlines)
             DATA.exptnextline = 0;
@@ -1371,6 +1457,7 @@ function DATA = ReadExptLines(DATA, strs, src)
         end
         DATA = SetExptMenus(DATA);
     end
+    details.badcodes = badcodes;
 
 function vergwarning(s, varargin)
 
@@ -1448,11 +1535,13 @@ if fid > 0
     fclose(fid);
 end
 
-function DATA = ReadStimFile(DATA, name, varargin)
+function [DATA, details] = ReadStimFile(DATA, name, varargin)
    
     setall = 0;
     inread = 0;
     src = 'unknown';
+    details.badcodes = 0;
+    
     j = 1;
     while j <= length(varargin)
         if strncmpi(varargin{j},'inread',4)
@@ -1496,7 +1585,10 @@ if fid > 0
     if strcmp(DATA.exptlines{1},'sequence')
         SequencePopup(DATA,DATA.exptlines(2:end),'popup');
     else
-        DATA = ReadExptLines(DATA,a{1},'fromstim');
+        [DATA, details] = ReadExptLines(DATA,a{1},'fromstim');
+        if details.badcodes > 1
+            fprintf('Run verg([],''checkstim'') to remove bad codes from %s\n',name);
+        end
     end
 else
     try
@@ -1510,7 +1602,6 @@ if setall
 end
 DATA.newexptdef = 1;
 DATA.userstrings = unique(DATA.userstrings);
-
 
 function DATA = ReadVergFile(DATA, name, varargin)
 %Read file htat only affects verg, not binoc (e.g. layout)
@@ -1917,7 +2008,8 @@ DATA.servodata.alltimes = [];
 DATA.servodata.stepsize = 0;
 DATA.Trial.rw = 0;
 DATA.Comments = [];
-
+DATA.state.stimfileerrs = 0;
+DATA.state.stimfile = '';
 
 DATA.newbinoc = 2;
 DATA.ready = 0;
@@ -2620,6 +2712,11 @@ function DATA = InitInterface(DATA)
     uimenu(hm,'Label','Copy Logs to PC/Network','Callback',{@MenuHit, 'copylogs'});
     uimenu(hm,'Label','Save','Callback',{@SaveFile, 'current'});
     uimenu(hm,'Label','Save As...','Callback',{@SaveFile, 'saveas'});
+    if DATA.state.stimfileerrs
+        sname = strrep(DATA.state.stimfile,fileparts(DATA.state.stimfile),'');
+        sname = sname(2:end);
+        uimenu(hm,'Label',sprintf('Fix %s',sname),'Callback',{@SaveFile, 'fix'});
+    end
     sm = uimenu(hm,'Label','Preferences');
     uimenu(sm,'Label','Save Layout','Callback',{@SaveFile, 'layout'});
     uimenu(sm,'Label','Choose Font','Callback',{@MenuHit, 'choosefont'});
@@ -3175,6 +3272,8 @@ function SaveFile(a,b,type)
             end
         end
         SaveExpt(DATA, filename);
+    elseif strcmp(type,'fix')
+        CheckStimFile(DATA,'update');
     elseif strcmp(type,'update')
         CheckForUpdate(DATA)
     elseif strcmp(type,'layout')
