@@ -85,7 +85,11 @@ if isempty(it)
         tt = TimeMark(tt, 'SendState');
         DATA = ReadStimFile(DATA, '/local/verg.setup'); %make sure these go to binoc
         tt = TimeMark(tt, 'VergSetup');
-        DATA = ReadStimFile(DATA,varargin{1}, 'init');
+        [DATA, details] = ReadStimFile(DATA,varargin{1}, 'init');
+        DATA.state.stimfile = varargin{1};
+        if details.badcodes > 1
+            DATA.state.stimfileerrs = details.badcodes;
+        end
         tt = TimeMark(tt, 'Read');
         SendCode(DATA,'vve'); %send verg version
         DATA.rptexpts = 0;  %can't set this in startup files, only quickmenus
@@ -267,6 +271,25 @@ else
 end
 end
 
+function ok = CheckDayEnd(DATA)
+    ok = 0;
+    S = DATA.binoc{1};
+    if isfield(DATA,'Expts')  && isfield(S,'pe') && S.Pn(1) > 0
+        penlog = sprintf('/local/%s/pen%d.log',S.monkey,S.Pn(1));
+        nsave = 0;
+        for k = 1:length(DATA.Expts)
+            if isfield(DATA.Expts{k},'stored') && DATA.Expts{k}.stored > 0
+                nsave = nsave+1;
+            end
+        end
+        d = dir(penlog);
+        if length(d) ==1  && now-d.datenum < 0.5 && nsave > 0 %pen log made today
+            ok = 1;
+        end
+    end
+    
+  
+
 
 function DATA = CheckStateAtStart(DATA)
     if strcmp('NotSet',DATA.binoc{1}.ereset)
@@ -335,6 +358,34 @@ function CheckCodeHelp(DATA, type)
         outfile = strrep(helpfile,'.txt','.new');
         WriteText(txt, outfile);
     end
+function CheckStimFile(DATA, type)
+%remove out of date codes from a stim file
+    txt = scanlines(DATA.stimfilename);
+    goodlines = ones(size(txt));
+    for j = 1:length(txt)
+        [DATA, code, badcodes] = InterpretLine(DATA, txt{j}, 'test');
+        if code < -1 
+            goodlines(j) = 0;
+        elseif ~isempty(badcodes)
+            for k = 1:length(badcodes)
+                id = regexp(badcodes{k},'[+-]')
+                if length(id) > 1
+                    badcode = badcodes{k}(1:id(2)-1);
+                    regexprep(badcodes{k},'[a-Z]+[+-].*','$1');
+                else
+                    badcode = badcodes{k};
+                end
+                txt{j} = strrep(txt{j},badcode,'');
+            end
+        end
+    end
+txt = txt(find(goodlines));
+outfile = strrep(DATA.stimfilename,'.stm','');
+outfile = [outfile '.new'];
+fprintf('saving stim file to %s\n',outfile);
+WriteText(txt, outfile);
+
+function CheckCodeHelp(DATA, type)
     
 function WriteText(txt, name, varargin)
         fid = fopen(name,'w');
@@ -572,8 +623,16 @@ for j = 1:length(strs{1})
             wasexpt = DATA.inexpt;
             DATA.inexpt = 0;
             if DATA.nexpts > 0  %may be 0 here if verg is fired up after a crash
-            DATA.Expts{DATA.nexpts}.End = now;
-            DATA.Expts{DATA.nexpts}.last = length(DATA.Trials);
+                DATA.Expts{DATA.nexpts}.End = now;
+                DATA.Expts{DATA.nexpts}.last = length(DATA.Trials);
+                if isfield(DATA.optionflags,'ts') && DATA.optionflags.ts
+                    DATA.Expts{DATA.nexpts}.stored = 1;
+                else
+                    DATA.Expts{DATA.nexpts}.stored = 0;
+                end
+                if DATA.exptstoppedbyuser ==2 %cancelled
+                    DATA.Expts{DATA.nexpts}.stored = -1;
+                end
             end
     %        tic; DATA = GetState(DATA); toc  %binoc sends state at end expt,
     %        before sending ExptOver
@@ -1336,7 +1395,7 @@ function DATA = CheckToggleCodes(DATA)
         end
     end
 
-function DATA = ReadExptLines(DATA, strs, src)
+function [DATA, details] = ReadExptLines(DATA, strs, src)
 
     if isempty(strs)
         strs = DATA.explines
@@ -1344,7 +1403,8 @@ function DATA = ReadExptLines(DATA, strs, src)
     else
         firstline = 1+DATA.exptnextline;
     end
-
+    badcodes = 0;
+    
     for j = firstline:length(strs)
         tline = strs{j};
         if strncmp(tline,'next',4)
@@ -1393,6 +1453,9 @@ function DATA = ReadExptLines(DATA, strs, src)
                 end                 
             end
         end
+        if type == -2
+            badcodes = badcodes+1;
+        end
     end
     if j >= length(DATA.exptlines)
             DATA.exptnextline = 0;
@@ -1406,6 +1469,7 @@ function DATA = ReadExptLines(DATA, strs, src)
         end
         DATA = SetExptMenus(DATA);
     end
+    details.badcodes = badcodes;
 
 function vergwarning(s, varargin)
 
@@ -1483,11 +1547,13 @@ if fid > 0
     fclose(fid);
 end
 
-function DATA = ReadStimFile(DATA, name, varargin)
+function [DATA, details] = ReadStimFile(DATA, name, varargin)
    
     setall = 0;
     inread = 0;
     src = 'unknown';
+    details.badcodes = 0;
+    
     j = 1;
     while j <= length(varargin)
         if strncmpi(varargin{j},'inread',4)
@@ -1531,7 +1597,10 @@ if fid > 0
     if strcmp(DATA.exptlines{1},'sequence')
         SequencePopup(DATA,DATA.exptlines(2:end),'popup');
     else
-        DATA = ReadExptLines(DATA,a{1},'fromstim');
+        [DATA, details] = ReadExptLines(DATA,a{1},'fromstim');
+        if details.badcodes > 1
+            fprintf('Run verg([],''checkstim'') to remove bad codes from %s\n',name);
+        end
     end
 else
     try
@@ -1545,7 +1614,6 @@ if setall
 end
 DATA.newexptdef = 1;
 DATA.userstrings = unique(DATA.userstrings);
-
 
 function DATA = ReadVergFile(DATA, name, varargin)
 %Read file htat only affects verg, not binoc (e.g. layout)
@@ -1952,7 +2020,8 @@ DATA.servodata.alltimes = [];
 DATA.servodata.stepsize = 0;
 DATA.Trial.rw = 0;
 DATA.Comments = [];
-
+DATA.state.stimfileerrs = 0;
+DATA.state.stimfile = '';
 
 DATA.newbinoc = 2;
 DATA.ready = 0;
@@ -2657,8 +2726,14 @@ function DATA = InitInterface(DATA)
     uimenu(hm,'Label','Close','Callback',{@verg, 'close'});
     uimenu(hm,'Label','Close Verg and Binoc','Callback',{@MenuHit, 'bothclose'});
     uimenu(hm,'Label','Restart Binoc','Callback',{@MenuHit, 'restartbinoc'});
+    uimenu(hm,'Label','Copy Logs to PC/Network','Callback',{@MenuHit, 'copylogs'});
     uimenu(hm,'Label','Save','Callback',{@SaveFile, 'current'});
     uimenu(hm,'Label','Save As...','Callback',{@SaveFile, 'saveas'});
+    if DATA.state.stimfileerrs
+        sname = strrep(DATA.state.stimfile,fileparts(DATA.state.stimfile),'');
+        sname = sname(2:end);
+        uimenu(hm,'Label',sprintf('Fix %s',sname),'Callback',{@SaveFile, 'fix'});
+    end
     sm = uimenu(hm,'Label','Preferences');
     uimenu(sm,'Label','Save Layout','Callback',{@SaveFile, 'layout'});
     uimenu(sm,'Label','Choose Font','Callback',{@MenuHit, 'choosefont'});
@@ -2683,7 +2758,44 @@ function DATA = InitInterface(DATA)
 %new....
 
     
-    subm = uimenu(cntrl_box,'Label','&Pop','Tag','PopMenu');
+    hm = uimenu(cntrl_box,'Label','&Pop','Tag','PopMenu');
+    subm = uimenu(hm,'Label','&Software Offset');
+    uimenu(subm,'Label','&Null','Callback',{@SendStr, 'sonull'},'accelerator','E');
+    uimenu(subm,'Label','Edit','Callback',{@SoftoffPopup, 'popup'});
+    uimenu(subm,'Label','Clear','Callback',{@SendStr, '\clearsoftoff'});
+    uimenu(hm,'Label','Run Sequence of expts','Callback',{@SequencePopup, 'popup'});
+    uimenu(hm,'Label','Pause Expt','Callback',{@SendStr, '\pauseexpt'});
+    uimenu(hm,'Label','Center stimulus','Callback',{@SendStr, 'centerstim'});
+    uimenu(hm,'Label','Clear Drawn Lines','Callback',{@SendStr, '!clearlines'});
+    uimenu(hm,'Label','BlackScreen (shake)','Callback',{@MenuHit, 'setshake'},'accelerator','B');
+    uimenu(hm,'Label','pipelog','Callback',{@MenuHit, 'pipelog'});
+    uimenu(hm,'Label','Update Network Psych Files','Callback',{@MenuHit, 'updatepsych'});
+    uimenu(hm,'Label','freereward','Callback',{@MenuHit, 'freereward'},'accelerator','R');
+    uimenu(hm,'Label','Run One Trial','Callback',{@MenuHit, 'onetrial'},'accelerator','1');
+
+    
+    
+    
+%    hm = uimenu(cntrl_box,'Label','Mark');
+
+    subm = uimenu(cntrl_box,'Label','&Windows');
+    uimenu(subm,'Label','&Options','Callback',{@OptionPopup},'accelerator','O');
+    uimenu(subm,'Label','Penetration Log','Callback',{@PenLogPopup});
+    uimenu(subm,'Label','Monkey Log','Callback',{@MonkeyLogPopup, 'popup'});
+    uimenu(subm,'Label','List Codes','Callback',{@CodesPopup, 'popup'},'accelerator','L');
+    uimenu(subm,'Label','Status Lines','Callback',{@StatusPopup, 'popup'});
+    uimenu(subm,'Label','Psych Window','Callback',{@MenuHit, 'showpsych'});
+    uimenu(subm,'Label','Electrode Control','Callback',{@ElectrodePopup, 'popup'});
+    uimenu(subm,'Label','Comments','Callback',{@CommentPopup, 'popup'});
+    uimenu(subm,'Label','Check Trial Duratione','Callback',{@MenuHit, 'checkdur'});
+
+    subm = uimenu(cntrl_box,'Label','Pipes');
+    uimenu(subm,'Label','Reopen Pipes','Callback',{@ReadIO, 6});
+    uimenu(subm,'Label','reopenserial','Callback',{@SendStr, '\reopenserial'});
+    uimenu(subm,'Label','Read','Callback',{@ReadIO, 1});
+    uimenu(subm,'Label','GetState','Callback',{@ReadIO, 2});
+    uimenu(subm,'Label','NewStart','Callback',{@ReadIO, 3});
+    uimenu(subm,'Label','Stop Timer','Callback',{@ReadIO, 4});
     sm = uimenu(subm,'Label','Check Timer','Callback',{@CheckTimerHit, 0});
     sm = uimenu(subm,'Label','Start Timer','Callback',{@ReadIO, 5},'foregroundcolor',[0 0 0.5]);
     sm = uimenu(subm,'Label','Verbose');
@@ -2708,38 +2820,6 @@ function DATA = InitInterface(DATA)
     sm = uimenu(subm,'Label','Tests');
     uimenu(sm,'Label','Run/Cancel','Callback',{@TestIO, 'cancel'});
 
-    subm = uimenu(hm,'Label','&Software Offset');
-    uimenu(subm,'Label','&Null','Callback',{@SendStr, 'sonull'},'accelerator','E');
-    uimenu(subm,'Label','Edit','Callback',{@SoftoffPopup, 'popup'});
-    uimenu(subm,'Label','Clear','Callback',{@SendStr, '\clearsoftoff'});
-    uimenu(hm,'Label','Run Sequence of expts','Callback',{@SequencePopup, 'popup'});
-    uimenu(hm,'Label','Pause Expt','Callback',{@SendStr, '\pauseexpt'});
-    uimenu(hm,'Label','Center stimulus','Callback',{@SendStr, 'centerstim'});
-    uimenu(hm,'Label','Clear Drawn Lines','Callback',{@SendStr, '!clearlines'});
-    uimenu(hm,'Label','BlackScreen (shake)','Callback',{@MenuHit, 'setshake'},'accelerator','B');
-    uimenu(hm,'Label','pipelog','Callback',{@MenuHit, 'pipelog'});
-    uimenu(hm,'Label','Update Network Psych Files','Callback',{@MenuHit, 'updatepsych'});
-    uimenu(hm,'Label','freereward','Callback',{@MenuHit, 'freereward'},'accelerator','R');
-    uimenu(hm,'Label','Run One Trial','Callback',{@MenuHit, 'onetrial'},'accelerator','1');
-%    hm = uimenu(cntrl_box,'Label','Mark');
-
-    subm = uimenu(cntrl_box,'Label','&Windows');
-    uimenu(subm,'Label','&Options','Callback',{@OptionPopup},'accelerator','O');
-    uimenu(subm,'Label','Penetration Log','Callback',{@PenLogPopup});
-    uimenu(subm,'Label','Monkey Log','Callback',{@MonkeyLogPopup, 'popup'});
-    uimenu(subm,'Label','List Codes','Callback',{@CodesPopup, 'popup'},'accelerator','L');
-    uimenu(subm,'Label','Status Lines','Callback',{@StatusPopup, 'popup'});
-    uimenu(subm,'Label','Psych Window','Callback',{@MenuHit, 'showpsych'});
-    uimenu(subm,'Label','Electrode Control','Callback',{@ElectrodePopup, 'popup'});
-    uimenu(subm,'Label','Comments','Callback',{@CommentPopup, 'popup'});
-    uimenu(subm,'Label','Check Trial Duratione','Callback',{@MenuHit, 'checkdur'});
-    subm = uimenu(cntrl_box,'Label','Pipes');
-    uimenu(subm,'Label','Reopen Pipes','Callback',{@ReadIO, 6});
-    uimenu(subm,'Label','reopenserial','Callback',{@SendStr, '\reopenserial'});
-    uimenu(subm,'Label','Read','Callback',{@ReadIO, 1});
-    uimenu(subm,'Label','GetState','Callback',{@ReadIO, 2});
-    uimenu(subm,'Label','NewStart','Callback',{@ReadIO, 3});
-    uimenu(subm,'Label','Stop Timer','Callback',{@ReadIO, 4});
     
     hm = uimenu(cntrl_box,'Label','Help','Tag','HelpMenu');
     DATA = AddHelpFiles(DATA); 
@@ -2959,18 +3039,18 @@ function MenuHit(a,b, arg)
     DATA = GetDataFromFig(a);
     if strcmp(arg,'bothclose')
         outprintf(DATA,'\\quit\n');
-        if DATA.pipelog
-            system([GetFilePath('perl') '/pipelog end']);
+        ok = CheckDayEnd(DATA);
+        if ok
+            CopyLog(DATA,'online');
+            CopyLog(DATA,'penlog');
         end
-        if isfield(DATA,'timerobj') & isvalid(DATA.timerobj)
-            stop(DATA.timerobj);
-        end
-        for j = 2:length(DATA.windownames)
-            CloseTag(DATA.windownames{j});
-        end
-        CloseTag(DATA.windownames{1}); %%close main window last
+        ExitVerg(DATA);
     elseif strcmp(arg,'restartbinoc')
         RestartBinoc(DATA);
+    elseif strcmp(arg,'copylogs')
+        ok = CheckDayEnd(DATA);
+        CopyLog(DATA, 'online');
+        CopyLog(DATA, 'penlog');
     elseif strcmp(arg,'checkdur')
         CheckTrialDurations(DATA,'hist');
     elseif strcmp(arg,'choosefont')
@@ -3009,6 +3089,47 @@ function MenuHit(a,b, arg)
     end
     
     
+function CopyLog(DATA,type)
+        
+    
+    dfile = strrep(DATA.binoc{1}.uf,'\','/');
+        if dfile(2) == ':'
+            dfile = dfile(3:end);
+        end
+        [a,b] = fileparts(dfile);
+
+        
+        
+        
+    if strcmp(type,'online')
+        logfile = ['/local/' DATA.binoc{1}.monkey '/' b];
+        d = dir(logfile);
+        if length(d) == 1 && now - d.datenum < 1
+            tgt = [DATA.binoc{1}.netpref '/' dfile '.online'];
+            if confirm(sprintf('Copy %s to %s?',logfile,tgt));
+                try
+                    copyfile(logfile,tgt);
+                end
+            end
+        end
+    elseif strcmp(type,'penlog')
+        logfile = sprintf('/local/%s/pen%d.log', DATA.binoc{1}.monkey, DATA.binoc{1}.Pn(1));
+        d = dir(logfile);
+        if length(d) == 1 && now - d.datenum < 1
+            tgt = sprintf('/b/bgc/anal/%s/pen%d.log', DATA.binoc{1}.monkey, DATA.binoc{1}.Pn(1));
+            if exist(tgt)
+                go = confirm(sprintf('%s Already Exists. Overwrite with  %s?',tgt,logfile));
+            else
+                go = confirm(sprintf('Copy %s to %s?',logfile,tgt));
+            end
+            if go
+                try
+                    copyfile(logfile,tgt);
+                end
+            end
+        end
+    end
+
  function SetExpt(a,b, type)
      DATA = GetDataFromFig(a);
      val = get(a,'value');
@@ -3077,7 +3198,7 @@ function DATA = LoadLastSettings(DATA, varargin)
         if go
             txt = scanlines(d.name);
             for s = {'id' 'se' 'ed' 'Rx' 'Ry' 'Ro' 'Rw' 'Rh' 'Xp' 'Yp' 'Pn' 'Electrode' 'hemi'...
-                    'ui' 'ePr' 'eZ' 'monkey' 'coarsemm' 'adapter' 'Trw' 'Tg' 'nT' 'Tb'}
+                    'ui' 'ePr' 'eZ' 'monkey' 'coarsemm' 'adapter' 'Trw' 'Tg' 'nT' 'Tb' 'uf'}
             id = find(strncmp(s,txt,length(s{1})));
             if ~isempty(id)
                 cprintf('blue','Setting %s from %s\n',txt{id(1)},d.name);
@@ -3222,6 +3343,8 @@ function SaveFile(a,b,type)
             end
         end
         SaveExpt(DATA, filename);
+    elseif strcmp(type,'fix')
+        CheckStimFile(DATA,'update');
     elseif strcmp(type,'update')
         CheckForUpdate(DATA)
     elseif strcmp(type,'layout')
@@ -3497,6 +3620,9 @@ function DATA = AddComment(DATA, str, src)
     DATA.Comments(end+1).comment = str;
     DATA.Comments(end).date = now;
     DATA.Comments(end).src = src;
+    if isfield(DATA.binoc{1},'ed')
+        DATA.Comments(end).ed = DATA.binoc{1}.ed;
+    end
     CommentPopup(DATA,[],'update');
     if nargout == 0 %if ask for return, caller will Call SetData
         SetData(DATA);
@@ -4372,7 +4498,7 @@ function DATA = RunButton(a,b, type)
                 if DATA.verbose(4)
                     fprintf('Before Cancel: Inexpt %d\n',DATA.inexpt);
                 end
-                DATA.exptstoppedbyuser = 1;
+                DATA.exptstoppedbyuser = 2;
                 outprintf(DATA,'\\ecancel\n');
             end
         elseif type == 2
@@ -4476,13 +4602,14 @@ if strcmp(pos,'close') %Servo Contoller Closing
         end
         DATA.servodata.stepsize = X.stepsize;
     end
-    set(DATA.toplevel,'UserData',DATA);
     if isfield(DATA,'servotimer')
         stop(DATA.servotimer);
     end
 else
     outprintf(DATA,'!seted=%.3f\n',pos./1000);
+    DATA.binoc{1}.ed = pos./1000;
 end
+set(DATA.toplevel,'UserData',DATA);
 
 function ElectrodePopup(a,b, fcn, varargin)
   DATA = GetDataFromFig(a);
@@ -4743,14 +4870,16 @@ function CommentPopup(a,b,type)
   if ~isempty(cntrl_box);
       lst = findobj(cntrl_box,'tag','CommentList');
   end
-  if sum(strcmp(type,{'showtime' 'showcomment'}))
+  if strncmp(type,'show',4)
       f = strrep(type,'show','');
-      DATA.show.cpmment.(f) = ~DATA.show.comment.(f);
-      if DATA.whos.(f)
+      DATA.show.comment.(f) = ~DATA.show.comment.(f);
+      if DATA.show.comment.(f)
           set(a,'checked','on');
       else
           set(a,'checked','off');
       end
+      SetData(DATA);
+      CommentPopup(lst, [], 'update')
   elseif strcmp(type,'update')
       if ~isempty(cntrl_box);
           strs = {};
@@ -4759,6 +4888,9 @@ function CommentPopup(a,b,type)
               if DATA.show.comment.time
                   strs{j} = [datestr(DATA.Comments(j).date,'hh:mm') ': ' strs{j}];
               end                      
+              if DATA.show.comment.depth
+                  strs{j} = sprintf('ed%.3f: %s', DATA.Comments(j).ed, strs{j});
+              end
           end
           if ~isempty(strs)
               set(lst,'string',strs);
@@ -4775,7 +4907,7 @@ function CommentPopup(a,b,type)
       return;
   end
   cntrl_box = figure('Position', DATA.winpos{wn},...
-        'NumberTitle', 'off', 'Tag',DATA.windownames{wn},'Name','Code list','menubar','none');
+        'NumberTitle', 'off', 'Tag',DATA.windownames{wn},'Name','Comments','menubar','none');
     set(cntrl_box,'UserData',DATA.toplevel);
     set(cntrl_box,'DefaultUIControlFontSize',DATA.font.FontSize);
     set(cntrl_box,'DefaultUIControlFontName',DATA.font.FontName);
@@ -4783,6 +4915,7 @@ function CommentPopup(a,b,type)
     hm = uimenu(cntrl_box,'Label','Show');
     sm = uimenu(hm,'Label','Comments','callback',{@CommentPopup, 'showcomments'},'checked','on');
     sm = uimenu(hm,'Label','Time','callback',{@CommentPopup, 'showtime'},'checked','on');
+    sm = uimenu(hm,'Label','Electrode Depth','callback',{@CommentPopup, 'showdepth'},'checked','on');
 
     lst = uicontrol(gcf, 'Style','list','String', 'Code List :* = more help with mouse click',...
         'HorizontalAlignment','left',...
@@ -4793,6 +4926,7 @@ function CommentPopup(a,b,type)
     
 if ~isfield(DATA,'show') || ~isfield(DATA.show,'comment')    
     DATA.show.comment.time = 1;
+    DATA.show.comment.depth = 1;
     DATA.show.comment.comment = 1;
     SetData(DATA);
 end
@@ -5972,9 +6106,9 @@ function OpenPenLog(a,b, varargin)
     if DATA.penid > 0
         fclose(DATA.penid);
     end
-    name = sprintf('/local/%s/pen%d.log',DATA.binoc{1}.monkey,DATA.binoc{1}.pe);
+    name = sprintf('/local/%s/pen%d.log',DATA.binoc{1}.monkey,DATA.binoc{1}.Pn);
     DATA.penid = fopen(name,'a');
-    fprintf(DATA.penid,'Penetration %d at %.1f,%.1f Opened %s\n',DATA.binoc{1}.pe,DATA.binoc{1}.px,DATA.binoc{1}.py,datestr(now));
+    fprintf(DATA.penid,'Penetration %d at %.1f,%.1f Opened %s\n',DATA.binoc{1}.Pn,DATA.binoc{1}.px,DATA.binoc{1}.py,datestr(now));
     fprintf(DATA.penid,'Electrode %s\n',DATA.binoc{1}.Electrode);
     end
     set(DATA.toplevel,'UserData',DATA);
