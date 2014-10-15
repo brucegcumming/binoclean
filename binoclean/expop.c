@@ -2623,7 +2623,7 @@ int CheckDirExists(char *name)
 
 int OpenNetworkFile(Expt expt)
 {
-    char *t,*r,buf[BUFSIZ],name[BUFSIZ],sfile[BUFSIZ],path[BUFSIZ],outbuf[BUFSIZ];
+    char *t,*r,buf[BUFSIZ],name[BUFSIZ],sfile[BUFSIZ],path[BUFSIZ],oldname[BUFSIZ];
     char nbuf[BUFSIZ];
     static int lastresult = 1;  // start as if was success
     time_t tval,nowtime;
@@ -2656,16 +2656,20 @@ int OpenNetworkFile(Expt expt)
         netoutfile = fopen(name,"a");
     
         if (netoutfile == NULL){
-            sprintf(buf,"Can't open Network record %s",name);
+            strcpy(oldname,name);
+            sprintf(buf,"Can't open Network record %s. Trying %s",oldname,name);
             lastresult = 0;
             statusline(buf);
             getcwd(path,BUFSIZ);
             sprintf(name,"%s/%s.bnc",path,getfilename(sfile));
             netoutfile = fopen(name,"a");
         }
-        else if (lastresult <= 0){
-            sprintf(buf,"Opened Netowrk param file %s",name);
-            acknowledge(buf,NULL);
+        else{
+            lastresult = 1;
+            if (lastresult <= 0){
+                sprintf(buf,"Success!!! Opened Network param file %s",name);
+                acknowledge(buf,NULL);
+            }
         }
     }
     tval = time(NULL);
