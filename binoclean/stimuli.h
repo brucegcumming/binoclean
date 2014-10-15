@@ -304,6 +304,7 @@ struct STIMULUS{
     int phasesign;
     int aamode;
     int firstseed;
+    int precalculate;
 };
 
 typedef struct STIMULUS Stimulus;

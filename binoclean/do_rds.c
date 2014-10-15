@@ -250,6 +250,58 @@ int init_rds(Stimulus *st,  Substim *sst, float density)
   return(0);
 }
 
+
+Stimulus *ReadRds(char *name, int frame)
+{
+    FILE *fd;
+    char eye;
+    int x,y,i,ndots = 100;
+    Stimulus *st;
+    Substim *left,*right;
+    float w,h;
+    
+    if (rdsstims[frame] == NULL){
+        st = rdsstims[frame] = NewStimulus(NULL);
+        StimulusType(st, STIM_RDS);
+    }
+    else
+        st = rdsstims[frame];
+    
+    if((fd = fopen(name,"r")) != NULL){
+        fscanf(fd,"w%fh%f:%d%c",&w,&h,&ndots,&eye);
+        init_rds(st,st->left,-ndots);
+        init_rds(st,st->right,-ndots);
+        for (i = 0; i < ndots; i++){
+            fscanf(fd,"%3x%3x",&x,&y);
+            st->left->xpos[i] = x;
+            st->left->ypos[i] = y;
+            st->left->iim[i] = BLACKMODE;
+        }
+        fscanf(fd,"w%fh%f:%d%c",&w,&h,&ndots,&eye);
+        for (i = 0; i < ndots; i++){
+            fscanf(fd,"%3x%3x",&x,&y);
+        }
+    }
+    
+}
+
+
+int PreloadRds(void)
+{
+    int i,nframes;
+    char name[BUFSIZ * 10];
+    FILE *fd;
+    
+    nframes = expt.st->nframes;
+    
+    
+    for (i = 0; i < nframes; i++){
+        sprintf(name,"%s%d.rds",expt.st->imprefix, i+expt.st->left->imagei);
+        ReadRds(name,i);
+    }
+    expt.st->preloaded = 1;
+}
+
 void PrintRDSDispCounts(FILE *ofd)
 {
   int i;
@@ -370,6 +422,10 @@ int calc_rds(Stimulus *st, Substim *sst)
   if(st->corrmix > 0)
     checkoverlap = 0.5;
     
+    
+    if(st->preload && st->preloaded){
+        return(0);
+    }
   nowrap = !(st->flag & RDS_WRAP);
   eyemode = sst->mode;
   if(st->flag & ANTICORRELATE && sst->mode == RIGHTMODE)
@@ -1423,6 +1479,12 @@ void paint_rds(Stimulus *st, int mode)
    * L/R dots
    */
     
+    if (st->preload & st->preloaded){
+        if (rdsstims[st->framectr] != NULL)
+            st = rdsstims[st->framectr];
+        else
+            fprintf(stderr,"No RDS loaded for frame %d\n",st->framectr);
+    }
   glPushMatrix();
   vcolor[0] = vcolor[1] = vcolor[2] = 0;
   bcolor[0] = bcolor[1] = bcolor[2] = 0;
@@ -1801,37 +1863,6 @@ void paint_rds(Stimulus *st, int mode)
     }
     glPopMatrix();
   }
-
-Stimulus *ReadRds(char *name)
-{
-    FILE *fd;
-    char eye;
-    int x,y,i,ndots = 100;
-    Stimulus *st;
-    float w,h;
-    
-    if (rdsstims[0] == NULL){
-        st = rdsstims[0] = NewStimulus(NULL);
-        StimulusType(st, STIM_RDS);
-    }
-    else
-        st = rdsstims[0];
-    
-    
-    if((fd = fopen(name,"r")) != NULL){
-        fscanf(fd,"w%fh%f:%d%c",&w,&h,&ndots,&eye);
-        init_rds(st,st->left,-ndots);
-        init_rds(st,st->right,-ndots);
-        for (i = 0; i < ndots; i++){
-            fscanf(fd,"%3x%3x",&x,&y);
-        }
-        fscanf(fd,"w%fh%f:%d%c",&w,&h,&ndots,&eye);
-        for (i = 0; i < ndots; i++){
-            fscanf(fd,"%3x%3x",&x,&y);
-        }
-    }
-    
-}
 
 
 int SaveRdsTxt(Stimulus *st, FILE *fd)

@@ -1895,6 +1895,7 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
 }
 
 
+
 char *ReadManualStim(char *file, int stimid){
     struct stat statbuf;
     FILE *fin;
@@ -2696,8 +2697,14 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
             break;
         case IMAGELOAD_TYPE:
                 // used to be done with immode, but best to have one attribute per code for sending to verg
+            if (expt.st->type == STIM_RDS){
+                expt.st->precalculate = 0;
+            }
                 if(!strncmp(s,"preload",4)){
                     expt.st->preload = 1;
+                    if (expt.st->type == STIM_RDS){
+                        expt.st->precalculate = 1;
+                    }
                 }
                 else if(!strncmp(s,"load",4)){
                     expt.st->preload = 0;
@@ -4345,12 +4352,11 @@ int SaveImage(Stimulus *st, int type)
         pcode = 0;
     if (testflags[SAVE_IMAGES] == 11){
             sprintf(imname,"%s/%s.i%d.rds",ImageOutDir,expname,ndone);
-            ofd = fopen(imname,"w");
-            n = SaveRdsTxt(st, ofd);
-            fclose(ofd);
+            if((ofd = fopen(imname,"w")) != NULL){
+                n = SaveRdsTxt(st, ofd);
+                fclose(ofd);
+            }
         ndone++;
-        st = ReadRds(imname);
-        paint_rds(st,LEFTMODE);
         return(done);
     }
     
@@ -10226,7 +10232,10 @@ int PrepareExptStim(int show, int caller)
     }
     
     
-    
+    if (expt.st->preload && expt.st->type == STIM_RDS){
+        PreloadRds(expt);
+    }
+
     if(optionflags[CALCULATE_ONCE_ONLY] || (expt.st->type == STIM_IMAGE && !expt.st->preload))
         calc_stimulus(expt.st);
     if(rdspair(expt.st)){
