@@ -7221,8 +7221,8 @@ void runexpt(int w, Stimulus *st, int *cbs)
             acknowledge("Make Sure You want Nonrandom Order!!",NULL);
         if(option2flag & EXPT_INTERACTIVE)
             acknowledge("Make Sure You want interactive Expt!!",NULL);
-        if(SACCREQD(afc_s) && !(option2flag & AFC) && confirm_no("Sure You Don't want AFC?",NULL))
-            option2flag |= (AFC);
+        if(SACCREQD(afc_s) && !(option2flag & AFC))
+            acknowledge("Make Sure You want Saccade Without AFC",NULL);
         if(optionflags[FAST_SEQUENCE] && expt.stimpertrial > 1){
             acknowledge("You have Nper > 1? (Fast Seq is ON)",NULL);
         }
