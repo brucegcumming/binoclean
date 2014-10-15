@@ -17,6 +17,8 @@ extern char * VERSION_STRING;
 
 
 int dispcounts[MAXDISPS];
+Stimulus *rdsstims[100] = {NULL};
+
 static int twod = 0;
 extern int option2flag;
 extern double gammaval;
@@ -147,6 +149,11 @@ int init_rds(Stimulus *st,  Substim *sst, float density)
     
   if(density > 0)
     sst->density = sst->density = density;
+  else if(density <= -1) // n dots
+  {
+      sst->density = sst->density = 20.0;
+      ndots = -density;
+  }
   else if(sst->density <= 0.0)
     sst->density = sst->density = 20.0;
   /*
@@ -158,7 +165,8 @@ int init_rds(Stimulus *st,  Substim *sst, float density)
     sst->nw = ceil(2*pos->radius[0]/sst->dotsiz[0]);
     sst->nh = ceil(2*pos->radius[1]/sst->dotsiz[1]);
   }
-  ndots = CalcNdots(sst);
+    if (density >= 0)
+        ndots = CalcNdots(sst);
   if(verbose)
     printf("New RDS %d dots %.2f %.1fx%.1f %.2fx%.2f\n",ndots,sst->density,
 	   sst->pos.radius[0],sst->pos.radius[1],sst->dotsiz[0] ,sst->dotsiz[1]);
@@ -1793,7 +1801,106 @@ void paint_rds(Stimulus *st, int mode)
     }
     glPopMatrix();
   }
+
+Stimulus *ReadRds(char *name)
+{
+    FILE *fd;
+    char eye;
+    int x,y,i,ndots = 100;
+    Stimulus *st;
+    float w,h;
     
+    if (rdsstims[0] == NULL){
+        st = rdsstims[0] = NewStimulus(NULL);
+        StimulusType(st, STIM_RDS);
+    }
+    else
+        st = rdsstims[0];
+    
+    
+    if((fd = fopen(name,"r")) != NULL){
+        fscanf(fd,"w%fh%f:%d%c",&w,&h,&ndots,&eye);
+        init_rds(st,st->left,-ndots);
+        init_rds(st,st->right,-ndots);
+        for (i = 0; i < ndots; i++){
+            fscanf(fd,"%3x%3x",&x,&y);
+        }
+        fscanf(fd,"w%fh%f:%d%c",&w,&h,&ndots,&eye);
+        for (i = 0; i < ndots; i++){
+            fscanf(fd,"%3x%3x",&x,&y);
+        }
+    }
+    
+}
+
+
+int SaveRdsTxt(Stimulus *st, FILE *fd)
+{
+    Locator *pos = &st->pos;
+    vcoord offset[2],xp[5000],yp[5000],disps[5000];
+    int *p,d,*end,i;
+    vcoord  w,h,*x,*y,fw,fh,*pdisp;
+    Substim *sst = st->left;
+    short colors[5000];
+    int ndots[2],sign = 1;
+    double pixmul;
+    static int nsaved = 0;
+    int rhbyte,rvbyte, lhbyte,lvbyte;
+    
+    sst = st->left;
+    p = sst->iim;
+    x = sst->xpos;
+    y = sst->ypos;
+    end = (sst->iim+sst->ndots);
+    w = sst->pos.radius[0];
+    h = sst->pos.radius[1];
+
+    i = 0;
+    fprintf(fd,"w%.4f,h%.4f:",w,h);
+    fprintf(fd,"%dL",sst->ndots);
+    for(;p < end; p++,x++,y++)
+    {
+        if(*p & BLACKMODE)
+            colors[i] = 0;
+        else if(*p & WHITEMODE)
+            colors[i] = 1;
+        if(*p & RIGHTMODE){
+            rhbyte = 2048+rint(2048 * (*x+offset[0])/w);
+            rvbyte = 2048+rint(2048 * (*y+offset[1])/h);
+        }
+        else{
+            rhbyte = 0;
+            rvbyte = 0;
+        }
+        fprintf(fd,"%03x%03x",rvbyte,rhbyte);
+    }
+    fprintf(fd,"\n%dR",sst->ndots);
+    sst = st->right;
+    p = sst->iim;
+    x = sst->xpos;
+    y = sst->ypos;
+    end = (sst->iim+sst->ndots);
+    i = 0;
+    for(;p < end; p++,x++,y++)
+    {
+        if(*p & BLACKMODE)
+            colors[i] = 0;
+        else if(*p & WHITEMODE)
+            colors[i] = 1;
+        if(*p & RIGHTMODE){
+            rhbyte = rint(4096 * (*x+offset[0])/w);
+            rvbyte = rint(4096 * (*y+offset[1])/h);
+        }
+        else{
+            rhbyte = 0;
+            rvbyte = 0;
+        }
+        fprintf(fd,"%03x%03x",rvbyte,rhbyte);
+    }
+    fprintf(fd,"\n",rvbyte,rhbyte);
+    ndots[1] = i;
+   
+}
   int SaveRds(Stimulus *st, FILE *fd)
   {
     Locator *pos = &st->pos;
@@ -1806,7 +1913,11 @@ void paint_rds(Stimulus *st, int mode)
     double pixmul;
     static int nsaved = 0;
         
-        
+      
+      if (testflags[SAVE_IMAGES] ==11){
+          i = SaveRdsTxt(st, fd);
+          return(i);
+      }
         
     /*
      * divide pixm by 2 because this disparity is applied

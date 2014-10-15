@@ -106,7 +106,8 @@ write a quick stimfile cleaner. Just reads lines, and writes them out again, omi
 add a status= line to DescribeState?  GetCurrentStatus function. Or use statusstring? should work.
 Sort out ability to add codes manually to the list of what is tracked in psychfile.  Could even extend this to have and R7 line for each trial.
 Try $MNK in stimdir path 
+rls sy>0 seems broken by xstep = 0;
+remove XMIN/MAX SAMPLERATIO 
 add help for !commands
 allow searching of .hlp files.  E.g I would like to know where to find how to make movies....
 ? diable dx for "twoeyes" image mode, on theory that it shoud be done in the file?  Or use Pd/dp  to encode manual disparities done there.
-Verg should close ServorDrive on exit.

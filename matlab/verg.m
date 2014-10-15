@@ -160,6 +160,10 @@ while j <= length(varargin)
     if strncmpi(varargin{1},'close',5)
         ExitVerg(DATA);
         return;
+    elseif strncmpi(varargin{j},'checkhelp',8)
+        CheckCodeHelp(DATA, 'update');
+    elseif strncmpi(varargin{j},'checkstim',8)
+        CheckStimFile(DATA, 'update');
     elseif strncmpi(varargin{j},'getstate',5)
         ts = now;
         DATA = GetState(DATA,'commandline');
@@ -269,17 +273,80 @@ function DATA = CheckStateAtStart(DATA)
         str = 'You Can define A "reset" stimfile that is Run before loading each new Expt. Put ereset=path in verg.setup or your stimfile';
         msgbox(str);
     end
-    if DATA.verbose(4)
+    
+ function txt = InsertLine(txt, line, s)
+ 
+     txt(line+1:end+1) = txt(line:end);
+     txt{line} = s;
+
+     
+function CheckStimFile(DATA, type)
+%remove out of date codes from a stim file
+    txt = scanlines(DATA.stimfilename);
+    goodlines = ones(size(txt));
+    for j = 1:length(txt)
+        [DATA, code, badcodes] = InterpretLine(DATA, txt{j}, 'test');
+        if code < -1 
+            goodlines(j) = 0;
+        elseif ~isempty(badcodes)
+            for k = 1:length(badcodes)
+                id = regexp(badcodes{k},'[+-]')
+                if length(id) > 1
+                    badcode = badcodes{k}(1:id(2)-1);
+                    regexprep(badcodes{k},'[a-Z]+[+-].*','$1');
+                else
+                    badcode = badcodes{k};
+                end
+                txt{j} = strrep(txt{j},badcode,'');
+            end
+        end
+    end
+txt = txt(find(goodlines));
+outfile = strrep(DATA.stimfilename,'.stm','');
+outfile = [outfile '.new'];
+fprintf('saving stim file to %s\n',outfile);
+WriteText(txt, outfile);
+
+function CheckCodeHelp(DATA, type)
+    
+    if nargin ==1
+        type = 'list';
+    end
+    [scodes,sid] = sort({DATA.comcodes.code});
+    helpfile = [DATA.localmatdir '/helpstrings.txt'];
+    txt = scanlines(helpfile);
     for j = 1:length(DATA.comcodes)
-       if ~isfield(DATA.helpstrs,DATA.comcodes(j).code) 
-           if ~strcmp('xx',DATA.comcodes(j).code)
-               fprintf('No help for %s\n',DATA.comcodes(j).code);
+        k = sid(j);
+       if ~isfield(DATA.helpstrs,DATA.comcodes(k).code) 
+           if ~strcmp('xx',DATA.comcodes(k).code) && ~bitand(DATA.comcodes(k).group,1024)
+               fprintf('No help for %s\n',DATA.comcodes(k).code);
+               if strcmp(type,'update')
+               prevcode = DATA.comcodes(sid(j-1)).code;
+               id = find(strncmp(prevcode,txt,length(prevcode)));
+               if ~isempty(id)
+                   txt = InsertLine(txt,id(1)+1,['#*' DATA.comcodes(k).code ' ' DATA.comcodes(k).label]);
+               end
+               end
            end
        end
     end
+    
+    if strcmp(type,'update')
+        outfile = strrep(helpfile,'.txt','.new');
+        WriteText(txt, outfile);
     end
     
-function [DATA, codetype] = InterpretLine(DATA, line, varargin)
+function WriteText(txt, name, varargin)
+        fid = fopen(name,'w');
+        if fid > 0
+        for j = 1:length(txt)
+            fprintf(fid,'%s\n',txt{j});
+        end
+        fclose(fid);
+        end
+        
+    
+function [DATA, codetype, badcodes] = InterpretLine(DATA, line, varargin)
 
     
     
@@ -290,6 +357,7 @@ sendtobinoc =0;
 paused = 0;
 src = 'unknown';
 srcchr = 'U';
+badcodes = {};
 j = 1;
 while j <= length(varargin)
     if strncmpi(varargin{j},'from',4)
@@ -304,6 +372,9 @@ while j <= length(varargin)
             srcchr = 'G';
             frombinoc = 3;
         end
+    elseif strncmpi(varargin{j},'test',4)
+        frombinoc = 0;
+        sendtobinoc = 0;
     elseif strncmpi(varargin{j},'tobinoc',4)
         sendtobinoc = 1;
         srcchr = 'V';
@@ -339,9 +410,6 @@ for j = 1:length(strs{1})
         code = s(1:eid(1)-1);
         value = s(eid(1)+1:end);
         codelen = eid(1);
-    elseif strncmp(s,'SENDING',7)
-        value = [];
-        code = s;
     else
         value = [];
         code = s;
@@ -698,11 +766,9 @@ for j = 1:length(strs{1})
                 fprintf('%s\n',s);
             end
             DATA.Statuslines{end+1} = s(8:end);
-
-
-
-%can ignore SENDING'            
+            codetype = -2;
         end  %6 char codes
+        
         
         
     elseif sum(strncmp(s,{'Expts' 'xyfsd' 'EDONE'},5))
@@ -894,6 +960,7 @@ for j = 1:length(strs{1})
         DATA.binoc{1}.(code) = str2num(value);
     elseif strncmp(s,'pf=',3)
         s = strrep(s,'+2a','+afc');
+        s = strrep(s,'+4a','');
         if s(end) == ':'
             s = s(1:end-1);
         end
@@ -951,19 +1018,7 @@ for j = 1:length(strs{1})
     end %end of 3 char codes
     elseif strncmp(s,'helpfile=',9)
         s = s(10:end);
-        id = strfind(s,'"');
-        if ~isempty(id)
-            n = [];
-            lbl = s(2:id(end)-1);
-            if isfield(DATA.helpfiles,'label')
-            n = find(strcmp(lbl,{DATA.helpfiles.label}));
-            end
-            if isempty(n)
-                n = length(DATA.helpfiles)+1;
-            end
-            DATA.helpfiles(n).filename = s(id(end)+1:end);
-            DATA.helpfiles(n).label = s(2:id(end)-1);
-        end
+        DATA = AddHelpFile(DATA,s);
     elseif sum(strncmp(s, {'et' 'e2' 'e3' 'n2' 'n3' 'em' 'm2' 'm3' 'op' 'ei' 'i2' 'i3' },2))
     if strncmp(s,'et',2)
         DATA.exptype{1} = sscanf(s,'et=%s');
@@ -1017,7 +1072,8 @@ for j = 1:length(strs{1})
             
             if isempty(code) 
                 if DATA.togglecodesreceived
-                    fprintf('No Code for %s\n',s(id(k):end-1));
+                    badcodes{end+1} = s(id(k):end-1);
+                    fprintf('No Code for %s\n',badcodes{end});
                 else
                     myprintf(DATA.frombinocfid,'-show','Cant set Code %s - have not received list from binoc\n',s(id(k):end-1));                    
                 end
@@ -1176,10 +1232,16 @@ for j = 1:length(strs{1})
                 if 1 && DATA.togglecodesreceived
                     fprintf('%s:Code %s not in comcodes\n',datestr(now),code);
                     codematches = strcmp(code,{DATA.comcodes.code});
+                    codetype = -2;
                 end
                 SetCode(DATA,code);
             else
                 cprintf('red','Cannot Interpret %s: %s\n',src,deblank(strs{1}{j}));
+                codetype = -2;
+            end
+        else
+            if strncmp(s,'cy',2) %obsolete codes
+                codetype = -2;
             end
         end
     end
@@ -1989,6 +2051,7 @@ DATA.binoc{1}.monkey = 'none';
 DATA.binoc{1}.lo = '';
 DATA.binoc{1}.nt = 1;
 DATA.binoc{1}.st = 'none'; % make sure this field comes early
+DATA.binoc{1}.xyfsd = 5;
 DATA.penid = 0;
 DATA.stimulusnames{1} = 'none';
 DATA.stimulusnames{4} = 'grating';
@@ -2326,7 +2389,11 @@ function DATA = InitInterface(DATA)
     bp(2) = 2./nr;
     bp(3) = cw/3;
     bp(4) = 1./nr;
-    [a,j] = min(abs(DATA.binoc{1}.xyfsd - DATA.xyfsdvals));
+    if isfield(DATA.binoc{1},'xyfsd')
+        [a,j] = min(abs(DATA.binoc{1}.xyfsd - DATA.xyfsdvals));
+    else
+        j = 1;
+    end
     uicontrol(gcf,'style','text','string','FSD',  'units', 'norm', 'position',bp);
     bp(1) = bp(1)+bp(3);
     bp(3)=0.99-bp(1);
@@ -2719,9 +2786,39 @@ function ShowHelp(a,b,file)
       fprintf('%s\n',lasterr)
   end
 
+  function DATA = AddHelpFile(DATA, s,varargin)
+      if isfield(DATA.binoc{1},'helpdir') && isdir(DATA.binoc{1}.helpdir)
+          prefix = DATA.binoc{1}.helpdir;
+      elseif isdir('/b/binoclean/help')
+          prefix = '/b/binoclean/help';
+      end
+      
+      id = strfind(s,'"');
+        if ~isempty(id)
+            n = [];
+            lbl = s(2:id(end)-1);
+            if isfield(DATA.helpfiles,'label')
+                n = find(strcmp(lbl,{DATA.helpfiles.label}));
+            end
+            if isempty(n)
+                n = length(DATA.helpfiles)+1;
+            end
+            if s(id(end)+1) == '/'                
+                filename = s(id(end)+1:end);
+            else
+                filename = [prefix '/' s(id(end)+1:end)];
+            end
+            if ~exist(filename)
+                cprintf('red','Cannot read Help File %s\n',filename)
+            else
+                DATA.helpfiles(n).filename = filename;
+                DATA.helpfiles(n).label = s(2:id(end)-1);
+            end
+        end
+
   
   function DATA = AddHelpFiles(DATA, varargin)
-      preifx = [];
+      prefix = [];
       if isfield(DATA.binoc{1},'helpdir') && isdir(DATA.binoc{1}.helpdir)
           prefix = DATA.binoc{1}.helpdir;
       elseif isdir('/b/binoclean/help')
@@ -2732,8 +2829,8 @@ function ShowHelp(a,b,file)
           for j = 1:length(d)
               if isempty(DATA.helpfiles) || ...
                       sum(cellstrfind({DATA.helpfiles.filename},d(j).name)) == 0 %new
-                  if ~strncmp(d(j).name,'.#',2)
                       filename = [prefix '/' d(j).name];
+                  if ~strncmp(d(j).name,'.#',2) && exist(filename)
                       DATA.helpfiles(end+1).filename = filename;
                       s = scanlines(filename);
                       if ~isempty(s) && length(s{1}) < 50
@@ -2751,7 +2848,7 @@ function ShowHelp(a,b,file)
         
       
    uimenu(hm,'Label','List All Codes','Callback',{@CodesPopup, 'popup'},'accelerator','L');
-   uimenu(hm,'Label','List Codes with Help','Callback',{@CodesPopup, 'popuphelp'});
+   %uimenu(hm,'Label','List Codes with Help','Callback',{@CodesPopup, 'popuphelp'});
    for j = 1:length(DATA.helpfiles)
         uimenu(hm,'Label',DATA.helpfiles(j).label,'Callback',{@ShowHelp, DATA.helpfiles(j).filename});
     end
@@ -2761,6 +2858,30 @@ function ShowHelp(a,b,file)
        uimenu(hm,'Label',sprintf('Binoc Version %s',v))
    end
  
+  function nfound = SearchHelpFiles(DATA,pattern)
+      txt = {};
+      nfound = 0;
+      F = findobj('type','figure','tag',DATA.windownames{4});
+      it = findobj(F,'tag','CodeListString');
+      fileids = [];
+      
+      for j = 1:length(DATA.helpfiles);
+        helptexts{j} = scanlines(DATA.helpfiles(j).filename);
+        [a,helpname] = fileparts(DATA.helpfiles(j).filename);
+        id = regexp(helptexts{j},   pattern);
+        gid = find(CellToMat(id));
+        for k = gid(:)'
+            fprintf('%s\n',helptexts{j}{k});
+            txt{end+1} = [helpname ': ' helptexts{j}{k}];
+            fileids(length(txt)) = j;
+        end
+      end
+      setappdata(F,'FileMatchIds',fileids);
+      nfound = length(txt);
+      if nfound
+          set(it,'string',char(txt),'value',1,'userdata',5);
+      end
+   
   function OptionMenu(a,b,tag)     
       DATA = GetDataFromFig(a);
       on = get(a,'checked');
@@ -4764,8 +4885,10 @@ function CodesPopup(a,b, type)
       for j = 1:length(b)
           if b(j) == 0
               code = '';
+              codetype = 0;
           else
               code = DATA.comcodes(b(j)).code;
+              codetype = DATA.comcodes(b(j)).group;
           end
           if ~strcmp(code,'xx')
           ns = max([5 - length(code) 1]);          
@@ -4778,6 +4901,9 @@ function CodesPopup(a,b, type)
               a(nc+nl,1) = ' ';
               nl = nl+1;
               s = labels{nlab};
+          end
+          if bitand(codetype,1024)
+              s = [s '  (Internal)'];
           end
           if isfield(DATA.helpstrs,code)
               if isfield(DATA.helpkeys.extras,code)
@@ -4827,7 +4953,7 @@ function CodesPopup(a,b, type)
     hm = uimenu(cntrl_box,'Label','Search');
     sm = uimenu(hm,'Label','Ignore case','callback',{@SearchList, 'IgnoreCase'},'Tag','IgnoreCase','checked','on');
     
-    uicontrol(gcf,'style','pop','string','Search: All|Search: Codes|Search: Labels|Search: Help','tag','SearchMode',...
+    uicontrol(gcf,'style','pop','string','Search: All|Search: Codes|Search: Labels|Search: Help|Search: HelpFile','tag','SearchMode',...
         'units','norm', 'Position',[0 0.01 0.3 0.08]);
 
     srch = uicontrol(gcf, 'Style','edit','String', '',...
@@ -4873,15 +4999,27 @@ elseif strcmp(type,'popup')
 end
 
 function HelpHit(a,b)
-DATA = GetDataFromFig(a);
 
+ DATA = GetDataFromFig(get(a,'parent'));
+
+F = get(a,'parent');
+if isempty(DATA)
+    DATA = GetDataFromFig(F);
+end
 str = get(a,'string');
 l = get(a,'value');
+searchmode = get(a,'userdata');
+if isempty(searchmode)
+    searchmode = 0;
+end
 if length(l) == 1
     code = str(l,:);
     code = regexprep(code,'\s.*','');
     fpos = get(GetFigure(a),'position');
-    if isfield(DATA.helpkeys.extras,code)
+    if searchmode ==5 % in a help file - pop this up
+        x = getappdata(F,'FileMatchIds');
+        ShowHelp(DATA,[], DATA.helpfiles(x(l)).filename);
+    elseif isfield(DATA.helpkeys.extras,code)
         cm = uicontextmenu;
         X = DATA.helpkeys.extras.(code);
         for j = 1:length(X)
@@ -4948,14 +5086,14 @@ function SearchList(a,b, varargin)
     it = findobj(F,'tag','CodeListString');
     if isempty(findn) %hit return again
         findn = 1;
-    elseif ~strcmp(pttn,lastpttn)%new serach
+    elseif ~isempty(pttn) && ~strcmp(pttn,lastpttn)%new serach
         newpattn = 1;
     else
         setappdata(F,'findn',[]);
         if isappdata(F,'OldText')
             txt = getappdata(F,'OldText');
-            set(it,'string',txt);
-            set(F,'Name','Code List');
+            set(it,'string',txt,'userdata',0);
+            set(F,'Name','Code List');            
             return;
         end
     end
@@ -4976,6 +5114,15 @@ function SearchList(a,b, varargin)
         txt = get(it,'String');
         setappdata(F,'OldText',txt);
     end
+    
+    if searchmode ==5
+        DATA = GetDataFromFig(get(a,'parent'));
+        findn = SearchHelpFiles(DATA,pttn);
+        setappdata(F,'findn',findn);
+        set(F,'Name',sprintf('%d Matches in %d help files for %s',findn,length(DATA.helpfiles),pttn));
+        return;
+    end
+    
     keys = getappdata(F,'HelpKeyList');
     keys{size(txt,1)+1} = '';
     found = [];
@@ -4989,6 +5136,8 @@ function SearchList(a,b, varargin)
         elseif searchmode == 3 %just labels
             s = regexprep(t,'\s(.*):.*','$1');
         elseif searchmode == 4 %just help
+            s = regexprep(t,'.* : ','');
+        elseif searchmode == 5 %help files 
             s = regexprep(t,'.* : ','');
         else
             s = [txt(j,:) keys{j}];

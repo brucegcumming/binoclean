@@ -3726,7 +3726,6 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
         case VERGENCE_WINDOW:
         case STATIC_VERGENCE:
         case ELECTRODE_DEPTH:
-        case SPIKE_GAIN:
         case REWARD_SIZE:
         case PREWARD:
         case WURTZ_RT_CODE:
@@ -4318,6 +4317,8 @@ int SaveImage(Stimulus *st, int type)
     int x,y,w,h,i=0,done = 0,n = 0;
     static int imstimid = 0,pcode = 5;
     char eyec[3] = "LR";
+    static int ndone = 0;
+    
     Stimulus *rst = st;
     
     if(rdspair(st))
@@ -4342,6 +4343,16 @@ int SaveImage(Stimulus *st, int type)
         pcode = 1;
     else
         pcode = 0;
+    if (testflags[SAVE_IMAGES] == 11){
+            sprintf(imname,"%s/%s.i%d.rds",ImageOutDir,expname,ndone);
+            ofd = fopen(imname,"w");
+            n = SaveRdsTxt(st, ofd);
+            fclose(ofd);
+        ndone++;
+        st = ReadRds(imname);
+        paint_rds(st,LEFTMODE);
+        return(done);
+    }
     
     if (type == 0){
         i = 1;  //R eye image
@@ -4386,7 +4397,7 @@ int SaveImage(Stimulus *st, int type)
         }
         n = st->left->ndots;
     }
-    if(type & (1<<1)){
+    if(type & (1<<1) || testflags[SAVE_IMAGES] ==11){
         if(imoutfd == NULL){
             sprintf(imname,"%s/%s.im.txt",ImageOutDir,expname);
             imoutfd = fopen(imname,"w");
@@ -4547,6 +4558,9 @@ int ReadCommand(char *s)
     else if(!strncasecmp(s,"debug",4)){
         sscanf(s,"%*s %d",&debug);
         sprintf(command_result,"debug %d",debug);
+    }
+    else if(!strncasecmp(s,"saverds",7)){ // toggle on/off saving screen images
+        testflags[SAVE_IMAGES] = 11;
     }
     else if(!strncasecmp(s,"savemovie",8)){ // toggle on/off saving screen images
         if ((r = strchr(s,'=')) != NULL)

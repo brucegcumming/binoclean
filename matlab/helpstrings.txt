@@ -48,20 +48,26 @@ As (Kludge) Implements some special cases. Should be 0 unless you are sure you n
 #As21 Move the stimulus only, not the background
 #As9 Seed Changes with Contrast
 b2 number of correct trials before reward increases to r3
+bO Displace Background orthog to RF. N.B. needs op+bf
 Ba Margin for background size. Ie. Bh = sz+Ba.
 backMov folder containing movie to play as background. 
 baddir axis for bad micorsaccades. amplitued > Sa and direction with 45 degrees of baddir = trial aborted. Usually set automatically by axis of choice targets, but can overridden manual with this. 
 bb apllies an orientation disparity to Foreground and Background
 bc sets correlation of back stim. 
+bd backgound disparity. Works even when op=-bf
 bh Background Stimulus Size (sets Bw and Bh).
 bi No longer implemented
 bj frame on which disparity of background is changed. Very Rare
 bjv  rate at which boundary position (RLS) moves  
 bl number of correct trials before reward increases
+bo Orientation of background stimulus. Needs op+bf
 bpos position of texture defined boundary, in degrees from center of stimulus (RLS)
 Br Set up a different update rate in FastSequences for parameter 2. V dangerous #reverse correlation revcor 
 bs Divide expt into blocks where each stimulus is shown N (=bs) times, before any stim is shown N+1. 
+bt Current time of clock in spike2
+Bc Contrast of Background stimulus
 Bs sets background stimulus type 
+Bt Needs op+tf. Does not need op+bf
 Bh height of background
 Bw width of background
 by Vertical dispairity of Backround stim # binocular disparity background
@@ -73,17 +79,21 @@ cg luminance of background when stopped (usually 1)
 ch Internal, for setting xy eye position display. 
 cha Normally the axis along which choice targets are displaced is determined by binoc from the stimulus. This forces the choice axis. 
 choicedur For correct choices, target remains on after saccade for this duration (sec) # psychophy
+cm Comment. Internal really. Typing the the comment field of verg enters a commnent too.
 cL Contrast of L eye stimulus. See also cR, ic #Binocular Disparity
 cmdfile the named file is monitored for changes. If it changes, then binoc reads its contents and executes the commands. Used for remote monitoring/control
 co Range 0 -> 1
 coarsemm measurement on microdrive at starting postion (set by penlog)
 Covariate name of a parameter that covaries with psych metameter (signal). Typically xo. See also cc #Psych Training
 cR Contrast of R eye stimulus. See also cL, ic #Binocular Disparity
+cb Correlation of background. Needs op+bf
 cr Set ratio of contrast left/contrast right (changes co and ic)
+cs Seed used to calculate OLD RC  sequence. Obsolete 
 cz Expt Type only. For interleaving H/H H/L L/H and L/L binocular contrast pairs
 d1 For Corrugs, with disparity modulation, this sets the peak disp (changes dm and dx)
 d2 For Corrugs, with disparity modulation, this sets the trough disp (changes dm and dx)
 dc Applies Horizontal disparity to displace gratings dc * period.
+dd In %coverage. Assumes no overlap, so true value slightly lower for RDS
 Dc For fast seqs, controls fraction of frames that are signal frames. Rest are random picks from Dm +- Ri * Dw.  #revcor reverse correlation psych 
 ddx changes in diparity. 
 dfx change in fixation x position. 
@@ -99,6 +109,8 @@ dr changes RDS dispaity deg/sec
 Dr When RDS is made of random disparity samples, each ramdom pick generates Dr Dots of the same disparity. For RLS Dr places an upper limit on the number of consecutive lines with the same color, if check enable with sM =30.
 ds interocular SF difference. sfR = sf-ds/2, sfL = sf+ds/2# SF disparity
 dS Sets what variable is adjusted for mimic microstimulation
+db For True Wurtz Task. Obsolete
+du sets stimuus duration in seconds. Actually just sets nf based on CURRENT frame rate
 dt For Stroboscopic Pulfrich Expts. Should be 0 otherwise #Psychophysics
 dw If +aa is not set, gets rounded to nearest pixel size. Dots are square. 
 Dw Number of different stimuli comprising random distribution for Dc expts. See Also Dc, Ri, Dm
@@ -106,32 +118,43 @@ dx disparity applied by horizontal translation of whole stimulus #Binocular Disp
 dy disparity applied by vertical translation of whole stimelus #Binocular Disparity
 e0 Expt code only
 e1max sets largest abs(value) of stimvals for expt 1 , EG. nt=7 produces [ -e1max -ei*2 -ie 0 ei ei*2 e1max] #exptvals
+e2 See also op+x2
 ec After responding incorrectly to N consecutive stimuli of a given sign, enter a correction loop wehre only that choice direction is shown. #Psych Training
+ed in mm. Normally set automatically by microdrive. Chage with caution.
 Electrode Best to select from menu (elements can be added to binoc.setup) to keep uniform. 
 ePr distance from base of microdrive to tip of support tube (mm)
+eZ Just for penetration log.
 Er Er=x y delivers a reward mid-trial, every Er Seconds. y set size of reward
 ereset path of file applied before reading a new expt file, to reset state. I.e clear out odd variables.
+et et=xx allows you to set any variable to change in Expt1, regardless of menus
 exp folder where manual expt stims will be for a manual expt #Manual
 expname arbitrary label to give to manual expts. Will be used by combine for grouping #Manual
 f2 SF of second frequency component for compound gratings/plaids
 Fa Direction for movement of Fixation point (Saccadic if Ff >0, Pursuit if pi > 0) #eye movements. fixation
 FakeSig Value of dS used to mimic microstim 
 fc color of fixation marker when fixating. 
-FfFrame on which Fixation point jumps. Jumps back after 2x Ff frames have elapsed #eye movements. fixation
+fd if >0, fixation marker turns off fd sec after trial start
+Ff Frame on which Fixation point jumps. Jumps back after 2x Ff frames have elapsed #eye movements. fixation
 fH For generating rectangular fixation windows. Set fw first, then fH. 
 fi No longer implemented
 fixcolors
+fl Accessed via op
 Fl when fix marker is a cross (op=-fb), sets line width used to draw. Also used for nonius lines
 fm Sets which eye sees the fixation marker 0 = binoc, -1 = left, 1 = right. Must set op-bm for this to work #Fixation
+fn change frame every fn video frames. Unlike Fr, nothing changes for fn frames
 Fr Repeats each stimulus in a fastseq for Fr frames. For RLS/RDS each frame still has a new seed.
 fs size of fixation marker
 Fs Size of fixation point jump (degrees) #eye movements. fixation
 fw fixation within +-fw is good
+fx positive = right on screen viewed by experimenter (= left for monkey)
 fz Should be set in binoc.setup. Needs to match monitor.
 ga record gamma correction used.  Doen't do anything inside binoc
 gr sets size of squares in checkerboard calibration. if > 0, then pattern is dran.
 hd Length/Height Disparity  hR = hi-hd/2 hL = hi+hd/2 #binocular disparity size
+he helpfile=name adds named file to the help menu
 helpfile path to a text file with help. Syntax: helpfile="Label"filename  "Label" is shown on in help menu. Contents of filename will be displayed.
+helpdir all .hlp files in the namge directory are added to the help menue
+#usually /b/binoclean/help
 hi Full Height (diameter). 
 hL Height/Length in L eye.  Sets hi and and hd #binocular disparity size
 hR Height/Length in R eye.  Sets hi and and hd #binocular disparity size
@@ -140,14 +163,26 @@ hs Value of High SF for +highSF interleaved stimulus.
 ht Value of High SF for +highTF interleaved stimulus. 
 hx for +HighX interleaves, this specifies value of "HihgX" stimulus
 hxtype Value that is set for HighX interleaves. I.e. on these trials, hxtype=hx
+i2 #
+#For example:
+#hxtype=sf
+#op=+hx
+#hx=16
+#will interleave a stim where sf=16
 IB If this filename exists, the image will be used as the background (instead of grey)
 ic interocular contrast difference  cR co - ic/2,  cL = ic + ic/2  N.B. binoc does not check ranges. if co=1 and ic = 0.5, left eye will saturate. Use cr to change ratio keeping mean fixed
+id A unique ID assigned by binoc for each stim.
+#N.B. after a crash, ids may not be unique unless this is set. 
+# The last id is saved in expt files that can be read in the File...Recover menu
 Id For cylinders, where abs(dx) < mD, this disparity is applied for the first ns frames
 iF in seconds, sets ns accordingly
 Im For the first ns frames, the stimulus tranlates at speed Im, direction Fa.
 imi number to add to image prefix to build name. 
 imload "preload" = load images from disk befor starting trial. "normal" read on the fly
-immode "orbw" or "binocular" determines how imae names are build
+immode "orbw"|"binocular"|"twoeyes" determines how image names are build. see aslso impref, imload #images imload 
+#"orbw" build path using ori/sf/ori bandwidth/se%d.pgm for ORBW expts
+#"binocular" uses prefix%d.pgm where %d is imi. Shows same image to both eyes
+#"twoeyes" uses prefix%dL.pgm for left eye prefix%dR.pgm for R eye
 impref prefix (inlcuding path) for building image names
 imx horizontal position of background image Performed by rotating pixels in image
 imy vertical position of background image. Performed by rotating pixels in image
@@ -177,16 +212,21 @@ ls reports seed of final frame in stimulus. Read only
 lT Expt Type only. TF wiht linear increments
 lv Expt Type Only
 lw line with for drawing RF box, manually drawn lines, in ovelary of main display
+m2 Expt 2 Mean
 lX Expt Type only. X pos with Log spacing..
 m3 Mean of values to set for Expt 3
 mD For manipulations like Id, that only apply to near zero signals, "near zero x" means abz(x) < mD #psych cylinder
+me -1 = L, 0 = binoc 2 = R
 mixac mixes correlated an anticorrelated dots. 0 = all corr, 1 = all Anticorr #binocular disparity ac
 mo controls which stimulus is affected by subsequent commands mo=fore, mo=back, mo=ChoiceU,mo=ChoiceD,mo=st3.  Usually set mo=fore after setting any other stimulus. 
 monitor path of file with monitor characteristics
 monkey 3 letter monkey name. Binoc will cwd to /local/mnk
+mt used by binoc to add arbitrary long text to the data record in a way that spike2 will pass on. Rarely set manuall.
 mx Expt Type only. Sets monoc expt wiht L,R, and Binoc
-n3 number of stimuli for Expt3 
+n2 Number of stim to use in Expt2
+n3 Number of stim to use in Expt3
 nbars when st=bar, Sets numbner of bars to paint - usually 1. You have to set params for extra bars
+nc For Nsines, sets number of graing components. For RLS when op+??, sets number of bars in stim height
 netpref Prefix setting network Drive to store serial output. When recording, this should be the PC drive that has the date files, so that everything is in one place. 
 nco list of contast values for components in nsine stimulus
 Nf N frames actually completed. Read only.
@@ -194,13 +234,16 @@ nf sets stimlus duratio in frames (see also du).
 nh  old way to set Sfs of Nsine stimuli now use nsf
 nimplaces Image name = prefix%nd.pgm where n=nimplaces
 nl old way to set Sfs of Nsine stimuli now use nsf
+np N Planes For cylinders.1 = front surface only, -1 = back surface only. 0 both
 nph number of phase values for random phase. nph=0 stops random phase jumps in grating. nph = 1 produces a random walk - the phase increment is added, but with a random sign.
 nR Internal counter. Leave.
 nr present each stimulus this many times
 ns frame on whcih a change in seed/velocity is applied. For RDS/RLS, sl=1 and op=+rp, then the seed changes on this frame (and multiples). For Cylinders this is the frame where any initial disparity is removed.
 nsf a list of sf components for Nsine stimuli
+nt Number ot stimulus to use fr expt 1
 nT Internal for recording Trial statistics 
 ntf a list of tf values for Nsine stimuli
+nx (Internal for binoce/verg)
 O2 second orientation used for the Radial stimulus type (very rare)
 ob Only meaningful for st=image, controls which image is loaded.
 od interocular orientaiton difference oR = or-od/2  oL = or+od2  
@@ -209,6 +252,7 @@ onlineprefix location for online data files written by mac (stimulus description
 op Codes for this at end of the help
 Op Position relative to RF in direction orthogonal to RF ori See also Pp,aOp
 or (degrees) 0 is down. 90 is to the right on the screen seen by experimenter.
+os Obsoete. Sets position relative so side of RF. Use Op.
 Or orientation in Right eye
 oS Expt Type only. Size Expt wih log increments
 ox size of a random orientation displacement applied at the start of each stimulus. For psych #human psych
@@ -218,9 +262,11 @@ pb In RC expts, probability that a given frame is Blank. Ignored unless > 0. Be 
 pBlack (deactivated) controls proportion of black dots in cylinder.
 Pd Applies a phase disparity that is equivalend to this value of horizontal disparity.
 pd Number of pixels in 1 degree. Calculated from px and vd. Read only
+pe For penetration Log
 pf This controls the GUI appearance, written like OP code: pf=+sq+lm+rm codes on this list will have a checkbox in the Main verg window.
 ph spatial phase in degrees. This will get changed if tf != 0 see also ip
 pi moves fixation point to require pursuit, in degrees/frames. Direction controlled by Fa
+pl For Cylinder training. Makes dots on front surface brighter.
 Pn For log files. #Penetration Log
 po postperiod (seconds). This much time must elapse after stim off before the trial ends, or the next stimulus is shonw (if pt > 1)
 posinc Read only. Reports jv as position increment per frame
@@ -237,7 +283,9 @@ pT With +afc and when tr=1, this sets the probability that tr will be set to 0 f
 pU In RC expts, probability that a given frame is uncorrelated. Ignored unless > 0. Be sure to reset this
 puA Pursuit amlitude. Makes a sinusoidal pursuit target. See also puF #eye movements. fixation. 
 puF Frequency of sinusoidal pursuit see also puA #eye movements. fixation
+pw For psych expts where there is a pulse of correlaiton at some point in trial
 px pixel size(X) in cm. Also reports back size in degrees.
+py vertical size of a pixel, in cm
 qe name an expt file to be added to the Quick Menu #experiemnt
 r0  Expt Type only. Interleveaves RDS/no stim
 r1 For first correct choice #Reward
@@ -247,7 +295,9 @@ RB Expt Type only. Sets monoc expt with R and binoc
 rb if -1, negative choices get r2,+get r1. If +1 vice versa. ; psychophysics 
 rC Expt Type only.
 rc Ratio of contrast Foregroud/Background. Change co and Bc
+rd Sets dx to rd/2 and bd to -rd/2
 rf SF of R eye stimulus. See also lf, ds #Binocular Disparity
+rl Number of trials use to compute recent performancs stats. NB changes only apply prospectibely. #Check
 Rh Height of RF marking box (also recorded as RF Height in datafile)
 Ri For expts using Distribution Concentration (Dc), this is the incmrement between stimuli in the distribution.  See Also Dc, Dm 
 Ro Orientation of Box on screen. Also sets rotation used for Op,Pp,dO etc
@@ -255,10 +305,12 @@ RO Moves RF box in a direction orthogonal to its Ori. Useful to center RF when u
 RP Moves RF box in a direction parallel to its Ori. Useful to center RF when using data plotted relative to RF center. But this should now be rare.
 rp Sets p2 to ph+rp (degrees)
 rr # of times to repeat each stimulus exactly (seed and all). 1 = twopass (.i.e. 1 repeat). > 1 is hazardous.
+rv Sets dy for foreground to rv/2 and background to -rv/2
 Rw Width of RF marking box (also recorded as RF width in datafile)
 rw in ml. setupall.txt on Spike2 computer convergs ml -> pump duration.
 rx size of a random x displacement applied at the start of each stimulus. For psych #human psych
 Rx degrees relative to screen center
+Ry degrees relative to screen center
 s0 initial increment used for staircase
 Sa minium saccade size that binoc will punish. See also baddir
 Sb Sigma for Gaussian envelope, sets sx and sy to the same value
@@ -311,13 +363,23 @@ so In degrees. 4 numbers are LH, RH, LV, RV
 sO sets the position of a stimulus. relative to RF centre, along an axis orthognal to the stimulus orientation (NOT RF orientation). Sets xo and yo  #RF mapping
 sp If fixation is broken before sp after trial start, the trial ends, but there is no timeout. (So eyes sweeping though the fixation window don't count)
 sP No of random pulses of correlation in a stim. See also pw
+sa sets sq and vs according to direction.
 sq size of horizontal component of choice saccade #Psychophysics
+ss A very special manipulation of random dot seeds. Dubbed the "blithering seed shift experiment" by Andrew Parker.
 Sr Rate of change in orientation (degrees/sec)
 SR Size in R eye.  Sets sz (wi and hi) and and Sd #binocular disparity size
 St minimum eye displacement before Spike will report a saccade
+St3 Stimulus type for a stimulus painted behind the background. See alos op=+tl
+#so paint order is, st3, background, foreground. 
+#with op=+tl, order is background,foreground, st3.  Useful when st3 is an occluding annulus
 st stimulus type. One of rls,rds,cylinder,grating,2grating,nsine,gabor,rlssine,none,bar,gabor,rectangle,square,corrug,sqcorrug,annulus,image,checker. In matlab, StimulusName converts names <-> code numbers. 
+stimdir folder to find qe= file, when filename is not a full path
+#e.g.
+#stimdir=/local/ruf/stims
+#qe=""Psych"bwtask
+#will read the expt file from /local/rf/stims/bwtask
 StartDepth records depth where electrode entered. 
-stimtag label in stimN files that will be placed in Expt.Trials
+stimtag label in stimN files that will b placed in Expt.Trials
 Sv Read Only. For RLS/RDS records revision number of source code. For image stimuli, records version number of code that created image
 # for images, this is read from a file called paramlist in the folder contatining images
 sx  Sd of Gaussian Envelope, orthogonal to Orientation.
@@ -326,13 +388,17 @@ sz sets wi and hi.
 T1 For development testing
 T2 when usenewdirs=1, sets location of second choice target
 t2 TF of component 2 in compound gratings/plaids (2grating or grating with a2>0)
+tc luminance of background for timeout screen ( 0 -1 )
 ta Very special. Don't mess with this. 
 TB For development testing
-Tb Internal for recording Trial statistics 
+Tb Recording Trial statistics 
 Tc contrast of the timeout screen. Useful for screen calibration 
 tf temporal frequency (Hz)
 Tg  Internal for recording Trial statistics 
+Trw Keeps track of total reward delivered. 
+#Get this from spike2, but also sends recorded value back to spike2 if the script is restarted
 tgtdur How long choice icons are up in a trial. If < 0, icons up in intertrial interval # psychophysics choice duration
+ti Duration of timeout for fixation breaks, in  seconds
 #tgtdur <0 op=+iit -> icons shown only during intertrial period
 #tgtdur=0  op=+iit -> icons shown between trials and throughout trial. Change once choice saccade is made
 #tgtdur=0 op=-iit -> icons only shown after stimulus off and until choice saccade
@@ -362,11 +428,15 @@ usenwedirs
 USf frequency of microstim pulses See alos USd,USp #ustim
 USp phase of microstim pulses.  See also USd,USf #usimt
 vd viewing distance eye - screen in cm
+ve Read only. Binoclean version number
 verbose controls level of diagnostic printouts
+vm Spatial modulation of vertical disparity in sqcorrug +- vm
 Vn Records Visual Ares For log files V1, V@, MT, Vc (calcarine). #Penetration Log
 Vs Applies a gradient of vertical disparity.  Should be 1.
+Vy records vertical height of display center from monkey eye level. + = screen above animal #Viewing Geometry display monitor
 vs size of vertical component of choice saccade #Psychophysics
 vv appies a vertical disparity to the fixation marker.
+vve Read only. version of verg used
 wd Length/Height Disparity  wR = wi-wd/2 wL = wi+wd/2 #binocular disparity size
 we Monkey weight. Useful to record occasionally so we have long term records of our own.
 wi Full Width (diameter). For Bars, this determines how far they sweep
@@ -382,5 +452,6 @@ xR x pos for R eye
 yL y pos for L eye
 yn density of sampling in Y direction for stim that use interpolation. E.G. When there is a Gaussian envelope (Gabors). Rarely set by user
 yo vertical pos of stimulus (degrees)
+zf Disparity applied to fixation marker to require vergence. 
 Yp For log files. #Penetration Log
 yR y pos for R eye
