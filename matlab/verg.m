@@ -305,6 +305,8 @@ function DATA = CheckStateAtStart(DATA)
        end
     end
     end
+    
+    
 function CheckStimFile(DATA, type)
 %remove out of date codes from a stim file
     txt = scanlines(DATA.stimfilename);
@@ -327,8 +329,13 @@ function CheckStimFile(DATA, type)
         end
     end
 txt = txt(find(goodlines));
+if strcmp(type,'makenew')
 outfile = strrep(DATA.stimfilename,'.stm','');
 outfile = [outfile '.new'];
+else
+    outfile = DATA.stimfilename;
+    BackupFile(outfile,'print');
+end
 fprintf('saving stim file to %s\n',outfile);
 WriteText(txt, outfile);
 
@@ -1587,7 +1594,7 @@ if fid > 0
     else
         [DATA, details] = ReadExptLines(DATA,a{1},'fromstim');
         if details.badcodes > 1
-            fprintf('Run verg([],''checkstim'') to remove bad codes from %s\n',name);
+            fprintf('Choose Fix from the file menu, or run verg([],''checkstim'') to remove bad/old codes from %s\n',name);
         end
     end
 else
@@ -3273,7 +3280,7 @@ function SaveFile(a,b,type)
         end
         SaveExpt(DATA, filename);
     elseif strcmp(type,'fix')
-        CheckStimFile(DATA,'update');
+        CheckStimFile(DATA,'new');
     elseif strcmp(type,'update')
         CheckForUpdate(DATA)
     elseif strcmp(type,'layout')
@@ -4401,6 +4408,11 @@ function DATA = RunButton(a,b, type)
                 if DATA.optionflags.exm && ~isempty(DATA.matexpt)
                     fprintf('Running %s\n',DATA.matexpt);
                     DATA.matexpres = eval(DATA.matexpt);
+                    if isfield(DATA.matexpres,'abort') && DATA.matexpres.abort > 0 %matlab script finds a problem
+                        vergwarning(sprintf('%s Says abort',DATA.matexpt));
+                        PauseRead(DATA,0);
+                        return;
+                    end
                     SendManualExpt(DATA);
                 end
                 if DATA.listmodified(1)
@@ -4715,7 +4727,7 @@ cntrl_box = figure('Position', DATA.winpos{9},...
         'units', 'norm', 'position',bp);
     bp(1) = bp(1)+bp(3);
     bp(3) = 0.2;
-    uicontrol(gcf,'style','pop','string','V1|V2|MT|V1 (calcarine)|Unknown', ...
+    uicontrol(gcf,'style','pop','string','V1|V2|MT|Vc (calcarine V1)|Unknown', ...
         'units', 'norm', 'position',bp,'value',5,'Tag','VisualArea','callback',{@MenuGui});
 
     
@@ -4729,6 +4741,7 @@ cntrl_box = figure('Position', DATA.winpos{9},...
     uimenu(hm,'label','Entered Brain','callback',{@MarkComment 'Entered Brain'});
     uimenu(hm,'label','Entered GM','callback',{@MarkComment 'GM'});
     uimenu(hm,'label','Entered WM','callback',{@MarkComment 'WM'});
+    uimenu(hm,'label','Penetration Missed Lunate/Calcarine','callback',{@MarkComment 'MissedDeepSulci'});
     hm = uimenu(gcf,'label','Set');
     uimenu(hm,'label','New Penetration','tag','NewPen','callback',{@MenuBarGui});
    
@@ -5297,8 +5310,12 @@ for j = line:length(str)
         if DATA.optionflags.exm && ~isempty(DATA.matexpt) && DATA.matlabwasrun == 0
             fprintf('Running %s\n',DATA.matexpt);
             DATA.matexpres = [];
-            DATA.matexpres = eval(DATA.matexpt);
+            DATA.matexpres = eval(DATA.matexpt);            
             DATA.matlabwasrun = 1;
+            if isfield(DATA.matexpres,'abort') && DATA.matexpres.abort > 0
+                vergwarning(sprintf('%s Says abort',DATA.matexpt));
+                return;
+            end
             SendManualExpt(DATA);
         end
         myprintf(DATA.cmdfid,'!expt line %d',j);
@@ -5312,6 +5329,10 @@ for j = line:length(str)
         return;
     elseif strncmp(str{j},'!mat',4)
         DATA.Statuslines{end+1} = sprintf('RunSequence Line %d: %s',str{j});
+        if isfield(DATA.matexpres,'abort') && DATA.matexpres.abort > 0
+            vergwarning(sprintf('%s Says abort',DATA.matexpt));
+            return;
+        end
     end
     if ~sum(strncmp(str{j},'expt',4)) %don't send these lines to binoc
         outprintf(DATA,'%s#RunSeq\n',str{j});

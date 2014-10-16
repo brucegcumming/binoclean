@@ -2657,7 +2657,9 @@ int OpenNetworkFile(Expt expt)
     
         if (netoutfile == NULL){
             strcpy(oldname,name);
-            sprintf(buf,"Can't open Network record %s. Trying %s",oldname,name);
+            sprintf(buf,"Can't open Network record %s. (%d) Trying %s",oldname,lastresult,name);
+            if (lastresult > 0)
+                acknowledge(buf, NULL);
             lastresult = 0;
             statusline(buf);
             getcwd(path,BUFSIZ);
@@ -2677,11 +2679,11 @@ int OpenNetworkFile(Expt expt)
         fprintf(netoutfile,"Reopened %s by binoc Version %s",ctime(&tval),VERSION_STRING);
         if (seroutfile != NULL)
             fprintf(seroutfile,"Network Record to %s\n",name);
-        sprintf(buf,"status=Network Record to %s\n",name);
+        sprintf(buf,"status=Network Record to %s (last %d)\n",name,lastresult);
         notify(buf);
     }
     else{
-        sprintf(buf,"Can't open Network parameter record file\n %s\t or\n%s",nbuf,name);
+        sprintf(buf,"Can't open Network parameter record file (%d)\n %s\t or\n%s",lastresult,nbuf,name);
         if (seroutfile != NULL)
             fprintf(seroutfile,"%s\n",buf);
         lastresult = -1;
@@ -7383,8 +7385,11 @@ char *SerialSend(int code)
             break;
         case UFF_PREFIX:
             SerialString(cbuf,0);
-            if(penlog)
+            if(penlog){
                 fprintf(penlog,"%s File %s\n",binocTimeString(),expt.bwptr->prefix);
+                if(expt.strings[VWHERE] != NULL)
+                    fprintf(penlog,"VisualArea=%s\n",expt.strings[VWHERE]);
+            }
             if(mode & UFF_FILE_OPEN){
                 SerialSend(RF_DIMENSIONS);
                 SerialSend(XPIXEL_CODE);
@@ -14965,6 +14970,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     }
     else if(frompc ==2 && code >= 0){ //came from verg. Some of these need -> spike2
         switch(code){
+            case VWHERE:
             case TOTAL_REWARD:
                 SerialSend(code);
                 break;
