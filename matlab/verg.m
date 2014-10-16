@@ -2139,7 +2139,7 @@ DATA.badnames = {'2a' '4a' '72'};
 DATA.badreplacenames = {'afc' 'fc4' 'gone'};
 
 DATA.comcodes = [];
-DATA.windownames = {'vergwindow' 'optionwindow' 'softoffwindow'  'codelistwindow' 'statuswindow' 'logwindow' 'helpwindow' 'sequencewindow' 'penlogwindow' 'electrodewindow' 'commentwindow'};
+DATA.windownames = {'vergwindow' 'optionwindow' 'softoffwindow'  'codelistwindow' 'statuswindow' 'logwindow' 'helpwindow' 'sequencewindow' 'penlogwindow' 'electrodewindow' 'commentwindow' 'showpen'};
 DATA.winpos{1} = [10 scrsz(4)-480 300 450];
 DATA.winpos{2} = [10 scrsz(4)-680 400 50];  %options popup
 DATA.winpos{3} = [600 scrsz(4)-100 600 150]; %softoff
@@ -2151,6 +2151,7 @@ DATA.winpos{8} = [600 scrsz(4)-100 400 100]; %sequence
 DATA.winpos{9} = [600 scrsz(4)-100 400 100]; %Penetraation log
 DATA.winpos{10} = [600 scrsz(4)-100 400 100]; %Electrode Moving
 DATA.winpos{11} = [600 scrsz(4)-100 400 100]; %Electrode Moving
+DATA.winpos{12} = [600 scrsz(4)-100 400 100]; %Electrode Moving
 
 DATA.outid = 0;
 DATA.inid = 0;
@@ -4744,6 +4745,7 @@ cntrl_box = figure('Position', DATA.winpos{9},...
     uimenu(hm,'label','Penetration Missed Lunate/Calcarine','callback',{@MarkComment 'MissedDeepSulci'});
     hm = uimenu(gcf,'label','Set');
     uimenu(hm,'label','New Penetration','tag','NewPen','callback',{@MenuBarGui});
+    uimenu(hm,'label','Show Penetration Log','tag','ShowPen','callback',{@ShowPenLog, 'popup'});
    
     
 set(gcf,'CloseRequestFcn',{@CloseWindow, 9});
@@ -4873,6 +4875,86 @@ if ~isfield(DATA,'show') || ~isfield(DATA.show,'comment')
     SetData(DATA);
 end
 CommentPopup(lst, [], 'update')
+
+function ShowPenLog(a,b,type)
+  DATA = GetDataFromFig(a);
+  src = a;
+  
+  wn = find(strncmp(DATA.windownames,'showpen',6));  
+  cntrl_box = findobj('Tag',DATA.windownames{wn},'type','figure');
+  if ~isempty(cntrl_box);
+      lst = findobj(cntrl_box,'tag','PenetrationLog');
+  end
+  if strncmp(type,'show',4)
+      f = strrep(type,'show','');
+      DATA.show.penlog.(f) = ~DATA.show.penlog.(f);
+      if DATA.show.penlog.(f)
+          set(a,'checked','on');
+      else
+          set(a,'checked','off');
+      end
+      SetData(DATA);
+      ShowPenLog(lst, [], 'update')
+  elseif strcmp(type,'update')
+      if ~isempty(cntrl_box);
+          txt = scanlines(['/local/' DATA.binoc{1}.monkey '/pen' num2str(DATA.binoc{1}.Pn) '.log']);
+          
+          strs = {};
+          for j = 1:length(txt)
+              go = 1;
+              if strncmp(txt{j},'ed',2) && DATA.show.penlog.depth == 0
+                  go = 0;
+              elseif strncmp(txt{j},'Rewards',6) && DATA.show.penlog.rewards == 0
+                  go = 0;
+              elseif strncmp(txt{j},'Expt',4) && DATA.show.penlog.expts == 0
+                  go = 0;
+              elseif strfind(txt{j},'bwticks') 
+                  go = 0;
+              end
+              if go
+                  strs{end+1} = txt{j};
+              end
+          end
+          if ~isempty(strs)
+              set(lst,'string',strs);
+          end
+      end
+  end
+  if ~strncmp(type,'popup',5)
+      return;
+  end
+  
+  cntrl_box = findobj('Tag',DATA.windownames{wn},'type','figure');
+  if ~isempty(cntrl_box)
+      figure(cntrl_box);
+      return;
+  end
+  cntrl_box = figure('Position', DATA.winpos{wn},...
+        'NumberTitle', 'off', 'Tag',DATA.windownames{wn},'Name','Penetration Log Contents','menubar','none');
+    set(cntrl_box,'UserData',DATA.toplevel);
+    set(cntrl_box,'DefaultUIControlFontSize',DATA.font.FontSize);
+    set(cntrl_box,'DefaultUIControlFontName',DATA.font.FontName);
+
+    hm = uimenu(cntrl_box,'Label','Show');
+    sm = uimenu(hm,'Label','Electrode Depth','callback',{@ShowPenLog, 'showdepth'},'checked','on');
+    sm = uimenu(hm,'Label','Rewards','callback',{@ShowPenLog, 'showrewards'},'checked','on');
+    sm = uimenu(hm,'Label','Expts','callback',{@ShowPenLog, 'showexpts'},'checked','on');
+
+    lst = uicontrol(gcf, 'Style','list','String', 'Penetration Log',...
+        'HorizontalAlignment','left',...
+        'Max',10,'Min',0,...
+        'Tag','PenetrationLog',...
+        'callback',{@ShowPenLog, 'help'},...
+        'units','norm', 'Position',[0.01 0.085 0.99 0.91]);
+    
+if ~isfield(DATA,'show') || ~isfield(DATA.show,'penlog')    
+    DATA.show.penlog.depth= 1;
+    DATA.show.penlog.rewards = 1;
+    DATA.show.penlog.expts= 1;
+    SetData(DATA);
+end
+
+ShowPenLog(lst, [], 'update')
 
 
 function CodesPopup(a,b, type)  

@@ -11062,7 +11062,7 @@ int GotChar(char c)
                 fixed[(wurtzctr+1)%avglen] = -1;
 			    if(c== WURTZ_OK){
                     if(goodtrials %50 == 0 && goodtrials > 0 && penlog)
-                        fprintf(penlog,"Rewards %d of %d\n",goodtrials,totaltrials);
+                        fprintf(penlog,"Rewards %d of %d. %.1ml\n",goodtrials,totaltrials,expt.vals[TOTAL_REWARD]);
                     goodtrials++;
                     if( (afc_s.sacval != 0) && (option2flag & AFC)){
                         afctrials++;
@@ -11690,12 +11690,16 @@ void expt_over(int flag)
         }
     }
     if(penlog && optionflag & STORE_WURTZ_BIT && flag != CANCEL_EXPT){
+        
         fprintf(penlog,"Expt(%s) %s x %s %s N %d",expt.bwptr->prefix,
                 serial_names[expt.mode],serial_names[expt.type2],
                 stimulus_names[expt.st->type],expt.nreps,expt.nsaved);
+        if (optionflags[MANUAL_EXPT])
+            fprintf(penlog,"+exm");
         if(expt.type3 != EXPTYPE_NONE)
             fprintf(penlog," EX3 %s",serial_names[expt.type3]);
         fprintf(penlog,"\n");
+        fprintf(penlog,"Expt saved %d stim at %s",stimno,binocTimeString());
         
         fflush(penlog);
         PrintPenLog(1);
