@@ -704,18 +704,24 @@ char *GetExptString(Expt *exp, int code);
 int FindCode(char *s)
 {
     int i=0,j,code;
+    char *t, str[BUFSIZ];
     
+// for lines with = sign, use exact match for what precedes the ='
+    if ((t = strchr(s,'=')) != NULL){
+        strncpy(str,s,t-s);
+        str[t-s] = 0;
+        for(i = 0; i < expt.totalcodes; i++)
+        {
+            if(strcmp(str, valstrings[i].code) ==0)
+                return(valstrings[i].icode);
+        }
+        return(-1);
+    }
     
     while((j=longnames[i++]) > 0){
         
         if(strncmp(s, serial_strings[j], strlen(serial_strings[j])) ==0)
             return(j);    
-    }
-    i = 0;
-    while(commstrings[i].label != NULL){
-        if(strncmp(s, commstrings[i].code, strlen(commstrings[i].code)) ==0)
-            return(commstrings[i].icode);
-        i++;
     }
     i = 0;
     for(i = 0; i < expt.totalcodes; i++)
@@ -1488,12 +1494,7 @@ void PrintCodes(int mode)
     strcat(s,"CODE OVER\n");
     notify(s);
     sprintf(s,"");
-    i = 0;
-    while(commstrings[i].code != NULL){
-        sprintf(tmp,"SCODE %s %d %s\n",commstrings[i].code,commstrings[i].icode,commstrings[i].label);
-        strcat(s,tmp);
-        i++;
-    }
+
     notify(s);
     SendExptTypesToGui();
     SendToggleCodesToGui();
@@ -5564,7 +5565,7 @@ int ReadStimOrder(char *file)
             else{ // send all other lines to serial file or InterpretLine
 //Dont send all to Interpretline in case of accidental code.
                 ival = FindCode(s);
-                if (ival == EXPT_NAME)
+                if(s[0] != '#' && (ival = FindCode(s)) >= 0)
                     InterpretLine(s, &expt, 2);
                 else
                     SerialString(s,0);

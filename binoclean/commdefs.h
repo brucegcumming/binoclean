@@ -1325,22 +1325,6 @@ ValueCode valstrings[] = {
 };
 
 
-
-StringCode commstrings[] = {
-//   {"uf","DataFile name",  UFF_PREFIX, NULL},
-//    {"monitor","Monitor Filename",  MONITOR_FILE, NULL},
-//    {"lo", "Log File", LOGFILE_CODE, NULL},
-//    {"st", "Stimulus", STIMULUS_TYPE_CODE, NULL},
-//    {"monkey", "Monkey name", MONKEYNAME, NULL},
-//    {"impref", "prefix for image files", -1, NULL},
-//    {"immode", "image mode", -1, NULL},
-//    {"imload", "image load type", -1, NULL},
-//    {"psychfile", "Psych results file", -1, NULL},
-    //    {"cmdfile", "File for remote commands", COMMAND_FILE, NULL},
-    //    {"electrode", "Electrode Decsription", ELECTRODE_TYPE, NULL},
-    {NULL, NULL, 0, NULL}
-};
-
 char **serial_strings;
 char **serial_names;
 
@@ -1438,7 +1422,6 @@ extern char **serial_strings;
 extern char *channel_strings[];
 extern char *stimulus_names[];
 extern char *bwtoggle_codes[];
-extern StringCode commstrings[];
 extern ToggleCode togglestrings[];
 extern ValueCode valstrings[];
 extern char *mode_names[];

@@ -471,7 +471,7 @@ for j = 1:length(strs{1})
                         eval(value);
                     end
                 else
-                    fprintf('Calling %s from %d\n',value,src);
+                    fprintf('Calling %s from %s\n',value,src);
                     DATA.matexpres = eval(value);
                     DATA.matlabwasrun = 1;
                 end
