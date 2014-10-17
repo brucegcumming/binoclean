@@ -37,7 +37,7 @@
  INTRIAL = TRIAL_PENDING | POST_STIMULUS_BIT
  */
 #define LINESEP 30
-#define MONITOR_CLOSE 1
+//#define MONITOR_CLOSE 1
 
 #define testout fprintf
 
@@ -62,6 +62,8 @@ static GLuint base,bigbase,mediumbase;
 static int eventstate = 0,window_is_mapped = 0;
 static int rndbonus = 10;
 static int forcestart = 0;
+static float painttimes[MAXFRAMES],calctimes[MAXFRAMES],processtimes[MAXFRAMES],swaptimes[MAXFRAMES],waittimes[MAXFRAMES];
+
 int teststate = 0;
 static int nostore = 0;
 static float pursued = 0;
@@ -5331,7 +5333,7 @@ int change_frame()
     if (renderoff == 0){
             if((mode & FRAME_BITS) || blockallframes)
                 glFinishRenderAPPLE();
-    glSwapAPPLE();
+        glSwapAPPLE();
     }
     gettimeofday(&changeframetime,NULL);
     changeframedur = timediff(&changeframetime,&atime);
@@ -6136,8 +6138,11 @@ void paint_frame(int type, int showfix)
     
     if (optionflags[SAVE_RLS])
         RecordImage(expt.st->framectr, expt.st);
-    if (renderoff){
+    if (renderoff == 1){
         return;
+    }
+    else if (renderoff ==2){
+        glDrawBuffer(GL_FRONT_AND_BACK);
     }
     setmask(ALLMODE);
     
@@ -7018,6 +7023,11 @@ int next_frame(Stimulus *st)
 //            while((rc = getframecount()) < lastframecount +nf)
 //                rc = getframecount();
             change_frame();
+            frametimes[framesdone] = timediff(&frametime,&zeroframetime);
+            painttimes[framesdone] = paintdur;
+            calctimes[framesdone] = calcdur;
+            swaptimes[framesdone] = swapwait;
+
             expt.framesdone++;
             if(mode & NEWDRAG)
             {

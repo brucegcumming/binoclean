@@ -4406,6 +4406,7 @@ int SaveImage(Stimulus *st, int type)
                 }
             }
         }
+        done++;
         n = st->left->ndots;
     }
     if(type & (1<<1)){
@@ -4483,7 +4484,9 @@ int ReadCommand(char *s)
         OpenNetworkFile(expt);
     }
     else if(!strncasecmp(s,"renderoff",9)){
-        renderoff = 1;
+        sscanf(s,"renderoff%d",&renderoff); //renderoff 2 renders but does not swap buffers/ 
+        if (renderoff < 2)
+            renderoff = 1;
         acknowledge("Rendering OFF!!",NULL);
     }
     else if(!strncasecmp(s,"renderon",8)){
@@ -11675,7 +11678,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
                 else if(testflags[SAVE_IMAGES] == 2 && stimno+1 >= expt.nstim[5] * expt.nreps){
                     if(finished == 1){ // last frame
                         SerialSend(SET_SEED);
-                        SaveImage(expt.st,3);
+                        SaveImage(expt.st,5); // save pgm of rectangle, and  RDS file
                         testflags[SAVE_IMAGES] = 0;
                     }
                     rc = framesdone;

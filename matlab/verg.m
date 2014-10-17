@@ -2988,6 +2988,7 @@ function MenuHit(a,b, arg)
         ok = CheckDayEnd(DATA);
         CopyLog(DATA, 'online');
         CopyLog(DATA, 'penlog');
+        CopyLog(DATA, 'bnc');
     elseif strcmp(arg,'checkdur')
         CheckTrialDurations(DATA,'hist');
     elseif strcmp(arg,'choosefont')
@@ -3030,15 +3031,24 @@ function CopyLog(DATA,type)
         
     
     dfile = strrep(DATA.binoc{1}.uf,'\','/');
-        if dfile(2) == ':'
-            dfile = dfile(3:end);
+    dfile = regexprep(dfile,'^[A-Z]:','');
+    [a,b] = fileparts(dfile);
+        
+    if strcmp(type,'bnc')
+        if strncmp('/local',DATA.binoc{1}.netpref,5) %only copy bnc file if its local
+            bncfile = ['/local/' dfile '.bnc'];
+            d = dir(bncfile);
+            if length(d) == 1 && now - d.datenum < 1
+                [a,b,c,d] = GetMonkeyName(bncfile);
+                tgt = ['/b/data/'  d];
+                if confirm(sprintf('Copy %s to %s?',bncfile,tgt));
+                    try
+                        copyfile(bncfile,tgt);
+                    end
+                end
+            end
         end
-        [a,b] = fileparts(dfile);
-
-        
-        
-        
-    if strcmp(type,'online')
+    elseif strcmp(type,'online')
         logfile = ['/local/' DATA.binoc{1}.monkey '/' b];
         d = dir(logfile);
         if length(d) == 1 && now - d.datenum < 1
