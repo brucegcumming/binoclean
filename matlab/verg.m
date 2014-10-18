@@ -271,10 +271,15 @@ else
 end
 end
 
-function ok = CheckDayEnd(DATA)
+function [ok, reason] = CheckDayEnd(DATA)
     ok = 0;
+    reason = 'OK';
     S = DATA.binoc{1};
-    if isfield(DATA,'Expts')  && isfield(S,'pe') && S.Pn(1) > 0
+    if ~isfield(DATA,'Expts')
+        reason = 'No Expts';
+    elseif ~isfield(S,'pe') || S.Pn(1) <= 0 
+        reason = 'Penetration not set';
+    else
         penlog = sprintf('/local/%s/pen%d.log',S.monkey,S.Pn(1));
         nsave = 0;
         for k = 1:length(DATA.Expts)
@@ -285,6 +290,8 @@ function ok = CheckDayEnd(DATA)
         d = dir(penlog);
         if length(d) ==1  && now-d.datenum < 0.5 && nsave > 0 %pen log made today
             ok = 1;
+        else
+            reason = 'No saved Expts or penlog is old';
         end
     end
     
@@ -2976,10 +2983,13 @@ function MenuHit(a,b, arg)
     DATA = GetDataFromFig(a);
     if strcmp(arg,'bothclose')
         outprintf(DATA,'\\quit\n');
-        ok = CheckDayEnd(DATA);
+        [ok, reason] = CheckDayEnd(DATA);
         if ok
             CopyLog(DATA,'online');
             CopyLog(DATA,'penlog');
+            CopyLog(DATA, 'bnc');
+        else
+            fprintf('Not Copying Recording Logs beacuse %s\n',reason);
         end
         ExitVerg(DATA);
     elseif strcmp(arg,'restartbinoc')
@@ -3039,9 +3049,15 @@ function CopyLog(DATA,type)
             bncfile = ['/local/' dfile '.bnc'];
             d = dir(bncfile);
             if length(d) == 1 && now - d.datenum < 1
-                [a,b,c,d] = GetMonkeyName(bncfile);
-                tgt = ['/b/data/'  d];
-                if confirm(sprintf('Copy %s to %s?',bncfile,tgt));
+                [a,b,c,x] = GetMonkeyName(bncfile);
+                tgt = ['/b/data/'  x];
+                if exist(tgt)
+                    a = dir(tgt);
+                    msg = sprintf('%s already exists: size %d\n %s size is %d\nCopy %s to %s?',tgt,a.size,bncfile,d.size.bncfile,tgt)
+                else
+                    msg = sprintf('Copy %s to %s?',bncfile,tgt)
+                end
+                if confirm(msg);
                     try
                         copyfile(bncfile,tgt);
                     end
@@ -3053,7 +3069,12 @@ function CopyLog(DATA,type)
         d = dir(logfile);
         if length(d) == 1 && now - d.datenum < 1
             tgt = [DATA.binoc{1}.netpref '/' dfile '.online'];
-            if confirm(sprintf('Copy %s to %s?',logfile,tgt));
+            if exist(tgt)
+                msg = sprintf('Overwrite %s with %s?',tgt,logfile);                
+            else
+                msg = sprintf('Copy %s to %s?',logfile,tgt);
+            end
+            if confirm(msg);
                 try
                     copyfile(logfile,tgt);
                 end

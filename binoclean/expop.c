@@ -4573,6 +4573,9 @@ int ReadCommand(char *s)
         sscanf(s,"%*s %d",&debug);
         sprintf(command_result,"debug %d",debug);
     }
+    else if(!strncasecmp(s,"onestim",6)){
+        RunExptStim(expt.st,expt.st->nframes, 0, -1);
+    }
     else if(!strncasecmp(s,"savemovie",8)){ // toggle on/off saving screen images
         if ((r = strchr(s,'=')) != NULL)
             strcpy(ImageOutDir,nonewline(&r[1]));
