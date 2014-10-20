@@ -4393,7 +4393,11 @@ int SaveImage(Stimulus *st, int type)
         y = videocapture[1];
         }
         for(i = 0; i < 2; i++){
-            sprintf(imname,"%s/%sim%d%c.pgm",ImageOutDir,expname,imstimid,eyec[i]);
+            if (testflags[SAVE_IMAGES] ==12){ //Used seed/id for name
+                sprintf(imname,"%s/%sse%did%d%c.pgm",ImageOutDir,expname,st->left->seed,expt.allstimid,eyec[i]);
+            }
+            else
+                sprintf(imname,"%s/%sim%d%c.pgm",ImageOutDir,expname,imstimid,eyec[i]);
             if((pix = GetStimImage(x, y, w, h,eyec[i])) != NULL){
                 if((ofd = fopen(imname,"w")) == NULL)
                     fprintf(stderr,"Can't write image to %s\n",imname);
@@ -4574,6 +4578,8 @@ int ReadCommand(char *s)
         sprintf(command_result,"debug %d",debug);
     }
     else if(!strncasecmp(s,"onestim",6)){
+        fprintf(stderr,"Running Seed %d\n",expt.st->left->baseseed);
+        testflags[SAVE_IMAGES] = 12;
         RunExptStim(expt.st,expt.st->nframes, 0, -1);
     }
     else if(!strncasecmp(s,"savemovie",8)){ // toggle on/off saving screen images
@@ -4582,7 +4588,11 @@ int ReadCommand(char *s)
 
         if (testflags[SAVE_IMAGES] != 10 || !strncasecmp(s,"savemovie+",10)){
             testflags[SAVE_IMAGES] = 10;
-            sprintf(buf,"./%spgm.idx",expname);
+            if (ImageOutDir != NULL){
+                sprintf(buf,"%s/%spgm.idx",ImageOutDir,expname);
+            }
+            else
+                sprintf(buf,"./%spgm.idx",expname);
             imidxfd = fopen(buf,"a");
         }
         else{

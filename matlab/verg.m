@@ -467,7 +467,7 @@ for j = 1:length(strs{1})
     if frombinoc == 0
         donestr = 1;
         oldsend = sendtobinoc;
-        if sum(strncmp(s,{'!mat=' 'timerperiod' 'read=' 'pause' 'user='},5))
+        if sum(strncmp(s,{'!mat=' 'timerperiod' 'read=' 'pause' 'user=' '!onestim' 'pausetimeout'},5))
             sendtobinoc = 0;
             codetype = -1;
             if strncmp(s,'!mat',4) && ~isempty(value)
@@ -483,6 +483,11 @@ for j = 1:length(strs{1})
                     DATA.matlabwasrun = 1;
                 end
                 SendCode(DATA, 'exp');
+            elseif strncmp(s,'!onestim',8) 
+                outprintf(DATA,'%s\n',s);
+                pause(0.2);
+                DATA = DrainBinocPipe(DATA);
+                return;
             elseif strncmp(s,'timerperiod',10) %verg special
                 DATA.timerperiod = sscanf(value,'%f');
                 sendtobinoc=0;
@@ -493,9 +498,13 @@ for j = 1:length(strs{1})
                 DATA.userstrings = {DATA.userstrings{:} estr};
                 sendtobinoc=oldsend;
                 codetype =-1; %dont send to binoc
+            elseif strncmp(s,'pausetimeout=',10)
+                DATA.pausetimeout = sscanf(value,'%d');
             elseif strncmp(s,'pause',5)
                 if ~isempty(value)
                     DATA.readpause = str2num(value);
+                elseif strncmp(s,'pauseforbinoc',9)
+                    DATA = DrainBinocPipe(DATA);
                 end
                 %       pause(DATA.readpause);
                 DATA.pausetime = now;
@@ -522,8 +531,6 @@ for j = 1:length(strs{1})
                 DATA.winpos{3} = sscanf(value,'%d');
             elseif strncmp(s,'penlogwinpos=',10)
                 DATA.winpos{4} = sscanf(value,'%d');
-            elseif strncmp(s,'pausetimeout=',10)
-                DATA.pausetimeout = sscanf(value,'%d');
             else
                 sendtobinoc = oldsend;
                 donestr = 0;
@@ -4051,7 +4058,7 @@ function CheckInput(a,b, fig, varargin)
     DATA = get(fig,'UserData');
     
     pauseread = getappdata(DATA.toplevel, 'PauseReading');
-    if pauseread
+    if pauseread && ~isempty(lastread)
         if DATA.verbose(1)
             fprintf('Paused...');
         end

@@ -5357,6 +5357,9 @@ int change_frame()
 //        SaveImage(expt.st,0); // RE eye only
         SaveImage(expt.st,1); //Both Eyes
     }
+    if (testflags[SAVE_IMAGES] ==12){ //save images just of stimulus
+        SaveImage(expt.st,5); //Both Eyes
+    }
     
     if((mode & FRAME_BITS) || blockallframes)
     {
