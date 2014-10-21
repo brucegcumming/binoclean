@@ -486,7 +486,7 @@ for j = 1:length(strs{1})
             elseif strncmp(s,'!onestim',8) 
                 outprintf(DATA,'%s\n',s);
                 pause(0.2);
-                DATA = DrainBinocPipe(DATA);
+                DATA = DrainBinocPipe(DATA,'waitforstim');
                 return;
             elseif strncmp(s,'timerperiod',10) %verg special
                 DATA.timerperiod = sscanf(value,'%f');
@@ -4100,8 +4100,21 @@ function CheckInput(a,b, fig, varargin)
     if DATA.verbose(1) > 1
     fprintf('Timer read over at %s\n',datestr(now));
     end
- function [DATA, fullstr] = DrainBinocPipe(DATA)
+    
+    
+ function [DATA, fullstr] = DrainBinocPipe(DATA, varargin)
 
+waitforstim = 0;
+ok = 1;
+     
+     j = 1; 
+     while j <= length(varargin)
+         if strncmpi(varargin{j},'waitforstim',7)
+             waitforstim = 1;
+             ok = 0;
+         end
+         j = j+1;
+     end
      fullstr = '';
      if isfield(DATA,'toplevel')
          pausestate = getappdata(DATA.toplevel,'PauseReading');
@@ -4115,8 +4128,12 @@ function CheckInput(a,b, fig, varargin)
      outprintf(DATA,'magic=%d\n',newmagic);
      outprintf(DATA,'magic=');
      ts = now;
-     while DATA.binoc{1}.magic ~= newmagic && mytoc(ts) < DATA.draintimeout
+     trialcount = DATA.nt;
+     while DATA.binoc{1}.magic ~= newmagic && mytoc(ts) < DATA.draintimeout && ok == 0
          [DATA, str] = ReadHttp(DATA);
+         if DATA.nt > trialcount
+             ok = 1;
+         end
          fullstr = [fullstr str];
          myprintf(DATA.frombinocfid,'Drain at %s\n',datestr(now));
      end

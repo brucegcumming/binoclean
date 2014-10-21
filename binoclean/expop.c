@@ -4580,7 +4580,14 @@ int ReadCommand(char *s)
     else if(!strncasecmp(s,"onestim",6)){
         fprintf(stderr,"Running Seed %d\n",expt.st->left->baseseed);
         testflags[SAVE_IMAGES] = 12;
-        RunExptStim(expt.st,expt.st->nframes, 0, -1);
+        if (inexptstim ==0){
+            inexptstim = 2;
+            RunExptStim(expt.st,expt.st->nframes, 0, -1);
+            inexptstim = 0;
+        }
+        else{
+            fprintf(stderr,"Cant runexpstim while in stim\n");
+        }
     }
     else if(!strncasecmp(s,"savemovie",8)){ // toggle on/off saving screen images
         if ((r = strchr(s,'=')) != NULL)
@@ -11346,7 +11353,8 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
         SetManualStim(0);
     }
 
-    inexptstim = 1;
+    if (inexptstim < 1)
+        inexptstim = 1;
     
     /*
      * Human Psych trials have different requirements - often have stimuli 
