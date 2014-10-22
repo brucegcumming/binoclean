@@ -883,8 +883,8 @@ char *bwtoggle_codes[] = {
 // SEND_READ_ONLY = not sent to verg or Spike2 - purely internal
 // must be internal to binoc. If verg needs to read code, set to SEND_VERG_ONLY
 ValueCode valstrings[] = {
-  {"xo","X offset",  XPOS, 1, 'N' ,2, SEND_EXPT, SAVE_ALWAYS},
-    {"yo","Y offset",  YPOS, 1, 'N' ,2, SEND_EXPT, SAVE_ALWAYS},
+  {"xo","X offset",  XPOS, 1, 'N' ,4, SEND_EXPT, SAVE_ALWAYS},
+    {"yo","Y offset",  YPOS, 1, 'N' ,4, SEND_EXPT, SAVE_ALWAYS},
   {"lo", "Log File", LOGFILE_CODE, 2, 'C' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
   {"st", "Stimulus", STIMULUS_TYPE_CODE, 1,'C' ,2, SEND_EXPT, SAVE_ALWAYS},
   {"sx",     "Sigma X",  SD_X, 1, 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
@@ -1203,7 +1203,7 @@ ValueCode valstrings[] = {
   {"Op",     "Orthog Offset",ORTHOG_POS, 513 , 'N' ,2, SEND_EXPLICIT, SAVE_NEVER},
   {"Pp",     "Paralell Offset",PARA_POS, 513 , 'N' ,2, SEND_EXPLICIT, SAVE_NEVER},
   {"lv",    "Linear Velocity expt",LINEAR_SPEED, 528 , 'N' ,2, SEND_EXPLICIT, SAVE_NEVER},
-  {"we",     "Weight",WEIGHT_TEXT, 128 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
+  {"we",     "Weight",WEIGHT_TEXT, 128 , 'N' ,2, SEND_EXPLICIT, SAVE_NEVER}, //don't save weight to setup files. Goes to log
   {"hr",     "Head Restrained",RESTRAIN_TEXT, 128 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
   {"r0",     "Rds x None back",RDSBNONE, 528 , 'N' ,2, SEND_EXPLICIT, SAVE_NEVER},
   {"Jt",     "jump Type",JUMPTYPE, 1 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},

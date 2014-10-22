@@ -4406,6 +4406,8 @@ int SaveImage(Stimulus *st, int type)
                     fwrite(pix, sizeof(GLubyte), w*h, ofd);
                     done++;
                     fclose(ofd);
+                    if (seroutfile)
+                        fprintf(seroutfile,"Seed %d,%d written to %s (dx%.3f S%d)\n",st->left->baseseed,st->left->seed,imname,st->disp,stimstate);
                     fprintf(stderr,"Seed %d,%d written to %s (dx%.3f S%d)\n",st->left->baseseed,st->left->seed,imname,st->disp,stimstate);
                 }
             }
@@ -11419,7 +11421,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
                 }
                 else if(testflags[SAVE_IMAGES] == 2 && stimno+1 >= expt.nstim[5] * expt.nreps){
                     if(finished == 1){ // last frame
-                        SaveImage(expt.st,3); //save both types - max info
+                        SaveImage(expt.st,7); //save both types - max info
                         testflags[SAVE_IMAGES] = 0;
                     }
                     rc = framesdone;

@@ -1482,6 +1482,8 @@ function [DATA, details] = ReadExptLines(DATA, strs, src)
 
 function vergwarning(s, varargin)
 
+    persistent lastmsg;
+    persistent lastcalltime;
 newwindow = 0;
 toconsole = 1;
     j = 1;
@@ -1492,6 +1494,12 @@ toconsole = 1;
         j = j+1;
     end
    OldPos = [];
+   ts = now;
+   
+   if strncmp(s,lastmsg,10) && ts - lastcalltime < 1./(24 * 60 * 60)
+       lastcalltime = ts; 
+       return;
+   end
    beep;
    CreateStruct.Interpreter = 'tex';
    if newwindow == 0
@@ -1514,6 +1522,9 @@ toconsole = 1;
         fprintf('WARNING: %s at %s\n',s,datestr(now));
        end
    end
+   
+   lastmsg = 2;
+   lastcalltime = ts;
    
 function line = CheckLineForBinoc(tline)
     if strncmp(tline,'op',2)
@@ -2062,6 +2073,7 @@ DATA.Coil.phase= [4 4 4 4];
 DATA.Coil.offset= [0 0 0 0];
 DATA.Coil.so = [0 0 0 0];
 DATA.Coil.CriticalWeight = 0;
+DATA.Coil.Weight = 0;
 DATA.layoutfile = '/local/verg.layout';
 DATA.exptnextline = 0;
 DATA.exptstoppedbyuser = 0;
@@ -2153,7 +2165,9 @@ DATA.badnames = {'2a' '4a' '72'};
 DATA.badreplacenames = {'afc' 'fc4' 'gone'};
 
 DATA.comcodes = [];
-DATA.windownames = {'vergwindow' 'optionwindow' 'softoffwindow'  'codelistwindow' 'statuswindow' 'logwindow' 'helpwindow' 'sequencewindow' 'penlogwindow' 'electrodewindow' 'commentwindow' 'showpen'};
+
+%window names must be at least 8 chars
+DATA.windownames = {'vergwindow' 'optionwindow' 'softoffwindow'  'codelistwindow' 'statuswindow' 'logwindow' 'helpwindow' 'sequencewindow' 'penlogwindow' 'electrodewindow' 'commentwindow' 'showpenwin'};
 DATA.winpos{1} = [10 scrsz(4)-480 300 450];
 DATA.winpos{2} = [10 scrsz(4)-680 400 50];  %options popup
 DATA.winpos{3} = [600 scrsz(4)-100 600 150]; %softoff
@@ -2837,6 +2851,7 @@ function DATA = InitInterface(DATA)
         period = 1;
     end
     DATA.timerobj = timer('timerfcn',{@CheckInput, DATA.toplevel},'Period',period,'executionmode','fixedspacing');
+    setappdata(DATA.toplevel,'PauseReading',0);
     
     set(DATA.toplevel,'UserData',DATA);
     start(DATA.timerobj);
@@ -5691,10 +5706,18 @@ function DATA = ReadLogFile(DATA, name)
     end
     s = textscan(fid,'%s','delimiter','\n');
     s = s{1};
-    for j = length(s):-1:1
+    gotwt = 0;
+    for j = 1:length(s)
+        e = strfind(s{j},'=');
+        if ~isempty(e)
+            value = s{j}(e+1:end);
+            code = s{j}(1:e-1);
+        else 
+            code = [];
+        end
         if strncmp(s{j},'Saved',5)
-            j = 0;
-            break;
+            %used to read back to last save, but that assumes it was all
+            %there
         elseif strncmp(s{j},'Gain',4)
             DATA.Coil.gain = sscanf(s{j}(6:end),'%f');
         elseif strncmp(s{j},'Offset',6)
@@ -5707,13 +5730,21 @@ function DATA = ReadLogFile(DATA, name)
             DATA.Coil.so = sscanf(s{j}(4:end),'%f');
         elseif strncmp(s{j},'we',2)
             we = sscanf(s{j}(3:end),'%f');
-            DATA.binoc{1}.we = we(1);
-            if length(we) > 1
+            if we(1) > 0
+                gotwt = gotwt+1;
+                DATA.binoc{1}.we = we(1);
+            end
+            if length(we) > 1 && we(2) > 0
                 DATA.Coil.CriticalWeight = we(2);
             end
+        elseif sum(strncmp(s{j},{'MicroDrive'},6)) && ~isempty(code)
+            DATA.Coil.Xtra.(code) = value;
         end
     end
     fclose(fid);
+    if gotwt
+        SendCode(DATA,'we');
+    end
     
 function MonkeyLogPopup(a,b, type, channel)
   DATA = GetDataFromFig(a);
@@ -5740,6 +5771,9 @@ function MonkeyLogPopup(a,b, type, channel)
       SendCode(DATA,'so');
   elseif strncmp(type,'CriticalWeight',8)
       DATA.Coil.CriticalWeight = value;
+  elseif strncmp(type,'Weight',5)
+      DATA.binoc{1}.we = value;
+      DATA.Coil.Weight = value;
   elseif strncmp(type,'phase',5)
       DATA.Coil.phase(channel) = value;
   elseif strncmp(type,'Gain',4)
@@ -5756,8 +5790,8 @@ function MonkeyLogPopup(a,b, type, channel)
       fprintf(fid,'Gain%s\n',sprintf(' %.2f',DATA.Coil.gain));
       fprintf(fid,'Offset%s\n',sprintf(' %.2f',DATA.Coil.offset));
       fprintf(fid,'Phase%s\n',sprintf(' %.2f',DATA.Coil.phase));
-      if strcmp(type,'savelog')
-          fprintf(fid,'we%.2f %.2f\n',DATA.binoc{1}.we,DATA.Coil.CriticalWeight);
+      if strcmp(type,'savelog') % only save weight if it has been added in GUI.
+          fprintf(fid,'we%.2f %.2f\n',DATA.Coil.Weight,DATA.Coil.CriticalWeight);
       end
       fclose(fid);
       fprintf('Saved to %s\n',DATA.binoc{1}.lo);
@@ -5777,9 +5811,14 @@ end
 cntrl_box = figure('Position', DATA.winpos{6},...
         'NumberTitle', 'off', 'Tag',DATA.windownames{6},'Name','monkeylog','menubar','none');
     set(cntrl_box,'UserData',DATA.toplevel);
-        set(cntrl_box,'DefaultUIControlFontSize',DATA.font.FontSize);
-            set(cntrl_box,'DefaultUIControlFontName',DATA.font.FontName);
-nr = 7;
+    set(cntrl_box,'DefaultUIControlFontSize',DATA.font.FontSize);
+    set(cntrl_box,'DefaultUIControlFontName',DATA.font.FontName);
+    
+    if isfield(DATA.Coil,'Xtra')        
+        nr = 8;
+    else
+        nr = 7;
+    end
 nc=6;
 
 bp = [0.01 0.99-1/nr .99/nc 1./nr];
@@ -5903,8 +5942,17 @@ bp(2) = bp(2)- 1./nr;
 bp(1) = 0.01;
     it = uicontrol(gcf,'style','text','string','Weight', ...
     'units', 'norm', 'position',bp,'value',1);
+
+%Dont put current weight variarble in here - user should add new one
 bp(1) = bp(1)+bp(3)+0.01;
-    uicontrol(gcf,'style','edit','string',num2str(DATA.binoc{1}.we(1)), ...
+if DATA.Coil.Weight > 0
+    str = sprintf('%.2f',DATA.Coil.Weight);    
+elseif isfield(DATA.binoc{1},'we')
+    str = sprintf('(%.1f)',DATA.binoc{1}.we);
+else
+    str = '0.00';
+end
+    uicontrol(gcf,'style','edit','string',str, ...
         'Callback', {@MonkeyLogPopup, 'Weight'},'Tag','Weight',...
         'units', 'norm', 'position',bp);
 
@@ -5931,6 +5979,20 @@ bp(1) = bp(1)+bp(3)+0.01;
     uicontrol(gcf,'style','pushbutton','string','Use Current Softoff', ...
         'Callback', {@MonkeyLogPopup, 'getsoft'} ,...
         'units', 'norm', 'position',bp,'value',1);
+if isfield(DATA.Coil,'Xtra')
+    bp(2) = bp(2)- 1./nr;
+    f = fields(DATA.Coil.Xtra);
+    s = '';
+    for j = 1:length(f)
+        s = sprintf('%s %s=%s',s,f{j},DATA.Coil.Xtra.(f{j}));
+    end
+    bp(1) = 0.01;
+    bp(3) = 0.99;
+    it = uicontrol(gcf,'style','text','string',s, ...
+    'units', 'norm', 'position',bp,'value',1);bp(1) = bp(1)+bp(3)+0.01;
+
+    
+end
     
 set(gcf,'CloseRequestFcn',{@CloseWindow, 6});
 

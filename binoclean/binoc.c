@@ -11726,6 +11726,10 @@ void expt_over(int flag)
      * Set things back to how they were befre the experiment
      * NB stimvals XPOS,YPOS can change, so use expt.vals for these.
      */
+    if(netoutfile){
+        fprintf(seroutfile,"Resetting Expt Stim\n");
+    }
+
     expt.st->preloaded = 0;
     expt.st->next->preloaded = 0;
     if(expt.stimtype == STIM_GRATING2)
@@ -11913,7 +11917,7 @@ void Stim2PsychFile(int state)
         fprintf(psychfile," %s=%.0f usenewdir=%d %s %s %s x=0\n",serial_strings[STIMULUS_MODE],GetProperty(&expt,expt.st,STIMULUS_MODE),usenewdirs,StimString(BACK_CORRELATION),StimString(BACK_HEIGHT),StimString(BACK_WIDTH));
         
         if(expt.st->next && expt.st->next->type != STIM_NONE){
-            fprintf(psychfile,"R7 %s=%.2f %s=%.2f %s=%.2f",
+            fprintf(psychfile,"R7 back%s=%.2f back%s=%.2f %s=%.2f",
                     serial_strings[XPOS], GetProperty(&expt,expt.st->next,XPOS),
                     serial_strings[YPOS], GetProperty(&expt,expt.st->next,YPOS),
                     serial_strings[REWARD_BIAS],GetProperty(&expt,expt.st,REWARD_BIAS),
@@ -11942,7 +11946,8 @@ void Stim2PsychFile(int state)
 
         r = binocTimeString();
         fprintf(psychfile,"R7 binoclean=%s time=%s %s", s, &r[1],StimString(OPTION_CODE));
-        j = 3;
+        fprintf(psychfile," %s",StimString(UFF_PREFIX));
+        j = 4;
         for (i = 0; i < NTRACKCODES; i++){
             if(trackcodes[i] >= 0){
                 if(j%12 ==0)
