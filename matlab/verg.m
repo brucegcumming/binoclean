@@ -2786,6 +2786,8 @@ function DATA = InitInterface(DATA)
     uimenu(hm,'Label','Pause Expt','Callback',{@SendStr, '\pauseexpt'});
     uimenu(hm,'Label','Center stimulus','Callback',{@SendStr, 'centerstim'});
     uimenu(hm,'Label','Clear Drawn Lines','Callback',{@SendStr, '!clearlines'});
+    AddMarkMenu(uimenu(hm,'Label','Mark'));
+    
     uimenu(hm,'Label','BlackScreen (shake)','Callback',{@MenuHit, 'setshake'},'accelerator','B');
     uimenu(hm,'Label','pipelog','Callback',{@MenuHit, 'pipelog'});
     uimenu(hm,'Label','Update Network Psych Files','Callback',{@MenuHit, 'updatepsych'});
@@ -2800,6 +2802,7 @@ function DATA = InitInterface(DATA)
     subm = uimenu(cntrl_box,'Label','&Windows');
     uimenu(subm,'Label','&Options','Callback',{@OptionPopup},'accelerator','O');
     uimenu(subm,'Label','Penetration Log','Callback',{@PenLogPopup});
+    uimenu(subm,'Label','Current Pen Log Contents','Callback',{@ShowPenLog, 'popup'});
     uimenu(subm,'Label','Monkey Log','Callback',{@MonkeyLogPopup, 'popup'});
     uimenu(subm,'Label','List Codes','Callback',{@CodesPopup, 'popup'},'accelerator','L');
     uimenu(subm,'Label','Status Lines','Callback',{@StatusPopup, 'popup'});
@@ -4427,8 +4430,9 @@ if go && DATA.newbinoc ~= 2
 end
      
 function OpenUffFile(a,b, type)
-        DATA = GetDataFromFig(a);
-        outprintf(DATA,'\\openuff\n');
+    DATA = GetDataFromFig(a);
+    outprintf(DATA,'\\openuff\n');
+    outprintf(DATA.cmdfile,'#File %s\n',GetValue(DATA,'uf'));
 
 
 function Expt = ExptSummary(DATA)
@@ -4809,10 +4813,7 @@ cntrl_box = figure('Position', DATA.winpos{9},...
     uicontrol(gcf,'style','pushbutton','string','Plot', ...
         'units', 'norm', 'position',bp,'value',1,'Tag','PlotPen','callback',@OpenPenLog);
     hm = uimenu(gcf,'label','Mark');
-    uimenu(hm,'label','Entered Brain','callback',{@MarkComment 'Entered Brain'});
-    uimenu(hm,'label','Entered GM','callback',{@MarkComment 'GM'});
-    uimenu(hm,'label','Entered WM','callback',{@MarkComment 'WM'});
-    uimenu(hm,'label','Penetration Missed Lunate/Calcarine','callback',{@MarkComment 'MissedDeepSulci'});
+    AddMarkMenu(hm);
     hm = uimenu(gcf,'label','Set');
     uimenu(hm,'label','New Penetration','tag','NewPen','callback',{@MenuBarGui});
     uimenu(hm,'label','Show Penetration Log','tag','ShowPen','callback',{@ShowPenLog, 'popup'});
@@ -4825,7 +4826,13 @@ function MarkComment(a,b,txt);
   AddComment(DATA,txt, 'penmenu');
   outprintf(DATA,'cm=%s\n',txt);
         
-
+function AddMarkMenu(hm)
+    uimenu(hm,'label','Head Restrained','callback',{@MarkComment 'Head Restrained'});
+    uimenu(hm,'label','Entered Brain','callback',{@MarkComment 'Entered Brain'});
+    uimenu(hm,'label','Entered GM','callback',{@MarkComment 'GM'});
+    uimenu(hm,'label','Entered WM','callback',{@MarkComment 'WM'});
+    uimenu(hm,'label','Penetration Missed Lunate/Calcarine','callback',{@MarkComment 'MissedDeepSulci'});
+        
 function OptionPopup(a,b)
   DATA = GetDataFromFig(a);
   cntrl_box = findobj('Tag',DATA.windownames{2},'type','figure');
@@ -6826,7 +6833,7 @@ a =  get(DATA.txtrec,'string');
 n = size(a,1);
 if strcmp(code,'px')
     pixdeg = atan(DATA.binoc{1}.px/DATA.binoc{1}.vd) * 180/pi;
-    txt = [txt sprintf(' (%.3f deg)',pixdeg)];
+    txt = [txt sprintf(' (%.5f deg)',pixdeg)];
 end
 if length(str)
     txt = [txt '(' str ')  ' datestr(now,'HH:MM')];
@@ -6851,6 +6858,27 @@ SetGui(DATA);
 if paused == 0 %wasn't paused at start
     paused = PauseRead(DATA,0);
 end
+
+
+function ts = FindSessionStart(DATA)
+    cmdfile = ['/local/' DATA.binoc{1}.monkey '/binoccmdhistory'];
+    txt = scanlines(cmdfile);
+    s = datestr(now,'dd-mmm-yyyy');
+    id = find(CellToMat(strfind(txt,s)));
+    ts = 0;
+    j = 1;
+    while ts == 0 && j < length(id)
+        d = strfind(txt{id(j)},s); 
+        if sum(strncmp(txt{id(j)},{'# Run Hit'},6))
+            ts = datenum(txt{id(j)}(d:end));
+        end
+        j = j+1;
+    end
+    
+     txt = scanlines(['/local/' DATA.binoc{1}.monkey '/pen' num2str(DATA.binoc{1}.Pn) '.log']);
+     id = find(CellToMat(strfind(txt,'Entered Brain')));
+     id = find(CellToMat(strfind(txt,'Head Restrained')));
+              
 
 function DATA = AddTextToGui(DATA, txt, varargin)
     if ~isfield(DATA,'txtrec') || ~ishandle(DATA.txtrec)

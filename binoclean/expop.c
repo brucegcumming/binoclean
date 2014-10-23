@@ -120,6 +120,8 @@ extern int rewardall;
 extern int freeToGo;
 extern int lastbutton;
 extern float monkeyhour;
+extern FILE *todaylog;
+
 double fakestim =0;
 
 int usenewdirs=0;
@@ -2569,6 +2571,10 @@ int OpenPenetrationLog(int pen){
     SendToGui(PENNUMCOUNTER);
     SendToGui(PENXPOS);
     SendToGui(PENYPOS);
+    if (pen > 0){ // a real penetraion
+        AddTrackCode(serial_strings[ELECTRODE_DEPTH]);
+    }
+    
     return(0);
 }
 
@@ -2693,6 +2699,24 @@ int OpenNetworkFile(Expt expt)
 }
 
 
+char *datestr()
+{
+    time_t tval,nowtime;
+    char *t;
+    static char buf[BUFSIZ];
+    
+    time(&nowtime);
+    t= ctime(&nowtime);
+    t[10] = 0;
+    t[24] = 0;
+    t[7] = 0;
+    if(t[8]==' ')
+        t[8] = '0';
+    sprintf(buf,"%s%s%s",&t[8],&t[4],&t[20]);
+
+    return(buf);
+}
+
 int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
 {
     int chan,pen,i,duplicate = 0,ok = 1;
@@ -2764,6 +2788,10 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
                     acknowledge("Can't chdir to /local either");
                 }
             }
+            sprintf(buf,"%s/logs/%s%s",expt.cwd,expt.monkey,datestr());
+            if (todaylog != NULL)
+                fclose(todaylog);
+            todaylog = fopen(buf,"a");
             
             break;
             
@@ -4448,10 +4476,11 @@ int SaveImage(Stimulus *st, int type)
 int ReadCommand(char *s)
 {
     int retval = 0, line, start, stop,i,ival,nloops;
-    char *r,buf[BUFSIZ],command_result[BUFSIZ],c;
+    char *r,buf[BUFSIZ],command_result[BUFSIZ],c,*iseq;
     char imname[BUFSIZ];
     float val;
     
+    iseq = strchr(s,'=');
     sprintf(command_result,"");
     if(!strncasecmp(s,"quit",4))
         quit_binoc();
@@ -4642,6 +4671,12 @@ int ReadCommand(char *s)
             SetStepperDepth(1000*val);
         }
     }
+    else if(!strncasecmp(s,"trackcode",2)){
+        if(iseq){
+            AddTrackCode(iseq);
+        }
+    }
+
     else if(!strncasecmp(s,"openpen",7))
     {
         OpenPenetrationLog(expt.newpen);
@@ -7700,29 +7735,9 @@ void InitExpt()
     }
     if(psychfile){
         if(option2flag & PSYCHOPHYSICS_BIT)
-            Stim2PsychFile(START_EXPT);
+            Stim2PsychFile(START_EXPT,psychfile);
         else
-            Stim2PsychFile(START_EXPT+100);
-        gettimeofday(&now,NULL);
-        fprintf(psychfile,"R4 %s=%.2f %s=%.2f sn=0",
-                serial_strings[COVARY_XPOS],afc_s.ccvar, 
-                serial_strings[TARGET_RATIO],expt.vals[TARGET_RATIO]);
-        tval = RunTime();
-        ts = binocTimeString();
-        ts[3] = '.';
-        ts[6] = 0;
-        fprintf(psychfile," %ld %s %d",now.tv_sec,ts,expt.nstim[6]);
-        fprintf(psychfile," %s=%.2f %s=%.2f x=0 x=0 x=0 x=0\n",serial_strings[XPOS],GetProperty(&expt,expt.st,XPOS),serial_strings[YPOS],GetProperty(&expt,expt.st,YPOS));
-        fprintf(psychfile,"R4 %s=NaN %s=NaN %s=NaN",
-                serial_strings[expt.mode],
-                serial_strings[expt.type2],
-                serial_strings[expt.type3]);
-        tval = RunTime();
-        ts = binocTimeString();
-        ts[3] = '.';
-        ts[6] = 0;
-        fprintf(psychfile," %ld %s %d",now.tv_sec,ts,expt.nstim[6]);
-        fprintf(psychfile," %s=%.2f %s=%.2f x=0 x=0 x=0 x=0\n",serial_strings[XPOS],GetProperty(&expt,expt.st,XPOS),serial_strings[YPOS],GetProperty(&expt,expt.st,YPOS));
+            Stim2PsychFile(START_EXPT+100, psychfile);
     }
     if(psychfilelog){
         tstart = time(NULL);
@@ -14908,6 +14923,9 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             if(penlog){
                 fprintf(penlog,"%s %s\n",binocTimeString(),line);
                 fflush(penlog);
+            }
+            if (todaylog != NULL && strncmp(line,"cm=NotSet",9)){
+                fprintf(todaylog,"R7 %s bt=%.2f\n",line,timediff(&now,&sessiontime));
             }
             break;
         case EARLY_RWTIME:
