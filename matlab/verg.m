@@ -504,6 +504,8 @@ for j = 1:length(strs{1})
                 DATA.userstrings = {DATA.userstrings{:} estr};
                 sendtobinoc=oldsend;
                 codetype =-1; %dont send to binoc
+            elseif strncmp(s,'pausetimeout=',10)
+                DATA.pausetimeout = sscanf(value,'%d');
             elseif strncmp(s,'pause',5)
                 if ~isempty(value)
                     DATA.readpause = str2num(value);
@@ -533,8 +535,6 @@ for j = 1:length(strs{1})
                 DATA.winpos{3} = sscanf(value,'%d');
             elseif strncmp(s,'penlogwinpos=',10)
                 DATA.winpos{4} = sscanf(value,'%d');
-            elseif strncmp(s,'pausetimeout=',10)
-                DATA.pausetimeout = sscanf(value,'%d');
             else
                 sendtobinoc = oldsend;
                 donestr = 0;
@@ -567,6 +567,7 @@ for j = 1:length(strs{1})
         tline = CheckLineForBinoc(strs{1}{j});
         outprintf(DATA,'%s\n',tline);
     end
+
 
     
     gotstr = 1; %default. set to 0 at end of elseifs
@@ -704,6 +705,8 @@ for j = 1:length(strs{1})
             if DATA.optionflags.do %only do this when reopen pipes
                 %                outprintf(DATA,'\\go\n');
             end
+        elseif strncmp(s,'SENDING',7)
+            codetype = -1;
             
         elseif strncmp(s,'confirm',7)
             yn = questdlg(s(8:end),'Update Check');
@@ -1304,7 +1307,11 @@ for j = 1:length(strs{1})
             end
         end
     end
+    if frombinoc && ~isempty(s) && codetype >= 0
+            DATA.lastline = s;
+    end
 end
+
 dur = mytoc(ts);
 if dur > 1
     fprintf('Reading %d lines took %.2f%s\n',length(strs{1}),dur,pstr);
@@ -2281,6 +2288,7 @@ function [strs, Keys] = ReadHelp(DATA)
             code = code(2:end);
             Keys.options.(code) = str;
             lastcode = code;
+        elseif code(1) == '!'  %command help
         elseif txt{j}(1) == '#' 
             if ~isempty(lastcode)
                 if isfield(Keys.extras,lastcode)
@@ -6675,6 +6683,8 @@ if showbinoc
        else
            if showbinoc ==2
                txt = [code '=' num2str(DATA.binoc{DATA.currentstim}.(code)')];
+           elseif strncmp([code '='],DATA.lastline,length(code)+1)
+               txt = ['?' DATA.lastline];
            else
                txt = ['?' txt '?' num2str(DATA.binoc{DATA.currentstim}.(code)')];
            end

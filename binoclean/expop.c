@@ -2971,8 +2971,10 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
             expt.backprefix = myscopy(expt.backprefix,s);
             break;
         case COMMAND_FILE:
-            expt.cmdinfile = myscopy(expt.cmdinfile,s);
-            nonewline(expt.cmdinfile);
+            if (strcmp(s,"NotSet")){
+                expt.cmdinfile = myscopy(expt.cmdinfile,s);
+                nonewline(expt.cmdinfile);
+            }
             break;
         case PSYCHMON_VARS:
             expt.strings[flag] = myscopy(expt.strings[flag],s);
@@ -4343,7 +4345,7 @@ int SaveImage(Stimulus *st, int type)
     int x,y,w,h,i=0,done = 0,n = 0;
     static int imstimid = 0,pcode = 5;
     char eyec[3] = "LR";
-    static int ndone = 0;
+    static int ndone = 1;
     
     Stimulus *rst = st;
     
@@ -4370,13 +4372,20 @@ int SaveImage(Stimulus *st, int type)
     else
         pcode = 0;
     if (testflags[SAVE_IMAGES] == 11){
-            sprintf(imname,"%s/%s.i%d.rds",ImageOutDir,expname,ndone);
+            sprintf(imname,"%s/%s.i%d.rds",ImageOutDir,expname,st->left->imagei);
             if((ofd = fopen(imname,"w")) != NULL){
                 n = SaveRdsTxt(st, ofd);
                 fclose(ofd);
             }
         ndone++;
-        return(done);
+        type = 5;
+//        return(done);
+    }
+//use imageindex to name images so that user can control this if required
+    if(st->type != STIM_IMAGE){
+        imstimid = st->left->imagei;        
+        st->left->imagei++;
+        st->right->imagei = st->left->imagei;
     }
     
     if (type == 0){
@@ -4412,7 +4421,7 @@ int SaveImage(Stimulus *st, int type)
                 if((ofd = fopen(imname,"w")) == NULL)
                     fprintf(stderr,"Can't write image to %s\n",imname);
                 else{
-                    fprintf(ofd,"P5 %d %d 255\n",w,h);
+                    fprintf(ofd,"P5\n#se=%d\n%d %d 255\n",st->left->baseseed,w,h);
                     fwrite(pix, sizeof(GLubyte), w*h, ofd);
                     done++;
                     fclose(ofd);
@@ -4422,7 +4431,7 @@ int SaveImage(Stimulus *st, int type)
         }
         n = st->left->ndots;
     }
-    if(type & (1<<1) || testflags[SAVE_IMAGES] ==11){
+    if(type & (1<<1)){
         if(imoutfd == NULL){
             sprintf(imname,"%s/%s.im.txt",ImageOutDir,expname);
             imoutfd = fopen(imname,"w");
@@ -6561,6 +6570,15 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
             sprintf(cbuf,"%s=",serial_strings[code]);
             for (i = 0; i < st->left->nfreqs; i++){
                 sprintf(temp,"%.3f ",st->freqs[i]);
+                strcat(cbuf,temp);
+            }
+            strcat(cbuf,"\n\0");
+            break;
+        case DOT_DENSITY:
+            val = StimulusProperty(st,code);
+            sprintf(cbuf,"%s=%.*f",serial_strings[code],nfplaces[code],val);
+            if (flag == TO_GUI){
+                sprintf(temp," (%d dots)",st->left->ndots);
                 strcat(cbuf,temp);
             }
             strcat(cbuf,"\n\0");

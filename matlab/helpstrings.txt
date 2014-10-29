@@ -455,3 +455,4 @@ yo vertical pos of stimulus (degrees)
 zf Disparity applied to fixation marker to require vergence. 
 Yp For log files. #Penetration Log
 yR y pos for R eye
+!saveim Save a .pgm image of the current stimulus

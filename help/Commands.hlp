@@ -9,4 +9,5 @@ Cntrl-Alt-+ decrements the stimulus sequence
 Special Commands (all start with \):
 
 \quit exits
-\saveim  saves an image of the last frame in the expt.
+!saveim  saves an image of the last frame in the expt.
+!saveim2

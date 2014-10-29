@@ -255,7 +255,7 @@ Stimulus *ReadRds(char *name, int frame)
 {
     FILE *fd;
     char eye;
-    int x,y,i,ndots = 100;
+    int x,y,c,i,ndots = 100,got,seed;
     Stimulus *st;
     Substim *left,*right;
     float w,h;
@@ -268,21 +268,46 @@ Stimulus *ReadRds(char *name, int frame)
         st = rdsstims[frame];
     
     if((fd = fopen(name,"r")) != NULL){
-        fscanf(fd,"w%fh%f:%d%c",&w,&h,&ndots,&eye);
+        st->left->lum[0] = 0;
+        st->left->lum[1] = 1;
+        st->right->lum[0] = 0;
+        st->right->lum[1] = 1;
+        i = fscanf(fd,"%cw%f,h%fse%d:%d,",&eye,&w,&h,&seed,&ndots);
+        st->left->baseseed = seed;
         init_rds(st,st->left,-ndots);
         init_rds(st,st->right,-ndots);
         for (i = 0; i < ndots; i++){
-            fscanf(fd,"%3x%3x",&x,&y);
-            st->left->xpos[i] = x;
-            st->left->ypos[i] = y;
-            st->left->iim[i] = BLACKMODE;
+            got  =fscanf(fd,"%3x%3x%1x",&x,&y,&c);
+            st->left->xpos[i] = (x * (2*w)/0xfff)-w;
+            st->left->ypos[i] = (y * (2*h)/0xfff)-h;
+            if (c == 0){
+                st->left->iim[i] = 0;
+            }
+            else if(c == 1)
+                st->left->iim[i] = (LEFTMODE | BLACKMODE);
+            else if (c ==15)
+                st->left->iim[i] = (LEFTMODE | WHITEMODE);
+            
         }
-        fscanf(fd,"w%fh%f:%d%c",&w,&h,&ndots,&eye);
+        fscanf(fd,"%c",&eye); //get newline
+        i = fscanf(fd,"%cw%f,h%fse%d:%d,",&eye,&w,&h,&seed,&ndots);
+        st->right->baseseed = seed;
         for (i = 0; i < ndots; i++){
-            fscanf(fd,"%3x%3x",&x,&y);
+            fscanf(fd,"%3x%3x%1x",&x,&y,&c);
+            st->right->xpos[i] = (x * (2*w)/0xfff)-w;
+            st->right->ypos[i] = (y * (2*h)/0xfff)-h;
+            if (c ==0)
+                st->right->iim[i] = 0;
+            else if (c ==1)
+                st->right->iim[i] = (BLACKMODE | RIGHTMODE);
+            else if (c ==15)
+                st->right->iim[i] = (WHITEMODE | RIGHTMODE);
         }
     }
-    
+    else{
+        fprintf(stderr,"Cant Read RDS %d\n",name);
+    }
+    return(st);
 }
 
 
@@ -290,15 +315,21 @@ int PreloadRds(void)
 {
     int i,nframes;
     char name[BUFSIZ * 10];
+    struct timeval ta,tb;
+    Stimulus *st;
+    
     FILE *fd;
     
-    nframes = expt.st->nframes;
+    nframes = expt.st->nframes+1;
     
-    
+    gettimeofday(&ta,NULL);
     for (i = 0; i < nframes; i++){
         sprintf(name,"%s%d.rds",expt.st->imprefix, i+expt.st->left->imagei);
-        ReadRds(name,i);
+        st = ReadRds(name,i);
+        st->left->imagei = expt.st->left->imagei+i;
     }
+    gettimeofday(&tb,NULL);
+    fprintf(stderr,"preload took %.3f\n",timediff(&ta,&tb));
     expt.st->preloaded = 1;
 }
 
@@ -1480,8 +1511,10 @@ void paint_rds(Stimulus *st, int mode)
    */
     
     if (st->preload & st->preloaded){
-        if (rdsstims[st->framectr] != NULL)
+        if (rdsstims[st->framectr] != NULL){
             st = rdsstims[st->framectr];
+            CopyStim(st, expt.st); //cops pos, ori
+        }
         else
             fprintf(stderr,"No RDS loaded for frame %d\n",st->framectr);
     }
@@ -1490,6 +1523,7 @@ void paint_rds(Stimulus *st, int mode)
   bcolor[0] = bcolor[1] = bcolor[2] = 0;
   if(mode == LEFTMODE)
     {
+        sst = st->left;
       xmv = pos->xy[0]+st->disp;
       glTranslatef(xmv,pos->xy[1]+st->vdisp,0);
       vcolor[0] = sst->lum[0];
@@ -1876,7 +1910,7 @@ int SaveRdsTxt(Stimulus *st, FILE *fd)
     int ndots[2],sign = 1;
     double pixmul;
     static int nsaved = 0;
-    int rhbyte,rvbyte, lhbyte,lvbyte;
+    int rhbyte,rvbyte, lhbyte,lvbyte,cbyte;
     
     sst = st->left;
     p = sst->iim;
@@ -1887,25 +1921,28 @@ int SaveRdsTxt(Stimulus *st, FILE *fd)
     h = sst->pos.radius[1];
 
     i = 0;
-    fprintf(fd,"w%.4f,h%.4f:",w,h);
-    fprintf(fd,"%dL",sst->ndots);
+    fprintf(fd,"Lw%.4f,h%.4fse%d:",w,h,st->left->baseseed);
+    fprintf(fd,"%d,",sst->ndots);
     for(;p < end; p++,x++,y++)
     {
         if(*p & BLACKMODE)
             colors[i] = 0;
         else if(*p & WHITEMODE)
             colors[i] = 1;
-        if(*p & RIGHTMODE){
-            rhbyte = 2048+rint(2048 * (*x+offset[0])/w);
-            rvbyte = 2048+rint(2048 * (*y+offset[1])/h);
+        if(*p & LEFTMODE){
+            rhbyte = 2048+floor(2048 * (*x)/w);
+            rvbyte = 2048+floor(2048 * (*y)/h);
+            cbyte = 1 + floor(colors[i] * 14);
         }
         else{
             rhbyte = 0;
             rvbyte = 0;
+            cbyte = 0;
         }
-        fprintf(fd,"%03x%03x",rvbyte,rhbyte);
+        fprintf(fd,"%03x%03x%01x",rhbyte,rvbyte,cbyte);
     }
-    fprintf(fd,"\n%dR",sst->ndots);
+    fprintf(fd,"\nRw%.4f,h%.4fse%d:",w,h,st->right->baseseed);
+    fprintf(fd,"%d,",sst->ndots);
     sst = st->right;
     p = sst->iim;
     x = sst->xpos;
@@ -1919,14 +1956,16 @@ int SaveRdsTxt(Stimulus *st, FILE *fd)
         else if(*p & WHITEMODE)
             colors[i] = 1;
         if(*p & RIGHTMODE){
-            rhbyte = rint(4096 * (*x+offset[0])/w);
-            rvbyte = rint(4096 * (*y+offset[1])/h);
+            rhbyte = 2048+floor(2048* (*x)/w);
+            rvbyte = 2048+floor(2048 * (*y)/h);
+            cbyte = 1 + floor(colors[i] * 14);
         }
         else{
             rhbyte = 0;
             rvbyte = 0;
+            cbyte = 0;
         }
-        fprintf(fd,"%03x%03x",rvbyte,rhbyte);
+        fprintf(fd,"%03x%03x%01x",rhbyte,rvbyte,cbyte);
     }
     fprintf(fd,"\n",rvbyte,rhbyte);
     ndots[1] = i;
