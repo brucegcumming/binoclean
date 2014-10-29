@@ -384,3 +384,8 @@ yn density of sampling in Y direction for stim that use interpolation. E.G. When
 yo vertical pos of stimulus (degrees)
 Yp For log files. #Penetration Log
 yR y pos for R eye
+!saveimage saves a .pgm image of the current stimulus
+!saveim saves a .pgm image of the last frame of the last stimulus in the current expt
+!savemovie saves a .pgm image for every frame shown
+#!savemovie=pathname  sets the folder name where images will be written
+#!saveim2  saves only the last frame of the last stimulus in the experiment

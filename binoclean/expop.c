@@ -4369,6 +4369,7 @@ int SaveImage(Stimulus *st, int type)
     static int imstimid = 0,pcode = 5;
     char eyec[3] = "LR";
     Stimulus *rst = st;
+    Substim *sst;
     
     if(rdspair(st))
         rst = st->next;
@@ -4402,7 +4403,7 @@ int SaveImage(Stimulus *st, int type)
             if((ofd = fopen(imname,"w")) == NULL)
                 fprintf(stderr,"Can't write image to %s\n",imname);
             else{
-                fprintf(ofd,"P5 %d %d 255\n",w,h);
+                fprintf(ofd,"P5\n#se%d\n %d %d 255\n",expt.st->left->baseseed,w,h);
                 fwrite(pix, sizeof(GLubyte), w*h, ofd);
                 done++;
                 fclose(ofd);
@@ -4421,6 +4422,10 @@ int SaveImage(Stimulus *st, int type)
         y = videocapture[1];
         }
         for(i = 0; i < 2; i++){
+            if (i == 0)
+                sst = expt.st->left;
+            else
+                sst = expt.st->right;
             if (testflags[SAVE_IMAGES] ==12){ //Used seed/id for name
                 sprintf(imname,"%s/%sse%did%d%c.pgm",ImageOutDir,expname,st->left->seed,expt.allstimid,eyec[i]);
             }
@@ -4430,7 +4435,7 @@ int SaveImage(Stimulus *st, int type)
                 if((ofd = fopen(imname,"w")) == NULL)
                     fprintf(stderr,"Can't write image to %s\n",imname);
                 else{
-                    fprintf(ofd,"P5 %d %d 255\n",w,h);
+                    fprintf(ofd,"P5\n#se%d\n%d %d 255\n",sst->baseseed,w,h);
                     fwrite(pix, sizeof(GLubyte), w*h, ofd);
                     done++;
                     fclose(ofd);
@@ -4644,6 +4649,7 @@ int ReadCommand(char *s)
         SaveImage(expt.st,1);
     }
     else if(!strncasecmp(s,"saveimage",9)){
+        paint_frame(WHOLESTIM,1);
         SaveImage(expt.st,5);
     }
     else if(!strncasecmp(s,"saveim",6)){
@@ -11713,7 +11719,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
                 else if(testflags[SAVE_IMAGES] == 4 && finished == 1){
                     SaveImage(expt.st,1);
                 }
-                else if(testflags[SAVE_IMAGES] == 2 && stimno+1 >= expt.nstim[5] * expt.nreps){
+                else if(testflags[SAVE_IMAGES] == 2 && stimno+1 >= expt.nstim[6]){
                     if(finished == 1){ // last frame
                         SerialSend(SET_SEED);
                         SaveImage(expt.st,5); // save pgm of rectangle, and  RDS file

@@ -2319,6 +2319,9 @@ function [strs, Keys] = ReadHelp(DATA)
                 fprintf('%s help duplicated\n',code);
             end
             str = regexprep(txt{j},code,'');
+            if code(1) == '!'
+                code = code(2:end);
+            end
             if strfind(str,'#')
                 keyword = regexprep(str,'.*#','');
                 Keys.KeyWords.(code) = keyword;
@@ -4432,7 +4435,7 @@ end
 function OpenUffFile(a,b, type)
     DATA = GetDataFromFig(a);
     outprintf(DATA,'\\openuff\n');
-    outprintf(DATA.cmdfile,'#File %s\n',GetValue(DATA,'uf'));
+    myprintf(DATA.cmdfid,'#File %s\n',GetValue(DATA,'uf'));
 
 
 function Expt = ExptSummary(DATA)
@@ -5038,6 +5041,7 @@ function CodesPopup(a,b, type)
 
   DATA = GetDataFromFig(a);
   src = a;
+  e = {};
   if isnumeric(type) | strmatch(type,{'bycode' 'bylabel' 'bygroup' 'numeric' 'printcodes' 'byhelp'},'exact')
       lst = findobj(get(get(a,'parent'),'parent'),'Tag','CodeListString');
       if isnumeric(type)
@@ -5073,17 +5077,25 @@ function CodesPopup(a,b, type)
       elseif strcmp(type,'bycode')
           set(lst,'string','Alphabetical by code.  :* = more help with mouse click');
           [c,b] = sort({DATA.comcodes.code});
+          e = setdiff(fields(DATA.helpstrs),{DATA.comcodes.code}); %help on things not in comcodes
       elseif strcmp(type,'bylabel')
           set(lst,'string','Alphabetical by Label :* = more help with mouse click');
           [c,b] = sort({DATA.comcodes.label});
+          e = setdiff(fields(DATA.helpstrs),{DATA.comcodes.code}); %help on things not in comcodes
       elseif strcmp(type,'byhelp')
           set(lst,'string','Alphabetical by Help :* = more help with mouse click');
           f = fields(DATA.helpstrs);
           for j = 1:length(f)
               helpstr{j} = DATA.helpstrs.(f{j});
-              cid(j) = find(strcmp(f{j},{DATA.comcodes.code}));
+              hid = find(strcmp(f{j},{DATA.comcodes.code}));
+              if ~isempty(hid)
+                  cid(j) = hid;
+              else
+                  cid(j) = NaN;
+              end
           end
           [c, b] = sort(helpstr);
+          helpcodes = f(b);
           b = cid(b);
       elseif strcmp(type,'bygroup')
           set(lst ,'string','Groups: :* = more help with mouse click');
@@ -5115,23 +5127,28 @@ function CodesPopup(a,b, type)
       nlab = 0;
       nc = 0;
       for j = 1:length(b)
-          if b(j) == 0
-              code = '';
-          else
+          if b(j) > 0
               code = DATA.comcodes(b(j)).code;
+          elseif isnan(b(j))
+              code = helpcodes{j};
+          else
+              code = '';
           end
           if ~strcmp(code,'xx')
-          ns = max([5 - length(code) 1]);          
-          ns = 1+ round(ns-1) .* 1.6;
-          nc = nc+1;
-          if b(j) > 0
-              s = sprintf('%s%*s%s',code,ns,' ',DATA.comcodes(b(j)).label);
-          else
-              nlab = nlab+1;
-              a(nc+nl,1) = ' ';
-              nl = nl+1;
-              s = labels{nlab};
-          end
+              ns = max([5 - length(code) 1]);
+              ns = 1+ round(ns-1) .* 1.6;
+              nc = nc+1;
+              if b(j) > 0
+                  s = sprintf('%s%*s%s',code,ns,' ',DATA.comcodes(b(j)).label);
+              elseif isnan(b(j))  %help with no code
+                  f = helpcodes{j};
+                  s = sprintf('%s %s',code,DATA.helpstrs.(f));
+              else
+                  nlab = nlab+1;
+                  a(nc+nl,1) = ' ';
+                  nl = nl+1;
+                  s = labels{nlab};
+              end
           if isfield(DATA.helpstrs,code)
               if isfield(DATA.helpkeys.extras,code)
                   s = regexprep(s,' ',' *','once');
@@ -5142,6 +5159,13 @@ function CodesPopup(a,b, type)
           a(nc+nl,1:length(s)) = s;
           a(nc+nl,2+length(s):end) = 0;
           end
+      end
+      for j = 1:length(e)
+          nc = nc+1;
+          code = e{j};
+          s = [code '   ;   ' DATA.helpstrs.(code)];
+          a(nc+nl,1:length(s)) = s;
+          a(nc+nl,2+length(s):end) = 0;
       end
       a = a(1:nc+nl,:);
       cmenu = uicontextmenu;
@@ -5174,7 +5198,7 @@ function CodesPopup(a,b, type)
     sm = uimenu(hm,'Label','By Group','callback',{@CodesPopup, 'bygroup'});
     sm = uimenu(hm,'Label','Psych/Reward','callback',{@CodesPopup, 8 });
     sm = uimenu(hm,'Label','Numerical','callback',{@CodesPopup, 'numeric'});
-    sm = uimenu(hm,'Label','Help','callback',{@CodesPopup, 'byhelp'});
+    sm = uimenu(hm,'Label','By Help','callback',{@CodesPopup, 'byhelp'});
     helpmenu = sm;
     hm = uimenu(cntrl_box,'Label','Print','callback',{@CodesPopup, 'printcodes'});
     hm = uimenu(cntrl_box,'Label','Search');

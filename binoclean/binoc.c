@@ -11757,7 +11757,7 @@ void expt_over(int flag)
      * NB stimvals XPOS,YPOS can change, so use expt.vals for these.
      */
     if(netoutfile){
-        fprintf(seroutfile,"Resetting Expt Stim\n");
+        fprintf(netoutfile,"#Resetting Expt Stim\n");
     }
 
     expt.st->preloaded = 0;
@@ -11787,7 +11787,7 @@ void expt_over(int flag)
     
     expt.st->flag = expt.stflag;
     if(seroutfile){
-        fprintf(seroutfile,"Resetting: ");
+        fprintf(seroutfile,"#Resetting: ");
         i = 0;
         while(track_resets[i] >= 0){
             fprintf(seroutfile,"%2s->%.4f ",serial_strings[track_resets[i]],GetProperty(&expt,expt.st,track_resets[i]));
