@@ -4649,7 +4649,10 @@ int ReadCommand(char *s)
         SaveImage(expt.st,1);
     }
     else if(!strncasecmp(s,"saveimage",9)){
-        paint_frame(WHOLESTIM,1);
+        if  (renderoff){
+            paint_frame(WHOLESTIM,1);
+            glFinishRenderAPPLE();
+        }
         SaveImage(expt.st,5);
     }
     else if(!strncasecmp(s,"saveim",6)){
