@@ -384,7 +384,7 @@ void chessboard(float w, float h);
 void printString(char *s, int size);
 void WriteFrameData();
 void expt_over(int flag);
-void Stim2PsychFile(int state);
+void Stim2PsychFile(int state, FILE *fd);
 void HideCursor(void);
 void ReopenSerial(void);
 OneStim *NewCorrug(Stimulus *st, Substim *sst, Substim  *copy);

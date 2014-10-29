@@ -112,8 +112,8 @@ if isnan(startdepth)
     return;
 end
 if length(DATA.alldepths) && max(DATA.alltimes)-now < 2/24
-    x = GetCurrentPosition(DATA)./1000;
-    msg = sprintf('MicroDrive set to %.2f on %s. Now %.2f, Sure you want to set %.2f?',DATA.alldepths(end)./1000,datestr(DATA.alltimes(end)),x,startdepth);
+    x = GetCurrentPosition(DATA);
+    msg = sprintf('MicroDrive set to %.0fuM on %s. Now %.0f, Sure you want to set %.0f?',DATA.alldepths(end),datestr(DATA.alltimes(end)),x,startdepth);
     yn = questdlg(msg,'ServoDrive Message','Yes','No','Yes');
     if strcmp(yn,'No')
         return;
@@ -176,6 +176,7 @@ bp(1) = bp(1)+bp(3);
 bp(3) = 0.2;
 DATA.setdepth = uicontrol(gcf,'style','edit','string','0', ...
    'fontsize',18,'fontweight','bold',...
+   'Tag', 'ManualSet',...
         'units', 'norm', 'position',bp,'value',1);
 bp(1) = bp(1)+bp(3);
 bp(3) = 0.2;
@@ -417,10 +418,13 @@ DATA.logfile = '/local/servolog.mat';
 DATA.motorid = -1; %< 0 means dont set id
 DATA = addfield(DATA,{'stepsize' 'customstep' 'position'},0);
 DATA = addfield(DATA,{'alldepths' 'alltimes' 'offidx'},[]);
-txt = scanlines(DATA.setupfile);
+txt = scanlines(DATA.setupfile,'silent');
 
 if ~isfield(DATA,'ttyname')
-    id = strncmp('serialport',txt,10);
+    if isempty(txt)
+        cprintf('red','No Serial device Named, and missing file %s',DATA.setupfile);
+    end
+    id = find(strncmp('serialport',txt,10));
     if isempty(id)
         DATA.ttyname = '/dev/tty.USA49Wfa1212P1.1';
     else
@@ -522,7 +526,7 @@ for j = 1:nstep
     else
         DATA = SetNewPosition(DATA,positions(j));
         if j < nstep
-            if DATA.motorspeed > 0
+            if DATA.motorspeed > 0 && edur < 1000
             pause(edur./nstep);
             else
                 pause(1);
@@ -734,6 +738,10 @@ end
 pause(0.01);
 DATA = PlotDepths(DATA, ts, newd);
 SaveDiskLog(DATA);
+it = findobj(DATA.toplevel,'tag','ManualSet');
+if ~isempty(it)
+    set(it,'string',sprintf('%.0f',DATA.position));
+end
 
 if ~isempty(DATA.callback)
     feval(DATA.callback{:}, newd(end)./DATA.stepscale);
@@ -762,7 +770,9 @@ if ~strcmp(DATA.plottype,'None')
             ts = ts-ts(1);
             y =newd./DATA.stepscale;
         end
-        plot(ts, y);
+        h = plot(ts, y);
+        set(h,'ButtonDownFcn',@ServoPlotHit);
+
         set(gca,'xtick',[],'ytick',[],'ydir','reverse');
         xl = [min(ts) max(ts)];
         yl = [min(y) max(y)];
@@ -771,7 +781,9 @@ if ~strcmp(DATA.plottype,'None')
         k = 24 * 60 * 60 ./DATA.stepscale;
         dt = diff(ts) .* 24 * 60 * 60;
         y = diff(newd)./(dt .*DATA.stepscale);
-        plot(ts(2:end), y);
+        h = plot(ts(2:end), y);
+        set(h,'ButtonDownFcn',@ServoPlotHit);
+
         set(gca,'xtick',[],'ytick',[],'ydir','normal');
         xl = [min(ts) max(ts)];
         yl = minmax(y);
@@ -789,7 +801,8 @@ if ~strcmp(DATA.plottype,'None')
             t = DATA.alltimes;
             d = DATA.alldepths;
         end
-        plot(t, d);
+        h = plot(t, d);
+        set(h,'ButtonDownFcn',@ServoPlotHit);
         set(gca,'xtick',[],'ytick',[],'ydir','reverse');
         xl = minmax(t);
         yl = minmax(d);
@@ -817,11 +830,20 @@ if ~strcmp(DATA.plottype,'None')
     else
         text(xl(1),yl(2),sprintf('%.1fuM',diff(yl)),'horizontalalignment','left','verticalalignment','bottom');
     end
+    set(gca,'ButtonDownFcn',@ServoPlotHit);
 else
     delete(get(gca,'children'));
     bc = get(gcf,'color');
     set(gca,'color',bc,'box','off','xcolor',bc,'ycolor',bc);
 end
+
+
+function ServoPlotHit(a,b)
+
+pos = get(gca,'CurrentPoint');
+cm = uicontextmenu;
+uimenu(cm,'label',sprintf('%s %.1fuM',datestr(pos(1,1),'hh:mm'),pos(1,2)));
+set(cm,'visible','on');
 
 
 

@@ -542,6 +542,10 @@ void SetStepperDepth(int newdepth)
 electrodeDepth = newdepth;
 expt.vals[ELECTRODE_DEPTH] = (float)(electrodeDepth)/1000;
 SerialSend(ELECTRODE_DEPTH);
+    gettimeofday(&now,NULL);
+    times[totalsteps] = timediff(&now,&progstarttime) + timeoffset;
+    depths[totalsteps] = electrodeDepth;
+
 if(penlog){
     fprintf(penlog,"ed %d at %.1f\n",electrodeDepth,times[totalsteps]);
 }
@@ -811,7 +815,7 @@ void NewPosition(int pos)
     
     if(fabs(diff) > 9999){
         sprintf(buf,"Thats a big step (%d) Proceed?",diff);
-        acknowledge(buf,"/bgc/bgc/c/binoc/help/bigstep.err");
+        acknowledge(buf,"/b/binoclean/help/bigstep.err");
     }
     if(fabs(diff) > 200){
         sprintf(buf,"Thats a big step (%d) Proceed?",diff);
