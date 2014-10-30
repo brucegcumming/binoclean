@@ -120,6 +120,8 @@ extern int rewardall;
 extern int freeToGo;
 extern int lastbutton;
 extern float monkeyhour;
+extern FILE *todaylog;
+
 double fakestim =0;
 
 int usenewdirs=0;
@@ -704,18 +706,24 @@ char *GetExptString(Expt *exp, int code);
 int FindCode(char *s)
 {
     int i=0,j,code;
+    char *t, str[BUFSIZ];
     
+// for lines with = sign, use exact match for what precedes the ='
+    if ((t = strchr(s,'=')) != NULL){
+        strncpy(str,s,t-s);
+        str[t-s] = 0;
+        for(i = 0; i < expt.totalcodes; i++)
+        {
+            if(strcmp(str, valstrings[i].code) ==0)
+                return(valstrings[i].icode);
+        }
+        return(-1);
+    }
     
     while((j=longnames[i++]) > 0){
         
         if(strncmp(s, serial_strings[j], strlen(serial_strings[j])) ==0)
             return(j);    
-    }
-    i = 0;
-    while(commstrings[i].label != NULL){
-        if(strncmp(s, commstrings[i].code, strlen(commstrings[i].code)) ==0)
-            return(commstrings[i].icode);
-        i++;
     }
     i = 0;
     for(i = 0; i < expt.totalcodes; i++)
@@ -1488,12 +1496,7 @@ void PrintCodes(int mode)
     strcat(s,"CODE OVER\n");
     notify(s);
     sprintf(s,"");
-    i = 0;
-    while(commstrings[i].code != NULL){
-        sprintf(tmp,"SCODE %s %d %s\n",commstrings[i].code,commstrings[i].icode,commstrings[i].label);
-        strcat(s,tmp);
-        i++;
-    }
+
     notify(s);
     SendExptTypesToGui();
     SendToggleCodesToGui();
@@ -2569,6 +2572,10 @@ int OpenPenetrationLog(int pen){
     SendToGui(PENNUMCOUNTER);
     SendToGui(PENXPOS);
     SendToGui(PENYPOS);
+    if (pen > 0){ // a real penetraion
+        AddTrackCode(serial_strings[ELECTRODE_DEPTH]);
+    }
+    
     return(0);
 }
 
@@ -2658,7 +2665,9 @@ int OpenNetworkFile(Expt expt)
     
         if (netoutfile == NULL){
             strcpy(oldname,name);
-            sprintf(buf,"Can't open Network record %s. Trying %s",oldname,name);
+            sprintf(buf,"Can't open Network record %s. (%d) Trying %s",oldname,lastresult,name);
+            if (lastresult > 0)
+                acknowledge(buf, NULL);
             lastresult = 0;
             statusline(buf);
             getcwd(path,BUFSIZ);
@@ -2678,11 +2687,11 @@ int OpenNetworkFile(Expt expt)
         fprintf(netoutfile,"Reopened %s by binoc Version %s",ctime(&tval),VERSION_STRING);
         if (seroutfile != NULL)
             fprintf(seroutfile,"Network Record to %s\n",name);
-        sprintf(buf,"status=Network Record to %s\n",name);
+        sprintf(buf,"status=Network Record to %s (last %d)\n",name,lastresult);
         notify(buf);
     }
     else{
-        sprintf(buf,"Can't open Network parameter record file\n %s\t or\n%s",nbuf,name);
+        sprintf(buf,"Can't open Network parameter record file (%d)\n %s\t or\n%s",lastresult,nbuf,name);
         if (seroutfile != NULL)
             fprintf(seroutfile,"%s\n",buf);
         lastresult = -1;
@@ -2690,6 +2699,24 @@ int OpenNetworkFile(Expt expt)
     }
 }
 
+
+char *datestr()
+{
+    time_t tval,nowtime;
+    char *t;
+    static char buf[BUFSIZ];
+    
+    time(&nowtime);
+    t= ctime(&nowtime);
+    t[10] = 0;
+    t[24] = 0;
+    t[7] = 0;
+    if(t[8]==' ')
+        t[8] = '0';
+    sprintf(buf,"%s%s%s",&t[8],&t[4],&t[20]);
+
+    return(buf);
+}
 
 int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
 {
@@ -2768,6 +2795,10 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
                     acknowledge("Can't chdir to /local either");
                 }
             }
+            sprintf(buf,"%s/logs/%s%s",expt.cwd,expt.monkey,datestr());
+            if (todaylog != NULL)
+                fclose(todaylog);
+            todaylog = fopen(buf,"a");
             
             break;
             
@@ -4348,6 +4379,7 @@ int SaveImage(Stimulus *st, int type)
     static int ndone = 1;
     
     Stimulus *rst = st;
+    Substim *sst;
     
     if(rdspair(st))
         rst = st->next;
@@ -4397,7 +4429,7 @@ int SaveImage(Stimulus *st, int type)
             if((ofd = fopen(imname,"w")) == NULL)
                 fprintf(stderr,"Can't write image to %s\n",imname);
             else{
-                fprintf(ofd,"P5 %d %d 255\n",w,h);
+                fprintf(ofd,"P5\n#se%d\n %d %d 255\n",expt.st->left->baseseed,w,h);
                 fwrite(pix, sizeof(GLubyte), w*h, ofd);
                 done++;
                 fclose(ofd);
@@ -4416,7 +4448,15 @@ int SaveImage(Stimulus *st, int type)
         y = videocapture[1];
         }
         for(i = 0; i < 2; i++){
-            sprintf(imname,"%s/%sim%d%c.pgm",ImageOutDir,expname,imstimid,eyec[i]);
+            if (i == 0)
+                sst = expt.st->left;
+            else
+                sst = expt.st->right;
+            if (testflags[SAVE_IMAGES] ==12){ //Used seed/id for name
+                sprintf(imname,"%s/%sse%did%d%c.pgm",ImageOutDir,expname,st->left->seed,expt.allstimid,eyec[i]);
+            }
+            else
+                sprintf(imname,"%s/%sim%d%c.pgm",ImageOutDir,expname,imstimid,eyec[i]);
             if((pix = GetStimImage(x, y, w, h,eyec[i])) != NULL){
                 if((ofd = fopen(imname,"w")) == NULL)
                     fprintf(stderr,"Can't write image to %s\n",imname);
@@ -4425,10 +4465,13 @@ int SaveImage(Stimulus *st, int type)
                     fwrite(pix, sizeof(GLubyte), w*h, ofd);
                     done++;
                     fclose(ofd);
+                    if (seroutfile)
+                        fprintf(seroutfile,"Seed %d,%d written to %s (dx%.3f S%d)\n",st->left->baseseed,st->left->seed,imname,st->disp,stimstate);
                     fprintf(stderr,"Seed %d,%d written to %s (dx%.3f S%d)\n",st->left->baseseed,st->left->seed,imname,st->disp,stimstate);
                 }
             }
         }
+        done++;
         n = st->left->ndots;
     }
     if(type & (1<<1)){
@@ -4464,10 +4507,11 @@ int SaveImage(Stimulus *st, int type)
 int ReadCommand(char *s)
 {
     int retval = 0, line, start, stop,i,ival,nloops;
-    char *r,buf[BUFSIZ],command_result[BUFSIZ],c;
+    char *r,buf[BUFSIZ],command_result[BUFSIZ],c,*iseq;
     char imname[BUFSIZ];
     float val;
     
+    iseq = strchr(s,'=');
     sprintf(command_result,"");
     if(!strncasecmp(s,"quit",4))
         quit_binoc();
@@ -4506,7 +4550,9 @@ int ReadCommand(char *s)
         OpenNetworkFile(expt);
     }
     else if(!strncasecmp(s,"renderoff",9)){
-        renderoff = 1;
+        sscanf(s,"renderoff%d",&renderoff); //renderoff 2 renders but does not swap buffers/ 
+        if (renderoff < 2)
+            renderoff = 1;
         acknowledge("Rendering OFF!!",NULL);
     }
     else if(!strncasecmp(s,"renderon",8)){
@@ -4596,13 +4642,29 @@ int ReadCommand(char *s)
     else if(!strncasecmp(s,"saverds",7)){ // toggle on/off saving screen images
         testflags[SAVE_IMAGES] = 11;
     }
+    else if(!strncasecmp(s,"onestim",6)){
+        fprintf(stderr,"Running Seed %d\n",expt.st->left->baseseed);
+        testflags[SAVE_IMAGES] = 12;
+        if (inexptstim ==0){
+            inexptstim = 2;
+            RunExptStim(expt.st,expt.st->nframes, 0, -1);
+            inexptstim = 0;
+        }
+        else{
+            fprintf(stderr,"Cant runexpstim while in stim\n");
+        }
+    }
     else if(!strncasecmp(s,"savemovie",8)){ // toggle on/off saving screen images
         if ((r = strchr(s,'=')) != NULL)
             strcpy(ImageOutDir,nonewline(&r[1]));
 
         if (testflags[SAVE_IMAGES] != 10 || !strncasecmp(s,"savemovie+",10)){
             testflags[SAVE_IMAGES] = 10;
-            sprintf(buf,"./%spgm.idx",expname);
+            if (ImageOutDir != NULL){
+                sprintf(buf,"%s/%spgm.idx",ImageOutDir,expname);
+            }
+            else
+                sprintf(buf,"./%spgm.idx",expname);
             imidxfd = fopen(buf,"a");
         }
         else{
@@ -4616,6 +4678,10 @@ int ReadCommand(char *s)
         SaveImage(expt.st,1);
     }
     else if(!strncasecmp(s,"saveimage",9)){
+        if  (renderoff){
+            paint_frame(WHOLESTIM,1);
+            glFinishRenderAPPLE();
+        }
         SaveImage(expt.st,5);
     }
     else if(!strncasecmp(s,"saveim",6)){
@@ -4643,6 +4709,12 @@ int ReadCommand(char *s)
             SetStepperDepth(1000*val);
         }
     }
+    else if(!strncasecmp(s,"trackcode",2)){
+        if(iseq){
+            AddTrackCode(iseq);
+        }
+    }
+
     else if(!strncasecmp(s,"openpen",7))
     {
         OpenPenetrationLog(expt.newpen);
@@ -5591,7 +5663,7 @@ int ReadStimOrder(char *file)
             else{ // send all other lines to serial file or InterpretLine
 //Dont send all to Interpretline in case of accidental code.
                 ival = FindCode(s);
-                if (ival == EXPT_NAME)
+                if(s[0] != '#' && (ival = FindCode(s)) >= 0)
                     InterpretLine(s, &expt, 2);
                 else
                     SerialString(s,0);
@@ -7421,8 +7493,11 @@ char *SerialSend(int code)
             break;
         case UFF_PREFIX:
             SerialString(cbuf,0);
-            if(penlog)
+            if(penlog){
                 fprintf(penlog,"%s File %s\n",binocTimeString(),expt.bwptr->prefix);
+                if(expt.strings[VWHERE] != NULL)
+                    fprintf(penlog,"VisualArea=%s\n",expt.strings[VWHERE]);
+            }
             if(mode & UFF_FILE_OPEN){
                 SerialSend(RF_DIMENSIONS);
                 SerialSend(XPIXEL_CODE);
@@ -7707,29 +7782,9 @@ void InitExpt()
     }
     if(psychfile){
         if(option2flag & PSYCHOPHYSICS_BIT)
-            Stim2PsychFile(START_EXPT);
+            Stim2PsychFile(START_EXPT,psychfile);
         else
-            Stim2PsychFile(START_EXPT+100);
-        gettimeofday(&now,NULL);
-        fprintf(psychfile,"R4 %s=%.2f %s=%.2f sn=0",
-                serial_strings[COVARY_XPOS],afc_s.ccvar, 
-                serial_strings[TARGET_RATIO],expt.vals[TARGET_RATIO]);
-        tval = RunTime();
-        ts = binocTimeString();
-        ts[3] = '.';
-        ts[6] = 0;
-        fprintf(psychfile," %ld %s %d",now.tv_sec,ts,expt.nstim[6]);
-        fprintf(psychfile," %s=%.2f %s=%.2f x=0 x=0 x=0 x=0\n",serial_strings[XPOS],GetProperty(&expt,expt.st,XPOS),serial_strings[YPOS],GetProperty(&expt,expt.st,YPOS));
-        fprintf(psychfile,"R4 %s=NaN %s=NaN %s=NaN",
-                serial_strings[expt.mode],
-                serial_strings[expt.type2],
-                serial_strings[expt.type3]);
-        tval = RunTime();
-        ts = binocTimeString();
-        ts[3] = '.';
-        ts[6] = 0;
-        fprintf(psychfile," %ld %s %d",now.tv_sec,ts,expt.nstim[6]);
-        fprintf(psychfile," %s=%.2f %s=%.2f x=0 x=0 x=0 x=0\n",serial_strings[XPOS],GetProperty(&expt,expt.st,XPOS),serial_strings[YPOS],GetProperty(&expt,expt.st,YPOS));
+            Stim2PsychFile(START_EXPT+100, psychfile);
     }
     if(psychfilelog){
         tstart = time(NULL);
@@ -11365,7 +11420,8 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
         SetManualStim(0);
     }
 
-    inexptstim = 1;
+    if (inexptstim < 1)
+        inexptstim = 1;
     
     /*
      * Human Psych trials have different requirements - often have stimuli 
@@ -11430,7 +11486,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
                 }
                 else if(testflags[SAVE_IMAGES] == 2 && stimno+1 >= expt.nstim[5] * expt.nreps){
                     if(finished == 1){ // last frame
-                        SaveImage(expt.st,3); //save both types - max info
+                        SaveImage(expt.st,7); //save both types - max info
                         testflags[SAVE_IMAGES] = 0;
                     }
                     rc = framesdone;
@@ -11707,10 +11763,10 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
                 else if(testflags[SAVE_IMAGES] == 4 && finished == 1){
                     SaveImage(expt.st,1);
                 }
-                else if(testflags[SAVE_IMAGES] == 2 && stimno+1 >= expt.nstim[5] * expt.nreps){
+                else if(testflags[SAVE_IMAGES] == 2 && stimno+1 >= expt.nstim[6]){
                     if(finished == 1){ // last frame
                         SerialSend(SET_SEED);
-                        SaveImage(expt.st,3);
+                        SaveImage(expt.st,5); // save pgm of rectangle, and  RDS file
                         testflags[SAVE_IMAGES] = 0;
                     }
                     rc = framesdone;
@@ -14918,6 +14974,9 @@ int InterpretLine(char *line, Expt *ex, int frompc)
                 fprintf(penlog,"%s %s\n",binocTimeString(),line);
                 fflush(penlog);
             }
+            if (todaylog != NULL && strncmp(line,"cm=NotSet",9)){
+                fprintf(todaylog,"R7 %s bt=%.2f\n",line,timediff(&now,&sessiontime));
+            }
             break;
         case EARLY_RWTIME:
             i = sscanf(s,"%f %f",&val,&fval);
@@ -15006,6 +15065,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     }
     else if(frompc ==2 && code >= 0){ //came from verg. Some of these need -> spike2
         switch(code){
+            case VWHERE:
             case TOTAL_REWARD:
                 SerialSend(code);
                 break;

@@ -250,8 +250,9 @@ void SerialString(char *s, int tty)
             ReopenSerial();
             fsleep(0.2); 
         }
-        else{
+        else if (writerrs ==5){ //time to give up
             fprintf(stderr,"Can't Reopen Serial Port %d\n",tty);
+            acknowledge("Serial Ports Seems to be Dead\n. Manually Reopen if you Need id");
         }
     }
 #endif

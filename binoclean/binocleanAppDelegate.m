@@ -130,6 +130,8 @@ void ReadInputPipe()
     if (AddingToInputPipe ==1){
         NSLog(@"INput Pipe busy");
     }
+    if (inexptstim ==2)
+        return;
     if(dataReadyInInputPipe && AddingToInputPipe == 0)
     {
         ReadingInputPipe = 1;
