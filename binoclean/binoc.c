@@ -3503,6 +3503,7 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
                 pos->imsize[1] = fval +  st->left->ptr->rsigma*3;
                 pos->radius[1] = pos->imsize[1]/2;
             }
+            CheckRect(TheStim);
             break;
         case STIM_HEIGHT:
             if((fval = deg2pix(val)) < 0)
@@ -3543,6 +3544,7 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
             st->left->size = StimulusProperty(st,STIM_SIZE);
             st->right->size = st->left->size;
             mode |= NEWDRAG;
+            CheckRect(TheStim);
             break;
         case ORI_BANDWIDTH:
             st->left->orbw = val;
@@ -11888,6 +11890,7 @@ void expt_over(int flag)
         sprintf(buf,"Expt over at %s",binocTimeString());
         statusline(buf);
     }
+    UpdateNetworkFile(expt);
 
 }
 
