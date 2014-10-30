@@ -401,6 +401,61 @@ WriteText(txt, outfile);
 
 function CheckCodeHelp(DATA, type)
     
+    if nargin ==1
+        type = 'list';
+    end
+    [scodes,sid] = sort({DATA.comcodes.code});
+    helpfile = [DATA.localmatdir '/helpstrings.txt'];
+    txt = scanlines(helpfile);
+    for j = 1:length(DATA.comcodes)
+        k = sid(j);
+       if ~isfield(DATA.helpstrs,DATA.comcodes(k).code) 
+           if ~strcmp('xx',DATA.comcodes(k).code) && ~bitand(DATA.comcodes(k).group,1024)
+               fprintf('No help for %s\n',DATA.comcodes(k).code);
+               if strcmp(type,'update')
+               prevcode = DATA.comcodes(sid(j-1)).code;
+               id = find(strncmp(prevcode,txt,length(prevcode)));
+               if ~isempty(id)
+                   txt = InsertLine(txt,id(1)+1,['#*' DATA.comcodes(k).code ' ' DATA.comcodes(k).label]);
+               end
+               end
+           end
+       end
+    end
+    
+    if strcmp(type,'update')
+        outfile = strrep(helpfile,'.txt','.new');
+        WriteText(txt, outfile);
+    end
+function CheckStimFile(DATA, type)
+%remove out of date codes from a stim file
+    txt = scanlines(DATA.stimfilename);
+    goodlines = ones(size(txt));
+    for j = 1:length(txt)
+        [DATA, code, badcodes] = InterpretLine(DATA, txt{j}, 'test');
+        if code < -1 
+            goodlines(j) = 0;
+        elseif ~isempty(badcodes)
+            for k = 1:length(badcodes)
+                id = regexp(badcodes{k},'[+-]')
+                if length(id) > 1
+                    badcode = badcodes{k}(1:id(2)-1);
+                    regexprep(badcodes{k},'[a-Z]+[+-].*','$1');
+                else
+                    badcode = badcodes{k};
+                end
+                txt{j} = strrep(txt{j},badcode,'');
+            end
+        end
+    end
+txt = txt(find(goodlines));
+outfile = strrep(DATA.stimfilename,'.stm','');
+outfile = [outfile '.new'];
+fprintf('saving stim file to %s\n',outfile);
+WriteText(txt, outfile);
+
+function CheckCodeHelp(DATA, type)
+    
 function WriteText(txt, name, varargin)
         fid = fopen(name,'w');
         if fid > 0
@@ -475,9 +530,6 @@ for j = 1:length(strs{1})
         code = s(1:eid(1)-1);
         value = s(eid(1)+1:end);
         codelen = eid(1);
-    elseif strncmp(s,'SENDING',7)
-        value = [];
-        code = s;
     else
         value = [];
         code = s;
@@ -854,6 +906,7 @@ for j = 1:length(strs{1})
             DATA.Statuslines{end+1} = s(8:end);
             codetype = -2;
         end  %6 char codes
+        
         
         
     elseif sum(strncmp(s,{'Expts' 'xyfsd' 'EDONE'},5))
@@ -2507,7 +2560,11 @@ function DATA = InitInterface(DATA)
     bp(2) = 2./nr;
     bp(3) = cw/3;
     bp(4) = 1./nr;
-    [a,j] = min(abs(DATA.binoc{1}.xyfsd - DATA.xyfsdvals));
+    if isfield(DATA.binoc{1},'xyfsd')
+        [a,j] = min(abs(DATA.binoc{1}.xyfsd - DATA.xyfsdvals));
+    else
+        j = 1;
+    end
     uicontrol(gcf,'style','text','string','FSD',  'units', 'norm', 'position',bp);
     bp(1) = bp(1)+bp(3);
     bp(3)=0.99-bp(1);
@@ -5210,6 +5267,10 @@ function CodesPopup(a,b, type)
               code = helpcodes{j};
           else
               code = '';
+              codetype = 0;
+          else
+              code = DATA.comcodes(b(j)).code;
+              codetype = DATA.comcodes(b(j)).group;
           end
           if ~strcmp(code,'xx')
               ns = max([5 - length(code) 1]);

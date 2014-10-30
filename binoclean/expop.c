@@ -4376,7 +4376,7 @@ int SaveImage(Stimulus *st, int type)
     int x,y,w,h,i=0,done = 0,n = 0;
     static int imstimid = 0,pcode = 5;
     char eyec[3] = "LR";
-    static int ndone = 1;
+    static int ndone = 0;
     
     Stimulus *rst = st;
     Substim *sst;
@@ -4461,7 +4461,7 @@ int SaveImage(Stimulus *st, int type)
                 if((ofd = fopen(imname,"w")) == NULL)
                     fprintf(stderr,"Can't write image to %s\n",imname);
                 else{
-                    fprintf(ofd,"P5\n#se=%d\n%d %d 255\n",st->left->baseseed,w,h);
+                    fprintf(ofd,"P5\n#se%d\n%d %d 255\n",sst->baseseed,w,h);
                     fwrite(pix, sizeof(GLubyte), w*h, ofd);
                     done++;
                     fclose(ofd);
