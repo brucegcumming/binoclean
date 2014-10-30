@@ -4459,7 +4459,7 @@ int SaveImage(Stimulus *st, int type)
         done++;
         n = st->left->ndots;
     }
-    if(type & (1<<1) || testflags[SAVE_IMAGES] ==11){
+    if(type & (1<<1)){
         if(imoutfd == NULL){
             sprintf(imname,"%s/%s.im.txt",ImageOutDir,expname);
             imoutfd = fopen(imname,"w");
@@ -4626,6 +4626,18 @@ int ReadCommand(char *s)
     }
     else if(!strncasecmp(s,"saverds",7)){ // toggle on/off saving screen images
         testflags[SAVE_IMAGES] = 11;
+    }
+    else if(!strncasecmp(s,"onestim",6)){
+        fprintf(stderr,"Running Seed %d\n",expt.st->left->baseseed);
+        testflags[SAVE_IMAGES] = 12;
+        if (inexptstim ==0){
+            inexptstim = 2;
+            RunExptStim(expt.st,expt.st->nframes, 0, -1);
+            inexptstim = 0;
+        }
+        else{
+            fprintf(stderr,"Cant runexpstim while in stim\n");
+        }
     }
     else if(!strncasecmp(s,"savemovie",8)){ // toggle on/off saving screen images
         if ((r = strchr(s,'=')) != NULL)

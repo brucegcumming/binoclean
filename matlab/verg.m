@@ -366,6 +366,68 @@ function CheckCodeHelp(DATA, type)
         WriteText(txt, outfile);
     end
     
+    
+function CheckStimFile(DATA, type)
+%remove out of date codes from a stim file
+    txt = scanlines(DATA.stimfilename);
+    goodlines = ones(size(txt));
+    for j = 1:length(txt)
+        [DATA, code, badcodes] = InterpretLine(DATA, txt{j}, 'test');
+        if code < -1 
+            goodlines(j) = 0;
+        elseif ~isempty(badcodes)
+            for k = 1:length(badcodes)
+                id = regexp(badcodes{k},'[+-]')
+                if length(id) > 1
+                    badcode = badcodes{k}(1:id(2)-1);
+                    regexprep(badcodes{k},'[a-Z]+[+-].*','$1');
+                else
+                    badcode = badcodes{k};
+                end
+                txt{j} = strrep(txt{j},badcode,'');
+            end
+        end
+    end
+txt = txt(find(goodlines));
+if strcmp(type,'makenew')
+outfile = strrep(DATA.stimfilename,'.stm','');
+outfile = [outfile '.new'];
+else
+    outfile = DATA.stimfilename;
+    BackupFile(outfile,'print');
+end
+fprintf('saving stim file to %s\n',outfile);
+WriteText(txt, outfile);
+
+function CheckCodeHelp(DATA, type)
+    
+    if nargin ==1
+        type = 'list';
+    end
+    [scodes,sid] = sort({DATA.comcodes.code});
+    helpfile = [DATA.localmatdir '/helpstrings.txt'];
+    txt = scanlines(helpfile);
+    for j = 1:length(DATA.comcodes)
+        k = sid(j);
+       if ~isfield(DATA.helpstrs,DATA.comcodes(k).code) 
+           if ~strcmp('xx',DATA.comcodes(k).code) && ~bitand(DATA.comcodes(k).group,1024)
+               fprintf('No help for %s\n',DATA.comcodes(k).code);
+               if strcmp(type,'update')
+               prevcode = DATA.comcodes(sid(j-1)).code;
+               id = find(strncmp(prevcode,txt,length(prevcode)));
+               if ~isempty(id)
+                   txt = InsertLine(txt,id(1)+1,['#*' DATA.comcodes(k).code ' ' DATA.comcodes(k).label]);
+               end
+               end
+           end
+       end
+    end
+    
+    if strcmp(type,'update')
+        outfile = strrep(helpfile,'.txt','.new');
+        WriteText(txt, outfile);
+    end
+    
 function WriteText(txt, name, varargin)
         fid = fopen(name,'w');
         if fid > 0
@@ -374,8 +436,8 @@ function WriteText(txt, name, varargin)
         end
         fclose(fid);
         end
+
         
-    
 function [DATA, codetype, badcodes] = InterpretLine(DATA, line, varargin)
 
     
@@ -388,6 +450,7 @@ paused = 0;
 src = 'unknown';
 srcchr = 'U';
 badcodes = {};
+
 j = 1;
 while j <= length(varargin)
     if strncmpi(varargin{j},'from',4)
@@ -440,6 +503,9 @@ for j = 1:length(strs{1})
         code = s(1:eid(1)-1);
         value = s(eid(1)+1:end);
         codelen = eid(1);
+    elseif strncmp(s,'SENDING',7)
+        value = [];
+        code = s;
     else
         value = [];
         code = s;
@@ -812,8 +878,10 @@ for j = 1:length(strs{1})
             end
             DATA.Statuslines{end+1} = s(8:end);
             codetype = -2;
+
+
+%can ignore SENDING'            
         end  %6 char codes
-        
         
         
     elseif sum(strncmp(s,{'Expts' 'xyfsd' 'EDONE'},5))
@@ -1117,8 +1185,8 @@ for j = 1:length(strs{1})
             
             if isempty(code) 
                 if DATA.togglecodesreceived
+                    fprintf('No Code for %s\n',s(id(k):end-1));
                     badcodes{end+1} = s(id(k):end-1);
-                    fprintf('No Code for %s\n',badcodes{end});
                 else
                     myprintf(DATA.frombinocfid,'-show','Cant set Code %s - have not received list from binoc\n',s(id(k):end-1));                    
                 end
@@ -2462,11 +2530,7 @@ function DATA = InitInterface(DATA)
     bp(2) = 2./nr;
     bp(3) = cw/3;
     bp(4) = 1./nr;
-    if isfield(DATA.binoc{1},'xyfsd')
-        [a,j] = min(abs(DATA.binoc{1}.xyfsd - DATA.xyfsdvals));
-    else
-        j = 1;
-    end
+    [a,j] = min(abs(DATA.binoc{1}.xyfsd - DATA.xyfsdvals));
     uicontrol(gcf,'style','text','string','FSD',  'units', 'norm', 'position',bp);
     bp(1) = bp(1)+bp(3);
     bp(3)=0.99-bp(1);
@@ -5163,17 +5227,6 @@ function CodesPopup(a,b, type)
       nlab = 0;
       nc = 0;
       for j = 1:length(b)
-          if b(j) == 0
-              code = '';
-              codetype = 0;
-          else
-              code = DATA.comcodes(b(j)).code;
-              codetype = DATA.comcodes(b(j)).group;
-          end
-          if ~strcmp(code,'xx')
-          ns = max([5 - length(code) 1]);          
-          ns = 1+ round(ns-1) .* 1.6;
-          nc = nc+1;
           if b(j) > 0
               code = DATA.comcodes(b(j)).code;
           elseif isnan(b(j))
@@ -5181,9 +5234,21 @@ function CodesPopup(a,b, type)
           else
               code = '';
           end
-          if bitand(codetype,1024)
-              s = [s '  (Internal)'];
-          end
+          if ~strcmp(code,'xx')
+              ns = max([5 - length(code) 1]);
+              ns = 1+ round(ns-1) .* 1.6;
+              nc = nc+1;
+              if b(j) > 0
+                  s = sprintf('%s%*s%s',code,ns,' ',DATA.comcodes(b(j)).label);
+              elseif isnan(b(j))  %help with no code
+                  f = helpcodes{j};
+                  s = sprintf('%s %s',code,DATA.helpstrs.(f));
+              else
+                  nlab = nlab+1;
+                  a(nc+nl,1) = ' ';
+                  nl = nl+1;
+                  s = labels{nlab};
+              end
           if isfield(DATA.helpstrs,code)
               if isfield(DATA.helpkeys.extras,code)
                   s = regexprep(s,' ',' *','once');
