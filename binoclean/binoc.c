@@ -1204,8 +1204,6 @@ int SendTrialCount()
         stim = stimno;
     
     sprintf(buf,"STIMC %d %d %d %d %d %d %d %.1f\n",goodtrials, totaltrials, badtrials, latetrials, fixtrials,stim,expt.nstim[6],totalreward);
-    if(seroutfile)
-        fputs(buf,seroutfile);
     notify(buf);
 }
 
@@ -1479,23 +1477,18 @@ void statusline(char *s)
     char buf[BUFSIZ];
     
     
-    if(s != NULL) {
-        if (strlen(s) > LONGBUF-10){
-            fprintf(stderr,"STATUS%s\n",s);
-            sprintf(statusstring,"status=too lonng %d\n",strlen(s));
-        }
-        else{
-            sprintf(statusstring,"status=%s\n",s);
-        }
-        notify(statusstring);
-    }
-    else{
-// no need to send again in binoclean
+    if(s != NULL)
+        statusstring = myscopy(statusstring,s);
+    else
         s = statusstring;
-    }
 //    glstatusline(s,1);
     printString(s, strlen(s)); //Need this? removed May 2013
 
+    notify("status=");
+    notify(s);
+    notify("\n");
+    if(mode & HOLD_STATUS)
+        return;
     
 }
 
@@ -5386,7 +5379,7 @@ int change_frame()
     if(oldmode & LAST_FRAME_BIT && !(mode & LAST_FRAME_BIT))
         stimstate = POSTSTIMULUS;
 
-    if (testflags[SAVE_IMAGES] ==10 || testflags[SAVE_IMAGES] ==11){ //save images of screen
+    if (testflags[SAVE_IMAGES] ==10){ //save images of screen
 //        SaveImage(expt.st,0); // RE eye only
         SaveImage(expt.st,1); //Both Eyes
     }
@@ -7534,6 +7527,7 @@ int next_frame(Stimulus *st)
             if (t2 > 1){
                 sprintf(buf,"status=Testing at %s\n",binocTimeString());
                 notify(buf);
+                fprintf(stderr,buf);
                 gettimeofday(&lastcleartime,NULL);
             }
             if (laststate != stimstate){
@@ -7583,10 +7577,9 @@ int next_frame(Stimulus *st)
                 break;
                     case WAIT_FOR_RESPONSE:
                         // do POSTTRIAL commands here, then move on
-                        crasher = 15;
-                        if (crasher & 8)
-                            ShowTestCount(0, -1);
-                        if (crasher & 1){
+                        crasher =1;
+                        ShowTestCount(0, -1);
+                        if (crasher < 1){
                             if(rdspair(expt.st))
                                 i = 0;
                             if(seroutfile){
@@ -7618,7 +7611,7 @@ int next_frame(Stimulus *st)
                             }
                             if(debug) glstatusline("PostTrial",3);
                         }
-                        if (crasher &2){
+                        if (crasher < 3){
                             if(fabs(expt.vals[PURSUIT_INCREMENT]) > 0.001 && fixstate != BAD_FIXATION){
                                 /*
                                  * N.B. at this moment changes in PURSUIT INCREMENT as part of an expt will not
@@ -7665,7 +7658,7 @@ int next_frame(Stimulus *st)
                             SerialSend(FIXPOS_XY);
                             draw_fix(fixpos[0],fixpos[1], TheStim->fix.size, TheStim->fixcolor);
                         }
-                        if (crasher & 4){
+                        if (crasher < 4){
                             /* stimseq[].result is used in human psychophysics for staircases */
                             if(!(option2flag & PSYCHOPHYSICS_BIT))
                                 stimseq[trialctr].result = monkeypress;
@@ -7680,7 +7673,7 @@ int next_frame(Stimulus *st)
                             stimseq[trialctr].a = stimseq[trialctr].b = 0;
                         }
                         
-                        if (crasher &2){
+                        if (crasher < 3){
                             /*
                              * if expt stim is prepared during a timout, this undoes the setting
                              * of saccval...
@@ -7708,7 +7701,7 @@ int next_frame(Stimulus *st)
                                 fprintf(stairfd,"Post%d(%d) ",stimno,stimorder[stimno]);
                             }
                         } //end crasher < 1
-                        if (crasher & 16){
+                        if (crasher < 4){
                             if (stimstate != POSTTRIAL)
                                 ReadCommandFile(expt.cmdinfile);
                         }
@@ -10635,7 +10628,7 @@ int ShowTestCount(float down, float sum)
     float fsum = 0;
     
     
-    crasher = 2;
+    crasher =31;
  //15 crashed, to its not the loop.
  // looks like its overflowing mssg with some message?
 
