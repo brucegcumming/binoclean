@@ -926,7 +926,7 @@ for j = 1:length(strs{1})
             if length(a) > 1
                 DATA.Trial.tr = a(2);
             end
-            DATA.Trial.rw = DATA.binoc{1}.rw;
+            DATA.Trial.rw = DATA.currentrw;
             DATA = SetTrial(DATA, DATA.Trial);
             DATA.nt = DATA.nt+1;
             DATA.Trial.Trial = DATA.nt;
@@ -1209,6 +1209,12 @@ for j = 1:length(strs{1})
             else
                 val = sscanf(s(id(1)+1:end),'%f');
                 DATA.binoc{DATA.currentstim}.(code) = val;
+            end
+            if strcmp(code,'rw')
+                val = sscanf(s(id(1)+1:end),'%f (%f)');
+                if length(val) > 1
+                    DATA.currentrw = val(2);
+                end
             end
             codetype = DATA.comcodes(cid(1)).group;
             DATA = SetCode(DATA,code);
@@ -2042,6 +2048,7 @@ DATA.Trial.rw = 0;
 DATA.Comments = [];
 DATA.state.stimfileerrs = 0;
 DATA.state.stimfile = '';
+DATA.currentrw = 0;
 
 DATA.newbinoc = 2;
 DATA.ready = 0;
