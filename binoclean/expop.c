@@ -7193,7 +7193,19 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
                 sprintf(cbuf,"%s%.0f",scode, floor((float)(expt.st->fix.rwsize)/rwduration));
 #elseif !defined(OXFORD)
         case REWARD_SIZE:
-            sprintf(cbuf,"%s%s%.2f",scode,temp,expt.st->fix.rwsize);
+            if (flag != TO_BW)
+                    sprintf(cbuf,"%s%s%.2f (%.2f)",scode,temp,expt.st->fix.fixrwsize,expt.st->fix.rwsize); //show fixed level and current
+            else
+                    sprintf(cbuf,"%s%s%.2f",scode,temp,expt.st->fix.rwsize);
+            
+            break;
+#else
+        case REWARD_SIZE:
+            if (flag != TO_BW)
+                sprintf(cbuf,"%s%s%.2f (%.2f)",scode,temp,expt.st->fix.fixrwsize,expt.st->fix.rwsize); //show fixed level and current
+            else
+                sprintf(cbuf,"%s%s%.2f",scode,temp,expt.st->fix.rwsize);
+            
             break;
 #endif
             /*

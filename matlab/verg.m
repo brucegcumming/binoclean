@@ -646,7 +646,7 @@ for j = 1:length(strs{1})
                 exptover = 0; %put a check in here to resolve confusions
             else
                 exptover = 1;
-                CheckTrialDurations(DATA);
+                CheckTrialDurations(DATA,'EXPTOVER');
             end
             if DATA.exptstoppedbyuser  
             %if user hist cancal/stop, dont repeat or move on to automatic next expt
@@ -3373,7 +3373,10 @@ function CheckTrialDurations(DATA, varargin)
     plottype = 'none';
     j = 1;
     while j <= length(varargin)
-        if strcmp(varargin{j},'hist')
+        if strcmp(varargin{j},'EXPTOVER')
+            tid = DATA.Expts{end}.first:DATA.Expts{end}.last;
+            T = DATA.Trials(tid);
+        elseif strcmp(varargin{j},'hist')
             plottype = varargin{j};
         end
         j = j+1;

@@ -6789,6 +6789,7 @@ int next_frame(Stimulus *st)
                     optionflags[INITIAL_TRAINING] = 2;
                 
             }
+// need to set rw again here in case its a manual expt that mixes AFC trials with NonAFC trial
             if (option2flag & AFC){
                 expt.st->fix.rwsize = expt.st->fix.afcrwsize;
             }
@@ -6797,6 +6798,7 @@ int next_frame(Stimulus *st)
             }
             if (laststate!= PREFIXATION){
                 SerialSend(REWARD_SIZE);
+                SendToGui(REWARD_SIZE);
             }
             wipescreen(clearcolor);
             RunBetweenTrials(st, pos);
@@ -10016,7 +10018,7 @@ float StimulusProperty(Stimulus *st, int code)
             value = mon.viewd;
             break;
         case REWARD_SIZE:
-            value = st->fix.rwsize;
+            value = st->fix.rwsize; // need actual reward size here for when send to spike2
             break;
         case TIMEOUT_CODE:
             value = st->fix.timeout;
@@ -11397,7 +11399,7 @@ int GotChar(char c)
                     else if (afc_s.bonuslevel == 0 && afc_s.bonuslevel2 == 0)
                         TheStim->fix.rwsize = oldrw;
                     else
-                        TheStim->fix.rwsize = TheStim->fix.fixrwsize;
+                        TheStim->fix.rwsize = expt.vals[REWARD_SIZE1];
                     TheStim->fix.afcrwsize = TheStim->fix.rwsize;
                 }
                 else if(option2flag & AFC){
