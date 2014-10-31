@@ -2671,11 +2671,11 @@ int UpdateNetworkFile(Expt expt)
         sprintf(nbuf,"cp %s %s",name,netname);
         i = system(nbuf);
         if (i == 0){
-            sprintf(buf,"status=Copied %s to %s",name,netname);
+            sprintf(buf,"status=Copied %s to %s\n",name,netname);
             notify(buf);
         }
         else{
-            sprintf(buf,"Error Copying  %s to %s",name,netname);
+            sprintf(buf,"Error Copying  %s to %s\n",name,netname);
             acknowledge(buf,NULL);
         }
     }
@@ -2737,7 +2737,7 @@ int OpenNetworkFile(Expt expt)
         }
         else{
 // new method. Write locally, then close and cop to network at end of expt
-            sprintf(name,"/local/%s.bnc",expt.strings[NETWORK_PREFIX],sfile);
+            sprintf(name,"/local/%s.bnc",sfile);
             netoutfile = fopen(name,"a");
         }
     }
@@ -2750,7 +2750,7 @@ int OpenNetworkFile(Expt expt)
         notify(buf);
     }
     else{
-        sprintf(buf,"Can't open Network parameter record file (%d)\n %s\t or\n%s",lastresult,nbuf,name);
+        sprintf(buf,"Can't open Network parameter record file (%d) %s or %s",lastresult,nbuf,name);
         if (seroutfile != NULL)
             fprintf(seroutfile,"%s\n",buf);
         lastresult = -1;
