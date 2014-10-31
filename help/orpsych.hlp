@@ -14,9 +14,12 @@ sign conventions to work. So correct pairs are:
 Where (H) indicates that the choice will be a horizontal saccade.
 
 binoc chooses H or V saccades based on the last orientation in the list for expt 1.
+to override this set
 
-Lemieux: Avoid 110/20
-         
+usenewdirs=90 forces vertical targets regardless of task
+usenewdirs=360 forces horizontal targets regardless of task
+
+op=+ff reverses choice direction and target placement
 
 orsubspfine. Dm=82.5 for 0/90 -60/30 -30/60 -45/45
  	     Dm=72.5 for -10/80 20/110 -40/50

@@ -2629,12 +2629,66 @@ int CheckDirExists(char *name)
     }
 }
 
+/*
+ * Close the existing parameter file, and copy to the network
+ */
+int UpdateNetworkFile(Expt expt)
+{
+    char *t,*r,buf[BUFSIZ],name[BUFSIZ],sfile[BUFSIZ],path[BUFSIZ],oldname[BUFSIZ];
+    char netname[BUFSIZ];
+    char nbuf[BUFSIZ];
+    static int lastresult = 1;  // start as if was success
+    time_t tval,nowtime;
+    int i;
+    
+    
+    if (netoutfile == NULL)
+        return(0);
+    
+    if (netoutfile != NULL)
+        fclose(netoutfile);
+    netoutfile= NULL;
+    
+    
+    if (expt.strings[NETWORK_PREFIX] == NULL || !strcmp(expt.strings[NETWORK_PREFIX],"NotSet"))
+    {
+        sprintf(buf,"No prefix Name for network parameter file");
+        fprintf(stderr,"%s\n",buf);
+        statusline(buf);
+        if (optionflags[MANUAL_EXPT]){
+            acknowledge(buf,NULL);
+        }
+        return(-1);
+    }
+
+    t = strchr(expt.bwptr->prefix,':');
+    if (t != NULL){
+        strcpy(sfile,++t);
+        while((t = strchr(sfile,'\\')) != NULL)
+            *t = '/';
+        
+        sprintf(netname,"%s/%s.bnc",expt.strings[NETWORK_PREFIX],sfile);
+        sprintf(name,"/local/%s.bnc",sfile);
+        sprintf(nbuf,"cp %s %s",name,netname);
+        i = system(nbuf);
+        if (i == 0){
+            sprintf(buf,"status=Copied %s to %s",name,netname);
+            notify(buf);
+        }
+        else{
+            sprintf(buf,"Error Copying  %s to %s",name,netname);
+            acknowledge(buf,NULL);
+        }
+    }
+}
+
 int OpenNetworkFile(Expt expt)
 {
     char *t,*r,buf[BUFSIZ],name[BUFSIZ],sfile[BUFSIZ],path[BUFSIZ],oldname[BUFSIZ];
     char nbuf[BUFSIZ];
     static int lastresult = 1;  // start as if was success
     time_t tval,nowtime;
+    int method = 1;
 
     
     if (netoutfile != NULL)
@@ -2658,28 +2712,34 @@ int OpenNetworkFile(Expt expt)
         
         
         
-        
-        sprintf(name,"%s/%s.bnc",expt.strings[NETWORK_PREFIX],sfile);
 
-        netoutfile = fopen(name,"a");
-    
-        if (netoutfile == NULL){
-            strcpy(oldname,name);
-            sprintf(buf,"Can't open Network record %s. (%d) Trying %s",oldname,lastresult,name);
-            if (lastresult > 0)
-                acknowledge(buf, NULL);
-            lastresult = 0;
-            statusline(buf);
-            getcwd(path,BUFSIZ);
-            sprintf(name,"%s/%s.bnc",path,getfilename(sfile));
+        if (method ==0){
+            sprintf(name,"%s/%s.bnc",expt.strings[NETWORK_PREFIX],sfile);
             netoutfile = fopen(name,"a");
+            
+            if (netoutfile == NULL){
+                strcpy(oldname,name);
+                sprintf(buf,"Can't open Network record %s. (%d) Trying %s",oldname,lastresult,name);
+                if (lastresult > 0)
+                    acknowledge(buf, NULL);
+                lastresult = 0;
+                statusline(buf);
+                getcwd(path,BUFSIZ);
+                sprintf(name,"%s/%s.bnc",path,getfilename(sfile));
+                netoutfile = fopen(name,"a");
+            }
+            else{
+                lastresult = 1;
+                if (lastresult <= 0){
+                    sprintf(buf,"Success!!! Opened Network param file %s",name);
+                    acknowledge(buf,NULL);
+                }
+            }
         }
         else{
-            lastresult = 1;
-            if (lastresult <= 0){
-                sprintf(buf,"Success!!! Opened Network param file %s",name);
-                acknowledge(buf,NULL);
-            }
+// new method. Write locally, then close and cop to network at end of expt
+            sprintf(name,"/local/%s.bnc",expt.strings[NETWORK_PREFIX],sfile);
+            netoutfile = fopen(name,"a");
         }
     }
     tval = time(NULL);
@@ -3785,6 +3845,7 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
         case VERGENCE_WINDOW:
         case STATIC_VERGENCE:
         case ELECTRODE_DEPTH:
+        case SPIKE_GAIN:
         case REWARD_SIZE:
         case PREWARD:
         case WURTZ_RT_CODE:
@@ -4376,8 +4437,6 @@ int SaveImage(Stimulus *st, int type)
     int x,y,w,h,i=0,done = 0,n = 0;
     static int imstimid = 0,pcode = 5;
     char eyec[3] = "LR";
-    static int ndone = 0;
-    
     Stimulus *rst = st;
     Substim *sst;
     
@@ -4638,9 +4697,6 @@ int ReadCommand(char *s)
     else if(!strncasecmp(s,"debug",4)){
         sscanf(s,"%*s %d",&debug);
         sprintf(command_result,"debug %d",debug);
-    }
-    else if(!strncasecmp(s,"saverds",7)){ // toggle on/off saving screen images
-        testflags[SAVE_IMAGES] = 11;
     }
     else if(!strncasecmp(s,"onestim",6)){
         fprintf(stderr,"Running Seed %d\n",expt.st->left->baseseed);
