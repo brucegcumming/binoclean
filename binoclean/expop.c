@@ -708,7 +708,14 @@ int FindCode(char *s)
 {
     int i=0,j,code;
     char *t, str[BUFSIZ];
-    
+
+    while(vergonlycodes[i] != NULL){
+        if (strncmp(s,vergonlycodes[i],strlen(vergonlycodes[i]))) {
+            return(-1);
+        }
+    }
+    i = 0;
+
 // for lines with = sign, use exact match for what precedes the ='
     if ((t = strchr(s,'=')) != NULL){
         strncpy(str,s,t-s);
