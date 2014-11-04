@@ -159,6 +159,7 @@ static int nhelpfiles = 0;
 static int longnames[100] = {MIXAC, EXPT1_MAXSIG, FAKESTIM_SIGNAL, HIGHXTYPE, MONKEYNAME, 0};
 char confirmcmd[BUFSIZ *10] = {0};
 char noconfirmcmd[BUFSIZ *10] = {0};
+char bncfilename[BUFSIZ*10];
 
 FILE *imoutfd = NULL;
 int command_pending;
@@ -707,7 +708,14 @@ int FindCode(char *s)
 {
     int i=0,j,code;
     char *t, str[BUFSIZ];
-    
+
+    while(vergonlycodes[i] != NULL){
+        if (strncmp(s,vergonlycodes[i],strlen(vergonlycodes[i]))) {
+            return(-1);
+        }
+    }
+    i = 0;
+
 // for lines with = sign, use exact match for what precedes the ='
     if ((t = strchr(s,'=')) != NULL){
         strncpy(str,s,t-s);
@@ -2668,15 +2676,17 @@ int UpdateNetworkFile(Expt expt)
         
         sprintf(netname,"%s/%s.bnc",expt.strings[NETWORK_PREFIX],sfile);
         sprintf(name,"/local/%s.bnc",sfile);
-        sprintf(nbuf,"cp %s %s",name,netname);
+        sprintf(nbuf,"cp %s %s",bncfilename,netname);
         i = system(nbuf);
         if (i == 0){
-            sprintf(buf,"status=Copied %s to %s",name,netname);
+            sprintf(buf,"status=Copied %s to %s\n",bncfilename,netname);
             notify(buf);
         }
         else{
-            sprintf(buf,"Error Copying  %s to %s",name,netname);
-            acknowledge(buf,NULL);
+            if (strcmp(bncfilename,netname)){ //  only error if names are different
+                sprintf(buf,"Error Copying  %s to %s\n",bncfilename,netname);
+                acknowledge(buf,NULL);
+            }
         }
     }
 }
@@ -2730,6 +2740,8 @@ int OpenNetworkFile(Expt expt)
             else{
                 lastresult = 1;
                 if (lastresult <= 0){
+                    getcwd(path,BUFSIZ);
+                    sprintf(bncfilename,"%s/%s.bnc",path,getfilename(sfile));
                     sprintf(buf,"Success!!! Opened Network param file %s",name);
                     acknowledge(buf,NULL);
                 }
@@ -2737,20 +2749,21 @@ int OpenNetworkFile(Expt expt)
         }
         else{
 // new method. Write locally, then close and cop to network at end of expt
-            sprintf(name,"/local/%s.bnc",expt.strings[NETWORK_PREFIX],sfile);
-            netoutfile = fopen(name,"a");
+            getcwd(path,BUFSIZ);
+            sprintf(bncfilename,"%s/logs/%s.bnc",path,getfilename(sfile));
+            netoutfile = fopen(bncfilename,"a");
         }
     }
     tval = time(NULL);
     if (netoutfile != NULL){
         fprintf(netoutfile,"Reopened %s by binoc Version %s",ctime(&tval),VERSION_STRING);
         if (seroutfile != NULL)
-            fprintf(seroutfile,"Network Record to %s\n",name);
-        sprintf(buf,"status=Network Record to %s (last %d)\n",name,lastresult);
+            fprintf(seroutfile,"Network Record to %s\n",bncfilename);
+        sprintf(buf,"status=Network Record to %s (last %d)\n",bncfilename,lastresult);
         notify(buf);
     }
     else{
-        sprintf(buf,"Can't open Network parameter record file (%d)\n %s\t or\n%s",lastresult,nbuf,name);
+        sprintf(buf,"Can't open Network parameter record file (%d) %s or %s",lastresult,nbuf,bncfilename);
         if (seroutfile != NULL)
             fprintf(seroutfile,"%s\n",buf);
         lastresult = -1;
@@ -7193,7 +7206,19 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
                 sprintf(cbuf,"%s%.0f",scode, floor((float)(expt.st->fix.rwsize)/rwduration));
 #elseif !defined(OXFORD)
         case REWARD_SIZE:
-            sprintf(cbuf,"%s%s%.2f",scode,temp,expt.st->fix.rwsize);
+            if (flag != TO_BW)
+                    sprintf(cbuf,"%s%s%.2f (%.2f)",scode,temp,expt.st->fix.fixrwsize,expt.st->fix.rwsize); //show fixed level and current
+            else
+                    sprintf(cbuf,"%s%s%.2f",scode,temp,expt.st->fix.rwsize);
+            
+            break;
+#else
+        case REWARD_SIZE:
+            if (flag != TO_BW)
+                sprintf(cbuf,"%s%s%.2f (%.2f)",scode,temp,expt.st->fix.fixrwsize,expt.st->fix.rwsize); //show fixed level and current
+            else
+                sprintf(cbuf,"%s%s%.2f",scode,temp,expt.st->fix.rwsize);
+            
             break;
 #endif
             /*

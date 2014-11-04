@@ -693,6 +693,11 @@ typedef struct valuecode {
 
 #define NCODES MAXTOTALCODES
 
+char *vergonlycodes[] = {
+    "rptexpt",
+    "ereset",
+    NULL
+};
 
 
 ToggleCode togglestrings[] = {
@@ -1429,6 +1434,8 @@ extern int nfplaces[MAXTOTALCODES];
 extern int codesend[];
 extern char **serial_names;
 extern char *jumpnames[];
+extern char *vergonlycodes[];
+
 #endif
 
 

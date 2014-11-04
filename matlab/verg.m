@@ -702,14 +702,14 @@ for j = 1:length(strs{1})
                 exptover = 0; %put a check in here to resolve confusions
             else
                 exptover = 1;
-                CheckTrialDurations(DATA);
+                CheckTrialDurations(DATA,'EXPTOVER');
             end
             if DATA.exptstoppedbyuser  
             %if user hist cancal/stop, dont repeat or move on to automatic next expt
                 DATA.exptstoppedbyuser = 0;
                 DATA.seqline = 0;
             elseif DATA.seqline > 0 && exptover
-                myprintf(DATA.cmdfid,'-show','Sequence continuing from line %d',DATA.seqline);
+                myprintf(DATA.cmdfid,'-show','Sequence continuing from line %d: ',DATA.seqline);
 %                if DATA.restartbinoc && wasexpt  %if inexpt ==0, may be anew restart
 %                    DATA = RestartBinoc(DATA);
 %                end
@@ -982,7 +982,7 @@ for j = 1:length(strs{1})
             if length(a) > 1
                 DATA.Trial.tr = a(2);
             end
-            DATA.Trial.rw = DATA.binoc{1}.rw;
+            DATA.Trial.rw = DATA.currentrw;
             DATA = SetTrial(DATA, DATA.Trial);
             DATA.nt = DATA.nt+1;
             DATA.Trial.Trial = DATA.nt;
@@ -1254,6 +1254,12 @@ for j = 1:length(strs{1})
             else
                 val = sscanf(s(id(1)+1:end),'%f');
                 DATA.binoc{DATA.currentstim}.(code) = val;
+            end
+            if strcmp(code,'rw')
+                val = sscanf(s(id(1)+1:end),'%f (%f)');
+                if length(val) > 1
+                    DATA.currentrw = val(2);
+                end
             end
             codetype = DATA.comcodes(cid(1)).group;
             DATA = SetCode(DATA,code);
@@ -1661,6 +1667,7 @@ if fid > 0
     fclose(fid);
     if strcmp(DATA.exptlines{1},'sequence')
         SequencePopup(DATA,DATA.exptlines(2:end),'popup');
+        outprintf(DATA,'\neventcontinue\n');
     else
         [DATA, details] = ReadExptLines(DATA,a{1},'fromstim');
         if details.badcodes > 1
@@ -2087,6 +2094,7 @@ DATA.Trial.rw = 0;
 DATA.Comments = [];
 DATA.state.stimfileerrs = 0;
 DATA.state.stimfile = '';
+DATA.currentrw = 0;
 
 DATA.newbinoc = 2;
 DATA.ready = 0;
@@ -3473,7 +3481,10 @@ function CheckTrialDurations(DATA, varargin)
     plottype = 'none';
     j = 1;
     while j <= length(varargin)
-        if strcmp(varargin{j},'hist')
+        if strcmp(varargin{j},'EXPTOVER') && ~isempty(DATA.Expts)
+            tid = DATA.Expts{end}.first:DATA.Expts{end}.last;
+            T = DATA.Trials(tid);
+        elseif strcmp(varargin{j},'hist')
             plottype = varargin{j};
         end
         j = j+1;
@@ -5582,6 +5593,7 @@ function DATA = RunExptSequence(DATA, str, line)
             line = 1;
         else
             DATA.seqline = 0;
+            myprintf(DATA.cmdfid,'Sequence End\n');
             return;
         end
     end
@@ -5705,10 +5717,22 @@ function DATA = uipause(start, secs, msg, DATA)
     delete(wh);
 
 
-function DATA = ContinueSequence(DATA)
+function DATA = ContinueSequence(DATA, varargin)
+    showlog = 0;
+    j = 1;
+    while j <= length(varargin)
+        if strncmpi(varargin{j},'log',3)
+            showlog = 1;
+        end
+        j = j+1;
+    end
   cntrl_box = findobj('Tag',DATA.windownames{8},'type','figure');
   lst = findobj(cntrl_box,'Tag','SequenceList');
   if DATA.newbinoc == 0 && ~isempty(lst) %don't call this when just parsing initial state
+      if showlog
+          str = get(lst,'string');
+          myprintf(DATA.cmdfid,'#Sequence continuing from line %d\n#%s\n',DATA.seqline,str(DATA.seqline+1,:));
+      end
       DATA = RunExptSequence(DATA,get(lst,'string'),DATA.seqline+1);
   end
 
@@ -5747,7 +5771,15 @@ function SequencePopup(a,exptlines,type)
           lst = findobj(cntrl_box,'Tag','SequenceList');
           RunExptSequence(DATA,get(lst,'string'),1);
       elseif strcmp(type,'pause')
-          DATA.runsequence = 0;
+          str = get(a,'string');
+          if strcmp(str,'pause');
+              set(a,'string','continue');
+              DATA.runsequence = 0;
+          else
+              set(a,'string','pause');
+              DATA.runsequence = 1;
+              DATA = ContinueSequence(DATA,'log');
+          end
           SetData(DATA);
       end
       return;
