@@ -710,9 +710,10 @@ int FindCode(char *s)
     char *t, str[BUFSIZ];
 
     while(vergonlycodes[i] != NULL){
-        if (strncmp(s,vergonlycodes[i],strlen(vergonlycodes[i]))) {
-            return(-1);
+        if (strncmp(s,vergonlycodes[i],strlen(vergonlycodes[i])) == NULL) {
+            return(MAXTOTALCODES);
         }
+        i++;
     }
     i = 0;
 
@@ -725,7 +726,7 @@ int FindCode(char *s)
             if(strcmp(str, valstrings[i].code) ==0)
                 return(valstrings[i].icode);
         }
-        return(-1);
+        return(MAXTOTALCODES);
     }
     
     while((j=longnames[i++]) > 0){
@@ -4587,6 +4588,10 @@ int ReadCommand(char *s)
     }
     else if(!strncasecmp(s,"go",2)){
         StopGo(GO);
+    }
+    else if(!strncasecmp(s,"mat",3)){ // record calls to matlab to seroutfile
+        if (seroutfile)
+            fprintf(seroutfile,"!%s\n",s);
     }
     else if(!strncasecmp(s,"onetrial",8)){
         RunOneTrial();
@@ -14265,8 +14270,10 @@ int InterpretLine(char *line, Expt *ex, int frompc)
                             !strncmp(line,serial_strings[VIEWD_CODE],2)))
         return(code);
     
-    
-    if(code >= 0){
+    if (code == MAXTOTALCODES) { // a verg code
+        return(code);
+    }
+    else if(code >= 0){
         icode = valstringindex[code];
         s = &line[strlen(valstrings[icode].code)+charoff];
     }

@@ -695,7 +695,6 @@ typedef struct valuecode {
 
 char *vergonlycodes[] = {
     "rptexpt",
-    "ereset",
     NULL
 };
 
