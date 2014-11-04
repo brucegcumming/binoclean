@@ -4468,7 +4468,6 @@ int SaveImage(Stimulus *st, int type)
                 n = SaveRdsTxt(st, ofd);
                 fclose(ofd);
             }
-        ndone++;
         type = 5;
 //        return(done);
     }

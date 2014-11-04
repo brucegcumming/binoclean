@@ -251,6 +251,9 @@ int init_rds(Stimulus *st,  Substim *sst, float density)
 }
 
 
+
+
+
 Stimulus *ReadRds(char *name, int frame)
 {
     FILE *fd;
@@ -1898,36 +1901,6 @@ void paint_rds(Stimulus *st, int mode)
     glPopMatrix();
   }
 
-Stimulus *ReadRds(char *name)
-{
-    FILE *fd;
-    char eye;
-    int x,y,i,ndots = 100;
-    Stimulus *st;
-    float w,h;
-    
-    if (rdsstims[0] == NULL){
-        st = rdsstims[0] = NewStimulus(NULL);
-        StimulusType(st, STIM_RDS);
-    }
-    else
-        st = rdsstims[0];
-    
-    
-    if((fd = fopen(name,"r")) != NULL){
-        fscanf(fd,"w%fh%f:%d%c",&w,&h,&ndots,&eye);
-        init_rds(st,st->left,-ndots);
-        init_rds(st,st->right,-ndots);
-        for (i = 0; i < ndots; i++){
-            fscanf(fd,"%3x%3x",&x,&y);
-        }
-        fscanf(fd,"w%fh%f:%d%c",&w,&h,&ndots,&eye);
-        for (i = 0; i < ndots; i++){
-            fscanf(fd,"%3x%3x",&x,&y);
-        }
-    }
-    
-}
 
 
 int SaveRdsTxt(Stimulus *st, FILE *fd)
@@ -1941,7 +1914,7 @@ int SaveRdsTxt(Stimulus *st, FILE *fd)
     int ndots[2],sign = 1;
     double pixmul;
     static int nsaved = 0;
-    int rhbyte,rvbyte, lhbyte,lvbyte;
+    int rhbyte,rvbyte, lhbyte,lvbyte,cbyte;
     
     sst = st->left;
     p = sst->iim;
