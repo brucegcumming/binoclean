@@ -710,9 +710,10 @@ int FindCode(char *s)
     char *t, str[BUFSIZ];
 
     while(vergonlycodes[i] != NULL){
-        if (strncmp(s,vergonlycodes[i],strlen(vergonlycodes[i]))) {
+        if (!strncmp(s,vergonlycodes[i],strlen(vergonlycodes[i]))) {
             return(-1);
         }
+        i++;
     }
     i = 0;
 
