@@ -5731,7 +5731,13 @@ function DATA = ContinueSequence(DATA, varargin)
   if DATA.newbinoc == 0 && ~isempty(lst) %don't call this when just parsing initial state
       if showlog
           str = get(lst,'string');
-          myprintf(DATA.cmdfid,'#Sequence continuing from line %d\n#%s\n',DATA.seqline,str(DATA.seqline+1,:));
+          if ~iscell(str)   %!!! Seems not to be consistent
+              str = cellstr(str);
+          end
+          if length(str) <= DATA.seqline
+              str{DATA.seqline+1} = 'Back to start';
+          end
+          myprintf(DATA.cmdfid,'#Sequence continuing from line %d\n#%s\n',DATA.seqline,str{DATA.seqline+1});
       end
       DATA = RunExptSequence(DATA,get(lst,'string'),DATA.seqline+1);
   end
@@ -5778,7 +5784,11 @@ function SequencePopup(a,exptlines,type)
           else
               set(a,'string','pause');
               DATA.runsequence = 1;
-              DATA = ContinueSequence(DATA,'log');
+%if continue is hit while still running the same expt where pause was hit,
+%dont advance to the next experiment immediatel - wait for expt to finish
+              if DATA.inexpt == 0
+                  DATA = ContinueSequence(DATA,'log');
+              end
           end
           SetData(DATA);
       end
