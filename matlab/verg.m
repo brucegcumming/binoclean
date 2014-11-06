@@ -5494,6 +5494,9 @@ for j = line:length(str)
     if strncmp(str{j},'!expt',5)
 %need to do this before sending !expt to binoc, so that UserData is set
 % before binoc calls back with settings
+        cntrl_box = findobj('Tag',DATA.windownames{8},'type','figure');
+          lst = findobj(cntrl_box,'Tag','SequenceList');
+%        set(lst,'value',j);
         if strcmp(str{j},'!exptrpt') %repeat exact expt, without calling matexpt again
             DATA.matlabwasrun = 1;
         end
@@ -5517,6 +5520,15 @@ for j = line:length(str)
         DATA.nexpts = DATA.nexpts+1;
         DATA.Expts{DATA.nexpts} = ExptSummary(DATA);
         DATA.seqline = j;
+
+        if j > 1 && j <= length(str)
+            s = str{j-1};
+        elseif j > 0
+            s = str{1};
+        else
+            s = 'end';
+        end
+        set(cntrl_box,'Name',sprintf('Sequence at line %d (%s)',DATA.seqline,s));
         set(DATA.toplevel,'UserData',DATA);
         outprintf(DATA,'#From RunSequence\n');
         outprintf(DATA,'%s\n',str{j}); %this runs expt in binoc

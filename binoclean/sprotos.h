@@ -271,6 +271,7 @@ void SetAPanel();
 stair_hist_s newstairstruct();
 int PrintToggles(FILE *ofd);
 char *binocTimeString();
+char *binocDateString(int full);
 void ShowTime();
 int getframecount();
 float getframetime();

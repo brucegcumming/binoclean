@@ -349,6 +349,19 @@ char *binocTimeString()
     return (&t[10]);
 }
 
+char *binocDateString(int full)
+{
+    char name[BUFSIZ],*t = NULL ,buf[256];
+    time_t tval;
+    
+    tval = time(NULL);
+    t = ctime(&tval);
+    t[24] =0; // remove \n
+    if (full == 0)
+        t[10] = 0;
+    return (t);
+}
+
 void TriggerExpt()
 {
 
@@ -11983,10 +11996,18 @@ void Stim2PsychFile(int state, FILE *fd)
             *(r-4) = 0;
 
         r = binocTimeString();
-        fprintf(fd,"R7 binoclean=%s time=%s %s bt=%.2f", s, &r[1],StimString(OPTION_CODE));
-        fprintf(fd," bt=%.2f", timediff(&now,&sessiontime));
-        fprintf(fd," %s",StimString(UFF_PREFIX));
-        j = 4;
+        if(state == START_EXPT || state == START_EXPT+100){
+            fprintf(fd,"R7 date=%s\n", binocDateString(1));
+            fprintf(fd,"R7 binoclean=%s time=%s %s bt=%.2f", s, &r[1],StimString(OPTION_CODE));
+            fprintf(fd," date=%s", binocDateString(1));
+            fprintf(fd," bt=%.2f", timediff(&now,&sessiontime));
+            fprintf(fd," %s",StimString(UFF_PREFIX));
+            j = 4;
+        }
+        else {
+            fprintf(fd,"R7 bt=%.2f", timediff(&now,&sessiontime));
+            j = 1;
+        }
         for (i = 0; i < NTRACKCODES; i++){
             if(trackcodes[i] >= 0){
                 if(j%12 ==0)

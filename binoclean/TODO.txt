@@ -110,3 +110,4 @@ add help for !commands
 allow searching of .hlp files.  E.g I would like to know where to find how to make movies....
 ? diable dx for "twoeyes" image mode, on theory that it shoud be done in the file?  Or use Pd/dp  to encode manual disparities done there.
 Verg should close ServorDrive on exit.
+Indicate in Run sequence window the current position. 
