@@ -87,6 +87,7 @@ if isempty(it)
         tt = TimeMark(tt, 'VergSetup');
         [DATA, details] = ReadStimFile(DATA,varargin{1}, 'init');
         DATA.state.stimfile = varargin{1};
+        CheckState(DATA);
         if details.badcodes > 1
             DATA.state.stimfileerrs = details.badcodes;
         end
@@ -101,8 +102,7 @@ if isempty(it)
         if checkforrestart
             DATA = LoadLastSettings(DATA,'interactive');
         end
-        outprintf(DATA,'QueryState\n');
-        DATA = ReadFromBinoc(DATA,'expect');
+        DATA = DrainBinocPipe(DATA);
         tt = TimeMark(tt, 'FromBinoc');
 
         j = 2;
@@ -213,6 +213,18 @@ if autoquit
 end
 
 
+function CheckState(DATA, varargin)
+
+    for j = 1:length(varargin)
+        if ischar(varargin{j})
+            myprintf(DATA.tobinocfid,'%s ',varargin{j});
+        end
+    end
+        
+    if DATA.verbose(4)
+        myprintf(DATA.tobinocfid,'-show','%s uf=%s bt=%.3f\n',datestr(now),DATA.binoc{1}.uf,GetValue(DATA,'bt'));
+    end
+    
 function ExitVerg(DATA)
     
     
@@ -303,7 +315,7 @@ function DATA = CheckStateAtStart(DATA)
         str = 'You Can define A "reset" stimfile that is Run before loading each new Expt. Put ereset=path in verg.setup or your stimfile';
         msgbox(str);
     end
-    if DATA.verbose(4)
+    if DATA.verbose(4) && 0
     for j = 1:length(DATA.comcodes)
        if ~isfield(DATA.helpstrs,DATA.comcodes(j).code) 
            if ~strcmp('xx',DATA.comcodes(j).code)
@@ -1197,6 +1209,13 @@ for j = 1:length(strs{1})
         cid = find(codematches);
         code = DATA.comcodes(cid(1)).code;
         id = strfind(s,'=');
+        if frombinoc && strcmp(code,'uf')
+            if DATA.state.query
+                CheckState(DATA,s, 'query');
+            else
+                CheckState(DATA,s);
+            end
+        end
         if id
 %some variables are numeric internally, but best recorded via the matching code        
             if sum(strcmp(code,{'hxtype'}))
@@ -1304,9 +1323,18 @@ for j = 1:length(strs{1})
                     DATA.binoc{bid}.(code) = s(id(1)+1:end);
                 end
                 if 1 && DATA.togglecodesreceived
-                    fprintf('%s:Code %s not in comcodes\n',datestr(now),code);
-                    codematches = strcmp(code,{DATA.comcodes.code});
                     codetype = -2;
+                    codematches = strcmp(code,{DATA.comcodes.code});
+                    xid = find(bitand([DATA.comcodes.group],1024));
+                    for k = 1length(xid)
+                        if strncmp(code,DATA.comcodes(xid(k)).code,length(DATA.comcodes(xid(k)).code))
+                            codetype = xid(k);
+                            codematches = strncmp(code,{DATA.comcodes.code},length(DATA.comcodes(xid(k)).code));
+                        end
+                    end
+                    if codetype < 0
+                        fprintf('%s:Code %s not in comcodes\n',datestr(now),code);
+                    end
                 end
                 SetCode(DATA,code);
             else
@@ -2049,6 +2077,7 @@ DATA.Trial.rw = 0;
 DATA.Comments = [];
 DATA.state.stimfileerrs = 0;
 DATA.state.stimfile = '';
+DATA.state.query = 0;
 DATA.currentrw = 0;
 
 DATA.newbinoc = 2;
@@ -2140,15 +2169,18 @@ DATA.commandctr = 1;
 DATA.historyctr = 0;
 DATA.inexpt = 0;
 DATA.binoc{1}.uf = '';
-DATA.electrodestrings = {'Not Set'};
+DATA.electrodestrings = {'NotSet'};
 DATA.userstrings = {'bgc' 'ali' 'ink' 'agb' 'pla' 'sid'};
 DATA.monkeystrings = {'Icarus' 'Junior Barnes' 'Lemieux' 'Pepper' 'Rufus' };
 DATA.monkeystrs = {'ica' 'jbe' 'lem' 'ppr' 'ruf' };
-DATA.binoc{1}.Electrode = 'default';
-DATA.binoc{1}.monkey = 'none';
+
+%make sure some fields exist. Be careful with this - if verg is resstarte
+%and binoc is running, these might override what is in binoc
+DATA.binoc{1}.Electrode = '';
+DATA.binoc{1}.monkey = '';
 DATA.binoc{1}.lo = '';
 DATA.binoc{1}.nt = 1;
-DATA.binoc{1}.st = 'none'; % make sure this field comes early
+DATA.binoc{1}.st = ''; % make sure this field comes early
 DATA.penid = 0;
 DATA.stimulusnames{1} = 'none';
 DATA.stimulusnames{4} = 'grating';
@@ -2228,7 +2260,7 @@ DATA.binoc{1}.sz = 0;
 DATA.binoc{2}.xo = 0;
 DATA.binoc{1}.ePr = 0;
 DATA.binoc{1}.adapter = 'None';
-DATA.binoc{1}.uf = 'None';
+DATA.binoc{1}.uf = '';
 DATA.binoc{1}.ei = '0';
 DATA.binoc{1}.i2 = '0';
 DATA.binoc{1}.i3 = '0';
@@ -2410,7 +2442,7 @@ function ShowStatus(DATA)
             str = datestr(DATA.Expts{DATA.nexpts}.End);
             str = ['Ended ' str(13:17)];
         else
-            str = 'Expt not over But In Expt!';
+            str = sprintf('Binoc seems not to be in Expt, but verg didnt get end of Expt %d',nexpts);
         end
     else
         status = 0;
@@ -3183,8 +3215,13 @@ function DATA = LoadLastSettings(DATA, varargin)
         j = j+1;
     end
     
+    if DATA.frombinocfid > 0 || DATA.verbose(4)
+    end
         rfile = ['/local/' DATA.binoc{1}.monkey '/lean*.stm'];
         d = mydir(rfile);
+        if DATA.frombinocfid > 0 || DATA.verbose(4)
+            fprintf('%s has %d current expt files\n',rfile,length(d));
+        end
         if isempty(d)
             return;
         end
@@ -3209,6 +3246,7 @@ function DATA = LoadLastSettings(DATA, varargin)
                 DATA = InterpretLine(DATA, txt{id(1)},'tobinoc');
             end
             end
+            CheckState(DATA);
         end
     
 function RecoverFile(a, b, type)
@@ -6381,8 +6419,8 @@ function SendCode(DATA, code)
             outprintf(DATA,'exp=%s\n',DATA.matexpres.stimdir);
         end
     else
-        s = CodeText(DATA, code);
-        if length(s)
+        [s, ~, valid] = CodeText(DATA, code);
+        if length(s) && valid >= 0
             outprintf(DATA,'%s\n',s);
         end
     end
@@ -6451,15 +6489,18 @@ if strcmp(code,'optionflag')
         s = sprintf('pf=%s',sprintf('+%s',f{:}));
     elseif isfield(DATA.binoc{cstim},code)
         id = find(strcmp(code,{DATA.comcodes.code}));
-        if length(id) ==1 && DATA.comcodes(id).type == 'C'
-            s = sprintf('%s=%s',code,DATA.binoc{cstim}.(code));
-        else
-            s = sprintf('%s=%s',code,num2str(DATA.binoc{cstim}.(code)'));
-        end  
         if length(id) ==1
             lbl = DATA.comcodes(id).label;
             type = DATA.comcodes(id).group;
         end
+        if length(id) ==1 && DATA.comcodes(id).type == 'C'
+            s = sprintf('%s=%s',code,DATA.binoc{cstim}.(code));
+            if isempty(DATA.binoc{cstim}.(code))
+                type = -1;
+            end
+        else
+            s = sprintf('%s=%s',code,num2str(DATA.binoc{cstim}.(code)'));
+        end  
     elseif sum(strcmp(code,{DATA.strcodes.code})) == 1
         id = find(strcmp(code,{DATA.strcodes.code}));
         s = sprintf('%s=%s',code,DATA.binocstr.(code));

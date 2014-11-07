@@ -725,6 +725,8 @@ int FindCode(char *s)
         {
             if(strcmp(str, valstrings[i].code) ==0)
                 return(valstrings[i].icode);
+            else if(valstrings[i].group &  PARTIAL_CODE && strncmp(str, valstrings[i].code,strlen(valstrings[i].code)) ==0 )
+                return(valstrings[i].icode);
         }
         return(MAXTOTALCODES);
     }
@@ -1644,6 +1646,10 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
  * a matching valstring for a code
  */
     
+    for(i = 0; i < MAXMANUALPARAMS; i++){
+        expt.manuallabels[i] = NULL;
+        expt.manualvalues[i] = NAN;
+    }
     for(i = 0; i < MAXTOTALCODES; i++)
         valstringindex[i] = -1;
 
@@ -2982,6 +2988,7 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
             SerialSend(RF_DIMENSIONS);
             expt.vals[VWHERE] = 0;
             rcctr = 0;
+            printf("DataFile %s at %s\n", expt.bwptr->prefix,ctime(&tval));
             break;
         case USERID:
             i = 0;
@@ -6684,6 +6691,10 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
                 
         }
     }
+    if (valstrings[icode].group & PARTIAL_CODE){
+        ival = st;
+        st = expt.st;
+    }
     
     switch(code)
     {
@@ -6815,6 +6826,12 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
                     }	
                 }
                 if(flag == TO_GUI){
+                    strcpy(temp,cbuf);
+                    sprintf(cbuf,"bt=%.3f\n",ufftime(&now));
+                    strcat(cbuf,temp);
+                    gettimeofday(&now,NULL);
+                    tval = time(NULL);
+//                    printf("%sSending %s at bt=%.3f\n",ctime(&tval),cbuf,ufftime(&now));
                     sprintf(temp,"\ncwd=%s",expt.cwd);
                     strcat(cbuf,temp);
                 }
@@ -7299,6 +7316,20 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
         case PURSUIT_INCREMENT:
             val = GetProperty(ex, ex->st, code) * pursuedir;
             sprintf(cbuf,"%s%s%.*f",scode,temp,nfplaces[code],val);
+            break;
+        case ARB_LABEL:
+            if (ival < 0 || ival > MAXMANUALPARAMS)
+                sprintf(cbuf,"");
+            else if(expt.manuallabels[ival] != NULL)
+                sprintf(cbuf,"%s%d=%s",scode,ival,expt.manuallabels[ival]);
+            else
+                sprintf(cbuf,"%s%d=NotSet",scode,ival);
+            break;
+        case ARB_VALUE:
+            if (ival < 0 || ival > MAXMANUALPARAMS)
+                sprintf(cbuf,"");
+            else
+                sprintf(cbuf,"%s%d=%.*f",scode,ival,3,expt.manualvalues[ival]);
             break;
         case TRIGGER_LEVEL1:
             if(flag != TO_BW)
@@ -14291,6 +14322,17 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     j = 0;
     i = 0;
     // string with no value means report back current value
+    if (valstrings[icode].group & PARTIAL_CODE){
+        sscanf(s,"%d",&ival);
+        s = strchr(line,'=');
+        if (s==NULL || *(s+1) == 0){ // a partial code, but no value given
+            MakeString(code, buf, &expt, ival, TO_GUI);
+            notify(buf);
+            return(code);
+        }
+        else
+            s++;
+    }
     
     if(strlen(s) == 0 && code < MAXTOTALCODES){
         MakeString(code,buf,&expt, TheStim, TO_GUI);
@@ -14375,6 +14417,14 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             break;
         case MAGIC_ID:
             sscanf(s,"%d",&expt.magicnumber);
+            break;
+        case ARB_LABEL:
+            if (ival < MAXMANUALPARAMS)
+                expt.manuallabels[ival] = myscopy(expt.manuallabels[ival],s);
+            break;
+        case ARB_VALUE:
+            if (ival < MAXMANUALPARAMS)
+                expt.manualvalues[ival] = dval;
             break;
         case JUMP_SF_COMPONENTS:
             for(i = 0; i < expt.st->nfreqs; i++)
