@@ -6899,7 +6899,7 @@ end
 DATA = ReadFromBinoc(DATA,'from TextEntered ',readargs{:});
 if showbinoc
 %    code = txt(1:end-1);
-    if sum(strcmp(code,{'uf' 'monkey'}))
+    if sum(strcmp(code,{'uf' 'monkey'})) && isfield(DATA,'cwd')
        DATA = AddTextToGui(DATA,['cwd=' DATA.cwd]);
     end
     if sum(strcmp(code,{'rw'})) %show total reward

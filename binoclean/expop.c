@@ -1947,10 +1947,10 @@ char *ReadManualStim(char *file, int stimid){
  * manual stims. Send these to a network file that AplaySpkFile will read
  */
         
-        if (netoutfile)
-            fputs(inbuf,netoutfile);
         s = strchr(inbuf,':');
         if (s != NULL){
+            if (netoutfile)
+                fputs(inbuf,netoutfile);
             if (strncmp(inbuf,"bar",3) == NULL){
                 sscanf(&inbuf[3],"%d",&modifier);
                 if (modifier > 9)
@@ -2012,7 +2012,7 @@ char *ReadManualStim(char *file, int stimid){
             if (i == OPTION_CODE){
                 SerialSend(i);
             }
-            else if (expt.codesent == 0){
+            else if (expt.codesent == 0){ // this sends to netoutfile too. 
                 SerialString(inbuf,0);
                 SerialString("\n",0);
             }
@@ -2718,7 +2718,7 @@ int OpenNetworkFile(Expt expt)
         if (optionflags[MANUAL_EXPT]){
             acknowledge(buf,NULL);
         }
-        return(-1);
+// Don't return here. GO on to open the local copy
     }
     t = strchr(expt.bwptr->prefix,':');
     if (t != NULL){
@@ -3885,11 +3885,13 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
         case TONETIME:
         case TARGET_RATIO:
             SerialSend(flag);
+            expt.codesent = 1;
             break;
         case PURSUIT_INCREMENT:
             if (lastdir != expt.vals[flag] * pursuedir && pursuedir < 0)
                 cbuf[0] = 0;
             SerialSend(flag);
+            expt.codesent = 1;
             break;
         default: //Even if not sent to bw, put it in the disk record.
             if(seroutfile)
@@ -6832,7 +6834,7 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
                     gettimeofday(&now,NULL);
                     tval = time(NULL);
 //                    printf("%sSending %s at bt=%.3f\n",ctime(&tval),cbuf,ufftime(&now));
-                    sprintf(temp,"\ncwd=%s",expt.cwd);
+                    sprintf(temp,"\ncwd=%s\n",expt.cwd);
                     strcat(cbuf,temp);
                 }
                 
@@ -7073,12 +7075,12 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
                     }
                     i++;
                 }
-                for(i = 0; i < NTESTFLAGS; i++){
-                    if(testflags[i]){
-                        sprintf(temp,"\ntestflag %d",i);
-                        strcat(cbuf,temp);
-                    }
-                }
+//                for(i = 0; i < NTESTFLAGS; i++){
+//                    if(testflags[i]){
+//                        sprintf(temp,"\ntestflag %d",i);
+//                        strcat(cbuf,temp);
+//                    }
+//                }
             }
             else
             {
@@ -14849,6 +14851,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
                 }
             }
             SerialSend(code);
+            expt.codesent = 1;
             break;
         case SPIKE_TIMES:
             /*		printf("Spikes Times%s\n",s);*/
@@ -14874,8 +14877,10 @@ int InterpretLine(char *line, Expt *ex, int frompc)
         case PSYCHFILE:
         case MONITOR_FILE:
             SetExptString(ex, TheStim, code, s);
-            if (valstrings[icode].codesend != SEND_NEVER)
+            if (valstrings[icode].codesend != SEND_NEVER){
                 SerialSend(code);
+                expt.codesent = 1;
+            }
             break;
         case QUERY_STATE:
             gettimeofday(&now,NULL);

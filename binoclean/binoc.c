@@ -12003,6 +12003,12 @@ void Stim2PsychFile(int state, FILE *fd)
             fprintf(fd," %s",StimString(UFF_PREFIX));
             fprintf(fd," %s",StimString(EXPT_NAME));
             j = 4;
+            for(i = 0; i < MAXMANUALPARAMS; i++){
+                if (expt.manuallabels[i] != NULL && strcmp(expt.manuallabels[i],"NotSet")){
+                    fprintf(fd," %s=%.4f",expt.manuallabels[i], expt.manualvalues[i]);
+                    j++;
+                }
+            }
         }
         else {
             fprintf(fd,"R7 bt=%.2f", timediff(&now,&sessiontime));
