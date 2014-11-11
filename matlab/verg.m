@@ -291,6 +291,8 @@ function [ok, reason] = CheckDayEnd(DATA)
         reason = 'No Expts';
     elseif ~isfield(S,'pe') || S.Pn(1) <= 0 
         reason = 'Penetration not set';
+    elseif DATA.optionflags.py
+        reason = 'Human Psychophyscis';
     else
         penlog = sprintf('/local/%s/pen%d.log',S.monkey,S.Pn(1));
         nsave = 0;
@@ -3056,7 +3058,7 @@ function MenuHit(a,b, arg)
             CopyLog(DATA,'online');
             CopyLog(DATA,'penlog');
             CopyLog(DATA, 'bnc');
-        else
+        elseif ~sum(strncmp(reason,{'Human'},6))
             fprintf('Not Copying Recording Logs beacuse %s\n',reason);
         end
         ExitVerg(DATA);
@@ -6558,6 +6560,8 @@ function [DATA, txt] = PrevCommand(DATA, src, step)
         DATA.completestr = src.Text;
     end
     
+    s = get(DATA.txtrec,'string');
+    nlines = size(s,1);
     if DATA.commandctr >= length(DATA.commands) && step == 1 && DATA.historyctr > length(DATA.oldcmds)
         DATA.commandctr = length(DATA.commands)+1;
         txt = '';
@@ -6589,7 +6593,11 @@ function [DATA, txt] = PrevCommand(DATA, src, step)
             DATA.historyctr = length(DATA.oldcmds);
         else
             txt = DATA.commands{DATA.commandctr};
-            set(DATA.txtrec,'value',DATA.commandctr+1);
+            if DATA.commandctr < nlines
+                set(DATA.txtrec,'value',DATA.commandctr+1);
+            else
+                set(DATA.txtrec,'value',nlines);
+            end
         end
     elseif DATA.commandctr == 1 && (step < 0 || DATA.historyctr <= length(DATA.oldcmds))
         if DATA.historyctr == length(DATA.oldcmds) && step == 1

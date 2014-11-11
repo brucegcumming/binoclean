@@ -2765,6 +2765,11 @@ int OpenNetworkFile(Expt expt)
             netoutfile = fopen(bncfilename,"a");
         }
     }
+    else{
+        getcwd(path,BUFSIZ);
+        sprintf(bncfilename,"%s/logs/%s.bnc",path,getfilename(expt.bwptr->prefix));
+        netoutfile = fopen(bncfilename,"a");
+    }
     tval = time(NULL);
     if (netoutfile != NULL){
         fprintf(netoutfile,"Reopened %s by binoc Version %s",ctime(&tval),VERSION_STRING);
@@ -15268,7 +15273,7 @@ int ButtonResponse(int button, int revise, vcoord *locn)
     }
     else
         afc_s.respdir = '?';
-    PrintPsychLine(res, sign); // now done in GotChar, so get rest of serial output
+    PrintPsychLine(res, sign, psychfile); // now done in GotChar, so get rest of serial output
     if(expt.stimid >= 0){
         if(option2flag & IFC)
             res = ifcanswer;

@@ -1,4 +1,6 @@
 mo=fore
+mlab1=adaptdx
+mlab2=adaptce
 et=dx
 ce=1
 nt=13
@@ -48,7 +50,7 @@ rr=1
 dd=120
 sl=0
 jv=0
-nrep=10
+nr=10
 em=0
 nt=4
 ei=0.14
@@ -95,7 +97,8 @@ Sa=0.55
 St=0.1
 ec=100
 fr=0.5
-
+mlab1=adaptdx
+mlab2=adaptce
 
 
 over
