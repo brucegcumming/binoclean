@@ -615,7 +615,7 @@ for j = 1:length(strs{1})
                     DATA.comcodes(j).label = '';
                     DATA.comcodes(j).const = NaN;
                     DATA.comcodes(j).type = 'N';
-                    DATA.comcodes(j).group = 512+2048;
+                    DATA.comcodes(j).group = 512+1024;
                 else
                     if ~isfield(DATA.helpstrs,code) && DATA.verbose(1)
                         fprintf('No help for %s\n',code);
@@ -1325,8 +1325,8 @@ for j = 1:length(strs{1})
                 if 1 && DATA.togglecodesreceived
                     codetype = -2;
                     codematches = strcmp(code,{DATA.comcodes.code});
-                    xid = find(bitand([DATA.comcodes.group],1024));
-                    for k = 1length(xid)
+                    xid = find(bitand([DATA.comcodes.group],2048));
+                    for k = 1:length(xid)
                         if strncmp(code,DATA.comcodes(xid(k)).code,length(DATA.comcodes(xid(k)).code))
                             codetype = xid(k);
                             codematches = strncmp(code,{DATA.comcodes.code},length(DATA.comcodes(xid(k)).code));
@@ -5582,7 +5582,7 @@ for j = line:length(str)
     if ~sum(strncmp(str{j},'expt',4)) %don't send these lines to binoc
         outprintf(DATA,'%s#RunSeq\n',str{j});
     end
-    DATA = LogCommand(DATA, str{j});
+    DATA = LogCommand(DATA, str{j},'norec');
 end
 
 function SendManualExpt(DATA)

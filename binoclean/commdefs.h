@@ -526,7 +526,7 @@
  */
 
 #define PSYCH_EXPOFFSET TRIGGER_LEVEL
-
+#define USER_CODE (MAXTOTALCODES+1)
 #define OLDFIXEDLORI 173
 #define OLDFIXEDRORI 174
 #define STIM_PERIOD MAXTOTALCODES+20
@@ -711,8 +711,8 @@ typedef struct valuecode {
 #define SAVE_NEVER 0
 #define RF_PROPERTIES 256
 #define INDIRECT 512
-#define PARTIAL_CODE 2048 //codes where code has extra number at end
 #define INTERNALCOMMAND 1024
+#define PARTIAL_CODE 2048 //codes where code has extra number at end
 #define VERGONLY 4096
 #define COMPOUND_GRATING (4096 << 1)
 #define EXPTSTATE (4069 <<2) // things that count trials etc - only save in expt state files

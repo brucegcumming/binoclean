@@ -728,6 +728,10 @@ int FindCode(char *s)
             else if(valstrings[i].group &  PARTIAL_CODE && strncmp(str, valstrings[i].code,strlen(valstrings[i].code)) ==0 )
                 return(valstrings[i].icode);
         }
+        for (i =0; i < MAXMANUALPARAMS; i++){
+            if (expt.manuallabels[i] != NULL && strncmp(s,expt.manuallabels[i],strlen(expt.manuallabels[i])) == NULL)
+                return(i + USER_CODE);
+        }
         return(MAXTOTALCODES);
     }
     
@@ -3586,7 +3590,7 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
             {
                 //don't allow increase during expt - it would mess up order
                 exp->nreps = val;
-                setstimulusorder(0);
+                setstimulusorder(0,0);
             }
             ShowTrialsNeeded();
             /*
@@ -3932,7 +3936,14 @@ float ExptProperty(Expt *exp, int flag)
     int ival,i;
     Position x;
     
-    switch(flag)
+    if (flag >= USER_CODE){
+        i = flag - USER_CODE;
+        if (i < MAXMANUALPARAMS && expt.manuallabels[i] != NULL){
+            val = expt.manualvalues[i];
+        }
+        return(val);
+    }
+    else switch(flag)
     {
         case MAGIC_ID:
             val = (float)expt.magicnumber;
@@ -5747,7 +5758,7 @@ int ReadStimOrder(char *file)
  * then stimorder is nstim[2] + exp1 val + nstim[1] * exp2 val
  */
 
-void setstimulusorder(int warnings)
+void setstimulusorder(int warnings, int force)
 {
     int i, j = 0,nstim,n,tw,a,b;
     int thisblk, blksize,k,rnd,last = -1, lastctr = 0,nblk = 0;
@@ -5791,8 +5802,12 @@ void setstimulusorder(int warnings)
     nset = nreps+1;
     baseseed = expt.st->left->baseseed & 0x1;
     
+/*
+ * If its a manual expt, do not need to recalc stimulus order every time nstm etc is modified
+ */
     if (optionflags[MANUAL_EXPT]){
-        expt.nstim[6] = ReadStimOrder(expt.strings[EXPT_PREFIX]);
+        if(force)
+            expt.nstim[6] = ReadStimOrder(expt.strings[EXPT_PREFIX]);
         return;  // order set in matlab
     }
     maxrpts = 3;
@@ -6603,7 +6618,7 @@ void setstimuli(int flag)
         expt.nstim[3] = 1;
     if(flag)
         return;
-    setstimulusorder(0);
+    setstimulusorder(0,0);
 }
 
 
@@ -7337,6 +7352,15 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
             if(flag != TO_BW)
                 return(-1);
         default:
+            if (code >= USER_CODE){
+                i = code - USER_CODE;
+                if (i < MAXMANUALPARAMS && expt.manuallabels[i] != NULL){
+                    sprintf(cbuf,"%s=%.4f",expt.manuallabels[i],expt.manualvalues[i]);
+                }
+                else
+                    sprintf(cbuf,"",expt.manuallabels[i],expt.manualvalues[i]);
+                return(0);
+            }
             val = ExptProperty(ex, code);
             if(!(val > NOTSET))
                 val = StimulusProperty(st,code);
@@ -7687,7 +7711,7 @@ void InitExpt()
     setextras();
     for(i = 0; i< expt.nstim[5]; i++)
         isset[i] = 0;
-    setstimulusorder(1);
+    setstimulusorder(1,1);
     stimdurn = 0;
     stimdursum = 0;
     cancelflag = 0;
@@ -10669,7 +10693,7 @@ int ExpStimOver(int retval, int lastchar)
     {
         if((stimno +1) > (ntotal = expt.nstim[5] * ZEROBLOCKING))
         {
-            setstimulusorder(0);
+            setstimulusorder(0,0);
             stimno = 0;
         }
     }
@@ -14306,6 +14330,20 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     if (code == MAXTOTALCODES) { // a verg code
         return(code);
     }
+    else if (code >= USER_CODE) { // a verg code
+        ival = code-USER_CODE;
+        s = strchr(line,'=');
+        if (s==NULL || *(s+1) == 0){ // a partial code, but no value given
+            MakeString(code, buf, &expt, expt.st, TO_GUI);
+            notify(buf);
+            return(code);
+        }
+        else{ // did find '='
+            sscanf(++s,"%f",&val);
+            expt.manualvalues[ival] = val;
+        }
+        return(code);
+    }
     else if(code >= 0){
         icode = valstringindex[code];
         s = &line[strlen(valstrings[icode].code)+charoff];
@@ -14420,9 +14458,13 @@ int InterpretLine(char *line, Expt *ex, int frompc)
         case MAGIC_ID:
             sscanf(s,"%d",&expt.magicnumber);
             break;
-        case ARB_LABEL:
-            if (ival < MAXMANUALPARAMS)
+        case ARB_LABEL: //add this to code list and make verg recheck
+            if (ival < MAXMANUALPARAMS){
                 expt.manuallabels[ival] = myscopy(expt.manuallabels[ival],s);
+                i = USER_CODE+ival;
+                sprintf(buf,"CODE %s %d UserCodeN %d\nCODE OVER\n",s,i,4);
+                notify(buf);
+            }
             break;
         case ARB_VALUE:
             if (ival < MAXMANUALPARAMS)

@@ -158,7 +158,7 @@ void checkstimbuffers(int nstim, int nreps);
 void setorderbits(int stimi);
 int SetFirstStairVal();
 int setexp3stim();
-void setstimulusorder(int warnings);
+void setstimulusorder(int warnings, int foce);
 int ASetStimulus(float val, int code, int * event, Stimulus * st);
 int SetStimulus(Stimulus * st, float val, int code, int * event); 
 int permute(int *in, int n);
