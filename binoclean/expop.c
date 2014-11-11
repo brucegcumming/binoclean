@@ -710,8 +710,8 @@ int FindCode(char *s)
     char *t, str[BUFSIZ];
 
     while(vergonlycodes[i] != NULL){
-        if (!strncmp(s,vergonlycodes[i],strlen(vergonlycodes[i]))) {
-            return(-1);
+        if (strncmp(s,vergonlycodes[i],strlen(vergonlycodes[i])) == NULL) {
+            return(MAXTOTALCODES);
         }
         i++;
     }
@@ -726,7 +726,7 @@ int FindCode(char *s)
             if(strcmp(str, valstrings[i].code) ==0)
                 return(valstrings[i].icode);
         }
-        return(MAXTOTALCODES);
+        return(-1);
     }
     
     while((j=longnames[i++]) > 0){

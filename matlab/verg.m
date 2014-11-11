@@ -71,7 +71,10 @@ if isempty(it)
 %open pipes to binoc 
 % if a file is named in teh command line, then take all setting from there.
 % Otherwise read from binoc
-    if length(varargin) && exist(varargin{1},'file')
+    if strcmp(varargin{1},'help')
+        CodesPopup(DATA,[],'popup');
+        return;
+    elseif length(varargin) && exist(varargin{1},'file')
         DATA = OpenPipes(DATA, 0);
         if DATA.togglecodesreceived == 0
             cprintf('red','Binoclean did not send Toggle Codes within %.2f\n',DATA.readdur);
@@ -120,6 +123,10 @@ if isempty(it)
     end
     
     DATA = InitInterface(DATA);
+    if ~exist('comcodes','file')
+        X.comcodes = DATA.comcodes;
+        save('comcodes','-struct','X');
+    end
     tt = TimeMark(tt, 'Interface');
     CheckForUpdate(DATA);
     DATA = SetExptMenus(DATA);
@@ -172,6 +179,8 @@ while j <= length(varargin)
         ts = now;
         DATA = GetState(DATA,'commandline');
         mytoc(ts);
+    elseif strcmp(varargin{j},'help')
+        CodesPopup(DATA,[],'popup');
     elseif strncmpi(varargin{j},'quick',5)
         j = j+1;
         ts = now;
@@ -2291,6 +2300,7 @@ function [strs, Keys] = ReadHelp(DATA)
     helpfile = [DATA.localmatdir '/helpstrings.txt'];
     fid = fopen(helpfile,'r');
     Keys.extras =[];
+    Keys.cmdcode = [];
     if fid > 0
     a = textscan(fid,'%s','delimiter','\n');
     fclose(fid);
@@ -2309,7 +2319,6 @@ function [strs, Keys] = ReadHelp(DATA)
             code = code(2:end);
             Keys.options.(code) = str;
             lastcode = code;
-        elseif code(1) == '!'  %command help
         elseif txt{j}(1) == '#' 
             if ~isempty(lastcode)
                 if isfield(Keys.extras,lastcode)
@@ -2327,6 +2336,7 @@ function [strs, Keys] = ReadHelp(DATA)
             str = regexprep(txt{j},code,'');
             if code(1) == '!'
                 code = code(2:end);
+                Keys.cmdcode.(code) = '!';
             end
             if strfind(str,'#')
                 keyword = regexprep(str,'.*#','');
@@ -2335,7 +2345,11 @@ function [strs, Keys] = ReadHelp(DATA)
                 Keys.KeyWords.(code) = '';
             end     
             str = regexprep(str,'#.*','');
-            strs.(code) =  str;
+            if isfield(Keys.cmdcode,code)
+                strs.(code) =  [Keys.cmdcode.(code) str];
+            else
+                strs.(code) =  str;
+            end
             lastcode = code;
         end
     end
@@ -5219,21 +5233,25 @@ function CodesPopup(a,b, type)
                   nl = nl+1;
                   s = labels{nlab};
               end
-          if isfield(DATA.helpstrs,code)
-              if isfield(DATA.helpkeys.extras,code)
-                  s = regexprep(s,' ',' *','once');
+              if isfield(DATA.helpstrs,code)
+                  if isfield(DATA.helpkeys.extras,code)
+                      s = regexprep(s,' ',' *','once');
+                  end
+                  s = [s '   ;   ' DATA.helpstrs.(code)];
+                  keys{j+nl} = DATA.helpkeys.KeyWords.(code);
               end
-              s = [s '   ;   ' DATA.helpstrs.(code)];
-              keys{j+nl} = DATA.helpkeys.KeyWords.(code);
-          end
-          a(nc+nl,1:length(s)) = s;
-          a(nc+nl,2+length(s):end) = 0;
+              a(nc+nl,1:length(s)) = s;
+              a(nc+nl,2+length(s):end) = 0;
           end
       end
       for j = 1:length(e)
           nc = nc+1;
           code = e{j};
-          s = [code '   ;   ' DATA.helpstrs.(code)];
+          if DATA.helpstrs.(code)(1) == '!'
+            s = ['!' code '   ;   ' DATA.helpstrs.(code)(2:end)];
+          else
+            s = [code '   ;   ' DATA.helpstrs.(code)];
+          end
           a(nc+nl,1:length(s)) = s;
           a(nc+nl,2+length(s):end) = 0;
       end
@@ -5256,9 +5274,21 @@ function CodesPopup(a,b, type)
       figure(cntrl_box);
       return;
   end
+  if DATA.togglecodesreceived == 0 %no binoc connection
+      X = load('comcodes.mat');
+      DATA.comcodes = X.comcodes;
+  end
+  
   cntrl_box = figure('Position', DATA.winpos{4},...
         'NumberTitle', 'off', 'Tag',DATA.windownames{4},'Name','Code list','menubar','none');
-    set(cntrl_box,'UserData',DATA.toplevel);
+    
+    if isfield(DATA,'toplevel')
+        setappdata(cntrl_box,'ParentFigure',DATA.toplevel);
+    else
+          DATA.toplevel = cntrl_box;
+          SetData(DATA);
+    
+    end
         set(cntrl_box,'DefaultUIControlFontSize',DATA.font.FontSize);
         set(cntrl_box,'DefaultUIControlFontName',DATA.font.FontName);
 
@@ -5775,12 +5805,22 @@ bp(1) = bp(1)+bp(3)+0.01;
 uicontrol(gcf,'style','pushbutton','string','Pause', ...
     'Callback', {@SequencePopup, 'pause'} ,...
     'units', 'norm', 'position',bp,'value',1);
-
+   
+usejava =1;
+if usejava
+lst = jcontrol(gcf,'javax.swing.JTextField',...
+                    'Units','normalized',...
+            'HorizontalAlignment','left',...
+            'Max',10,'Min',0,...
+             'Tag','SequenceList',...
+                    'Position',[0.01 0.01 0.98 0.99-1./nr]);
+else
 lst = uicontrol(gcf, 'Style','edit','String', 'sequence',...
         'HorizontalAlignment','left',...
         'Max',10,'Min',0,...
          'Tag','SequenceList',...
 'units','norm', 'Position',[0.01 0.01 0.99 0.99-1./nr]);
+end
 set(lst,'string',exptlines);
 set(DATA.toplevel,'UserData',DATA);
 

@@ -489,6 +489,7 @@ float StepProperty(int code)
 
 void SetStepperDepth(int newdepth)
 {
+// now just logs depths send from verg.
 electrodeDepth = newdepth;
 expt.vals[ELECTRODE_DEPTH] = (float)(electrodeDepth)/1000;
 SerialSend(ELECTRODE_DEPTH);

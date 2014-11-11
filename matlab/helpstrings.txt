@@ -457,8 +457,8 @@ yo vertical pos of stimulus (degrees)
 zf Disparity applied to fixation marker to require vergence. 
 Yp For log files. #Penetration Log
 yR y pos for R eye
-!saveimage saves a .pgm image of the current stimulus
-!saveim saves a .pgm image of the last frame of the last stimulus in the current expt
-!savemovie saves a .pgm image for every frame shown
-#!savemovie=pathname  sets the folder name where images will be written
-#!saveim2  saves only the last frame of the last stimulus in the experiment
+!saveimage saves a .pgm image of the current stimulus #movie
+!saveim saves a .pgm image of the last frame of the last stimulus in the current expt #movie image
+!savemovie saves a .pgm image for every frame shown 
+#!savemovie=pathname  sets the folder name where images will be written 
+#!saveim2  saves only the last frame of the last stimulus in the experiment 
