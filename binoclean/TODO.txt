@@ -112,3 +112,4 @@ allow searching of .hlp files.  E.g I would like to know where to find how to ma
 Verg should close ServorDrive on exit.
 Indicate in Run sequence window the current position. 
 ADD line type chooser menu to statuslines window. statuslines/Trials/Errors
+This is a test to make sure it goes through
