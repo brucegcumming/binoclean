@@ -725,6 +725,12 @@ int FindCode(char *s)
         {
             if(strcmp(str, valstrings[i].code) ==0)
                 return(valstrings[i].icode);
+            else if(valstrings[i].group &  PARTIAL_CODE && strncmp(str, valstrings[i].code,strlen(valstrings[i].code)) ==0 )
+                return(valstrings[i].icode);
+        }
+        for (i =0; i < MAXMANUALPARAMS; i++){
+            if (expt.manuallabels[i] != NULL && strncmp(s,expt.manuallabels[i],strlen(expt.manuallabels[i])) == NULL)
+                return(i + USER_CODE);
         }
         return(MAXTOTALCODES);
     }
@@ -1644,6 +1650,10 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
  * a matching valstring for a code
  */
     
+    for(i = 0; i < MAXMANUALPARAMS; i++){
+        expt.manuallabels[i] = NULL;
+        expt.manualvalues[i] = NAN;
+    }
     for(i = 0; i < MAXTOTALCODES; i++)
         valstringindex[i] = -1;
 
@@ -1941,10 +1951,10 @@ char *ReadManualStim(char *file, int stimid){
  * manual stims. Send these to a network file that AplaySpkFile will read
  */
         
-        if (netoutfile)
-            fputs(inbuf,netoutfile);
         s = strchr(inbuf,':');
         if (s != NULL){
+            if (netoutfile)
+                fputs(inbuf,netoutfile);
             if (strncmp(inbuf,"bar",3) == NULL){
                 sscanf(&inbuf[3],"%d",&modifier);
                 if (modifier > 9)
@@ -2006,7 +2016,7 @@ char *ReadManualStim(char *file, int stimid){
             if (i == OPTION_CODE){
                 SerialSend(i);
             }
-            else if (expt.codesent == 0){
+            else if (expt.codesent == 0){ // this sends to netoutfile too. 
                 SerialString(inbuf,0);
                 SerialString("\n",0);
             }
@@ -2712,7 +2722,7 @@ int OpenNetworkFile(Expt expt)
         if (optionflags[MANUAL_EXPT]){
             acknowledge(buf,NULL);
         }
-        return(-1);
+// Don't return here. GO on to open the local copy
     }
     t = strchr(expt.bwptr->prefix,':');
     if (t != NULL){
@@ -2754,6 +2764,11 @@ int OpenNetworkFile(Expt expt)
             sprintf(bncfilename,"%s/logs/%s.bnc",path,getfilename(sfile));
             netoutfile = fopen(bncfilename,"a");
         }
+    }
+    else{
+        getcwd(path,BUFSIZ);
+        sprintf(bncfilename,"%s/logs/%s.bnc",path,getfilename(expt.bwptr->prefix));
+        netoutfile = fopen(bncfilename,"a");
     }
     tval = time(NULL);
     if (netoutfile != NULL){
@@ -2982,6 +2997,7 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
             SerialSend(RF_DIMENSIONS);
             expt.vals[VWHERE] = 0;
             rcctr = 0;
+            printf("DataFile %s at %s\n", expt.bwptr->prefix,ctime(&tval));
             break;
         case USERID:
             i = 0;
@@ -3579,7 +3595,7 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
             {
                 //don't allow increase during expt - it would mess up order
                 exp->nreps = val;
-                setstimulusorder(0);
+                setstimulusorder(0,0);
             }
             ShowTrialsNeeded();
             /*
@@ -3878,11 +3894,13 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
         case TONETIME:
         case TARGET_RATIO:
             SerialSend(flag);
+            expt.codesent = 1;
             break;
         case PURSUIT_INCREMENT:
             if (lastdir != expt.vals[flag] * pursuedir && pursuedir < 0)
                 cbuf[0] = 0;
             SerialSend(flag);
+            expt.codesent = 1;
             break;
         default: //Even if not sent to bw, put it in the disk record.
             if(seroutfile)
@@ -3923,7 +3941,14 @@ float ExptProperty(Expt *exp, int flag)
     int ival,i;
     Position x;
     
-    switch(flag)
+    if (flag >= USER_CODE){
+        i = flag - USER_CODE;
+        if (i < MAXMANUALPARAMS && expt.manuallabels[i] != NULL){
+            val = expt.manualvalues[i];
+        }
+        return(val);
+    }
+    else switch(flag)
     {
         case MAGIC_ID:
             val = (float)expt.magicnumber;
@@ -5738,7 +5763,7 @@ int ReadStimOrder(char *file)
  * then stimorder is nstim[2] + exp1 val + nstim[1] * exp2 val
  */
 
-void setstimulusorder(int warnings)
+void setstimulusorder(int warnings, int force)
 {
     int i, j = 0,nstim,n,tw,a,b;
     int thisblk, blksize,k,rnd,last = -1, lastctr = 0,nblk = 0;
@@ -5782,8 +5807,12 @@ void setstimulusorder(int warnings)
     nset = nreps+1;
     baseseed = expt.st->left->baseseed & 0x1;
     
+/*
+ * If its a manual expt, do not need to recalc stimulus order every time nstm etc is modified
+ */
     if (optionflags[MANUAL_EXPT]){
-        expt.nstim[6] = ReadStimOrder(expt.strings[EXPT_PREFIX]);
+        if(force)
+            expt.nstim[6] = ReadStimOrder(expt.strings[EXPT_PREFIX]);
         return;  // order set in matlab
     }
     maxrpts = 3;
@@ -6594,7 +6623,7 @@ void setstimuli(int flag)
         expt.nstim[3] = 1;
     if(flag)
         return;
-    setstimulusorder(0);
+    setstimulusorder(0,0);
 }
 
 
@@ -6683,6 +6712,10 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
                 return(-1);
                 
         }
+    }
+    if (valstrings[icode].group & PARTIAL_CODE){
+        ival = st;
+        st = expt.st;
     }
     
     switch(code)
@@ -6815,7 +6848,13 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
                     }	
                 }
                 if(flag == TO_GUI){
-                    sprintf(temp,"\ncwd=%s",expt.cwd);
+                    strcpy(temp,cbuf);
+                    sprintf(cbuf,"bt=%.3f\n",ufftime(&now));
+                    strcat(cbuf,temp);
+                    gettimeofday(&now,NULL);
+                    tval = time(NULL);
+//                    printf("%sSending %s at bt=%.3f\n",ctime(&tval),cbuf,ufftime(&now));
+                    sprintf(temp,"\ncwd=%s\n",expt.cwd);
                     strcat(cbuf,temp);
                 }
                 
@@ -7056,12 +7095,12 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
                     }
                     i++;
                 }
-                for(i = 0; i < NTESTFLAGS; i++){
-                    if(testflags[i]){
-                        sprintf(temp,"\ntestflag %d",i);
-                        strcat(cbuf,temp);
-                    }
-                }
+//                for(i = 0; i < NTESTFLAGS; i++){
+//                    if(testflags[i]){
+//                        sprintf(temp,"\ntestflag %d",i);
+//                        strcat(cbuf,temp);
+//                    }
+//                }
             }
             else
             {
@@ -7300,10 +7339,33 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
             val = GetProperty(ex, ex->st, code) * pursuedir;
             sprintf(cbuf,"%s%s%.*f",scode,temp,nfplaces[code],val);
             break;
+        case ARB_LABEL:
+            if (ival < 0 || ival > MAXMANUALPARAMS)
+                sprintf(cbuf,"");
+            else if(expt.manuallabels[ival] != NULL)
+                sprintf(cbuf,"%s%d=%s",scode,ival,expt.manuallabels[ival]);
+            else
+                sprintf(cbuf,"%s%d=NotSet",scode,ival);
+            break;
+        case ARB_VALUE:
+            if (ival < 0 || ival > MAXMANUALPARAMS)
+                sprintf(cbuf,"");
+            else
+                sprintf(cbuf,"%s%d=%.*f",scode,ival,3,expt.manualvalues[ival]);
+            break;
         case TRIGGER_LEVEL1:
             if(flag != TO_BW)
                 return(-1);
         default:
+            if (code >= USER_CODE){
+                i = code - USER_CODE;
+                if (i < MAXMANUALPARAMS && expt.manuallabels[i] != NULL){
+                    sprintf(cbuf,"%s=%.4f",expt.manuallabels[i],expt.manualvalues[i]);
+                }
+                else
+                    sprintf(cbuf,"",expt.manuallabels[i],expt.manualvalues[i]);
+                return(0);
+            }
             val = ExptProperty(ex, code);
             if(!(val > NOTSET))
                 val = StimulusProperty(st,code);
@@ -7654,7 +7716,7 @@ void InitExpt()
     setextras();
     for(i = 0; i< expt.nstim[5]; i++)
         isset[i] = 0;
-    setstimulusorder(1);
+    setstimulusorder(1,1);
     stimdurn = 0;
     stimdursum = 0;
     cancelflag = 0;
@@ -10636,7 +10698,7 @@ int ExpStimOver(int retval, int lastchar)
     {
         if((stimno +1) > (ntotal = expt.nstim[5] * ZEROBLOCKING))
         {
-            setstimulusorder(0);
+            setstimulusorder(0,0);
             stimno = 0;
         }
     }
@@ -14273,6 +14335,20 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     if (code == MAXTOTALCODES) { // a verg code
         return(code);
     }
+    else if (code >= USER_CODE) { // a verg code
+        ival = code-USER_CODE;
+        s = strchr(line,'=');
+        if (s==NULL || *(s+1) == 0){ // a partial code, but no value given
+            MakeString(code, buf, &expt, expt.st, TO_GUI);
+            notify(buf);
+            return(code);
+        }
+        else{ // did find '='
+            sscanf(++s,"%f",&val);
+            expt.manualvalues[ival] = val;
+        }
+        return(code);
+    }
     else if(code >= 0){
         icode = valstringindex[code];
         s = &line[strlen(valstrings[icode].code)+charoff];
@@ -14291,6 +14367,17 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     j = 0;
     i = 0;
     // string with no value means report back current value
+    if (valstrings[icode].group & PARTIAL_CODE){
+        sscanf(s,"%d",&ival);
+        s = strchr(line,'=');
+        if (s==NULL || *(s+1) == 0){ // a partial code, but no value given
+            MakeString(code, buf, &expt, ival, TO_GUI);
+            notify(buf);
+            return(code);
+        }
+        else
+            s++;
+    }
     
     if(strlen(s) == 0 && code < MAXTOTALCODES){
         MakeString(code,buf,&expt, TheStim, TO_GUI);
@@ -14375,6 +14462,18 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             break;
         case MAGIC_ID:
             sscanf(s,"%d",&expt.magicnumber);
+            break;
+        case ARB_LABEL: //add this to code list and make verg recheck
+            if (ival < MAXMANUALPARAMS){
+                expt.manuallabels[ival] = myscopy(expt.manuallabels[ival],s);
+                i = USER_CODE+ival;
+                sprintf(buf,"CODE %s %d UserCodeN %d\nCODE OVER\n",s,i,4);
+                notify(buf);
+            }
+            break;
+        case ARB_VALUE:
+            if (ival < MAXMANUALPARAMS)
+                expt.manualvalues[ival] = dval;
             break;
         case JUMP_SF_COMPONENTS:
             for(i = 0; i < expt.st->nfreqs; i++)
@@ -14799,6 +14898,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
                 }
             }
             SerialSend(code);
+            expt.codesent = 1;
             break;
         case SPIKE_TIMES:
             /*		printf("Spikes Times%s\n",s);*/
@@ -14824,8 +14924,10 @@ int InterpretLine(char *line, Expt *ex, int frompc)
         case PSYCHFILE:
         case MONITOR_FILE:
             SetExptString(ex, TheStim, code, s);
-            if (valstrings[icode].codesend != SEND_NEVER)
+            if (valstrings[icode].codesend != SEND_NEVER){
                 SerialSend(code);
+                expt.codesent = 1;
+            }
             break;
         case QUERY_STATE:
             gettimeofday(&now,NULL);
@@ -15171,7 +15273,7 @@ int ButtonResponse(int button, int revise, vcoord *locn)
     }
     else
         afc_s.respdir = '?';
-    PrintPsychLine(res, sign); // now done in GotChar, so get rest of serial output
+    PrintPsychLine(res, sign, psychfile); // now done in GotChar, so get rest of serial output
     if(expt.stimid >= 0){
         if(option2flag & IFC)
             res = ifcanswer;

@@ -277,10 +277,12 @@
 #define SCREEN_VOFFSET (LAST_STIMULUS_CODE+174)
 #define EXPT_SUBBLOCK (LAST_STIMULUS_CODE+175)
 #define TOTAL_REWARD (LAST_STIMULUS_CODE+176)
+#define ARB_LABEL  (LAST_STIMULUS_CODE+177)
+#define ARB_VALUE  (LAST_STIMULUS_CODE+178)
 //Add above here anything that needs to go to Spike2
 
 
-#define MAXSERIALCODES (LAST_STIMULUS_CODE+177)/* 218 */
+#define MAXSERIALCODES (LAST_STIMULUS_CODE+179)/* 218 */
 #define OPPOSITE_DELAY  MAXSERIALCODES
 #define FAST_SEQUENCE_RPT MAXSERIALCODES+1
 #define BRIGHTSHIFT_CODE MAXSERIALCODES+2
@@ -524,7 +526,7 @@
  */
 
 #define PSYCH_EXPOFFSET TRIGGER_LEVEL
-
+#define USER_CODE (MAXTOTALCODES+1)
 #define OLDFIXEDLORI 173
 #define OLDFIXEDRORI 174
 #define STIM_PERIOD MAXTOTALCODES+20
@@ -686,7 +688,37 @@ typedef struct valuecode {
     int codesave;
 } ValueCode;
 
-#define EXPT_NOT_ALLOWED 2048
+
+
+/*
+ * bit codes for groups
+ * groups  1 stim prop
+ *         2 binocular stim prop (disparity etc)
+ *         4 Dot stimuli
+ *         8 fixation point/eye movement
+ *         16 Expt setup
+ *         32 General Display
+ *         64 Background stim
+ *         128 commands
+ *         256 RF properties
+ *         512 Indirect properties
+ *         1024 Internal commands (sb+)
+ *         2048 can't be an expt type. (Checked in setsecondexpt)
+ *         4096 Verg only - ?deprecated. Binoc needs to know about all variables
+ */
+#define SAVE_ALWAYS 1
+#define SAVE_STATE 2  //program state, but not part of stim - e.g. id, Pen details
+#define SAVE_NEVER 0
+#define RF_PROPERTIES 256
+#define INDIRECT 512
+#define INTERNALCOMMAND 1024
+#define PARTIAL_CODE 2048 //codes where code has extra number at end
+#define VERGONLY 4096
+#define COMPOUND_GRATING (4096 << 1)
+#define EXPTSTATE (4069 <<2) // things that count trials etc - only save in expt state files
+#define NOTFORVERG (4096<<3)
+#define EXPT_NOT_ALLOWED (4096<<4)
+
 
 
 #ifdef CHARCODES_DEFINE
@@ -857,32 +889,7 @@ char *bwtoggle_codes[] = {
     NULL,
 };
 
-/*
- * bit codes for groups
- * groups  1 stim prop
- *         2 binocular stim prop (disparity etc)
- *         4 Dot stimuli 
- *         8 fixation point/eye movement
- *         16 Expt setup
- *         32 General Display
- *         64 Background stim
- *         128 commands
- *         256 RF properties
- *         512 Indirect properties
- *         1024 Internal commands (sb+)
- *         2048 can't be an expt type. (Checked in setsecondexpt)
- *         4096 Verg only - ?deprecated. Binoc needs to know about all variables
- */
-#define SAVE_ALWAYS 1
-#define SAVE_STATE 2  //program state, but not part of stim - e.g. id, Pen details
-#define SAVE_NEVER 0
-#define VERGONLY 4096
-#define INTERNALCOMMAND 1024
-#define INDIRECT 512
-#define RF_PROPERTIES 256
-#define COMPOUND_GRATING (4096 << 1)
-#define EXPTSTATE (4069 <<2) // things that count trials etc - only save in expt state files
-#define NOTFORVERG (4096<<3)
+
 
 // SEND_READ_ONLY = not sent to verg or Spike2 - purely internal
 // must be internal to binoc. If verg needs to read code, set to SEND_VERG_ONLY
@@ -1299,6 +1306,8 @@ ValueCode valstrings[] = {
     {  "coarsemm", "Starting positino on Coarse drive", COARSEMM, 0, 'N', 0, SEND_EXPLICIT, SAVE_STATE},
     {  "psyv", "Psych Value", PSYCH_VALUE, 0, 'N', 0, SEND_EXPLICIT, SAVE_NEVER},
     {  "expname", "Expt Name Label", EXPT_NAME, 0, 'C', 0, SEND_EXPT, SAVE_ALWAYS},
+    {  "mlab", "Manual Label ", ARB_LABEL, PARTIAL_CODE, 'C', 0, SEND_EXPLICIT, SAVE_NEVER},
+    {  "mval", "Manual Value", ARB_VALUE, PARTIAL_CODE, 'N', 3, SEND_EXPLICIT, SAVE_NEVER},
     {  "stimtag", "Stimulus Tag (label)", STIMULUS_TAG, 0, 'C', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "exp", "Expt Prefix (local dir)", EXPT_PREFIX, 0, 'C', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "stimdir", "Stimulus File Directory", HELPDIR, 0, 'C', 0, SEND_VERG_ONLY, SAVE_NEVER},
