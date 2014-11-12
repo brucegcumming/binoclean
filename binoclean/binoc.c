@@ -349,6 +349,19 @@ char *binocTimeString()
     return (&t[10]);
 }
 
+char *binocDateString(int full)
+{
+    char name[BUFSIZ],*t = NULL ,buf[256];
+    time_t tval;
+    
+    tval = time(NULL);
+    t = ctime(&tval);
+    t[24] =0; // remove \n
+    if (full == 0)
+        t[10] = 0;
+    return (t);
+}
+
 void TriggerExpt()
 {
 
@@ -11985,10 +11998,24 @@ void Stim2PsychFile(int state, FILE *fd)
             *(r-4) = 0;
 
         r = binocTimeString();
-        fprintf(fd,"R7 binoclean=%s time=%s %s bt=%.2f", s, &r[1],StimString(OPTION_CODE));
-        fprintf(fd," bt=%.2f", timediff(&now,&sessiontime));
-        fprintf(fd," %s",StimString(UFF_PREFIX));
-        j = 4;
+        if(state == START_EXPT || state == START_EXPT+100){
+            fprintf(fd,"R7 %s date=%s\n", StimString(STIMULUS_TYPE_CODE),binocDateString(1));
+            fprintf(fd,"R7 binoclean=%s time=%s %s bt=%.2f", s, &r[1],StimString(OPTION_CODE));
+            fprintf(fd," bt=%.2f", timediff(&now,&sessiontime));
+            fprintf(fd," %s",StimString(UFF_PREFIX));
+            fprintf(fd," %s",StimString(EXPT_NAME));
+            j = 4;
+            for(i = 0; i < MAXMANUALPARAMS; i++){
+                if (expt.manuallabels[i] != NULL && strcmp(expt.manuallabels[i],"NotSet")){
+                    fprintf(fd," %s=%.4f",expt.manuallabels[i], expt.manualvalues[i]);
+                    j++;
+                }
+            }
+        }
+        else {
+            fprintf(fd,"R7 bt=%.2f", timediff(&now,&sessiontime));
+            j = 1;
+        }
         for (i = 0; i < NTRACKCODES; i++){
             if(trackcodes[i] >= 0){
                 if(j%12 ==0)
@@ -12006,25 +12033,19 @@ void Stim2PsychFile(int state, FILE *fd)
         
         if(state == START_EXPT || state == START_EXPT+100){
         gettimeofday(&now,NULL);
-        fprintf(psychfile,"R4 %s=%.2f %s=%.2f sn=0",
+        fprintf(fd,"R4 %s=%.2f %s=%.2f sn=0",
                 serial_strings[COVARY_XPOS],afc_s.ccvar,
                 serial_strings[TARGET_RATIO],expt.vals[TARGET_RATIO]);
         tval = RunTime();
         ts = binocTimeString();
         ts[3] = '.';
         ts[6] = 0;
-        fprintf(psychfile," %ld %s %d",now.tv_sec,ts,expt.nstim[6]);
-        fprintf(psychfile," %s=%.2f %s=%.2f x=0 x=0 x=0 x=0\n",serial_strings[XPOS],GetProperty(&expt,expt.st,XPOS),serial_strings[YPOS],GetProperty(&expt,expt.st,YPOS));
-        fprintf(psychfile,"R4 %s=NaN %s=NaN %s=NaN",
+        fprintf(fd," %ld %s %d",now.tv_sec,ts,expt.nstim[6]);
+        fprintf(fd," %s=%.2f %s=%.2f %s=NaN %s=NaN %s=NaN x=0\n",serial_strings[XPOS],GetProperty(&expt,expt.st,XPOS),serial_strings[YPOS],GetProperty(&expt,expt.st,YPOS),
                 serial_strings[expt.mode],
                 serial_strings[expt.type2],
                 serial_strings[expt.type3]);
-        tval = RunTime();
-        ts = binocTimeString();
-        ts[3] = '.';
-        ts[6] = 0;
-        fprintf(psychfile," %ld %s %d",now.tv_sec,ts,expt.nstim[6]);
-        fprintf(psychfile," %s=%.2f %s=%.2f x=0 x=0 x=0 x=0\n",serial_strings[XPOS],GetProperty(&expt,expt.st,XPOS),serial_strings[YPOS],GetProperty(&expt,expt.st,YPOS));
+
         }
         fflush(fd);
     }
