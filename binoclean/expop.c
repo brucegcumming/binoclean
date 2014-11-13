@@ -8810,8 +8810,11 @@ char *ShowStimVals(Thisstim *stp)
         strcat(cbuf,"*rolling*");
     
     glstatusline(cbuf,1);
-    statusline(cbuf);
-//Things to make sure verg knows
+    printString(cbuf, strlen(cbuf)); //Need this? removed May 2013
+    sprintf(ebuf,"statusS=%s\n",cbuf);
+    notify(ebuf);
+
+    //Things to make sure verg knows
     sprintf(ebuf,"%s=%d\n%s=%d\n",serial_strings[SET_SEED],expt.st->left->baseseed,serial_strings[STIMID],expt.allstimid);
     notify(ebuf);
     return(cbuf);

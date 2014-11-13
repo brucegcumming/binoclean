@@ -267,7 +267,7 @@ function ExitVerg(DATA)
             fprintf('Not closing file %s\n',name);
         end
     end
-    WriteText(DATA.StatusLines,'/local/vergstatus.txt','backup');
+    WriteText(DATA.Statuslines,'/local/vergstatus.txt','backup');
 
 function DATA = OpenBinocLog(DATA, type)
 
@@ -618,7 +618,7 @@ for j = 1:length(strs{1})
         else
             vergwarning(s(5:end));
         end
-        DATA.Statuslines{end+1} = s;
+        DATA = AddStateLine(DATA,s,3);
         DATA.lastmsg = s;
 
         
@@ -808,21 +808,26 @@ for j = 1:length(strs{1})
         sstr = s(8:end);
         if ~isempty(strfind(sstr,'Frames:')) && isfield(DATA.Trial,'rw')
             sstr = regexprep(sstr,' rw[0-9,\.]+',['$0,' num2str(DATA.Trial.rw)]);
+            stype = 2;
+        elseif strncmp(s,'statusS',7)
+            sstr = s(9:end);
+            stype = 2;
+        else
+            stype = 1;
         end
                 
-            
-        DATA.Statuslines{end+1} = sstr;
         if strncmp(s,'status=Can''t open Network',24)
             DATA.lastmsg = s(8:end);
             if DATA.errors(1) == 0
                 vergwarning(DATA.lastmsg);
             end
             DATA.errors(1) = DATA.errors(1)+1;
+            stype = 3;
         elseif sum(strncmp(s(8:end),{'Network Record'},10))
             DATA.lastmsg = s(8:end);
         end
+        DATA = AddStatusLine(DATA,sstr,stype);
         if ishandle(DATA.statusitem)
-            set(DATA.statusitem,'string',DATA.Statuslines,'listboxtop',length(DATA.Statuslines));
             if ~isempty(DATA.lastmsg)
                 set(GetFigure(DATA.statusitem),'Name',DATA.lastmsg);
             end
@@ -859,12 +864,9 @@ for j = 1:length(strs{1})
             if DATA.verbose(4)
                 fprintf('%s\n',s);
             end
-            DATA.Statuslines{end+1} = s(8:end);
+            DATA = AddStatusLine(DATA,s,3);
             codetype = -2;
         end  %6 char codes
-        
-        
-        
     elseif sum(strncmp(s,{'Expts' 'xyfsd' 'EDONE'},5))
         if strncmp(s,'Expts1',6)
             DATA.extypes{1} = sscanf(s(8:end),'%d');
@@ -1374,7 +1376,7 @@ if frombinoc ~= 2 && paused == 0 %wasnt paused before this call.
     PauseRead(DATA,0);
 end
 
-function DATA = AddStatusLines(DATA, str, type)
+function DATA = AddStatusLine(DATA, str, type)
 %add a statusline    
     %type 1 = regular status linte
     %2 = Stimulus lines
@@ -1382,7 +1384,8 @@ function DATA = AddStatusLines(DATA, str, type)
     %4 = Expt Control
     DATA.Statuslines{end+1} = str;
     DATA.statustypes(length(DATA.Statuslines)) = type;
-    
+    ShowStatusStrings(DATA);
+
         
 
 
@@ -5606,8 +5609,41 @@ function StatusPopup(a,b, type)
 'units','norm', 'Position',[0.01 0.01 0.99 0.99]);
 set(lst,'string',DATA.Statuslines,'fontsize',DATA.font.FontSize, 'FontName', DATA.font.FontName);
 DATA.statusitem = lst;
+if ~isfield(DATA,'showstatus')
+    DATA.showstatus.trials = 1;
+    DATA.showstatus.status = 1;
+    DATA.showstatus.errors = 1;reco
+    
+    DATA.showstatus.expt = 1;
+end
+f = fields(DATA.showstatus)
+onoff = {'off' 'on'};
+cm = uimenu(cntrl_box,'Label','Show');
+for j = 1:length(f)
+    uimenu(cm,'label',f{j},'tag',f{j},'checked',onoff{1+DATA.showstatus.(f{j})},'callback',@SetShowStatus);
+end
 set(DATA.toplevel,'UserData',DATA);
 
+function SetShowStatus(a,b)
+DATA = GetDataFromFig(a);
+tag = get(a,'tag');
+onoff = {'off' 'on'};
+DATA.showstatus.(tag) = ~DATA.showstatus.(tag);
+set(a,'checked',onoff{1+DATA.showstatus.(tag)});
+ShowStatusStrings(DATA);
+SetData(DATA);
+
+function ShowStatusStrings(DATA)
+    if ishandle(DATA.statusitem)
+        f = {'status' 'trials' 'errors' 'expt'};
+        for j = 1:length(f)
+            showlines(j) = DATA.showstatus.(f{j});
+        end
+        showlines = find(showlines);
+        id = find(ismember(DATA.statustypes,showlines));
+        set(DATA.statusitem,'string',DATA.Statuslines(id),'value',length(id));
+    end
+        
 function DATA = RunExptSequence(DATA, str, line)
 
     nread = 0;
@@ -5705,10 +5741,10 @@ for j = line:length(str)
         set(DATA.toplevel,'UserData',DATA);
         outprintf(DATA,'#From RunSequence\n');
         outprintf(DATA,'%s\n',str{j}); %this runs expt in binoc
-        DATA.Statuslines{end+1} = sprintf('RunSequence Line %d. at %s %d Repeats left',line,datestr(now,'hh:mm.ss'),DATA.rptexpts);
+        DATA = AddStatusLine(DATA,sprintf('RunSequence Line %d. at %s %d Repeats left',line,datestr(now,'hh:mm.ss'),DATA.rptexpts),4);
         return;
     elseif strncmp(str{j},'!mat',4)
-        DATA.Statuslines{end+1} = sprintf('RunSequence Line %d: %s',str{j});
+        DATA = AddStatusLine(DATA, printf('RunSequence Line %d: %s',str{j}),4);
         if isfield(DATA.matexpres,'abort') && DATA.matexpres.abort > 0
             vergwarning(sprintf('%s Says abort',DATA.matexpt));
             return;
