@@ -732,7 +732,7 @@ int FindCode(char *s)
             if (expt.manuallabels[i] != NULL && strncmp(s,expt.manuallabels[i],strlen(expt.manuallabels[i])) == NULL)
                 return(i + USER_CODE);
         }
-        return(-1);
+        return(MAXTOTALCODES);
     }
     
     while((j=longnames[i++]) > 0){
