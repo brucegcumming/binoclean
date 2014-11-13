@@ -113,7 +113,11 @@ static const int httpLogLevel = HTTP_LOG_LEVEL_WARN; // | HTTP_LOG_FLAG_TRACE;
                                 readloop++;
                                 usleep(100);
                             }
-                            if (readloop > 0) { //? need to re-fetch the http suff?
+                            if (readloop > 0) { //? need to re-fetch the http stuff?
+                                if (seroutfile){
+                                    fprintf(seroutfile,"#HTTP input timed out reading: %s\n",[[sLines objectAtIndex:i] UTF8String]);
+                                    fflush(seroutfile);
+                                }
                             }
                             if (strncmp([[sLines objectAtIndex:i] UTF8String], "favico", 6) == 0){
                                 NSLog(@"Supsicious Inputpipe %@", command);

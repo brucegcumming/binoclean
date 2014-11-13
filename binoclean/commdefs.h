@@ -277,10 +277,12 @@
 #define SCREEN_VOFFSET (LAST_STIMULUS_CODE+174)
 #define EXPT_SUBBLOCK (LAST_STIMULUS_CODE+175)
 #define TOTAL_REWARD (LAST_STIMULUS_CODE+176)
+#define ARB_LABEL  (LAST_STIMULUS_CODE+177)
+#define ARB_VALUE  (LAST_STIMULUS_CODE+178)
 //Add above here anything that needs to go to Spike2
 
 
-#define MAXSERIALCODES (LAST_STIMULUS_CODE+177)/* 218 */
+#define MAXSERIALCODES (LAST_STIMULUS_CODE+179)/* 218 */
 #define OPPOSITE_DELAY  MAXSERIALCODES
 #define FAST_SEQUENCE_RPT MAXSERIALCODES+1
 #define BRIGHTSHIFT_CODE MAXSERIALCODES+2
@@ -524,7 +526,7 @@
  */
 
 #define PSYCH_EXPOFFSET TRIGGER_LEVEL
-
+#define USER_CODE (MAXTOTALCODES+1)
 #define OLDFIXEDLORI 173
 #define OLDFIXEDRORI 174
 #define STIM_PERIOD MAXTOTALCODES+20
@@ -686,13 +688,47 @@ typedef struct valuecode {
     int codesave;
 } ValueCode;
 
-#define EXPT_NOT_ALLOWED 2048
+
+
+/*
+ * bit codes for groups
+ * groups  1 stim prop
+ *         2 binocular stim prop (disparity etc)
+ *         4 Dot stimuli
+ *         8 fixation point/eye movement
+ *         16 Expt setup
+ *         32 General Display
+ *         64 Background stim
+ *         128 commands
+ *         256 RF properties
+ *         512 Indirect properties
+ *         1024 Internal commands (sb+)
+ *         2048 can't be an expt type. (Checked in setsecondexpt)
+ *         4096 Verg only - ?deprecated. Binoc needs to know about all variables
+ */
+#define SAVE_ALWAYS 1
+#define SAVE_STATE 2  //program state, but not part of stim - e.g. id, Pen details
+#define SAVE_NEVER 0
+#define RF_PROPERTIES 256
+#define INDIRECT 512
+#define INTERNALCOMMAND 1024
+#define PARTIAL_CODE 2048 //codes where code has extra number at end
+#define VERGONLY 4096
+#define COMPOUND_GRATING (4096 << 1)
+#define EXPTSTATE (4069 <<2) // things that count trials etc - only save in expt state files
+#define NOTFORVERG (4096<<3)
+#define EXPT_NOT_ALLOWED (4096<<4)
+
 
 
 #ifdef CHARCODES_DEFINE
 
 #define NCODES MAXTOTALCODES
 
+char *vergonlycodes[] = {
+    "rptexpt",
+    NULL
+};
 
 
 ToggleCode togglestrings[] = {
@@ -853,37 +889,13 @@ char *bwtoggle_codes[] = {
     NULL,
 };
 
-/*
- * bit codes for groups
- * groups  1 stim prop
- *         2 binocular stim prop (disparity etc)
- *         4 Dot stimuli 
- *         8 fixation point/eye movement
- *         16 Expt setup
- *         32 General Display
- *         64 Background stim
- *         128 commands
- *         256 RF properties
- *         512 Indirect properties
- *         1024 Internal commands (sb+)
- *         2048 can't be an expt type. (Checked in setsecondexpt)
- *         4096 Verg only - ?deprecated. Binoc needs to know about all variables
- */
-#define VERGONLY 3096
-#define INTERNALCOMMAND 1024
-#define INDIRECT 512
-#define RF_PROPERTIES 256
-#define COMPOUND_GRATING (4096 << 1)
-#define EXPTSTATE (4069 <<2) // things that count trials etc - only save in expt state files
-#define SAVE_ALWAYS 1
-#define SAVE_STATE 2  //program state, but not part of stim - e.g. id, Pen details
-#define SAVE_NEVER 0
+
 
 // SEND_READ_ONLY = not sent to verg or Spike2 - purely internal
 // must be internal to binoc. If verg needs to read code, set to SEND_VERG_ONLY
 ValueCode valstrings[] = {
-  {"xo","X offset",  XPOS, 1, 'N' ,2, SEND_EXPT, SAVE_ALWAYS},
-    {"yo","Y offset",  YPOS, 1, 'N' ,2, SEND_EXPT, SAVE_ALWAYS},
+  {"xo","X offset",  XPOS, 1, 'N' ,4, SEND_EXPT, SAVE_ALWAYS},
+    {"yo","Y offset",  YPOS, 1, 'N' ,4, SEND_EXPT, SAVE_ALWAYS},
   {"lo", "Log File", LOGFILE_CODE, 2, 'C' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
   {"st", "Stimulus", STIMULUS_TYPE_CODE, 1,'C' ,2, SEND_EXPT, SAVE_ALWAYS},
   {"sx",     "Sigma X",  SD_X, 1, 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
@@ -1115,7 +1127,7 @@ ValueCode valstrings[] = {
   {"he", "helpfile ",HELPFILE_PATH, 128 , 'C' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
   {"xm", "XMAXSAMPLE_RATIO",	XMAXSAMPLE_RATIO, 1 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
   {"Sv", "Stim Version",STIMULUS_VERSION, 128 , 'N' ,2, SEND_STIMULUS, SAVE_ALWAYS},
-  {"pe", "Penetration Number",PENETRATION_TEXT, 128 , 'N' ,2, SEND_EXPLICIT, SAVE_STATE},
+  {"pe", "Penetration Number",PENETRATION_TEXT, 128|NOTFORVERG , 'N' ,2, SEND_EXPLICIT, SAVE_STATE},
   {"RP", "RF PARALELL ",RF_PARA, 512 , 'N' ,2, SEND_EXPLICIT, SAVE_NEVER},
   {"pl", "Size of Proximal Luminance Covariace ",PLC_MAG, 1 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
 //  {"To", "Target offset ",TARGET_OFFSET, 8 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
@@ -1202,7 +1214,7 @@ ValueCode valstrings[] = {
   {"Op",     "Orthog Offset",ORTHOG_POS, 513 , 'N' ,2, SEND_EXPLICIT, SAVE_NEVER},
   {"Pp",     "Paralell Offset",PARA_POS, 513 , 'N' ,2, SEND_EXPLICIT, SAVE_NEVER},
   {"lv",    "Linear Velocity expt",LINEAR_SPEED, 528 , 'N' ,2, SEND_EXPLICIT, SAVE_NEVER},
-  {"we",     "Weight",WEIGHT_TEXT, 128 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
+  {"we",     "Weight",WEIGHT_TEXT, 128 , 'N' ,2, SEND_EXPLICIT, SAVE_NEVER}, //don't save weight to setup files. Goes to log
   {"hr",     "Head Restrained",RESTRAIN_TEXT, 128 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
   {"r0",     "Rds x None back",RDSBNONE, 528 , 'N' ,2, SEND_EXPLICIT, SAVE_NEVER},
   {"Jt",     "jump Type",JUMPTYPE, 1 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
@@ -1227,7 +1239,7 @@ ValueCode valstrings[] = {
   {"Pn",     "penetration number",PENNUMCOUNTER, 128 , 'N' ,2, SEND_EXPT, SAVE_STATE},
   {  "Xp",     "Pen X",PENXPOS, 128 , 'N' ,2, SEND_EXPT, SAVE_STATE},
   {  "Yp",    "Pen y",PENYPOS, 128 , 'N' ,2, SEND_EXPT, SAVE_STATE},
-  {"Vn",     "Visual Area",VWHERE, 128 , 'C' ,2, SEND_EXPLICIT, SAVE_STATE},
+  {"Vn",     "Visual Area",VWHERE, 128 , 'C' ,2, SEND_EXPT, SAVE_STATE},
   {"Is",     "Scale factor for IFC expts",IFCSCALE, 16 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
   {"hL",     "Height L",HEIGHT_L, 515 , 'N' ,2, SEND_EXPLICIT, SAVE_NEVER},
   {"hR",     "Height R",HEIGHT_R, 515 , 'N' ,2, SEND_EXPLICIT, SAVE_NEVER},
@@ -1294,6 +1306,8 @@ ValueCode valstrings[] = {
     {  "coarsemm", "Starting positino on Coarse drive", COARSEMM, 0, 'N', 0, SEND_EXPLICIT, SAVE_STATE},
     {  "psyv", "Psych Value", PSYCH_VALUE, 0, 'N', 0, SEND_EXPLICIT, SAVE_NEVER},
     {  "expname", "Expt Name Label", EXPT_NAME, 0, 'C', 0, SEND_EXPT, SAVE_ALWAYS},
+    {  "mlab", "Manual Label ", ARB_LABEL, PARTIAL_CODE, 'C', 0, SEND_EXPLICIT, SAVE_NEVER},
+    {  "mval", "Manual Value", ARB_VALUE, PARTIAL_CODE, 'N', 3, SEND_EXPLICIT, SAVE_NEVER},
     {  "stimtag", "Stimulus Tag (label)", STIMULUS_TAG, 0, 'C', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "exp", "Expt Prefix (local dir)", EXPT_PREFIX, 0, 'C', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "stimdir", "Stimulus File Directory", HELPDIR, 0, 'C', 0, SEND_VERG_ONLY, SAVE_NEVER},
@@ -1323,22 +1337,6 @@ ValueCode valstrings[] = {
     { NULL, NULL, -1, -1 ,0 ,0, 0},
 };
 
-
-
-StringCode commstrings[] = {
-//   {"uf","DataFile name",  UFF_PREFIX, NULL},
-//    {"monitor","Monitor Filename",  MONITOR_FILE, NULL},
-//    {"lo", "Log File", LOGFILE_CODE, NULL},
-//    {"st", "Stimulus", STIMULUS_TYPE_CODE, NULL},
-//    {"monkey", "Monkey name", MONKEYNAME, NULL},
-//    {"impref", "prefix for image files", -1, NULL},
-//    {"immode", "image mode", -1, NULL},
-//    {"imload", "image load type", -1, NULL},
-//    {"psychfile", "Psych results file", -1, NULL},
-    //    {"cmdfile", "File for remote commands", COMMAND_FILE, NULL},
-    //    {"electrode", "Electrode Decsription", ELECTRODE_TYPE, NULL},
-    {NULL, NULL, 0, NULL}
-};
 
 char **serial_strings;
 char **serial_names;
@@ -1437,7 +1435,6 @@ extern char **serial_strings;
 extern char *channel_strings[];
 extern char *stimulus_names[];
 extern char *bwtoggle_codes[];
-extern StringCode commstrings[];
 extern ToggleCode togglestrings[];
 extern ValueCode valstrings[];
 extern char *mode_names[];
@@ -1445,6 +1442,8 @@ extern int nfplaces[MAXTOTALCODES];
 extern int codesend[];
 extern char **serial_names;
 extern char *jumpnames[];
+extern char *vergonlycodes[];
+
 #endif
 
 

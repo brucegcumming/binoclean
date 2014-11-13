@@ -423,8 +423,10 @@ uk Sets coefficients for adaptive staircase from Uka et al. 5 values
 # 5 size of signal change (multiplier)
 Us Expt Type only.
 USd duration of a brief pulse of microstim see also USp, USf #ustim
-usenewdirs  if >0 uses differnt rules for placing the choice targets.  Avoid!
-usenwedirs
+usenewdirs  if >0 uses differnt rules for placing the choice targets.  Avoid! #psych target 
+#usenewdirs=90 places targets vertically above and below fixation point.
+#usenewdirs=360  places targets horizontally left and right of fixation point
+#usenewdirs=0 turns off use of this variable. So use 360 to force horizontal targets
 USf frequency of microstim pulses See alos USd,USp #ustim
 USp phase of microstim pulses.  See also USd,USf #usimt
 vd viewing distance eye - screen in cm
@@ -455,3 +457,8 @@ yo vertical pos of stimulus (degrees)
 zf Disparity applied to fixation marker to require vergence. 
 Yp For log files. #Penetration Log
 yR y pos for R eye
+!saveimage saves a .pgm image of the current stimulus #movie
+!saveim saves a .pgm image of the last frame of the last stimulus in the current expt #movie image
+!savemovie saves a .pgm image for every frame shown 
+#!savemovie=pathname  sets the folder name where images will be written 
+#!saveim2  saves only the last frame of the last stimulus in the experiment 

@@ -1,0 +1,10 @@
+st=grating
+or=Ro
+sf=0.01
+wi=0.15
+hi=3
+tf=0
+et=Op
+e2=Fr
+exp=/local/expts/RFRC
+op=+exm+sq

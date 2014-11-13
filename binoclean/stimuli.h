@@ -304,6 +304,7 @@ struct STIMULUS{
     int phasesign;
     int aamode;
     int firstseed;
+    int precalculate;
 };
 
 typedef struct STIMULUS Stimulus;
@@ -381,6 +382,8 @@ struct PGIMAGE{
     
 };
 
+#define MAXMANUALPARAMS 10
+
 typedef struct PGIMAGE PGM;
 
 struct EXPERIMENT{
@@ -446,6 +449,9 @@ struct EXPERIMENT{
     char *loadfile;
     float codevalue;
     int magicnumber;
+    char *manuallabels[MAXMANUALPARAMS];
+    double manualvalues[MAXMANUALPARAMS];
+    
 };
 
 typedef struct EXPERIMENT Expt;

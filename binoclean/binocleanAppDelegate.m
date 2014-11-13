@@ -130,6 +130,8 @@ void ReadInputPipe()
     if (AddingToInputPipe ==1){
         NSLog(@"INput Pipe busy");
     }
+    if (inexptstim ==2)
+        return;
     if(dataReadyInInputPipe && AddingToInputPipe == 0)
     {
         ReadingInputPipe = 1;
@@ -178,13 +180,16 @@ void WriteToOutputPipe(NSString * ns)
     //close(outPipe);
 }
 
-void notify(char * s)
+
+int notifyandcheck(char * s)
 {
     int pipestate = AddingToOutputPipe; // record this in case it changes during crash
     
     if (AddingToOutputPipe > 0){
+// no need to log self interuption now since notify tries again.
 //        NSLog(@"Notify Called while adding to outputpipe: %s",s);
-                NSLog(@"Notify Called while adding to outputpipe");
+//                NSLog(@"Notify Called while adding to outputpipe");
+        return(-1);
     }
     if (expt.verbose[3]){
         NSLog(@"Notify%s",s);
@@ -195,8 +200,19 @@ void notify(char * s)
     }
     outputPipeBuffer = [NSString stringWithFormat:@"%@%s", outputPipeBuffer, s] ;
     innotify = 0;
+    return(0);
 }
 
+void notify(char *s){
+    int i, laps = 0;
+    while((i = notifyandcheck(s)) < 0){
+        usleep(100);
+        if (laps++ > 100){
+            NSLog(@"Notify busy for > 10ms");
+            return;
+        }
+    }
+}
 
 #pragma mark random
 void randinit(int seed) // that sets the seed

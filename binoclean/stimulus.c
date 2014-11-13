@@ -1092,6 +1092,8 @@ int StimulusType(Stimulus *st, int i)
     }
     else
         return(1);
+    if (st->type != STIM_IMAGE)
+        st->preload = 0;
     st->lasttype = st->type;
     st->type = i;
     st->right->mode = RIGHTMODE;
@@ -2213,6 +2215,22 @@ void paint_half(Stimulus *st, int mode, int noback)
     st->pos.lastxy[1] = st->pos.xy[1];
 }
 
+int CopyStim(Stimulus *to, Stimulus *from)
+{
+    Substim *left,*right;
+    to->pos.angle = from->pos.angle;
+    to->pos.xy[0] = from->pos.xy[0];
+    to->pos.xy[1] = from->pos.xy[1];
+
+    to->left->pos.angle = from->left->pos.angle;
+    to->left->pos.xy[0] = from->left->pos.xy[0];
+    to->left->pos.xy[1] = from->left->pos.xy[1];
+
+    to->right->pos.angle = from->right->pos.angle;
+    to->right->pos.xy[0] = from->right->pos.xy[0];
+    to->right->pos.xy[1] = from->right->pos.xy[1];
+    
+}
 
 /* 
  * paint stereo stimulus paints stimuli for shutter glasses stereo display

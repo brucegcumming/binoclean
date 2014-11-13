@@ -37,7 +37,7 @@
  INTRIAL = TRIAL_PENDING | POST_STIMULUS_BIT
  */
 #define LINESEP 30
-#define MONITOR_CLOSE 1
+//#define MONITOR_CLOSE 1
 
 #define testout fprintf
 
@@ -62,6 +62,8 @@ static GLuint base,bigbase,mediumbase;
 static int eventstate = 0,window_is_mapped = 0;
 static int rndbonus = 10;
 static int forcestart = 0;
+static float painttimes[MAXFRAMES],calctimes[MAXFRAMES],processtimes[MAXFRAMES],swaptimes[MAXFRAMES],waittimes[MAXFRAMES];
+
 int teststate = 0;
 static int nostore = 0;
 static float pursued = 0;
@@ -73,8 +75,8 @@ int testloops = 0;
 static int track_resets[] = {XPOS, YPOS, FIXPOS_X, FIXPOS_Y, -1};
 
 #define NTRACKCODES 100
-int trackcodes[NTRACKCODES] = {0};
-int tracklevel[NTRACKCODES] = {0}; //each expt, each trial, or display in verg GUI
+int trackcodes[NTRACKCODES+1] = {0};
+int tracklevel[NTRACKCODES+1] = {0}; //each expt, each trial, or display in verg GUI
 
 float pursuedir = -1;
 float totalreward = 0;
@@ -153,6 +155,7 @@ float cleardelay = 0.3,okdelay = 0;
 static float tempxy[2],zll[2];
 char ImageOutDir[BUFSIZ] = ".";
 FILE *imidxfd;
+FILE *todaylog = NULL;
 
 #define CBUFLEN 4098
 static char charbuf[CBUFLEN],tmssg[BUFSIZ], conjbuf[BUFSIZ];
@@ -346,6 +349,19 @@ char *binocTimeString()
     return (&t[10]);
 }
 
+char *binocDateString(int full)
+{
+    char name[BUFSIZ],*t = NULL ,buf[256];
+    time_t tval;
+    
+    tval = time(NULL);
+    t = ctime(&tval);
+    t[24] =0; // remove \n
+    if (full == 0)
+        t[10] = 0;
+    return (t);
+}
+
 void TriggerExpt()
 {
 
@@ -500,6 +516,23 @@ int CheckStrings()
 
 extern double gammaval;
 
+void AddTrackCode(char *s)
+{
+    int code,i = 0;
+    
+    if (s[0] == '=')
+        s++;
+    code = FindCode(s);
+    if (code < 0)
+        return;
+    while(i < NTRACKCODES && trackcodes[i] >= 0){
+        if(trackcodes[i] == code) //already tracking this
+            return;
+        i++;
+    }
+    trackcodes[i] = code;;
+}
+
 void initial_setup()
 {
     Locator *pos;
@@ -633,7 +666,9 @@ void initial_setup()
     gettimeofday(&lastconnecttime,NULL);
     for (i = 0; i < NTRACKCODES; i++)
         trackcodes[i] = -1;
+//list of codes to record in daily log and psych log between blocks
     trackcodes[0] = STIM_SIZE;
+    trackcodes[1] = TOTAL_REWARD;
     
     
     gettimeofday(&now,NULL);
@@ -1182,8 +1217,6 @@ int SendTrialCount()
         stim = stimno;
     
     sprintf(buf,"STIMC %d %d %d %d %d %d %d %.1f\n",goodtrials, totaltrials, badtrials, latetrials, fixtrials,stim,expt.nstim[6],totalreward);
-    if(seroutfile)
-        fputs(buf,seroutfile);
     notify(buf);
 }
 
@@ -1385,6 +1418,7 @@ void SendAll()
     }
     SendPenInfo();
     tval = time(NULL);
+    SerialSend(TOTAL_REWARD); // Spiek2 ignores unless its been restarted
     if(seroutfile)
         fprintf(seroutfile,"#SendAll at %s",ctime(&tval));
 }
@@ -1408,6 +1442,7 @@ void MakeConnection(int flag)
         SendPenInfo();
         SerialSend(ELECTRODE_DEPTH);
         SerialSend(PEN_START_DEPTH);
+        SerialSend(TOTAL_REWARD); // only send to Spike2 when its new
         gettimeofday(&sessiontime,NULL);
         SerialSignal(END_EXPT);
 	}
@@ -1455,23 +1490,18 @@ void statusline(char *s)
     char buf[BUFSIZ];
     
     
-    if(s != NULL) {
-        if (strlen(s) > LONGBUF-10){
-            fprintf(stderr,"STATUS%s\n",s);
-            sprintf(statusstring,"status=too lonng %d\n",strlen(s));
-        }
-        else{
-            sprintf(statusstring,"status=%s\n",s);
-        }
-        notify(statusstring);
-    }
-    else{
-// no need to send again in binoclean
+    if(s != NULL)
+        statusstring = myscopy(statusstring,s);
+    else
         s = statusstring;
-    }
 //    glstatusline(s,1);
     printString(s, strlen(s)); //Need this? removed May 2013
 
+    notify("status=");
+    notify(s);
+    notify("\n");
+    if(mode & HOLD_STATUS)
+        return;
     
 }
 
@@ -3488,6 +3518,7 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
                 pos->imsize[1] = fval +  st->left->ptr->rsigma*3;
                 pos->radius[1] = pos->imsize[1]/2;
             }
+            CheckRect(TheStim);
             break;
         case STIM_HEIGHT:
             if((fval = deg2pix(val)) < 0)
@@ -3528,6 +3559,7 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
             st->left->size = StimulusProperty(st,STIM_SIZE);
             st->right->size = st->left->size;
             mode |= NEWDRAG;
+            CheckRect(TheStim);
             break;
         case ORI_BANDWIDTH:
             st->left->orbw = val;
@@ -5340,7 +5372,7 @@ int change_frame()
     if (renderoff == 0){
             if((mode & FRAME_BITS) || blockallframes)
                 glFinishRenderAPPLE();
-    glSwapAPPLE();
+        glSwapAPPLE();
     }
     gettimeofday(&changeframetime,NULL);
     changeframedur = timediff(&changeframetime,&atime);
@@ -5360,9 +5392,12 @@ int change_frame()
     if(oldmode & LAST_FRAME_BIT && !(mode & LAST_FRAME_BIT))
         stimstate = POSTSTIMULUS;
 
-    if (testflags[SAVE_IMAGES] ==10 || testflags[SAVE_IMAGES] ==11){ //save images of screen
+    if (testflags[SAVE_IMAGES] ==10){ //save images of screen
 //        SaveImage(expt.st,0); // RE eye only
         SaveImage(expt.st,1); //Both Eyes
+    }
+    if (testflags[SAVE_IMAGES] ==12){ //save images just of stimulus
+        SaveImage(expt.st,5); //Both Eyes
     }
     
     if((mode & FRAME_BITS) || blockallframes)
@@ -6145,8 +6180,11 @@ void paint_frame(int type, int showfix)
     
     if (optionflags[SAVE_RLS])
         RecordImage(expt.st->framectr, expt.st);
-    if (renderoff){
+    if (renderoff == 1){
         return;
+    }
+    else if (renderoff ==2){
+        glDrawBuffer(GL_FRONT_AND_BACK);
     }
     setmask(ALLMODE);
     
@@ -6432,7 +6470,7 @@ int next_frame(Stimulus *st)
     char exptchr = ' ';
     int nf;
     int crasher = 0;
-    
+    static int stimerr = 0;
     
     gettimeofday(&now,NULL);
     t2 = timediff(&now,&lastcalltime);
@@ -6472,7 +6510,7 @@ int next_frame(Stimulus *st)
             printf("Warning - no stimuli completed for 1hour  at %2d:%2d\n",ltime->tm_hour,ltime->tm_min);
             if(seroutfile)
                 fprintf(seroutfile,"#Calling monkeywarn\n");
-            system("/bgc/bgc/etc/monkeywarn `hostname`");
+            system("/b/bgc/etc/monkeywarn `hostname`");
             memcpy(&endstimtime,&now,sizeof(struct timeval));
         }
         
@@ -6730,11 +6768,16 @@ int next_frame(Stimulus *st)
             {
                 memcpy(&fixontime, &now, sizeof(struct timeval));
                 if(ExptIsRunning() && (i = PrepareExptStim(1,13)) < 0){
-
-                        printf("Prepare returns %d\n",i);
-
+                    stimerr++;
+                     fprintf(stderr,"Prepare returns %d\n",i);
                     stimstate = INTERTRIAL;
+                    if (stimerr > 10){
+                        expt_over(CANCEL_EXPT);
+                        acknowledge("Expt Cancellled by binoc",NULL);
+                    }
                 }
+                else
+                    stimerr = 0;
                 SetFixColor(expt);
                 if(demomode == 0)
                     fixstate = 0;
@@ -6761,6 +6804,7 @@ int next_frame(Stimulus *st)
                     optionflags[INITIAL_TRAINING] = 2;
                 
             }
+// need to set rw again here in case its a manual expt that mixes AFC trials with NonAFC trial
             if (option2flag & AFC){
                 expt.st->fix.rwsize = expt.st->fix.afcrwsize;
             }
@@ -6769,6 +6813,7 @@ int next_frame(Stimulus *st)
             }
             if (laststate!= PREFIXATION){
                 SerialSend(REWARD_SIZE);
+                SendToGui(REWARD_SIZE);
             }
             wipescreen(clearcolor);
             RunBetweenTrials(st, pos);
@@ -7027,6 +7072,11 @@ int next_frame(Stimulus *st)
 //            while((rc = getframecount()) < lastframecount +nf)
 //                rc = getframecount();
             change_frame();
+            frametimes[framesdone] = timediff(&frametime,&zeroframetime);
+            painttimes[framesdone] = paintdur;
+            calctimes[framesdone] = calcdur;
+            swaptimes[framesdone] = swapwait;
+
             expt.framesdone++;
             if(mode & NEWDRAG)
             {
@@ -7492,6 +7542,7 @@ int next_frame(Stimulus *st)
             if (t2 > 1){
                 sprintf(buf,"status=Testing at %s\n",binocTimeString());
                 notify(buf);
+                fprintf(stderr,buf);
                 gettimeofday(&lastcleartime,NULL);
             }
             if (laststate != stimstate){
@@ -7541,10 +7592,9 @@ int next_frame(Stimulus *st)
                 break;
                     case WAIT_FOR_RESPONSE:
                         // do POSTTRIAL commands here, then move on
-                        crasher = 15;
-                        if (crasher & 8)
-                            ShowTestCount(0, -1);
-                        if (crasher & 1){
+                        crasher =1;
+                        ShowTestCount(0, -1);
+                        if (crasher < 1){
                             if(rdspair(expt.st))
                                 i = 0;
                             if(seroutfile){
@@ -7576,7 +7626,7 @@ int next_frame(Stimulus *st)
                             }
                             if(debug) glstatusline("PostTrial",3);
                         }
-                        if (crasher &2){
+                        if (crasher < 3){
                             if(fabs(expt.vals[PURSUIT_INCREMENT]) > 0.001 && fixstate != BAD_FIXATION){
                                 /*
                                  * N.B. at this moment changes in PURSUIT INCREMENT as part of an expt will not
@@ -7623,7 +7673,7 @@ int next_frame(Stimulus *st)
                             SerialSend(FIXPOS_XY);
                             draw_fix(fixpos[0],fixpos[1], TheStim->fix.size, TheStim->fixcolor);
                         }
-                        if (crasher & 4){
+                        if (crasher < 4){
                             /* stimseq[].result is used in human psychophysics for staircases */
                             if(!(option2flag & PSYCHOPHYSICS_BIT))
                                 stimseq[trialctr].result = monkeypress;
@@ -7638,7 +7688,7 @@ int next_frame(Stimulus *st)
                             stimseq[trialctr].a = stimseq[trialctr].b = 0;
                         }
                         
-                        if (crasher &2){
+                        if (crasher < 3){
                             /*
                              * if expt stim is prepared during a timout, this undoes the setting
                              * of saccval...
@@ -7666,7 +7716,7 @@ int next_frame(Stimulus *st)
                                 fprintf(stairfd,"Post%d(%d) ",stimno,stimorder[stimno]);
                             }
                         } //end crasher < 1
-                        if (crasher & 16){
+                        if (crasher < 4){
                             if (stimstate != POSTTRIAL)
                                 ReadCommandFile(expt.cmdinfile);
                         }
@@ -9983,7 +10033,7 @@ float StimulusProperty(Stimulus *st, int code)
             value = mon.viewd;
             break;
         case REWARD_SIZE:
-            value = st->fix.rwsize;
+            value = st->fix.rwsize; // need actual reward size here for when send to spike2
             break;
         case TIMEOUT_CODE:
             value = st->fix.timeout;
@@ -10593,7 +10643,7 @@ int ShowTestCount(float down, float sum)
     float fsum = 0;
     
     
-    crasher = 2;
+    crasher =31;
  //15 crashed, to its not the loop.
  // looks like its overflowing mssg with some message?
 
@@ -10736,40 +10786,43 @@ int PrintTrialResult(FILE *fd, char result)
 }
 
 
-int PrintPsychLine(int presult, int sign)
+int PrintPsychLine(int presult, int sign, FILE *fd)
 {
     char str[BUFSIZ];
     double start, down;
     
+    if (todaylog != NULL && fd != todaylog){
+        PrintPsychLine(presult, sign, todaylog);
+    }
     start = timediff(&now,&progstarttime);
     down = timediff(&now,&wurtzframetime);
     
-    if(psychfile != NULL){
+    if(fd != NULL){
         if(afc_s.loopstate == CORRECTION_LOOP && (option2flag & AFC))
             presult += 100;
         if(!SACCREQD(afc_s) && !(option2flag & PSYCHOPHYSICS_BIT))
             presult +=50;
         if(abs(afc_s.ccvar) > 0.01 && expt.type2 == EXPTYPE_NONE)
-            fprintf(psychfile,"R%d %s=%.5f %s=%.5f",
+            fprintf(fd,"R%d %s=%.5f %s=%.5f",
                     presult,serial_strings[expt.mode],expt.currentval[0],
                     serial_strings[covaryprop],GetProperty(&expt,expt.st,covaryprop));
         else if(expt.type3 == FAKESTIM_EXPT && expt.type2 == EXPTYPE_NONE)
-            fprintf(psychfile,"R%d %s=%.5f %s=%.5f",
+            fprintf(fd,"R%d %s=%.5f %s=%.5f",
                     presult,serial_strings[expt.mode],expt.currentval[0],
                     serial_strings[FAKESTIM_SIGNAL],fakestim);
         else if(expt.currentval[0] == INTERLEAVE_EXPT_FLIP)
-            fprintf(psychfile,"R%d %s=%.5f %s=%.5f",
+            fprintf(fd,"R%d %s=%.5f %s=%.5f",
                     presult,serial_strings[expt.mode],expt.currentval[0],
                     serial_strings[expt.type2],expt.currentval[3]);
         else
-            fprintf(psychfile,"R%d %s=%.5f %s=%.5f",
+            fprintf(fd,"R%d %s=%.5f %s=%.5f",
                     presult,serial_strings[expt.mode],expt.currentval[0],
                     serial_strings[expt.type2],expt.currentval[1]);
         if(optionflags[FLIP_FEEDBACK])
-            fprintf(psychfile," sn=%d.1",sign);
+            fprintf(fd," sn=%d.1",sign);
         else
-            fprintf(psychfile," sn=%d",sign);
-        fprintf(psychfile," %.2f %.2f %.2f",start,down,expt.vals[REWARD_SIZE]);
+            fprintf(fd," sn=%d",sign);
+        fprintf(fd," %.2f %.2f %.2f",start,down,expt.vals[REWARD_SIZE]);
         
         if(microsaccade >0)
             sprintf(str,"%s(%,4f)=%.2f",serial_strings[SACCADE_DETECTED],microsaccdir, microsaccade);
@@ -10782,14 +10835,14 @@ int PrintPsychLine(int presult, int sign)
         else
             sprintf(str,"%s %s",str,EyePosString());
         if(expt.type3 != EXPTYPE_NONE)
-            fprintf(psychfile," %s=%.2f %s\n",serial_strings[expt.type3],expt.currentval[2],str);
+            fprintf(fd," %s=%.2f %s\n",serial_strings[expt.type3],expt.currentval[2],str);
         else if(expt.mode == TWOCYL_DISP)
-            fprintf(psychfile," %s=%.2f %s\n",serial_strings[DISP_X],expt.currentval[2],str);
+            fprintf(fd," %s=%.2f %s\n",serial_strings[DISP_X],expt.currentval[2],str);
         else if(expt.vals[ONETARGET_P] > 0)
-            fprintf(psychfile," %s=%.2f %s\n",serial_strings[TARGET_RATIO],expt.vals[TARGET_RATIO],str);
+            fprintf(fd," %s=%.2f %s\n",serial_strings[TARGET_RATIO],expt.vals[TARGET_RATIO],str);
         else            
-            fprintf(psychfile," %s %s=%d\n",str,serial_strings[STIMID],expt.allstimid);
-        fflush(psychfile);
+            fprintf(fd," %s %s=%d\n",str,serial_strings[STIMID],expt.allstimid);
+        fflush(fd);
     }
 }
 
@@ -11071,7 +11124,7 @@ int GotChar(char c)
                 fixed[(wurtzctr+1)%avglen] = -1;
 			    if(c== WURTZ_OK){
                     if(goodtrials %50 == 0 && goodtrials > 0 && penlog)
-                        fprintf(penlog,"Rewards %d of %d\n",goodtrials,totaltrials);
+                        fprintf(penlog,"Rewards %d of %d. %.1ml\n",goodtrials,totaltrials,expt.vals[TOTAL_REWARD]);
                     goodtrials++;
                     if( (afc_s.sacval != 0) && (option2flag & AFC)){
                         afctrials++;
@@ -11160,7 +11213,7 @@ int GotChar(char c)
                     sign = 0;
 
                 if (!(option2flag & PSYCHOPHYSICS_BIT))//Print psych line for Monkey. Humans done in ButtonResponse()
-                    PrintPsychLine(presult, sign);
+                    PrintPsychLine(presult, sign, psychfile);
                 
                 
                 if(seroutfile != NULL)
@@ -11361,7 +11414,7 @@ int GotChar(char c)
                     else if (afc_s.bonuslevel == 0 && afc_s.bonuslevel2 == 0)
                         TheStim->fix.rwsize = oldrw;
                     else
-                        TheStim->fix.rwsize = TheStim->fix.fixrwsize;
+                        TheStim->fix.rwsize = expt.vals[REWARD_SIZE1];
                     TheStim->fix.afcrwsize = TheStim->fix.rwsize;
                 }
                 else if(option2flag & AFC){
@@ -11699,25 +11752,33 @@ void expt_over(int flag)
         }
     }
     if(penlog && optionflag & STORE_WURTZ_BIT && flag != CANCEL_EXPT){
+        
         fprintf(penlog,"Expt(%s) %s x %s %s N %d",expt.bwptr->prefix,
                 serial_names[expt.mode],serial_names[expt.type2],
                 stimulus_names[expt.st->type],expt.nreps,expt.nsaved);
+        if (optionflags[MANUAL_EXPT])
+            fprintf(penlog,"+exm");
         if(expt.type3 != EXPTYPE_NONE)
             fprintf(penlog," EX3 %s",serial_names[expt.type3]);
         fprintf(penlog,"\n");
+        fprintf(penlog,"Expt saved %d stim at %s",stimno,binocTimeString());
         
         fflush(penlog);
         PrintPenLog(1);
     }
     if (flag == 1)
-        Stim2PsychFile(END_EXPT);
+        Stim2PsychFile(END_EXPT, psychfile);
     else
-        Stim2PsychFile(flag);
+        Stim2PsychFile(flag, psychfile);
     
     /*
      * Set things back to how they were befre the experiment
      * NB stimvals XPOS,YPOS can change, so use expt.vals for these.
      */
+    if(netoutfile){
+        fprintf(netoutfile,"#Resetting Expt Stim\n");
+    }
+
     expt.st->preloaded = 0;
     expt.st->next->preloaded = 0;
     if(expt.stimtype == STIM_GRATING2)
@@ -11745,7 +11806,7 @@ void expt_over(int flag)
     
     expt.st->flag = expt.stflag;
     if(seroutfile){
-        fprintf(seroutfile,"Resetting: ");
+        fprintf(seroutfile,"#Resetting: ");
         i = 0;
         while(track_resets[i] >= 0){
             fprintf(seroutfile,"%2s->%.4f ",serial_strings[track_resets[i]],GetProperty(&expt,expt.st,track_resets[i]));
@@ -11846,6 +11907,7 @@ void expt_over(int flag)
         sprintf(buf,"Expt over at %s",binocTimeString());
         statusline(buf);
     }
+    UpdateNetworkFile(expt);
 
 }
 
@@ -11857,70 +11919,73 @@ char *StimString(int code)
     return(buf);
 }
 
-void Stim2PsychFile(int state)
+void Stim2PsychFile(int state, FILE *fd)
 {
     float t,val,version;
-    char buf[2048],*s,*r;
+    char buf[2048],*s,*r,*ts;
+    float tval;
+    
     int i,j;
 
     sscanf(VERSION_STRING,"binoclean.%f",&version);
 
     
     
-    
+    if (todaylog != NULL && fd != todaylog)
+        Stim2PsychFile(state, todaylog);
 
-    if(psychfile){
+    if(fd){
 
-        fprintf(psychfile,"R5 %s=%.2f %s=%.2f %s=%.2f",
+        fprintf(fd,"R5 %s=%.2f %s=%.2f %s=%.2f",
                 serial_strings[STIM_SIZE],GetProperty(&expt,expt.st,STIM_SIZE), 
                 serial_strings[SETCONTRAST],GetProperty(&expt,expt.st,SETCONTRAST),
                 serial_strings[JVELOCITY],GetProperty(&expt,expt.st,JVELOCITY));
         t = RunTime();
-        fprintf(psychfile," %.2lf %.2f %.2f",t,
+        fprintf(fd," %.2lf %.2f %.2f",t,
                 GetProperty(&expt,expt.st,XPOS),
                 GetProperty(&expt,expt.st,YPOS));
-        fprintf(psychfile," %s=%.2f %s=%.2f %s=%.2f %s=%.3f expt=%d x=0\n",serial_strings[XPOS],GetProperty(&expt,expt.st,XPOS),serial_strings[YPOS],GetProperty(&expt,expt.st,YPOS),
+        fprintf(fd," %s=%.2f %s=%.2f %s=%.2f %s=%.3f expt=%d x=0\n",serial_strings[XPOS],GetProperty(&expt,expt.st,XPOS),serial_strings[YPOS],GetProperty(&expt,expt.st,YPOS),
                 serial_strings[DOT_DENSITY],GetProperty(&expt,expt.st,DOT_DENSITY),
                 serial_strings[CONTRAST2],GetProperty(&expt,expt.st,CONTRAST2),
                 state);
         
-        fprintf(psychfile,"R%d %s=%.2f %s=%.2f %s=%.2f",state+8,
+        fprintf(fd,"R%d %s=%.2f %s=%.2f %s=%.2f",state+8,
                 serial_strings[ORIENTATION],GetProperty(&expt,expt.st,ORIENTATION), 
                 serial_strings[SF],GetProperty(&expt,expt.st,SF),
                 serial_strings[DOT_SIZE],GetProperty(&expt,expt.st,DOT_SIZE));
-        fprintf(psychfile," %.2lf %.2f %.2f",t,
+        fprintf(fd," %.2lf %.2f %.2f",t,
                 GetProperty(&expt,expt.st,XPOS),
                 GetProperty(&expt,expt.st,YPOS));
-        fprintf(psychfile," %s %s=%.4f %s expt=%d x=0 x=0\n",StimString(INITIAL_APPLY_MAX),serial_strings[JDEATH],GetProperty(&expt,expt.st,JDEATH),StimString(VERSION_NUMBER),state);
+        fprintf(fd," %s %s=%.4f %s expt=%d x=0 x=0\n",StimString(INITIAL_APPLY_MAX),serial_strings[JDEATH],GetProperty(&expt,expt.st,JDEATH),StimString(VERSION_NUMBER),state);
         
         
         
-        fprintf(psychfile,"R5 %s %s=%.2f By=%.2f",
+        fprintf(fd,"R5 %s %s=%.2f By=%.2f",
                 StimString(VERSION_NUMBER),
                 serial_strings[REWARD_BIAS],GetProperty(&expt,expt.st,REWARD_BIAS),
                 GetProperty(&expt,expt.st->next,YPOS));
-        fprintf(psychfile," 0 %.2f %.2f",
+        fprintf(fd," 0 %.2f %.2f",
                 GetProperty(&expt,expt.st,BACK_ORI),
                 GetProperty(&expt,expt.st,BACK_SIZE));
-        fprintf(psychfile," %s=%.0f usenewdir=%d %s %s %s x=0\n",serial_strings[STIMULUS_MODE],GetProperty(&expt,expt.st,STIMULUS_MODE),usenewdirs,StimString(BACK_CORRELATION),StimString(BACK_HEIGHT),StimString(BACK_WIDTH));
+        fprintf(fd," %s=%.0f usenewdir=%d %s %s %s x=0\n",serial_strings[STIMULUS_MODE],GetProperty(&expt,expt.st,STIMULUS_MODE),usenewdirs,StimString(BACK_CORRELATION),StimString(BACK_HEIGHT),StimString(BACK_WIDTH));
         
         if(expt.st->next && expt.st->next->type != STIM_NONE){
-            fprintf(psychfile,"R7 %s=%.2f %s=%.2f %s=%.2f",
+            fprintf(fd,"R7 back%s=%.2f back%s=%.2f %s=%.2f",
                     serial_strings[XPOS], GetProperty(&expt,expt.st->next,XPOS),
                     serial_strings[YPOS], GetProperty(&expt,expt.st->next,YPOS),
                     serial_strings[REWARD_BIAS],GetProperty(&expt,expt.st,REWARD_BIAS),
                     GetProperty(&expt,expt.st->next,YPOS));
-            fprintf(psychfile," 0 %.2f %.2f",
+            fprintf(fd," 0 %.2f %.2f",
                     GetProperty(&expt,expt.st,BACK_ORI),
                     GetProperty(&expt,expt.st,BACK_SIZE));
-            fprintf(psychfile," %s=%.4f %s=%.2f x=0 x=0 x=0 mo=back\n",serial_strings[INITIAL_APPLY_MAX],GetProperty(&expt,expt.st,INITIAL_APPLY_MAX),serial_strings[BACK_CONTRAST],GetProperty(&expt,expt.st,BACK_CONTRAST));
+            fprintf(fd," %s=%.4f %s=%.2f x=0 x=0 x=0 mo=back\n",serial_strings[INITIAL_APPLY_MAX],GetProperty(&expt,expt.st,INITIAL_APPLY_MAX),serial_strings[BACK_CONTRAST],GetProperty(&expt,expt.st,BACK_CONTRAST));
         }
         if(expt.st->type == STIM_IMAGE){
-            fprintf(psychfile,"R7 se0=%d se1=%d se2=%d %d %d %d se6=%d imver=%.2f x=0 x=0 x=0 st=image\n",
+            fprintf(fd,"R7 se0=%d se1=%d se2=%d %d %d %d se6=%d imver=%.2f x=0 x=0 x=0 st=image\n",
                     seedoffsets[0],seedoffsets[1],seedoffsets[2],
                     seedoffsets[3],seedoffsets[4],seedoffsets[5],
                     seedoffsets[6],expt.st->stimversion);
-            fprintf(psychfile,"R7 se7=%d se8=%d se9=%d %d %d %d se13=%d imver=%.2f x=0 x=0 x=0 st=image\n",
+            fprintf(fd,"R7 se7=%d se8=%d se9=%d %d %d %d se13=%d imver=%.2f x=0 x=0 x=0 st=image\n",
                     seedoffsets[7],seedoffsets[8],seedoffsets[9],
                     seedoffsets[10],seedoffsets[11],seedoffsets[12],
                     seedoffsets[13],expt.st->stimversion);
@@ -11933,23 +11998,56 @@ void Stim2PsychFile(int state)
             *(r-4) = 0;
 
         r = binocTimeString();
-        fprintf(psychfile,"R7 binoclean=%s time=%s %s", s, &r[1],StimString(OPTION_CODE));
-        j = 3;
+        if(state == START_EXPT || state == START_EXPT+100){
+            fprintf(fd,"R7 %s date=%s\n", StimString(STIMULUS_TYPE_CODE),binocDateString(1));
+            fprintf(fd,"R7 binoclean=%s time=%s %s bt=%.2f", s, &r[1],StimString(OPTION_CODE));
+            fprintf(fd," bt=%.2f", timediff(&now,&sessiontime));
+            fprintf(fd," %s",StimString(UFF_PREFIX));
+            fprintf(fd," %s",StimString(EXPT_NAME));
+            j = 4;
+            for(i = 0; i < MAXMANUALPARAMS; i++){
+                if (expt.manuallabels[i] != NULL && strcmp(expt.manuallabels[i],"NotSet")){
+                    fprintf(fd," %s=%.4f",expt.manuallabels[i], expt.manualvalues[i]);
+                    j++;
+                }
+            }
+        }
+        else {
+            fprintf(fd,"R7 bt=%.2f", timediff(&now,&sessiontime));
+            j = 1;
+        }
         for (i = 0; i < NTRACKCODES; i++){
             if(trackcodes[i] >= 0){
                 if(j%12 ==0)
-                    fprintf(psychfile,"R7 %s",StimString(trackcodes[i]));
+                    fprintf(fd,"R7 %s",StimString(trackcodes[i]));
                 else if(j%12 ==11)
-                    fprintf(psychfile,"\n");
+                    fprintf(fd,"\n");
                 else
-                    fprintf(psychfile," %s",StimString(trackcodes[i]));
+                    fprintf(fd," %s",StimString(trackcodes[i]));
                 j++;
             }
         }
         if (j%12 > 0){
-            fprintf(psychfile,"\n");
+            fprintf(fd,"\n");
         }
-        fflush(psychfile);
+        
+        if(state == START_EXPT || state == START_EXPT+100){
+        gettimeofday(&now,NULL);
+        fprintf(fd,"R4 %s=%.2f %s=%.2f sn=0",
+                serial_strings[COVARY_XPOS],afc_s.ccvar,
+                serial_strings[TARGET_RATIO],expt.vals[TARGET_RATIO]);
+        tval = RunTime();
+        ts = binocTimeString();
+        ts[3] = '.';
+        ts[6] = 0;
+        fprintf(fd," %ld %s %d",now.tv_sec,ts,expt.nstim[6]);
+        fprintf(fd," %s=%.2f %s=%.2f %s=NaN %s=NaN %s=NaN x=0\n",serial_strings[XPOS],GetProperty(&expt,expt.st,XPOS),serial_strings[YPOS],GetProperty(&expt,expt.st,YPOS),
+                serial_strings[expt.mode],
+                serial_strings[expt.type2],
+                serial_strings[expt.type3]);
+
+        }
+        fflush(fd);
     }
     
     
