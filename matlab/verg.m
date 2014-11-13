@@ -258,6 +258,7 @@ function ExitVerg(DATA)
             fprintf('Not closing file %s\n',name);
         end
     end
+    WriteText(DATA.StatusLines,'/local/vergstatus.txt','backup');
 
 function DATA = OpenBinocLog(DATA, type)
 
@@ -386,7 +387,7 @@ function CheckStimFile(DATA, type)
     txt = scanlines(DATA.stimfilename);
     goodlines = ones(size(txt));
     for j = 1:length(txt)
-        [DATA, code, badcodes] = InterpretLine(DATA, txt{j}, 'test');
+        [DATA, code, badcodes] = InterpretLine(DATA, txt{j}, 'test','fromCheck');
         if code < -1 
             goodlines(j) = 0;
         elseif ~isempty(badcodes)
@@ -443,6 +444,14 @@ function CheckCodeHelp(DATA, type)
     end
     
 function WriteText(txt, name, varargin)
+    j = 1; 
+    while j <= length(varargin)
+        if strncmpi(varargin{j},'backup',5)
+            BackupFile(name);
+        end
+        j = j+1;
+    end
+    
         fid = fopen(name,'w');
         if fid > 0
         for j = 1:length(txt)
@@ -763,7 +772,7 @@ for j = 1:length(strs{1})
     
     elseif sum(strncmp(s,{'NewBinoc' 'confirm' 'exvals' 'fontsiz' 'fontname' 'layout' ...
             'localmatdir' 'netmatdir', 'oldelectrode' 'TOGGLE' 'rptexpts' 'STIMTYPE' ...
-            'SENDING' 'SCODE=' 'status' 'stimdir' 'STIMC ' 'Unrecogn' 'emxpos' 'emypos'},6))
+            'SENDING' 'SCODE=' 'status' 'stimdir' 'STIMC ' 'Unrecogn' 'emxpos' 'emypos' 'NOTIFYCLASH'},6))
         if strncmp(s,'NewBinoc',7)
             DATA = CheckForNewBinoc(DATA);
             DATA.newbinoc = 1;
@@ -777,6 +786,8 @@ for j = 1:length(strs{1})
                 fprintf('Confirm Yes\n');
                 outprintf(DATA,'confirmpopup=1\n');
             end
+        elseif strncmp(s,'NOTFIYCLASH',8)
+            DATA = AddStatusLine(DATA,s, 3);
         elseif strncmp(s,'exvals',6)
             sv = sscanf(s(8:end),'%f');
             DATA.Trial.sv(1:length(sv)) = sv;
@@ -1403,6 +1414,16 @@ if frombinoc ~= 2 && paused == 0 %wasnt paused before this call.
     PauseRead(DATA,0);
 end
 
+function DATA = AddStatusLines(DATA, str, type)
+%add a statusline    
+    %type 1 = regular status linte
+    %2 = Stimulus lines
+    %3 = Errors/warnings
+    %4 = Expt Control
+    DATA.Statuslines{end+1} = str;
+    DATA.statustypes(length(DATA.Statuslines)) = type;
+    
+        
 
 
 function DATA = SetCode(DATA,code)
@@ -1733,7 +1754,7 @@ fid = fopen(name,'r');
 if fid > 0
     tline = fgets(fid);
     while ischar(tline)
-        DATA = InterpretLine(DATA,tline);
+        DATA = InterpretLine(DATA,tline,'vergfile');
         tline = fgets(fid);
     end
     fclose(fid);
@@ -7017,7 +7038,7 @@ showbinoc = 0; % display value binoc returns
 %So only expect something if input produces a response
 readargs = {};
 if txt(end) ~= '='
-    DATA = InterpretLine(DATA,txt);
+    DATA = InterpretLine(DATA,txt,'fromgui');
 else
     readargs = {readargs{:} 'expect'};
     showbinoc = 1;
