@@ -1217,6 +1217,8 @@ int SendTrialCount()
         stim = stimno;
     
     sprintf(buf,"STIMC %d %d %d %d %d %d %d %.1f\n",goodtrials, totaltrials, badtrials, latetrials, fixtrials,stim,expt.nstim[6],totalreward);
+    if(seroutfile)
+        fputs(buf,seroutfile);
     notify(buf);
 }
 
@@ -7542,7 +7544,6 @@ int next_frame(Stimulus *st)
             if (t2 > 1){
                 sprintf(buf,"status=Testing at %s\n",binocTimeString());
                 notify(buf);
-                fprintf(stderr,buf);
                 gettimeofday(&lastcleartime,NULL);
             }
             if (laststate != stimstate){
@@ -7626,7 +7627,7 @@ int next_frame(Stimulus *st)
                             }
                             if(debug) glstatusline("PostTrial",3);
                         }
-                        if (crasher < 3){
+                        if (crasher &2){
                             if(fabs(expt.vals[PURSUIT_INCREMENT]) > 0.001 && fixstate != BAD_FIXATION){
                                 /*
                                  * N.B. at this moment changes in PURSUIT INCREMENT as part of an expt will not
@@ -7673,7 +7674,7 @@ int next_frame(Stimulus *st)
                             SerialSend(FIXPOS_XY);
                             draw_fix(fixpos[0],fixpos[1], TheStim->fix.size, TheStim->fixcolor);
                         }
-                        if (crasher < 4){
+                        if (crasher & 4){
                             /* stimseq[].result is used in human psychophysics for staircases */
                             if(!(option2flag & PSYCHOPHYSICS_BIT))
                                 stimseq[trialctr].result = monkeypress;
@@ -7688,7 +7689,7 @@ int next_frame(Stimulus *st)
                             stimseq[trialctr].a = stimseq[trialctr].b = 0;
                         }
                         
-                        if (crasher < 3){
+                        if (crasher &2){
                             /*
                              * if expt stim is prepared during a timout, this undoes the setting
                              * of saccval...
@@ -7716,7 +7717,7 @@ int next_frame(Stimulus *st)
                                 fprintf(stairfd,"Post%d(%d) ",stimno,stimorder[stimno]);
                             }
                         } //end crasher < 1
-                        if (crasher < 4){
+                        if (crasher & 16){
                             if (stimstate != POSTTRIAL)
                                 ReadCommandFile(expt.cmdinfile);
                         }
@@ -10643,7 +10644,7 @@ int ShowTestCount(float down, float sum)
     float fsum = 0;
     
     
-    crasher =31;
+    crasher = 2;
  //15 crashed, to its not the loop.
  // looks like its overflowing mssg with some message?
 

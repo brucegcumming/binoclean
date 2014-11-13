@@ -3875,7 +3875,6 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
         case VERGENCE_WINDOW:
         case STATIC_VERGENCE:
         case ELECTRODE_DEPTH:
-        case SPIKE_GAIN:
         case REWARD_SIZE:
         case PREWARD:
         case WURTZ_RT_CODE:
@@ -4476,6 +4475,8 @@ int SaveImage(Stimulus *st, int type)
     int x,y,w,h,i=0,done = 0,n = 0;
     static int imstimid = 0,pcode = 5;
     char eyec[3] = "LR";
+    static int ndone = 0;
+    
     Stimulus *rst = st;
     Substim *sst;
     
