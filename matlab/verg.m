@@ -258,7 +258,7 @@ function ExitVerg(DATA)
             fprintf('Not closing file %s\n',name);
         end
     end
-    WriteText(DATA.StatusLines,'/local/vergstatus.txt','backup');
+    WriteText(DATA.Statuslines,'/local/vergstatus.txt','backup');
 
 function DATA = OpenBinocLog(DATA, type)
 
@@ -2277,6 +2277,7 @@ DATA.comcodes = [];
 
 %window names must be at least 8 chars
 DATA.windownames = {'vergwindow' 'optionwindow' 'softoffwindow'  'codelistwindow' 'statuswindow' 'logwindow' 'helpwindow' 'sequencewindow' 'penlogwindow' 'electrodewindow' 'commentwindow' 'showpenwin'};
+DATA.vergonlycodes = {'timerperiod' 'autoreopen' 'pausetimeout'};
 DATA.winpos{1} = [10 scrsz(4)-480 300 450];
 DATA.winpos{2} = [10 scrsz(4)-680 400 50];  %options popup
 DATA.winpos{3} = [600 scrsz(4)-100 600 150]; %softoff
@@ -2511,7 +2512,7 @@ function ShowStatus(DATA)
             str = datestr(DATA.Expts{DATA.nexpts}.End);
             str = ['Ended ' str(13:17)];
         else
-            str = sprintf('Binoc seems not to be in Expt, but verg didnt get end of Expt %d',nexpts);
+            str = sprintf('Binoc seems not to be in Expt, but verg didnt get end of Expt %d',DATA.nexpts);
         end
     else
         status = 0;
@@ -6577,7 +6578,12 @@ function val = GetValue(DATA,code)
 if isfield(DATA.binoc{1},code)
     val = DATA.binoc{1}.(code);
 else
-    val = NaN;
+    id = strcmp(code,DATA.vergonlycodes)
+    if isempty(id)
+        val = NaN;
+    else
+        val = DATA.(DATA.vergonlycodes{id});
+    end
 end
     
 function [s, lbl, type] = CodeText(DATA,code, varargin)
@@ -7039,7 +7045,10 @@ showbinoc = 0; % display value binoc returns
 readargs = {};
 if txt(end) ~= '='
     DATA = InterpretLine(DATA,txt,'fromgui');
+elseif sum(strcmp(code,DATA.vergonlycodes))
+    txt = [txt num2str(DATA.(code))];
 else
+    
     readargs = {readargs{:} 'expect'};
     showbinoc = 1;
 end
