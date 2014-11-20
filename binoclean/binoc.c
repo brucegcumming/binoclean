@@ -10152,8 +10152,6 @@ void setoption()
         //Ali ListExpStims(NULL);
     }
     
-    //ALi  if(new & STORE_WURTZ_BIT)
-    //    SetRunButton(NULL);
     old = optionflag;
     old2 = option2flag;
 }
@@ -10788,7 +10786,11 @@ int PrintPsychLine(int presult, int sign, FILE *fd)
 {
     char str[BUFSIZ];
     double start, down;
+    char c = ' ';
     
+    if(optionflag & STORE_WURTZ_BIT)
+        c = 'S';
+                      
     if (todaylog != NULL && fd != todaylog){
         PrintPsychLine(presult, sign, todaylog);
     }
@@ -10796,25 +10798,26 @@ int PrintPsychLine(int presult, int sign, FILE *fd)
     down = timediff(&now,&wurtzframetime);
     
     if(fd != NULL){
+        
         if(afc_s.loopstate == CORRECTION_LOOP && (option2flag & AFC))
             presult += 100;
         if(!SACCREQD(afc_s) && !(option2flag & PSYCHOPHYSICS_BIT))
             presult +=50;
         if(abs(afc_s.ccvar) > 0.01 && expt.type2 == EXPTYPE_NONE)
-            fprintf(fd,"R%d %s=%.5f %s=%.5f",
-                    presult,serial_strings[expt.mode],expt.currentval[0],
+            fprintf(fd,"R%d%c %s=%.5f %s=%.5f",
+                    presult,c,serial_strings[expt.mode],expt.currentval[0],
                     serial_strings[covaryprop],GetProperty(&expt,expt.st,covaryprop));
         else if(expt.type3 == FAKESTIM_EXPT && expt.type2 == EXPTYPE_NONE)
-            fprintf(fd,"R%d %s=%.5f %s=%.5f",
-                    presult,serial_strings[expt.mode],expt.currentval[0],
+            fprintf(fd,"R%d%c %s=%.5f %s=%.5f",
+                    presult,c,serial_strings[expt.mode],expt.currentval[0],
                     serial_strings[FAKESTIM_SIGNAL],fakestim);
         else if(expt.currentval[0] == INTERLEAVE_EXPT_FLIP)
-            fprintf(fd,"R%d %s=%.5f %s=%.5f",
+            fprintf(fd,"R%d%c %s=%.5f %s=%.5f",
                     presult,serial_strings[expt.mode],expt.currentval[0],
                     serial_strings[expt.type2],expt.currentval[3]);
         else
-            fprintf(fd,"R%d %s=%.5f %s=%.5f",
-                    presult,serial_strings[expt.mode],expt.currentval[0],
+            fprintf(fd,"R%d%c %s=%.5f %s=%.5f",
+                    presult,c,serial_strings[expt.mode],expt.currentval[0],
                     serial_strings[expt.type2],expt.currentval[1]);
         if(optionflags[FLIP_FEEDBACK])
             fprintf(fd," sn=%d.1",sign);

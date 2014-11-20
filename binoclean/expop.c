@@ -4502,7 +4502,7 @@ int SaveImage(Stimulus *st, int type)
             if((ofd = fopen(imname,"w")) == NULL)
                 fprintf(stderr,"Can't write image to %s\n",imname);
             else{
-                fprintf(ofd,"P5\n#se%d\n %d %d 255\n",expt.st->left->baseseed,w,h);
+                fprintf(ofd,"P5\n#se%d id%d\n %d %d 255\n",expt.st->left->baseseed,expt.allstimid,w,h);
                 fwrite(pix, sizeof(GLubyte), w*h, ofd);
                 done++;
                 fclose(ofd);
@@ -14011,7 +14011,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     }
     else if(!strncmp(line,"splitctr",8) && frompc){
         if(seroutfile)
-            fprintf(seroutfile,"#%s",line);
+            fprintf(seroutfile,"#%s Expt File Number in Spike\n",line);
         if(netoutfile)
             fprintf(netoutfile,"#%s",line);
         return(0);
