@@ -5543,6 +5543,7 @@ function DATA = RunExptSequence(DATA, str, line)
             str{j} = deblank(astr(j,:));
         end
     end
+    lastline = '';
 for j = line:length(str)
     if DATA.verbose(4)
         fprintf('From Seq window %s\n',str{j});
@@ -5594,7 +5595,9 @@ for j = line:length(str)
         set(DATA.toplevel,'UserData',DATA);
         outprintf(DATA,'#From RunSequence\n');
         outprintf(DATA,'%s\n',str{j}); %this runs expt in binoc
-        DATA.Statuslines{end+1} = sprintf('RunSequence Line %d. at %s %d Repeats left',line,datestr(now,'hh:mm.ss'),DATA.rptexpts);
+        DATA.Statuslines{end+1} = sprintf('RunSequence Line %d-%d. at %s %d Repeats left',line,j,datestr(now,'hh:mm.ss'),DATA.rptexpts);
+        DATA = AddTextToGui(DATA,sprintf('Seq Line %d-%d %s',line,j,lastline),'norec');
+
         return;
     elseif strncmp(str{j},'!mat',4)
         DATA.Statuslines{end+1} = sprintf('RunSequence Line %d: %s',str{j});
@@ -5607,6 +5610,7 @@ for j = line:length(str)
         outprintf(DATA,'%s#RunSeq\n',str{j});
     end
     DATA = LogCommand(DATA, str{j},'norec');
+    lastline = str{j};
 end
 
 function SendManualExpt(DATA)
@@ -6200,7 +6204,7 @@ bp = [0.01 0.99-1/nr 0.115 1./nr];
     uicontrol(gcf,'style','text','string','RH', ...
         'units', 'norm', 'position',bp,'value',1);
 
-bp(1) = bp(1)+bp(3)+0.01;
+bp(1) = bp(1)+bp(3)+0.0
     uicontrol(gcf,'style','edit','string',num2str(DATA.binoc{1}.so(1)), ...
         'Callback', {@SoftoffPopup, 'RH'},'Tag','RH',...
         'units', 'norm', 'position',bp);

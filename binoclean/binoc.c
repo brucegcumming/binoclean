@@ -5372,6 +5372,9 @@ int change_frame()
                 glFinishRenderAPPLE();
         glSwapAPPLE();
     }
+    else if (renderoff == 2){
+        glFinishRenderAPPLE();
+    }
     gettimeofday(&changeframetime,NULL);
     changeframedur = timediff(&changeframetime,&atime);
     if (tval > 0.005){

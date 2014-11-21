@@ -4506,7 +4506,7 @@ int SaveImage(Stimulus *st, int type)
                 fwrite(pix, sizeof(GLubyte), w*h, ofd);
                 done++;
                 fclose(ofd);
-                fprintf(stderr,"Seed %d,%d written to %s (dx%.3fP%d S%d)\n",st->left->baseseed,st->left->seed,imname,st->disp,pcode,stimstate);
+                fprintf(stderr,"Seed %d,%d written to %s (dx%.3fP%d S%d %dx%d pix)\n",st->left->baseseed,st->left->seed,imname,st->disp,pcode,stimstate,w,h);
             }
         }
     
@@ -4539,8 +4539,8 @@ int SaveImage(Stimulus *st, int type)
                     done++;
                     fclose(ofd);
                     if (seroutfile)
-                        fprintf(seroutfile,"Seed %d,%d written to %s (dx%.3f S%d)\n",st->left->baseseed,st->left->seed,imname,st->disp,stimstate);
-                    fprintf(stderr,"Seed %d,%d written to %s (dx%.3f S%d)\n",st->left->baseseed,st->left->seed,imname,st->disp,stimstate);
+                        fprintf(seroutfile,"Seed %d,%d written to %s (dx%.3f S%d) %dx%d pix\n",st->left->baseseed,st->left->seed,imname,st->disp,stimstate,w,h);
+                    fprintf(stderr,"Seed %d,%d written to %s (dx%.3f S%d) %dx%d pix\n",st->left->baseseed,st->left->seed,imname,st->disp,stimstate,w,h);
                 }
             }
         }
@@ -15127,8 +15127,13 @@ int InterpretLine(char *line, Expt *ex, int frompc)
                 fprintf(penlog,"%s %s\n",binocTimeString(),line);
                 fflush(penlog);
             }
-            if (todaylog != NULL && strncmp(line,"cm=NotSet",9)){
-                fprintf(todaylog,"R7 %s bt=%.2f\n",line,timediff(&now,&sessiontime));
+            if (strncmp(line,"cm=NotSet",9)){
+                if (todaylog != NULL){
+                    fprintf(todaylog,"R7 %s bt=%.2f time=%s\n",line,timediff(&now,&sessiontime),binocTimeString());
+                }
+                    if (psychlog != NULL){
+                    fprintf(psychlog,"R7 %s bt=%.2f time=%$s\n",line,timediff(&now,&sessiontime),binocTimeString());
+                }
             }
             break;
         case EARLY_RWTIME:
