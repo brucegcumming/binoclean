@@ -270,7 +270,7 @@ char *flag_codes[] = {
     NULL,};
 
 extern double fakestim;
-extern int usenewdirs,cancelflag;
+extern int usenewdirs,cancelflag,spike2mode;
 extern int dorpt,rcrpt , lastrpt;
 extern int *stimorder,demomode,covaryprop;
 //struct plotdata *expplots;
@@ -10935,11 +10935,14 @@ int GotChar(char c)
         if(seroutfile)
             fprintf(seroutfile,"#StartExpt from Spike2 at %.4f last code %d\n",ufftime(&now),lastcodes[i]);
         if (1){
-            fprintf(stderr,"Codes from Spike before StartExpt:");
+            fprintf(stderr,"Codes (%d,%d) from Spike (%d) at %s before StartExpt:",codectr,charsread,spike2mode,binocTimeString());
             for (i = codectr; i > 0 && i > codectr-10; i-- ){
                 fprintf(stderr,"%d",lastcodes[i%CODEHIST]);
             }
             fprintf(stderr,"\n");
+            if (spike2mode ==1){
+                fprintf(stderr,"Should get StartExpt Here\n");                
+            }
         }
         if (timediff(&now,&lastconnecttime) < 1){
             if(seroutfile){

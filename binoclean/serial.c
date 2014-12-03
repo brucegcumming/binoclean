@@ -47,6 +47,7 @@ unsigned long charsread = 0;
 char longlist[BUFSIZ*10];
 static struct timeval moment;
 void SerialString(char *s, int tty);
+extern int spike2mode;
 
 int OpenSerial(char *port)
 {
@@ -174,6 +175,7 @@ char ReadSerial(int tty)
 {
     int i,thetty;
     char c,dummy[4];
+    char *binocTimeString();
     /* never leave a single char haning on the end of the stack */
     
 #ifdef Linux
@@ -208,6 +210,12 @@ char ReadSerial(int tty)
         if(charsread > (BUFSIZ * 10)) 
             charsread = 0;
         serchar = c;
+
+#ifdef MONITOR_CLOSE
+// probabaly don't need this any more. Problem was in Initexpt
+        if (serchar == START_EXPT)
+            fprintf(stderr,"ReadSerial: START_EXPT at %s\n",binocTimeString());
+#endif
         return(serchar);
     }
 }

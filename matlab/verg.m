@@ -87,7 +87,6 @@ if isempty(it)
         tt = TimeMark(tt, 'VergSetup');
         [DATA, details] = ReadStimFile(DATA,varargin{1}, 'init');
         DATA.state.stimfile = varargin{1};
-        CheckState(DATA);
         if details.badcodes > 1
             DATA.state.stimfileerrs = details.badcodes;
         end
@@ -102,6 +101,7 @@ if isempty(it)
         if checkforrestart
             DATA = LoadLastSettings(DATA,'interactive');
         end
+        DATA = GetState(DATA,'stimfile');
         DATA = DrainBinocPipe(DATA);
         tt = TimeMark(tt, 'FromBinoc');
 
@@ -113,6 +113,9 @@ if isempty(it)
             j = j+1;
         end
     else
+        if ~isempty(varargin) && ischar(varargin{1})
+            vergwarning(sprintf('Cant Read %s',varargin{1}));
+        end
         DATA = ReadVergFile(DATA, DATA.layoutfile);
         DATA = OpenPipes(DATA, 1);
         DATA.nexpts = 1;
@@ -214,7 +217,8 @@ end
 
 
 function CheckState(DATA, varargin)
-
+% CheckState(DATA, varargin) checks values
+% of params in varargin with binoc
     for j = 1:length(varargin)
         if ischar(varargin{j})
             myprintf(DATA.tobinocfid,'%s ',varargin{j});
@@ -3202,10 +3206,11 @@ function CopyLog(DATA,type)
         outprintf(DATA,'e3=%s\n',DATA.comcodes(DATA.expmenuvals{3}(val)).code);
     elseif strcmp(type,'fsd')
         if iscellstr(str)
-        outprintf(DATA,'\\xyfsd=%s\n',str{val});
+        outprintf(DATA,'xyfsd=%s\n',str{val});
     else
-        outprintf(DATA,'\\xyfsd=%s\n',str(val,:));
+        outprintf(DATA,'xyfsd=%s\n',str(val,:));
         end
+        DATA.binoc{1}.xyfsd = val;
     elseif strmatch(type,{'st' 'bs'})
         id = strmatch(type,{'st' 'bs'});
         if val > 0
@@ -3270,7 +3275,7 @@ function DATA = LoadLastSettings(DATA, varargin)
                 DATA = InterpretLine(DATA, txt{id(1)},'tobinoc');
             end
             end
-            CheckState(DATA);
+            DATA = GetState(DATA);
         end
     
 function RecoverFile(a, b, type)
@@ -3965,7 +3970,12 @@ if isfield(DATA,'toplevel') && isfigure(DATA.toplevel)
     else
         onoff = current_state;
     end
-else
+elseif isfield(DATA,'pausereading')
+%? need this. Timer should not start before figure is up?    
+    current_state = DATA.pausereading;
+    if nargin == 2
+        DATA.pausereading = onoff;
+    end    
     current_state = 0;
 end
         

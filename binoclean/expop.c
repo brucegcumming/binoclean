@@ -144,6 +144,7 @@ static int flips[2] = {0};
 float *manualstimvals[100];
 int manualprop[100] = {-1};
 int propmodifier[100];
+int spike2mode = 0;
 
 int seedoffsets[100] = {0};
 int covaryprop = -1;
@@ -7891,8 +7892,12 @@ void InitExpt()
     expt.fastbtype = expt.type2; // make sure these are not left == 0
     expt.fastctype = expt.type3;
     
-    while((c = ReadSerial(0) != MYEOF))
+    while((c = ReadSerial(0)) != MYEOF){
+        if (c != serchar){
+            fprintf(stderr,"Serial Char mismatch: %d vs %d\n",c,serchar);
+        }
         GotChar(c);
+    }
     if(!(optionflag & FRAME_ONLY_BIT) || (optionflag & WAIT_FOR_BW_BIT))
         SerialSignal(START_EXPT);
     if(seroutfile){
@@ -13986,6 +13991,9 @@ int InterpretLine(char *line, Expt *ex, int frompc)
         SerialString(buf,0);
         return(0);
     }
+    else if(!strncmp(line,"splitfile",9)){
+        sscanf(line,"splitfile=%d",&i);
+    }
     else if(!strncmp(line,"stimorderfile",13)){
         expt.nstim[6] = ReadStimOrder(expt.strings[EXPT_PREFIX]);
         return(0);
@@ -14139,7 +14147,8 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     }
     else if(!strncmp(line,"spike2",6)){
         pcmode = SPIKE2;
-        printf("PC is Spike2\n");
+        printf("PC is %s\n",line);
+        sscanf(&line[7],"%d",&spike2mode);
         return(0);
     }
     else if(!strncmp(line,"spkgain",6)){ /* from spike 2 */
@@ -15126,13 +15135,13 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             SetExptProperty(ex, TheStim,code, val,0);
             break;
         case UFF_COMMENT:
-            SerialString(line,NULL);
-            SerialString("\n",NULL);
-            if(penlog){
-                fprintf(penlog,"%s %s\n",binocTimeString(),line);
-                fflush(penlog);
-            }
             if (strncmp(line,"cm=NotSet",9)){
+                SerialString(line,NULL);
+                SerialString("\n",NULL);
+                if(penlog){
+                    fprintf(penlog,"%s %s\n",binocTimeString(),line);
+                    fflush(penlog);
+                }
                 if (todaylog != NULL){
                     fprintf(todaylog,"R7 %s bt=%.2f time=%s\n",line,timediff(&now,&sessiontime),binocTimeString());
                 }
