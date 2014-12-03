@@ -866,39 +866,39 @@ for j = 1:length(strs{1})
             DATA.extypes{3} = sscanf(s(8:end),'%d');
             DATA.extypes{3} = DATA.extypes{3}+1;
             DATA = SetExptMenus(DATA);
-    elseif strncmp(s, 'EDONE', 5) %finished listing expt stims
-        if isfield(DATA,'toplevel')
-            it = findobj(DATA.toplevel,'Tag','Expt3StimList','style','edit');
-            if length(it) == 1
-                set(it,'string',DATA.exptstimlist{3});
-            end
-            it = findobj(DATA.toplevel,'Tag','Expt2StimList','style','edit');
-            if length(it) == 1
-                ival = get(it,'value');
-                ival = min([size(DATA.exptstimlist{2},2) ival]);
-                if ival <1
-                    ival = 1;
+        elseif strncmp(s, 'EDONE', 5) %finished listing expt stims
+            if isfield(DATA,'toplevel')
+                it = findobj(DATA.toplevel,'Tag','Expt3StimList','style','edit');
+                if length(it) == 1
+                    set(it,'string',DATA.exptstimlist{3});
                 end
-                set(it,'string',DATA.exptstimlist{2},'value',ival);
-            end
-            
-            it = findobj(DATA.toplevel,'Tag','Expt1StimList','style','edit');
-            if length(it) == 1
-                set(it,'string',DATA.exptstimlist{1});
-            end
-        end
-        if isfield(DATA,'exptstimlist')
-            for j = 1:length(DATA.exptstimlist)
-                S = DATA.exptstimlist{j};
-                for m = 1:length(S)
-                    [val,n] = sscanf(S{m},'%f');
-                    if n == 1
-                        DATA.expvals{j}(m) = val;
+                it = findobj(DATA.toplevel,'Tag','Expt2StimList','style','edit');
+                if length(it) == 1
+                    ival = get(it,'value');
+                    ival = min([size(DATA.exptstimlist{2},2) ival]);
+                    if ival <1
+                        ival = 1;
                     end
+                    set(it,'string',DATA.exptstimlist{2},'value',ival);
                 end
                 
+                it = findobj(DATA.toplevel,'Tag','Expt1StimList','style','edit');
+                if length(it) == 1
+                    set(it,'string',DATA.exptstimlist{1});
+                end
             end
-        end
+            if isfield(DATA,'exptstimlist')
+                for j = 1:length(DATA.exptstimlist)
+                    S = DATA.exptstimlist{j};
+                    for m = 1:length(S)
+                        [val,n] = sscanf(S{m},'%f');
+                        if n == 1
+                            DATA.expvals{j}(m) = val;
+                        end
+                    end
+                    
+                end
+            end
         elseif strncmp(s,'xyfsd',5)
             x = sscanf(value,'%f');
             DATA.binoc{1}.xyfsd = x(1);

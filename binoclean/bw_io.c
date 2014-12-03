@@ -102,7 +102,9 @@ int SetBWChannel(char *s)
     i = 0;
     while(r && *r)
     {
-        
+        if (*r == ','){
+            r++;
+        }
         while((strncmp(r,channel_strings[i],2) != 0))
             if(channel_strings[++i] == NULL)
                 return(-1);

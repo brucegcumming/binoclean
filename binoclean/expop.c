@@ -3165,6 +3165,10 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
     
     switch(flag)
     {
+        case XY_FSD:
+            expt.bwptr->fsd[10] = val;
+            expt.vals[flag] = val;
+            break;
         case PURSUIT_FREQUENCY:
             expt.vals[flag] = val;
             expt.vals[MICROSTIM_PERIODIC] = 1/val;
@@ -6720,6 +6724,7 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
     
     switch(code)
     {
+            
         case SET_SF_COMPONENTS:
             sprintf(cbuf,"%s=",serial_strings[code]);
             for (i = 0; i < st->left->nfreqs; i++){
@@ -7895,10 +7900,10 @@ void InitExpt()
         fprintf(seroutfile,"\nStimulus %s\n",DescribeStim(expt.st));
     }
     if(psychfile){
-        if(option2flag & PSYCHOPHYSICS_BIT)
+        if(option2flag & PSYCHOPHYSICS_BIT) //human psych
             Stim2PsychFile(START_EXPT,psychfile);
         else
-            Stim2PsychFile(START_EXPT+100, psychfile);
+            Stim2PsychFile(START_EXPT+100, psychfile); //monkey psych or fix
     }
     if(psychfilelog){
         tstart = time(NULL);

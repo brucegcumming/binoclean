@@ -10931,8 +10931,16 @@ int GotChar(char c)
         
 	    DIOval = 0;
         gettimeofday(&now,NULL);
+        i = codectr%CODEHIST;
         if(seroutfile)
-            fprintf(seroutfile,"#StartExpt from Spike2 at %.4f\n",ufftime(&now));
+            fprintf(seroutfile,"#StartExpt from Spike2 at %.4f last code %d\n",ufftime(&now),lastcodes[i]);
+        if (1){
+            fprintf(stderr,"Codes from Spike before StartExpt:");
+            for (i = codectr; i > 0 && i > codectr-10; i-- ){
+                fprintf(stderr,"%d",lastcodes[i%CODEHIST]);
+            }
+            fprintf(stderr,"\n");
+        }
         if (timediff(&now,&lastconnecttime) < 1){
             if(seroutfile){
                 ns=0;
@@ -11474,6 +11482,9 @@ int GotChar(char c)
             case BW_IS_READY:
                 charctr = 0;
                 break;
+            default:
+                fprintf(stderr,"Unknown code from binoc %d\n",c);
+                break;
 		}
 		lastcodes[++codectr%CODEHIST] = c;
 	}
@@ -11933,7 +11944,8 @@ void Stim2PsychFile(int state, FILE *fd)
 
     sscanf(VERSION_STRING,"binoclean.%f",&version);
 
-    
+// state 2 = ENDEXPT
+//
     
     if (todaylog != NULL && fd != todaylog)
         Stim2PsychFile(state, todaylog);
@@ -11952,6 +11964,8 @@ void Stim2PsychFile(int state, FILE *fd)
                 serial_strings[DOT_DENSITY],GetProperty(&expt,expt.st,DOT_DENSITY),
                 serial_strings[CONTRAST2],GetProperty(&expt,expt.st,CONTRAST2),
                 state);
+
+//NB ENDEXPT -> R10
         
         fprintf(fd,"R%d %s=%.2f %s=%.2f %s=%.2f",state+8,
                 serial_strings[ORIENTATION],GetProperty(&expt,expt.st,ORIENTATION), 
