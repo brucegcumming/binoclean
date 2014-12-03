@@ -868,7 +868,7 @@ ToggleCode togglestrings[] = {
     {"Fix Sepn",    "fs",  0, FIXED_BARSEP, 3},
     {"Record RLS",    "srls",  0, SAVE_RLS, 3},
     {"Manual Expt",    "exm",  0, MANUAL_EXPT, 3},
-    {"Reverse Back Contrast",    "bac",  0, MANUAL_EXPT, 3},
+    {"Reverse Back Contrast",    "bac",  0, REVERSE_BACKGROUND_CONTRAST, 3},
     {"Custom Values Expt 1",    "cex1",  0, CUSTOM_EXPVAL, 4},
     //   {"Auto Plot",    "ap", 0, AUTO_PLOT, 1},
     //   {"PreBack",    "pb", 0, BACKGROUND_IN_PREPERIOD, 1},
