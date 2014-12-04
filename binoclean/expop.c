@@ -14406,58 +14406,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
         return(0);
     }
     
-    if(line[0] == 'E' && (isdigit(line[1]) || line[1] == 'A'))
-    {
-        if (line[1] == 'A')
-            sscanf(&line[2],"%d",&i);
-        else{
-            acknowledge("E[0-9]  should be changed to EA[0-9]",NULL);
-            sscanf(&line[1],"%d",&i);
-        }
-        
-        s = strchr(line,'=');
-        if(i < expt.nstim[0] && s != NULL)
-        {
-            s++;
-            if((val = readval(s,TheStim,1)) > NOTSET){
-                expval[i+expt.nstim[2]] = val;
-                expt.customvals[i] = val;
-                optionflags[CUSTOM_EXPVAL] = 1;
-            }
-        }
-        if (frompc < 2)
-            ListExpStims(NULL);
-        
-        return(MAXTOTALCODES);
-    }
-    else if(line[0] == 'E' && line[1] == 'C' && isdigit(line[2])){
-        sscanf(&line[2],"%d",&i);
-        s = strchr(line,'=');
-        if(i < expt.nstim[4] && s != NULL)
-        {
-            s++;
-            sscanf(s,"%lf",&dval);
-            expt.exp3vals[i] = dval;
-            optionflags[CUSTOM_EXPVALC] = 1;
-        }
-        if (frompc < 2)
-            ListExpStims(NULL);
-        code = EXPT3_NSTIM;
-    }
-    else if(line[0] == 'E' && line[1] == 'B' && isdigit(line[2]))
-    {
-        sscanf(&line[2],"%d",&i);
-        s = strchr(line,'=');
-        if(i < expt.nstim[1] && s != NULL)
-        {
-            s++;
-            sscanf(s,"%lf",&expval[expt.nstim[0]+i+expt.nstim[2]]);
-            optionflags[CUSTOM_EXPVALB] = 1;
-        }
-        if (frompc < 2)
-            ListExpStims(NULL);
-    }
-    else switch(code)
+    switch(code)
     {
         case -1:
             i = strlen(line);
@@ -14472,6 +14421,48 @@ int InterpretLine(char *line, Expt *ex, int frompc)
                 fprintf(stderr,"Unrecognized code %s\n",line);
                 if(seroutfile)
                     fprintf(seroutfile,"Unrecognized code %s\n",line);
+            }
+            break;
+        case EXPT1CUSTOMVAL:
+            if (isdigit(line[2])){
+                sscanf(&line[2],"%d",&i);
+                s = strchr(line,'=');
+                if((val = readval(s,TheStim,1)) > NOTSET){
+                    expval[i+expt.nstim[2]] = val;
+                    expt.customvals[i] = val;
+                    optionflags[CUSTOM_EXPVAL] = 1;
+                }
+                if (frompc < 2)
+                    ListExpStims(NULL);
+            }
+            break;
+        case EXPT2CUSTOMVAL:
+            if (isdigit(line[2])){
+                sscanf(&line[2],"%d",&i);
+                s = strchr(line,'=');
+                if(i < expt.nstim[1] && s != NULL)
+                {
+                    s++;
+                    sscanf(s,"%lf",&expval[expt.nstim[0]+i+expt.nstim[2]]);
+                    optionflags[CUSTOM_EXPVALB] = 1;
+                }
+                if (frompc < 2)
+                    ListExpStims(NULL);
+            }
+            break;
+        case EXPT3CUSTOMVAL:
+            if (isdigit(line[2])){
+                sscanf(&line[2],"%d",&i);
+                s = strchr(line,'=');
+                if(i < expt.nstim[4] && s != NULL)
+                {
+                    s++;
+                    sscanf(s,"%lf",&dval);
+                    expt.exp3vals[i] = dval;
+                    optionflags[CUSTOM_EXPVALC] = 1;
+                }
+                if (frompc < 2)
+                    ListExpStims(NULL);
             }
             break;
         case MAGIC_ID:
@@ -15228,6 +15219,9 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             case PENETRATION_TEXT:
             case FIXCOLORS:
             case VERBOSE_CODE:
+            case EXPT1CUSTOMVAL:
+            case EXPT2CUSTOMVAL:
+            case EXPT3CUSTOMVAL:
                 break;
         }
     }
