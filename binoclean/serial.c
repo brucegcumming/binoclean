@@ -200,15 +200,15 @@ char ReadSerial(int tty)
             fflush(seroutfile);
         }
 #endif
-        longlist[charsread++] = c;
+        if(++charsread > (BUFSIZ * 10))
+            charsread = 0;
+        longlist[charsread] = c;
 #ifdef DEBUG_SERIAL
         if(serintest){
             fputc(serintest,c);
             totalcharsin++;
         }
 #endif
-        if(charsread > (BUFSIZ * 10)) 
-            charsread = 0;
         serchar = c;
 
 #ifdef MONITOR_CLOSE

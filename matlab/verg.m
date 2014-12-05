@@ -605,6 +605,8 @@ for j = 1:length(strs{1})
 %        DATA.comcodes(a).const = a;
     elseif strncmp(s,'ACK:',4)
 %        t = regexprep(s(5:end),'([^''])''','$1'''''); %relace ' with '' for matlab
+%could use a different code if we want. ?1?
+        s = strrep(s,char(9),'\n');%'\t' in c. ->\n. So that message is all on one line
         if strncmp(s,'ACK::',5)
             vergwarning(s(6:end),'newwin');
         else
@@ -1573,7 +1575,7 @@ toconsole = 1;
         CreateStruct.WindowStyle='non-modal';
    end
    try
-       h = msgbox(s,'Binoc Warning','warn',CreateStruct);
+       h = msgbox(split(s,'\\n'),'Binoc Warning','warn',CreateStruct);
        ScaleWindow(h,2);
 
        if ~isempty(OldPos)
@@ -2093,7 +2095,7 @@ function DATA = SetDefaults(DATA)
 
 scrsz = get(0,'Screensize');
 DATA = SetField(DATA,'ip','http://localhost:1110/');
-DATA.network = 1;
+DATA.network = 2;
 DATA.lastmsg = '';
 DATA.errors(1) = 0; %keep track of  erros received, so only acknowlge first
 DATA.confused = 0;
@@ -4174,6 +4176,13 @@ function CheckInput(a,b, fig, varargin)
         return;
     end
     lastread = now;
+    if DATA.network == 2 %don't ping binoc during stims
+        a = dir('/tmp/binocstimisup');
+        b = dir('/tmp/binocstimisdone');
+        if ~isempty(a) && ~isempty(b) && a.datenum > b.datenum %binoc is is stim
+            return;
+        end
+    end
     try
         ReadFromBinoc(DATA, 'auto');
     catch ME

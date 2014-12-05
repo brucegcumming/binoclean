@@ -2742,6 +2742,7 @@ int event_loop(float delay)
     ctr++;
     if (firstcall ==1){ //first call
         system("touch /tmp/binocisnew");
+        system("touch /tmp/binocstimisdone");
         notify("NewBinoc\n");
     }
     gettimeofday(&nftime,NULL);
@@ -10934,7 +10935,7 @@ int GotChar(char c)
         i = codectr%CODEHIST;
         if(seroutfile)
             fprintf(seroutfile,"#StartExpt from Spike2 at %.4f last code %d\n",ufftime(&now),lastcodes[i]);
-        if (1){
+        if (0){
             fprintf(stderr,"Codes (%d,%d) from Spike (%d) at %s before StartExpt:",codectr,charsread,spike2mode,binocTimeString());
             for (i = codectr; i > 0 && i > codectr-10; i-- ){
                 fprintf(stderr,"%d",lastcodes[i%CODEHIST]);

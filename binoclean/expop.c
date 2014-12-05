@@ -8960,6 +8960,7 @@ int PreLoadImages()
 {
     struct timeval then;
     int frpt = 1, i = 0,nv,rnd,laps,j = 0;
+    int nframes;
     Stimulus *st = expt.st;
     char cbuf[BUFSIZ];
     
@@ -8975,7 +8976,14 @@ int PreLoadImages()
         
         if (frpt < 1 || optionflags[FAST_SEQUENCE] == 0)
             frpt = 1;
-        for(i = 0; i < expt.st->nframes+1; i+=frpt){
+        if (expt.st->nframes > MAXFRAMES-2){
+            sprintf(cbuf,"Will only Preload First %d frames",MAXFRAMES-1);
+            acknowledge(cbuf);
+            nframes = MAXFRAMES-1;
+        }
+        else
+            nframes = expt.st->nframes+1;
+        for(i = 0; i < nframes; i+=frpt){
             if(optionflags[FAST_SEQUENCE]){
                 if(expt.fastbtype != EXPTYPE_NONE)
                     SetStimulus(expt.st,frameseqb[i],expt.fastbtype,NOEVENT);
@@ -11452,6 +11460,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
     WindowEvent e;
     
     
+
     if (n > MAXFRAMES){
         n = MAXFRAMES;
         sprintf(buf,">%d  Frames\n Will Run until stopped by two mouse clicks\n(Suggest Stop Expt first)",MAXFRAMES);
@@ -11489,6 +11498,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
         }
     }
     
+    system("touch /tmp/binocstimisup");
     if(st->left->ptr->velocity > 0.00001){
         stimflag = st->flag;
         oldvelocity = st->left->ptr->velocity;
@@ -11979,6 +11989,8 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
 #ifdef NIDAQ
     DIOWriteBit(0,0); //clear stimchange pin
 #endif
+    system("touch /tmp/binocstimisdone");
+
     if (seroutfile)
         fprintf(seroutfile,"se%d\n",expt.st->firstseed);
     SerialSend(SET_SEED); // get this recorded at stim end also
@@ -12644,7 +12656,7 @@ int CheckBW(int signal, char *msg)
 
 int acknowledge(char *s, char *help)
 {
-    char buf[BUFSIZ*2];
+    char buf[BUFSIZ*2],*t;
     if (0){
         NSacknowledge(s, help);
     }
@@ -12653,10 +12665,16 @@ int acknowledge(char *s, char *help)
             sprintf(buf,"ACK:: %s\n",s);
         else
             sprintf(buf,"ACK: %s\n",s);
-        notify(buf);
         fprintf(stderr,buf);
         if (seroutfile)
             fprintf(seroutfile,"#ACK:%s\n",s);
+//replace newlines with \t for matlab so that message is all one line for
+        t = strchr(buf,'\n');
+        while (t != NULL && strlen(t) > 1){ //don't replay final \n
+            *t = '\t';
+            t = strchr(buf,'\n');
+        }
+        notify(buf);
     }
     
 }
