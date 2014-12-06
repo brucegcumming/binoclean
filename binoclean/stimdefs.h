@@ -36,8 +36,6 @@
 
 #define MAXMEM 25000000  /* 25 Meg or so for image allocation */
 #define MAXPLOTS 40
-#define LONGBUF 10240// long buffer for strings
-
 
 /* 
  * bits set in mode (front.c)
@@ -407,7 +405,8 @@ float pix2degy(float val);
 #define ICON_IN_TRIAL 66
 #define SAVE_RLS 67
 #define MANUAL_EXPT 68
-#define LAST_CODED_OPTION 68
+#define REVERSE_BACKGROUND_CONTRAST 69
+#define LAST_CODED_OPTION 69
 
 
 #define AUTO_COPY_ONLINE_FILES (LAST_CODED_OPTION+1)

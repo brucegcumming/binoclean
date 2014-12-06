@@ -115,6 +115,10 @@ int PreloadPGM(char *name, Stimulus *st, Substim *sst, int frame){
     imagews[frame] = w;
     imagehs[frame] = h;
     
+    if (frame > MAXFRAMES-2){ //can't load this many
+        fprintf(stderr,"Can't Preload more than %d frames\n",MAXFRAMES-1);
+        return(0);
+    }
     if(w * h > imagelengths[MAXFRAMES-1]){
         imagelengths[MAXFRAMES-1] = w*h;
         if(images[MAXFRAMES-1] != NULL)
@@ -505,7 +509,7 @@ int paint_image(Stimulus *st, Substim *sst)
     if (st->prev != NULL)
         frame = st->prev->framectr+200;
     else{
-        frame = st->framectr;
+        frame = st->framectr % MAXFRAMES;
         if(st->preload & frame > st->preloaded)
             frame = st->preloaded;
     }
@@ -513,6 +517,7 @@ int paint_image(Stimulus *st, Substim *sst)
      if(optionflags[FAST_SEQUENCE] & expt.vals[FAST_SEQUENCE_RPT] > 1)
      frame = floor(st->framectr/expt.vals[FAST_SEQUENCE_RPT]);
      */
+    frame = frame % MAXFRAMES; // in case set nf > MAXFRAMES
     if(st->stimid > -1000){
         glPixelZoom(1.0,-1.0);
         if(st->preload){

@@ -144,6 +144,7 @@ static int flips[2] = {0};
 float *manualstimvals[100];
 int manualprop[100] = {-1};
 int propmodifier[100];
+int spike2mode = 0;
 
 int seedoffsets[100] = {0};
 int covaryprop = -1;
@@ -300,6 +301,7 @@ extern struct BWSTRUCT thebwstruct;
 extern FILE *testfd;
 extern struct timeval signaltime,now,endstimtime,firstframetime,zeroframetime,frametime,alarmstart;
 extern struct timeval calctime,paintframetime,changeframetime,paintfinishtime,sessiontime;
+struct timeval exptstimtime;
 extern vcoord conjpos[],fixpos[];
 static time_t lastcmdread;
 static struct timeval lastcmdtime;
@@ -3174,6 +3176,10 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
     
     switch(flag)
     {
+        case XY_FSD:
+            expt.bwptr->fsd[10] = val;
+            expt.vals[flag] = val;
+            break;
         case PURSUIT_FREQUENCY:
             expt.vals[flag] = val;
             expt.vals[MICROSTIM_PERIODIC] = 1/val;
@@ -4527,11 +4533,11 @@ int SaveImage(Stimulus *st, int type)
             if((ofd = fopen(imname,"w")) == NULL)
                 fprintf(stderr,"Can't write image to %s\n",imname);
             else{
-                fprintf(ofd,"P5\n#se%d\n %d %d 255\n",expt.st->left->baseseed,w,h);
+                fprintf(ofd,"P5\n#se%d id%d\n %d %d 255\n",expt.st->left->baseseed,expt.allstimid,w,h);
                 fwrite(pix, sizeof(GLubyte), w*h, ofd);
                 done++;
                 fclose(ofd);
-                fprintf(stderr,"Seed %d,%d written to %s (dx%.3fP%d S%d)\n",st->left->baseseed,st->left->seed,imname,st->disp,pcode,stimstate);
+                fprintf(stderr,"Seed %d,%d written to %s (dx%.3fP%d S%d %dx%d pix)\n",st->left->baseseed,st->left->seed,imname,st->disp,pcode,stimstate,w,h);
             }
         }
     
@@ -4564,8 +4570,8 @@ int SaveImage(Stimulus *st, int type)
                     done++;
                     fclose(ofd);
                     if (seroutfile)
-                        fprintf(seroutfile,"Seed %d,%d written to %s (dx%.3f S%d)\n",st->left->baseseed,st->left->seed,imname,st->disp,stimstate);
-                    fprintf(stderr,"Seed %d,%d written to %s (dx%.3f S%d)\n",st->left->baseseed,st->left->seed,imname,st->disp,stimstate);
+                        fprintf(seroutfile,"Seed %d,%d written to %s (dx%.3f S%d) %dx%d pix\n",st->left->baseseed,st->left->seed,imname,st->disp,stimstate,w,h);
+                    fprintf(stderr,"Seed %d,%d written to %s (dx%.3f S%d) %dx%d pix\n",st->left->baseseed,st->left->seed,imname,st->disp,stimstate,w,h);
                 }
             }
         }
@@ -6745,6 +6751,7 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
     
     switch(code)
     {
+            
         case SET_SF_COMPONENTS:
             sprintf(cbuf,"%s=",serial_strings[code]);
             for (i = 0; i < st->left->nfreqs; i++){
@@ -7920,8 +7927,12 @@ void InitExpt()
     expt.fastbtype = expt.type2; // make sure these are not left == 0
     expt.fastctype = expt.type3;
     
-    while((c = ReadSerial(0) != MYEOF))
+    while((c = ReadSerial(0)) != MYEOF){
+        if (c != serchar){
+            fprintf(stderr,"Serial Char mismatch: %d vs %d\n",c,serchar);
+        }
         GotChar(c);
+    }
     if(!(optionflag & FRAME_ONLY_BIT) || (optionflag & WAIT_FOR_BW_BIT))
         SerialSignal(START_EXPT);
     if(seroutfile){
@@ -7929,10 +7940,10 @@ void InitExpt()
         fprintf(seroutfile,"\nStimulus %s\n",DescribeStim(expt.st));
     }
     if(psychfile){
-        if(option2flag & PSYCHOPHYSICS_BIT)
+        if(option2flag & PSYCHOPHYSICS_BIT) //human psych
             Stim2PsychFile(START_EXPT,psychfile);
         else
-            Stim2PsychFile(START_EXPT+100, psychfile);
+            Stim2PsychFile(START_EXPT+100, psychfile); //monkey psych or fix
     }
     if(psychfilelog){
         tstart = time(NULL);
@@ -8987,6 +8998,7 @@ int PreLoadImages()
 {
     struct timeval then;
     int frpt = 1, i = 0,nv,rnd,laps,j = 0;
+    int nframes;
     Stimulus *st = expt.st;
     char cbuf[BUFSIZ];
     
@@ -9002,7 +9014,14 @@ int PreLoadImages()
         
         if (frpt < 1 || optionflags[FAST_SEQUENCE] == 0)
             frpt = 1;
-        for(i = 0; i < expt.st->nframes+1; i+=frpt){
+        if (expt.st->nframes > MAXFRAMES-2){
+            sprintf(cbuf,"Will only Preload First %d frames",MAXFRAMES-1);
+            acknowledge(cbuf);
+            nframes = MAXFRAMES-1;
+        }
+        else
+            nframes = expt.st->nframes+1;
+        for(i = 0; i < nframes; i+=frpt){
             if(optionflags[FAST_SEQUENCE]){
                 if(expt.fastbtype != EXPTYPE_NONE)
                     SetStimulus(expt.st,frameseqb[i],expt.fastbtype,NOEVENT);
@@ -11482,6 +11501,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
     WindowEvent e;
     
     
+
     if (n > MAXFRAMES){
         n = MAXFRAMES;
         sprintf(buf,">%d  Frames\n Will Run until stopped by two mouse clicks\n(Suggest Stop Expt first)",MAXFRAMES);
@@ -11519,6 +11539,8 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
         }
     }
     
+    unlink("/tmp/binocstimisdone");
+    system("touch /tmp/binocstimisup");
     if(st->left->ptr->velocity > 0.00001){
         stimflag = st->flag;
         oldvelocity = st->left->ptr->velocity;
@@ -11571,6 +11593,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
         SetManualStim(0);
     }
 
+    gettimeofday(&exptstimtime,NULL);
     if (inexptstim < 1)
         inexptstim = 1;
     
@@ -12009,6 +12032,10 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
 #ifdef NIDAQ
     DIOWriteBit(0,0); //clear stimchange pin
 #endif
+    inexptstim = 0;
+    unlink("/tmp/binocstimisup");
+    system("touch /tmp/binocstimisdone");
+
     if (seroutfile)
         fprintf(seroutfile,"se%d\n",expt.st->firstseed);
     SerialSend(SET_SEED); // get this recorded at stim end also
@@ -12674,7 +12701,7 @@ int CheckBW(int signal, char *msg)
 
 int acknowledge(char *s, char *help)
 {
-    char buf[BUFSIZ*2];
+    char buf[BUFSIZ*2],*t;
     if (0){
         NSacknowledge(s, help);
     }
@@ -12683,10 +12710,16 @@ int acknowledge(char *s, char *help)
             sprintf(buf,"ACK:: %s\n",s);
         else
             sprintf(buf,"ACK: %s\n",s);
-        notify(buf);
         fprintf(stderr,buf);
         if (seroutfile)
             fprintf(seroutfile,"#ACK:%s\n",s);
+//replace newlines with \t for matlab so that message is all one line for
+        t = strchr(buf,'\n');
+        while (t != NULL && strlen(t) > 1){ //don't replay final \n
+            *t = '\t';
+            t = strchr(buf,'\n');
+        }
+        notify(buf);
     }
     
 }
@@ -14021,6 +14054,9 @@ int InterpretLine(char *line, Expt *ex, int frompc)
         SerialString(buf,0);
         return(0);
     }
+    else if(!strncmp(line,"splitfile",9)){
+        sscanf(line,"splitfile=%d",&i);
+    }
     else if(!strncmp(line,"stimorderfile",13)){
         expt.nstim[6] = ReadStimOrder(expt.strings[EXPT_PREFIX]);
         return(0);
@@ -14051,7 +14087,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     }
     else if(!strncmp(line,"splitctr",8) && frompc){
         if(seroutfile)
-            fprintf(seroutfile,"#%s",line);
+            fprintf(seroutfile,"#%s Expt File Number in Spike\n",line);
         if(netoutfile)
             fprintf(netoutfile,"#%s",line);
         return(0);
@@ -14174,7 +14210,8 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     }
     else if(!strncmp(line,"spike2",6)){
         pcmode = SPIKE2;
-        printf("PC is Spike2\n");
+        printf("PC is %s\n",line);
+        sscanf(&line[7],"%d",&spike2mode);
         return(0);
     }
     else if(!strncmp(line,"spkgain",6)){ /* from spike 2 */
@@ -14432,58 +14469,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
         return(0);
     }
     
-    if(line[0] == 'E' && (isdigit(line[1]) || line[1] == 'A'))
-    {
-        if (line[1] == 'A')
-            sscanf(&line[2],"%d",&i);
-        else{
-            acknowledge("E[0-9]  should be changed to EA[0-9]",NULL);
-            sscanf(&line[1],"%d",&i);
-        }
-        
-        s = strchr(line,'=');
-        if(i < expt.nstim[0] && s != NULL)
-        {
-            s++;
-            if((val = readval(s,TheStim,1)) > NOTSET){
-                expval[i+expt.nstim[2]] = val;
-                expt.customvals[i] = val;
-                optionflags[CUSTOM_EXPVAL] = 1;
-            }
-        }
-        if (frompc < 2)
-            ListExpStims(NULL);
-        
-        return(MAXTOTALCODES);
-    }
-    else if(line[0] == 'E' && line[1] == 'C' && isdigit(line[2])){
-        sscanf(&line[2],"%d",&i);
-        s = strchr(line,'=');
-        if(i < expt.nstim[4] && s != NULL)
-        {
-            s++;
-            sscanf(s,"%lf",&dval);
-            expt.exp3vals[i] = dval;
-            optionflags[CUSTOM_EXPVALC] = 1;
-        }
-        if (frompc < 2)
-            ListExpStims(NULL);
-        code = EXPT3_NSTIM;
-    }
-    else if(line[0] == 'E' && line[1] == 'B' && isdigit(line[2]))
-    {
-        sscanf(&line[2],"%d",&i);
-        s = strchr(line,'=');
-        if(i < expt.nstim[1] && s != NULL)
-        {
-            s++;
-            sscanf(s,"%lf",&expval[expt.nstim[0]+i+expt.nstim[2]]);
-            optionflags[CUSTOM_EXPVALB] = 1;
-        }
-        if (frompc < 2)
-            ListExpStims(NULL);
-    }
-    else switch(code)
+    switch(code)
     {
         case -1:
             i = strlen(line);
@@ -14498,6 +14484,48 @@ int InterpretLine(char *line, Expt *ex, int frompc)
                 fprintf(stderr,"Unrecognized code %s\n",line);
                 if(seroutfile)
                     fprintf(seroutfile,"Unrecognized code %s\n",line);
+            }
+            break;
+        case EXPT1CUSTOMVAL:
+            if (isdigit(line[2])){
+                sscanf(&line[2],"%d",&i);
+                s = strchr(line,'=');
+                if((val = readval(s,TheStim,1)) > NOTSET){
+                    expval[i+expt.nstim[2]] = val;
+                    expt.customvals[i] = val;
+                    optionflags[CUSTOM_EXPVAL] = 1;
+                }
+                if (frompc < 2)
+                    ListExpStims(NULL);
+            }
+            break;
+        case EXPT2CUSTOMVAL:
+            if (isdigit(line[2])){
+                sscanf(&line[2],"%d",&i);
+                s = strchr(line,'=');
+                if(i < expt.nstim[1] && s != NULL)
+                {
+                    s++;
+                    sscanf(s,"%lf",&expval[expt.nstim[0]+i+expt.nstim[2]]);
+                    optionflags[CUSTOM_EXPVALB] = 1;
+                }
+                if (frompc < 2)
+                    ListExpStims(NULL);
+            }
+            break;
+        case EXPT3CUSTOMVAL:
+            if (isdigit(line[2])){
+                sscanf(&line[2],"%d",&i);
+                s = strchr(line,'=');
+                if(i < expt.nstim[4] && s != NULL)
+                {
+                    s++;
+                    sscanf(s,"%lf",&dval);
+                    expt.exp3vals[i] = dval;
+                    optionflags[CUSTOM_EXPVALC] = 1;
+                }
+                if (frompc < 2)
+                    ListExpStims(NULL);
             }
             break;
         case MAGIC_ID:
@@ -15161,14 +15189,19 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             SetExptProperty(ex, TheStim,code, val,0);
             break;
         case UFF_COMMENT:
-            SerialString(line,NULL);
-            SerialString("\n",NULL);
-            if(penlog){
-                fprintf(penlog,"%s %s\n",binocTimeString(),line);
-                fflush(penlog);
-            }
-            if (todaylog != NULL && strncmp(line,"cm=NotSet",9)){
-                fprintf(todaylog,"R7 %s bt=%.2f\n",line,timediff(&now,&sessiontime));
+            if (strncmp(line,"cm=NotSet",9)){
+                SerialString(line,NULL);
+                SerialString("\n",NULL);
+                if(penlog){
+                    fprintf(penlog,"%s %s\n",binocTimeString(),line);
+                    fflush(penlog);
+                }
+                if (todaylog != NULL){
+                    fprintf(todaylog,"R7 %s bt=%.2f time=%s\n",line,timediff(&now,&sessiontime),binocTimeString());
+                }
+                    if (psychlog != NULL){
+                    fprintf(psychlog,"R7 %s bt=%.2f time=%$s\n",line,timediff(&now,&sessiontime),binocTimeString());
+                }
             }
             break;
         case EARLY_RWTIME:
@@ -15249,6 +15282,9 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             case PENETRATION_TEXT:
             case FIXCOLORS:
             case VERBOSE_CODE:
+            case EXPT1CUSTOMVAL:
+            case EXPT2CUSTOMVAL:
+            case EXPT3CUSTOMVAL:
                 break;
         }
     }

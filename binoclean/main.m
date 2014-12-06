@@ -13,7 +13,6 @@
 #import <sys/time.h>
 #include <sys/resource.h>
 
-#define STOPSCREENSAVER 1
 
 int binocmain(int argc, char * argv[]);
 char * VERSION_STRING;
@@ -36,18 +35,16 @@ int main(int argc, char *argv[])
     version = [[[NSBundle mainBundle] infoDictionary] objectForKey:@"CFBundleShortVersionString"];
         SHORT_VERSION_NUMBER = [version UTF8String];  
     
-#ifdef STOPSCREENSAVER
     CFRunLoopTimerContext context = { 0, NULL, NULL, NULL, NULL };    
     CFRunLoopTimerRef caffeineTimer = CFRunLoopTimerCreate(NULL, CFAbsoluteTimeGetCurrent(), 30, 0, 0, caffeineTimerCallback, &context);
     if (caffeineTimer != NULL); {
         CFRunLoopAddTimer(CFRunLoopGetCurrent(), caffeineTimer, kCFRunLoopCommonModes);
     }
-#endif
+    
     binocmain(argc, argv);
     
     return NSApplicationMain(argc, (const char **)argv);
-#ifdef STOPSCREENSAVER
+    
     CFRunLoopTimerInvalidate(caffeineTimer);
     CFRelease(caffeineTimer);
-#endif
 }

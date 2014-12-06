@@ -29,7 +29,6 @@ while j <= length(varargin)
             j = j+1;
             DATA.reopenstr = varargin{j};
         end
-
     elseif strcmp(varargin{j},'autoquit')
         autoquit = 1;
     elseif strcmp(varargin{j},'host')
@@ -90,7 +89,6 @@ if isempty(it)
         tt = TimeMark(tt, 'VergSetup');
         [DATA, details] = ReadStimFile(DATA,varargin{1}, 'init');
         DATA.state.stimfile = varargin{1};
-        CheckState(DATA);
         if details.badcodes > 1
             DATA.state.stimfileerrs = details.badcodes;
         end
@@ -105,6 +103,7 @@ if isempty(it)
         if checkforrestart
             DATA = LoadLastSettings(DATA,'interactive');
         end
+        DATA = GetState(DATA,'stimfile');
         DATA = DrainBinocPipe(DATA);
         tt = TimeMark(tt, 'FromBinoc');
 
@@ -116,6 +115,9 @@ if isempty(it)
             j = j+1;
         end
     else
+        if ~isempty(varargin) && ischar(varargin{1})
+            vergwarning(sprintf('Cant Read %s',varargin{1}));
+        end
         DATA = ReadVergFile(DATA, DATA.layoutfile);
         DATA = OpenPipes(DATA, 1);
         DATA.nexpts = 1;
@@ -223,7 +225,8 @@ end
 
 
 function CheckState(DATA, varargin)
-
+% CheckState(DATA, varargin) checks values
+% of params in varargin with binoc
     for j = 1:length(varargin)
         if ischar(varargin{j})
             myprintf(DATA.tobinocfid,'%s ',varargin{j});
@@ -446,9 +449,6 @@ while j <= length(varargin)
             srcchr = 'G';
             frombinoc = 3;
         end
-    elseif strncmpi(varargin{j},'test',4)
-        frombinoc = 0;
-        sendtobinoc = 0;
     elseif strncmpi(varargin{j},'tobinoc',4)
         sendtobinoc = 1;
         srcchr = 'V';
@@ -613,6 +613,8 @@ for j = 1:length(strs{1})
 %        DATA.comcodes(a).const = a;
     elseif strncmp(s,'ACK:',4)
 %        t = regexprep(s(5:end),'([^''])''','$1'''''); %relace ' with '' for matlab
+%could use a different code if we want. ?1?
+        s = strrep(s,char(9),'\n');%'\t' in c. ->\n. So that message is all on one line
         if strncmp(s,'ACK::',5)
             vergwarning(s(6:end),'newwin');
         else
@@ -880,39 +882,39 @@ for j = 1:length(strs{1})
             DATA.extypes{3} = sscanf(s(8:end),'%d');
             DATA.extypes{3} = DATA.extypes{3}+1;
             DATA = SetExptMenus(DATA);
-    elseif strncmp(s, 'EDONE', 5) %finished listing expt stims
-        if isfield(DATA,'toplevel')
-            it = findobj(DATA.toplevel,'Tag','Expt3StimList','style','edit');
-            if length(it) == 1
-                set(it,'string',DATA.exptstimlist{3});
-            end
-            it = findobj(DATA.toplevel,'Tag','Expt2StimList','style','edit');
-            if length(it) == 1
-                ival = get(it,'value');
-                ival = min([size(DATA.exptstimlist{2},2) ival]);
-                if ival <1
-                    ival = 1;
+        elseif strncmp(s, 'EDONE', 5) %finished listing expt stims
+            if isfield(DATA,'toplevel')
+                it = findobj(DATA.toplevel,'Tag','Expt3StimList','style','edit');
+                if length(it) == 1
+                    set(it,'string',DATA.exptstimlist{3});
                 end
-                set(it,'string',DATA.exptstimlist{2},'value',ival);
-            end
-            
-            it = findobj(DATA.toplevel,'Tag','Expt1StimList','style','edit');
-            if length(it) == 1
-                set(it,'string',DATA.exptstimlist{1});
-            end
-        end
-        if isfield(DATA,'exptstimlist')
-            for j = 1:length(DATA.exptstimlist)
-                S = DATA.exptstimlist{j};
-                for m = 1:length(S)
-                    [val,n] = sscanf(S{m},'%f');
-                    if n == 1
-                        DATA.expvals{j}(m) = val;
+                it = findobj(DATA.toplevel,'Tag','Expt2StimList','style','edit');
+                if length(it) == 1
+                    ival = get(it,'value');
+                    ival = min([size(DATA.exptstimlist{2},2) ival]);
+                    if ival <1
+                        ival = 1;
                     end
+                    set(it,'string',DATA.exptstimlist{2},'value',ival);
                 end
                 
+                it = findobj(DATA.toplevel,'Tag','Expt1StimList','style','edit');
+                if length(it) == 1
+                    set(it,'string',DATA.exptstimlist{1});
+                end
             end
-        end
+            if isfield(DATA,'exptstimlist')
+                for j = 1:length(DATA.exptstimlist)
+                    S = DATA.exptstimlist{j};
+                    for m = 1:length(S)
+                        [val,n] = sscanf(S{m},'%f');
+                        if n == 1
+                            DATA.expvals{j}(m) = val;
+                        end
+                    end
+                    
+                end
+            end
         elseif strncmp(s,'xyfsd',5)
             x = sscanf(value,'%f');
             DATA.binoc{1}.xyfsd = x(1);
@@ -1056,7 +1058,6 @@ for j = 1:length(strs{1})
         DATA.binoc{1}.(code) = str2num(value);
     elseif strncmp(s,'pf=',3)
         s = strrep(s,'+2a','+afc');
-        s = strrep(s,'+4a','');
         if s(end) == ':'
             s = s(1:end-1);
         end
@@ -1114,7 +1115,19 @@ for j = 1:length(strs{1})
     end %end of 3 char codes
     elseif strncmp(s,'helpfile=',9)
         s = s(10:end);
-        DATA = AddHelpFile(DATA,s);
+        id = strfind(s,'"');
+        if ~isempty(id)
+            n = [];
+            lbl = s(2:id(end)-1);
+            if isfield(DATA.helpfiles,'label')
+            n = find(strcmp(lbl,{DATA.helpfiles.label}));
+            end
+            if isempty(n)
+                n = length(DATA.helpfiles)+1;
+            end
+            DATA.helpfiles(n).filename = s(id(end)+1:end);
+            DATA.helpfiles(n).label = s(2:id(end)-1);
+        end
     elseif sum(strncmp(s, {'et' 'e2' 'e3' 'n2' 'n3' 'em' 'm2' 'm3' 'op' 'ei' 'i2' 'i3' },2))
     if strncmp(s,'et',2)
         DATA.exptype{1} = sscanf(s,'et=%s');
@@ -1577,7 +1590,7 @@ toconsole = 1;
         CreateStruct.WindowStyle='non-modal';
    end
    try
-       h = msgbox(s,'Binoc Warning','warn',CreateStruct);
+       h = msgbox(split(s,'\\n'),'Binoc Warning','warn',CreateStruct);
        ScaleWindow(h,2);
 
        if ~isempty(OldPos)
@@ -2097,7 +2110,7 @@ function DATA = SetDefaults(DATA)
 
 scrsz = get(0,'Screensize');
 DATA = SetField(DATA,'ip','http://localhost:1110/');
-DATA.network = 1;
+DATA.network = 2;
 DATA.lastmsg = '';
 DATA.errors(1) = 0; %keep track of  erros received, so only acknowlge first
 DATA.confused = 0;
@@ -2211,8 +2224,7 @@ DATA.binoc{1}.Electrode = '';
 DATA.binoc{1}.monkey = '';
 DATA.binoc{1}.lo = '';
 DATA.binoc{1}.nt = 1;
-DATA.binoc{1}.st = 'none'; % make sure this field comes early
-DATA.binoc{1}.xyfsd = 5;
+DATA.binoc{1}.st = ''; % make sure this field comes early
 DATA.penid = 0;
 DATA.stimulusnames{1} = 'none';
 DATA.stimulusnames{4} = 'grating';
@@ -2975,39 +2987,9 @@ function ShowHelp(a,b,file)
       fprintf('%s\n',lasterr)
   end
 
-  function DATA = AddHelpFile(DATA, s,varargin)
-      if isfield(DATA.binoc{1},'helpdir') && isdir(DATA.binoc{1}.helpdir)
-          prefix = DATA.binoc{1}.helpdir;
-      elseif isdir('/b/binoclean/help')
-          prefix = '/b/binoclean/help';
-      end
-      
-      id = strfind(s,'"');
-        if ~isempty(id)
-            n = [];
-            lbl = s(2:id(end)-1);
-            if isfield(DATA.helpfiles,'label')
-                n = find(strcmp(lbl,{DATA.helpfiles.label}));
-            end
-            if isempty(n)
-                n = length(DATA.helpfiles)+1;
-            end
-            if s(id(end)+1) == '/'                
-                filename = s(id(end)+1:end);
-            else
-                filename = [prefix '/' s(id(end)+1:end)];
-            end
-            if ~exist(filename)
-                cprintf('red','Cannot read Help File %s\n',filename)
-            else
-                DATA.helpfiles(n).filename = filename;
-                DATA.helpfiles(n).label = s(2:id(end)-1);
-            end
-        end
-
   
   function DATA = AddHelpFiles(DATA, varargin)
-      prefix = [];
+      preifx = [];
       if isfield(DATA.binoc{1},'helpdir') && isdir(DATA.binoc{1}.helpdir)
           prefix = DATA.binoc{1}.helpdir;
       elseif isdir('/b/binoclean/help')
@@ -3018,8 +3000,8 @@ function ShowHelp(a,b,file)
           for j = 1:length(d)
               if isempty(DATA.helpfiles) || ...
                       sum(cellstrfind({DATA.helpfiles.filename},d(j).name)) == 0 %new
+                  if ~strncmp(d(j).name,'.#',2)
                       filename = [prefix '/' d(j).name];
-                  if ~strncmp(d(j).name,'.#',2) && exist(filename)
                       DATA.helpfiles(end+1).filename = filename;
                       s = scanlines(filename);
                       if ~isempty(s) && length(s{1}) < 50
@@ -3037,7 +3019,7 @@ function ShowHelp(a,b,file)
         
       
    uimenu(hm,'Label','List All Codes','Callback',{@CodesPopup, 'popup'},'accelerator','L');
-   %uimenu(hm,'Label','List Codes with Help','Callback',{@CodesPopup, 'popuphelp'});
+   uimenu(hm,'Label','List Codes with Help','Callback',{@CodesPopup, 'popuphelp'});
    for j = 1:length(DATA.helpfiles)
         uimenu(hm,'Label',DATA.helpfiles(j).label,'Callback',{@ShowHelp, DATA.helpfiles(j).filename});
     end
@@ -3047,30 +3029,6 @@ function ShowHelp(a,b,file)
        uimenu(hm,'Label',sprintf('Binoc Version %s',v))
    end
  
-  function nfound = SearchHelpFiles(DATA,pattern)
-      txt = {};
-      nfound = 0;
-      F = findobj('type','figure','tag',DATA.windownames{4});
-      it = findobj(F,'tag','CodeListString');
-      fileids = [];
-      
-      for j = 1:length(DATA.helpfiles);
-        helptexts{j} = scanlines(DATA.helpfiles(j).filename);
-        [a,helpname] = fileparts(DATA.helpfiles(j).filename);
-        id = regexp(helptexts{j},   pattern);
-        gid = find(CellToMat(id));
-        for k = gid(:)'
-            fprintf('%s\n',helptexts{j}{k});
-            txt{end+1} = [helpname ': ' helptexts{j}{k}];
-            fileids(length(txt)) = j;
-        end
-      end
-      setappdata(F,'FileMatchIds',fileids);
-      nfound = length(txt);
-      if nfound
-          set(it,'string',char(txt),'value',1,'userdata',5);
-      end
-   
   function OptionMenu(a,b,tag)     
       DATA = GetDataFromFig(a);
       on = get(a,'checked');
@@ -3275,10 +3233,11 @@ function CopyLog(DATA,type)
         outprintf(DATA,'e3=%s\n',DATA.comcodes(DATA.expmenuvals{3}(val)).code);
     elseif strcmp(type,'fsd')
         if iscellstr(str)
-        outprintf(DATA,'\\xyfsd=%s\n',str{val});
+        outprintf(DATA,'xyfsd=%s\n',str{val});
     else
-        outprintf(DATA,'\\xyfsd=%s\n',str(val,:));
+        outprintf(DATA,'xyfsd=%s\n',str(val,:));
         end
+        DATA.binoc{1}.xyfsd = val;
     elseif strmatch(type,{'st' 'bs'})
         id = strmatch(type,{'st' 'bs'});
         if val > 0
@@ -3343,7 +3302,7 @@ function DATA = LoadLastSettings(DATA, varargin)
                 DATA = InterpretLine(DATA, txt{id(1)},'tobinoc');
             end
             end
-            CheckState(DATA);
+            DATA = GetState(DATA);
         end
     
 function RecoverFile(a, b, type)
@@ -4038,7 +3997,12 @@ if isfield(DATA,'toplevel') && isfigure(DATA.toplevel)
     else
         onoff = current_state;
     end
-else
+elseif isfield(DATA,'pausereading')
+%? need this. Timer should not start before figure is up?    
+    current_state = DATA.pausereading;
+    if nargin == 2
+        DATA.pausereading = onoff;
+    end    
     current_state = 0;
 end
         
@@ -4237,6 +4201,15 @@ function CheckInput(a,b, fig, varargin)
         return;
     end
     lastread = now;
+    if DATA.network == 2 %don't ping binoc during stims
+        a = dir('/tmp/binocstimisup');
+        b = dir('/tmp/binocstimisdone');
+        if ~isempty(a) && ~isempty(b) && a.datenum > b.datenum %binoc is in stim            
+            return;
+        elseif isempty(b) && ~isempty(a) %in stim and done file deleted
+            return;
+        end
+    end
     try
         ReadFromBinoc(DATA, 'auto');
     catch ME
@@ -5369,7 +5342,7 @@ function CodesPopup(a,b, type)
     hm = uimenu(cntrl_box,'Label','Search');
     sm = uimenu(hm,'Label','Ignore case','callback',{@SearchList, 'IgnoreCase'},'Tag','IgnoreCase','checked','on');
     
-    uicontrol(gcf,'style','pop','string','Search: All|Search: Codes|Search: Labels|Search: Help|Search: HelpFile','tag','SearchMode',...
+    uicontrol(gcf,'style','pop','string','Search: All|Search: Codes|Search: Labels|Search: Help','tag','SearchMode',...
         'units','norm', 'Position',[0 0.01 0.3 0.08]);
 
     srch = uicontrol(gcf, 'Style','edit','String', '',...
@@ -5415,27 +5388,15 @@ elseif strcmp(type,'popup')
 end
 
 function HelpHit(a,b)
+DATA = GetDataFromFig(a);
 
- DATA = GetDataFromFig(get(a,'parent'));
-
-F = get(a,'parent');
-if isempty(DATA)
-    DATA = GetDataFromFig(F);
-end
 str = get(a,'string');
 l = get(a,'value');
-searchmode = get(a,'userdata');
-if isempty(searchmode)
-    searchmode = 0;
-end
 if length(l) == 1
     code = str(l,:);
     code = regexprep(code,'\s.*','');
     fpos = get(GetFigure(a),'position');
-    if searchmode ==5 % in a help file - pop this up
-        x = getappdata(F,'FileMatchIds');
-        ShowHelp(DATA,[], DATA.helpfiles(x(l)).filename);
-    elseif isfield(DATA.helpkeys.extras,code)
+    if isfield(DATA.helpkeys.extras,code)
         cm = uicontextmenu;
         X = DATA.helpkeys.extras.(code);
         for j = 1:length(X)
@@ -5502,14 +5463,14 @@ function SearchList(a,b, varargin)
     it = findobj(F,'tag','CodeListString');
     if isempty(findn) %hit return again
         findn = 1;
-    elseif ~isempty(pttn) && ~strcmp(pttn,lastpttn)%new serach
+    elseif ~strcmp(pttn,lastpttn)%new serach
         newpattn = 1;
     else
         setappdata(F,'findn',[]);
         if isappdata(F,'OldText')
             txt = getappdata(F,'OldText');
-            set(it,'string',txt,'userdata',0);
-            set(F,'Name','Code List');            
+            set(it,'string',txt);
+            set(F,'Name','Code List');
             return;
         end
     end
@@ -5530,15 +5491,6 @@ function SearchList(a,b, varargin)
         txt = get(it,'String');
         setappdata(F,'OldText',txt);
     end
-    
-    if searchmode ==5
-        DATA = GetDataFromFig(get(a,'parent'));
-        findn = SearchHelpFiles(DATA,pttn);
-        setappdata(F,'findn',findn);
-        set(F,'Name',sprintf('%d Matches in %d help files for %s',findn,length(DATA.helpfiles),pttn));
-        return;
-    end
-    
     keys = getappdata(F,'HelpKeyList');
     keys{size(txt,1)+1} = '';
     found = [];
@@ -5552,8 +5504,6 @@ function SearchList(a,b, varargin)
         elseif searchmode == 3 %just labels
             s = regexprep(t,'\s(.*):.*','$1');
         elseif searchmode == 4 %just help
-            s = regexprep(t,'.* : ','');
-        elseif searchmode == 5 %help files 
             s = regexprep(t,'.* : ','');
         else
             s = [txt(j,:) keys{j}];
@@ -5691,6 +5641,7 @@ function DATA = RunExptSequence(DATA, str, line)
             str{j} = deblank(astr(j,:));
         end
     end
+    lastline = '';
 for j = line:length(str)
     if DATA.verbose(4)
         fprintf('From Seq window %s\n',str{j});
@@ -5755,6 +5706,7 @@ for j = line:length(str)
         outprintf(DATA,'%s#RunSeq\n',str{j});
     end
     DATA = LogCommand(DATA, str{j},'norec');
+    lastline = str{j};
 end
 
 function SendManualExpt(DATA)
@@ -6358,7 +6310,7 @@ bp = [0.01 0.99-1/nr 0.115 1./nr];
     uicontrol(gcf,'style','text','string','RH', ...
         'units', 'norm', 'position',bp,'value',1);
 
-bp(1) = bp(1)+bp(3)+0.01;
+bp(1) = bp(1)+bp(3)+0.0
     uicontrol(gcf,'style','edit','string',num2str(DATA.binoc{1}.so(1)), ...
         'Callback', {@SoftoffPopup, 'RH'},'Tag','RH',...
         'units', 'norm', 'position',bp);
