@@ -87,7 +87,6 @@ if isempty(it)
         tt = TimeMark(tt, 'VergSetup');
         [DATA, details] = ReadStimFile(DATA,varargin{1}, 'init');
         DATA.state.stimfile = varargin{1};
-        CheckState(DATA);
         if details.badcodes > 1
             DATA.state.stimfileerrs = details.badcodes;
         end
@@ -102,6 +101,7 @@ if isempty(it)
         if checkforrestart
             DATA = LoadLastSettings(DATA,'interactive');
         end
+        DATA = GetState(DATA,'stimfile');
         DATA = DrainBinocPipe(DATA);
         tt = TimeMark(tt, 'FromBinoc');
 
@@ -113,6 +113,9 @@ if isempty(it)
             j = j+1;
         end
     else
+        if ~isempty(varargin) && ischar(varargin{1})
+            vergwarning(sprintf('Cant Read %s',varargin{1}));
+        end
         DATA = ReadVergFile(DATA, DATA.layoutfile);
         DATA = OpenPipes(DATA, 1);
         DATA.nexpts = 1;
@@ -214,7 +217,8 @@ end
 
 
 function CheckState(DATA, varargin)
-
+% CheckState(DATA, varargin) checks values
+% of params in varargin with binoc
     for j = 1:length(varargin)
         if ischar(varargin{j})
             myprintf(DATA.tobinocfid,'%s ',varargin{j});
@@ -657,6 +661,8 @@ for j = 1:length(strs{1})
 %        DATA.comcodes(a).const = a;
     elseif strncmp(s,'ACK:',4)
 %        t = regexprep(s(5:end),'([^''])''','$1'''''); %relace ' with '' for matlab
+%could use a different code if we want. ?1?
+        s = strrep(s,char(9),'\n');%'\t' in c. ->\n. So that message is all on one line
         if strncmp(s,'ACK::',5)
             vergwarning(s(6:end),'newwin');
         else
@@ -922,39 +928,39 @@ for j = 1:length(strs{1})
             DATA.extypes{3} = sscanf(s(8:end),'%d');
             DATA.extypes{3} = DATA.extypes{3}+1;
             DATA = SetExptMenus(DATA);
-    elseif strncmp(s, 'EDONE', 5) %finished listing expt stims
-        if isfield(DATA,'toplevel')
-            it = findobj(DATA.toplevel,'Tag','Expt3StimList','style','edit');
-            if length(it) == 1
-                set(it,'string',DATA.exptstimlist{3});
-            end
-            it = findobj(DATA.toplevel,'Tag','Expt2StimList','style','edit');
-            if length(it) == 1
-                ival = get(it,'value');
-                ival = min([size(DATA.exptstimlist{2},2) ival]);
-                if ival <1
-                    ival = 1;
+        elseif strncmp(s, 'EDONE', 5) %finished listing expt stims
+            if isfield(DATA,'toplevel')
+                it = findobj(DATA.toplevel,'Tag','Expt3StimList','style','edit');
+                if length(it) == 1
+                    set(it,'string',DATA.exptstimlist{3});
                 end
-                set(it,'string',DATA.exptstimlist{2},'value',ival);
-            end
-            
-            it = findobj(DATA.toplevel,'Tag','Expt1StimList','style','edit');
-            if length(it) == 1
-                set(it,'string',DATA.exptstimlist{1});
-            end
-        end
-        if isfield(DATA,'exptstimlist')
-            for j = 1:length(DATA.exptstimlist)
-                S = DATA.exptstimlist{j};
-                for m = 1:length(S)
-                    [val,n] = sscanf(S{m},'%f');
-                    if n == 1
-                        DATA.expvals{j}(m) = val;
+                it = findobj(DATA.toplevel,'Tag','Expt2StimList','style','edit');
+                if length(it) == 1
+                    ival = get(it,'value');
+                    ival = min([size(DATA.exptstimlist{2},2) ival]);
+                    if ival <1
+                        ival = 1;
                     end
+                    set(it,'string',DATA.exptstimlist{2},'value',ival);
                 end
                 
+                it = findobj(DATA.toplevel,'Tag','Expt1StimList','style','edit');
+                if length(it) == 1
+                    set(it,'string',DATA.exptstimlist{1});
+                end
             end
-        end
+            if isfield(DATA,'exptstimlist')
+                for j = 1:length(DATA.exptstimlist)
+                    S = DATA.exptstimlist{j};
+                    for m = 1:length(S)
+                        [val,n] = sscanf(S{m},'%f');
+                        if n == 1
+                            DATA.expvals{j}(m) = val;
+                        end
+                    end
+                    
+                end
+            end
         elseif strncmp(s,'xyfsd',5)
             x = sscanf(value,'%f');
             DATA.binoc{1}.xyfsd = x(1);
@@ -1614,7 +1620,7 @@ toconsole = 1;
         CreateStruct.WindowStyle='non-modal';
    end
    try
-       h = msgbox(s,'Binoc Warning','warn',CreateStruct);
+       h = msgbox(split(s,'\\n'),'Binoc Warning','warn',CreateStruct);
        ScaleWindow(h,2);
 
        if ~isempty(OldPos)
@@ -2134,7 +2140,7 @@ function DATA = SetDefaults(DATA)
 
 scrsz = get(0,'Screensize');
 DATA = SetField(DATA,'ip','http://localhost:1110/');
-DATA.network = 1;
+DATA.network = 2;
 DATA.lastmsg = '';
 DATA.errors(1) = 0; %keep track of  erros received, so only acknowlge first
 DATA.confused = 0;
@@ -3302,10 +3308,11 @@ function CopyLog(DATA,type)
         outprintf(DATA,'e3=%s\n',DATA.comcodes(DATA.expmenuvals{3}(val)).code);
     elseif strcmp(type,'fsd')
         if iscellstr(str)
-        outprintf(DATA,'\\xyfsd=%s\n',str{val});
+        outprintf(DATA,'xyfsd=%s\n',str{val});
     else
-        outprintf(DATA,'\\xyfsd=%s\n',str(val,:));
+        outprintf(DATA,'xyfsd=%s\n',str(val,:));
         end
+        DATA.binoc{1}.xyfsd = val;
     elseif strmatch(type,{'st' 'bs'})
         id = strmatch(type,{'st' 'bs'});
         if val > 0
@@ -3370,7 +3377,7 @@ function DATA = LoadLastSettings(DATA, varargin)
                 DATA = InterpretLine(DATA, txt{id(1)},'tobinoc');
             end
             end
-            CheckState(DATA);
+            DATA = GetState(DATA);
         end
     
 function RecoverFile(a, b, type)
@@ -4065,7 +4072,12 @@ if isfield(DATA,'toplevel') && isfigure(DATA.toplevel)
     else
         onoff = current_state;
     end
-else
+elseif isfield(DATA,'pausereading')
+%? need this. Timer should not start before figure is up?    
+    current_state = DATA.pausereading;
+    if nargin == 2
+        DATA.pausereading = onoff;
+    end    
     current_state = 0;
 end
         
@@ -4264,6 +4276,15 @@ function CheckInput(a,b, fig, varargin)
         return;
     end
     lastread = now;
+    if DATA.network == 2 %don't ping binoc during stims
+        a = dir('/tmp/binocstimisup');
+        b = dir('/tmp/binocstimisdone');
+        if ~isempty(a) && ~isempty(b) && a.datenum > b.datenum %binoc is in stim            
+            return;
+        elseif isempty(b) && ~isempty(a) %in stim and done file deleted
+            return;
+        end
+    end
     try
         ReadFromBinoc(DATA, 'auto');
     catch ME
@@ -5666,6 +5687,7 @@ function DATA = RunExptSequence(DATA, str, line)
             str{j} = deblank(astr(j,:));
         end
     end
+    lastline = '';
 for j = line:length(str)
     if DATA.verbose(4)
         fprintf('From Seq window %s\n',str{j});
@@ -5717,7 +5739,9 @@ for j = line:length(str)
         set(DATA.toplevel,'UserData',DATA);
         outprintf(DATA,'#From RunSequence\n');
         outprintf(DATA,'%s\n',str{j}); %this runs expt in binoc
-        DATA.Statuslines{end+1} = sprintf('RunSequence Line %d. at %s %d Repeats left',line,datestr(now,'hh:mm.ss'),DATA.rptexpts);
+        DATA.Statuslines{end+1} = sprintf('RunSequence Line %d-%d. at %s %d Repeats left',line,j,datestr(now,'hh:mm.ss'),DATA.rptexpts);
+        DATA = AddTextToGui(DATA,sprintf('Seq Line %d-%d %s',line,j,lastline),'norec');
+
         return;
     elseif strncmp(str{j},'!mat',4)
         DATA.Statuslines{end+1} = sprintf('RunSequence Line %d: %s',str{j});
@@ -5730,6 +5754,7 @@ for j = line:length(str)
         outprintf(DATA,'%s#RunSeq\n',str{j});
     end
     DATA = LogCommand(DATA, str{j},'norec');
+    lastline = str{j};
 end
 
 function SendManualExpt(DATA)
@@ -6323,7 +6348,7 @@ bp = [0.01 0.99-1/nr 0.115 1./nr];
     uicontrol(gcf,'style','text','string','RH', ...
         'units', 'norm', 'position',bp,'value',1);
 
-bp(1) = bp(1)+bp(3)+0.01;
+bp(1) = bp(1)+bp(3)+0.0
     uicontrol(gcf,'style','edit','string',num2str(DATA.binoc{1}.so(1)), ...
         'Callback', {@SoftoffPopup, 'RH'},'Tag','RH',...
         'units', 'norm', 'position',bp);

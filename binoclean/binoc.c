@@ -270,7 +270,7 @@ char *flag_codes[] = {
     NULL,};
 
 extern double fakestim;
-extern int usenewdirs,cancelflag;
+extern int usenewdirs,cancelflag,spike2mode;
 extern int dorpt,rcrpt , lastrpt;
 extern int *stimorder,demomode,covaryprop;
 //struct plotdata *expplots;
@@ -2744,6 +2744,8 @@ int event_loop(float delay)
     ctr++;
     if (firstcall ==1){ //first call
         system("touch /tmp/binocisnew");
+        system("touch /tmp/binocstimisdone");
+        unlink("/tmp/binocstimisup");
         notify("NewBinoc\n");
     }
     gettimeofday(&nftime,NULL);
@@ -5373,6 +5375,9 @@ int change_frame()
             if((mode & FRAME_BITS) || blockallframes)
                 glFinishRenderAPPLE();
         glSwapAPPLE();
+    }
+    else if (renderoff == 2){
+        glFinishRenderAPPLE();
     }
     gettimeofday(&changeframetime,NULL);
     changeframedur = timediff(&changeframetime,&atime);
@@ -10154,8 +10159,6 @@ void setoption()
         //Ali ListExpStims(NULL);
     }
     
-    //ALi  if(new & STORE_WURTZ_BIT)
-    //    SetRunButton(NULL);
     old = optionflag;
     old2 = option2flag;
 }
@@ -10790,7 +10793,11 @@ int PrintPsychLine(int presult, int sign, FILE *fd)
 {
     char str[BUFSIZ];
     double start, down;
+    char c = ' ';
     
+    if(optionflag & STORE_WURTZ_BIT)
+        c = 'S';
+                      
     if (todaylog != NULL && fd != todaylog){
         PrintPsychLine(presult, sign, todaylog);
     }
@@ -10798,25 +10805,26 @@ int PrintPsychLine(int presult, int sign, FILE *fd)
     down = timediff(&now,&wurtzframetime);
     
     if(fd != NULL){
+        
         if(afc_s.loopstate == CORRECTION_LOOP && (option2flag & AFC))
             presult += 100;
         if(!SACCREQD(afc_s) && !(option2flag & PSYCHOPHYSICS_BIT))
             presult +=50;
         if(abs(afc_s.ccvar) > 0.01 && expt.type2 == EXPTYPE_NONE)
-            fprintf(fd,"R%d %s=%.5f %s=%.5f",
-                    presult,serial_strings[expt.mode],expt.currentval[0],
+            fprintf(fd,"R%d%c %s=%.5f %s=%.5f",
+                    presult,c,serial_strings[expt.mode],expt.currentval[0],
                     serial_strings[covaryprop],GetProperty(&expt,expt.st,covaryprop));
         else if(expt.type3 == FAKESTIM_EXPT && expt.type2 == EXPTYPE_NONE)
-            fprintf(fd,"R%d %s=%.5f %s=%.5f",
-                    presult,serial_strings[expt.mode],expt.currentval[0],
+            fprintf(fd,"R%d%c %s=%.5f %s=%.5f",
+                    presult,c,serial_strings[expt.mode],expt.currentval[0],
                     serial_strings[FAKESTIM_SIGNAL],fakestim);
         else if(expt.currentval[0] == INTERLEAVE_EXPT_FLIP)
-            fprintf(fd,"R%d %s=%.5f %s=%.5f",
+            fprintf(fd,"R%d%c %s=%.5f %s=%.5f",
                     presult,serial_strings[expt.mode],expt.currentval[0],
                     serial_strings[expt.type2],expt.currentval[3]);
         else
-            fprintf(fd,"R%d %s=%.5f %s=%.5f",
-                    presult,serial_strings[expt.mode],expt.currentval[0],
+            fprintf(fd,"R%d%c %s=%.5f %s=%.5f",
+                    presult,c,serial_strings[expt.mode],expt.currentval[0],
                     serial_strings[expt.type2],expt.currentval[1]);
         if(optionflags[FLIP_FEEDBACK])
             fprintf(fd," sn=%d.1",sign);
@@ -10927,8 +10935,19 @@ int GotChar(char c)
         
 	    DIOval = 0;
         gettimeofday(&now,NULL);
+        i = codectr%CODEHIST;
         if(seroutfile)
-            fprintf(seroutfile,"#StartExpt from Spike2 at %.4f\n",ufftime(&now));
+            fprintf(seroutfile,"#StartExpt from Spike2 at %.4f last code %d\n",ufftime(&now),lastcodes[i]);
+        if (0){
+            fprintf(stderr,"Codes (%d,%d) from Spike (%d) at %s before StartExpt:",codectr,charsread,spike2mode,binocTimeString());
+            for (i = codectr; i > 0 && i > codectr-10; i-- ){
+                fprintf(stderr,"%d",lastcodes[i%CODEHIST]);
+            }
+            fprintf(stderr,"\n");
+            if (spike2mode ==1){
+                fprintf(stderr,"Should get StartExpt Here\n");                
+            }
+        }
         if (timediff(&now,&lastconnecttime) < 1){
             if(seroutfile){
                 ns=0;
@@ -11470,6 +11489,9 @@ int GotChar(char c)
             case BW_IS_READY:
                 charctr = 0;
                 break;
+            default:
+                fprintf(stderr,"Unknown code from binoc %d\n",c);
+                break;
 		}
 		lastcodes[++codectr%CODEHIST] = c;
 	}
@@ -11929,7 +11951,8 @@ void Stim2PsychFile(int state, FILE *fd)
 
     sscanf(VERSION_STRING,"binoclean.%f",&version);
 
-    
+// state 2 = ENDEXPT
+//
     
     if (todaylog != NULL && fd != todaylog)
         Stim2PsychFile(state, todaylog);
@@ -11948,6 +11971,8 @@ void Stim2PsychFile(int state, FILE *fd)
                 serial_strings[DOT_DENSITY],GetProperty(&expt,expt.st,DOT_DENSITY),
                 serial_strings[CONTRAST2],GetProperty(&expt,expt.st,CONTRAST2),
                 state);
+
+//NB ENDEXPT -> R10
         
         fprintf(fd,"R%d %s=%.2f %s=%.2f %s=%.2f",state+8,
                 serial_strings[ORIENTATION],GetProperty(&expt,expt.st,ORIENTATION), 

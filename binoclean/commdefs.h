@@ -510,7 +510,10 @@
 #define CHOICE_TARGET_OVERLAP (MAXSAVECODES+44)
 #define VERSION_NUMBER (MAXSAVECODES+45)
 #define MAGIC_ID MAXSAVECODES+46
-#define MAXTOTALCODES (MAXSAVECODES+47)  //437
+#define EXPT1CUSTOMVAL (MAXSAVECODES+47)
+#define EXPT2CUSTOMVAL (MAXSAVECODES+48)
+#define EXPT3CUSTOMVAL (MAXSAVECODES+49)
+#define MAXTOTALCODES (MAXSAVECODES+50)  //440
 
 
 /*
@@ -868,7 +871,7 @@ ToggleCode togglestrings[] = {
     {"Fix Sepn",    "fs",  0, FIXED_BARSEP, 3},
     {"Record RLS",    "srls",  0, SAVE_RLS, 3},
     {"Manual Expt",    "exm",  0, MANUAL_EXPT, 3},
-    {"Reverse Back Contrast",    "bac",  0, MANUAL_EXPT, 3},
+    {"Reverse Back Contrast",    "bac",  0, REVERSE_BACKGROUND_CONTRAST, 3},
     {"Custom Values Expt 1",    "cex1",  0, CUSTOM_EXPVAL, 4},
     //   {"Auto Plot",    "ap", 0, AUTO_PLOT, 1},
     //   {"PreBack",    "pb", 0, BACKGROUND_IN_PREPERIOD, 1},
@@ -1334,6 +1337,9 @@ ValueCode valstrings[] = {
     {"xyfsd", "XY window width (degrees)", XY_FSD, 0, 'N', 1, SEND_EXPLICIT, SAVE_ALWAYS},
     {"netpref","Prefix for Network Data Record",  NETWORK_PREFIX, 16, 'C', 2, SEND_VERG_ONLY, SAVE_ALWAYS},
     {"magic","Magic Number",  MAGIC_ID, INTERNALCOMMAND, 'N', 0, SEND_EXPLICIT, SAVE_NEVER},
+    {  "EA", "Expt1 CustomVal", EXPT1CUSTOMVAL, 16|PARTIAL_CODE, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},
+    {  "EB", "Expt2 CustomVal", EXPT2CUSTOMVAL, 16|PARTIAL_CODE, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},
+    {  "EC", "Expt3 CustomVal", EXPT3CUSTOMVAL, 16|PARTIAL_CODE, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     { NULL, NULL, -1, -1 ,0 ,0, 0},
 };
 
