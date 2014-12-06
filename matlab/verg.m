@@ -4179,7 +4179,9 @@ function CheckInput(a,b, fig, varargin)
     if DATA.network == 2 %don't ping binoc during stims
         a = dir('/tmp/binocstimisup');
         b = dir('/tmp/binocstimisdone');
-        if ~isempty(a) && ~isempty(b) && a.datenum > b.datenum %binoc is is stim
+        if ~isempty(a) && ~isempty(b) && a.datenum > b.datenum %binoc is in stim            
+            return;
+        elseif isempty(b) && ~isempty(a) %in stim and done file deleted
             return;
         end
     end

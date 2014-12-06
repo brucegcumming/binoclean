@@ -22,6 +22,7 @@ extern int inexptstim,innotify,ReadingInputPipe;
 extern FILE *seroutfile;
 int AddingToInputPipe = 0,AddingToOutputPipe = 0;;
 static int notifyclash = 0;
+extern struct timeval firstframetime,zeroframetime,exptstimtime;
 
 // Log levels : off, error, warn, info, verbose
 // Other flags: trace
@@ -56,6 +57,8 @@ static const int httpLogLevel = HTTP_LOG_LEVEL_WARN; // | HTTP_LOG_FLAG_TRACE;
     NSData *outputdata = [@"" dataUsingEncoding:NSASCIIStringEncoding];
     NSString * s = @"";
     int readloop = 0;
+    struct timeval now;
+    float t,timediff(),zt;
 
     if ([method isEqualToString:@"GET"]) {
         if (request.url){
@@ -65,6 +68,16 @@ static const int httpLogLevel = HTTP_LOG_LEVEL_WARN; // | HTTP_LOG_FLAG_TRACE;
                     NSString * command = [[request.url.relativeString substringFromIndex:1] stringByReplacingPercentEscapesUsingEncoding:NSASCIIStringEncoding]; //request.url.pathComponents[1];
                     if (expt.verbose[4] > 0){
                         NSLog(@"Input Pipe: %@", command);
+                    }
+                    if (inexptstim){
+                        gettimeofday(&now,NULL);
+                        zt = timediff(&firstframetime,&exptstimtime);
+                        t = timediff(&now,&exptstimtime);
+                        NSLog(@"http request while %.3f (%.3f, %.3f),%d frames into Expt Stim.",t,zt,(float)(zeroframetime.tv_usec)/1000000.0,expt.st->framectr);
+                        NSLog(@"now usec, %.3f",(float)(now.tv_usec)/1000000.0);
+                        if (expt.st->framectr > 0){
+                            gettimeofday(&now,NULL);
+                        }
                     }
                     AddingToOutputPipe = 1;
                     NSArray * sLines = [command componentsSeparatedByCharactersInSet:[NSCharacterSet characterSetWithCharactersInString:@"\r\n"]];

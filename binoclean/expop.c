@@ -301,6 +301,7 @@ extern struct BWSTRUCT thebwstruct;
 extern FILE *testfd;
 extern struct timeval signaltime,now,endstimtime,firstframetime,zeroframetime,frametime,alarmstart;
 extern struct timeval calctime,paintframetime,changeframetime,paintfinishtime,sessiontime;
+struct timeval exptstimtime;
 extern vcoord conjpos[],fixpos[];
 static time_t lastcmdread;
 static struct timeval lastcmdtime;
@@ -11498,6 +11499,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
         }
     }
     
+    unlink("/tmp/binocstimisdone");
     system("touch /tmp/binocstimisup");
     if(st->left->ptr->velocity > 0.00001){
         stimflag = st->flag;
@@ -11551,6 +11553,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
         SetManualStim(0);
     }
 
+    gettimeofday(&exptstimtime,NULL);
     if (inexptstim < 1)
         inexptstim = 1;
     
@@ -11989,6 +11992,8 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
 #ifdef NIDAQ
     DIOWriteBit(0,0); //clear stimchange pin
 #endif
+    inexptstim = 0;
+    unlink("/tmp/binocstimisup");
     system("touch /tmp/binocstimisdone");
 
     if (seroutfile)

@@ -2743,6 +2743,7 @@ int event_loop(float delay)
     if (firstcall ==1){ //first call
         system("touch /tmp/binocisnew");
         system("touch /tmp/binocstimisdone");
+        unlink("/tmp/binocstimisup");
         notify("NewBinoc\n");
     }
     gettimeofday(&nftime,NULL);
