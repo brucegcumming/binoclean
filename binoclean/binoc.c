@@ -656,8 +656,6 @@ void initial_setup()
 	mon.name = NULL;
 	mon.viewd = 57;
 	mon.framerate = 72.0;
-    statusstring = (char *)(malloc(LONGBUF * sizeof(char)));
-    
 	srandom((i = getpid()));
 	mtype = (long)i;
 	srand48(mtype);
