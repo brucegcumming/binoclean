@@ -3899,6 +3899,7 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
         case REWARD_BIAS:
         case TONETIME:
         case TARGET_RATIO:
+        case XY_FSD:
             SerialSend(flag);
             expt.codesent = 1;
             break;
@@ -6726,7 +6727,6 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
     
     switch(code)
     {
-            
         case SET_SF_COMPONENTS:
             sprintf(cbuf,"%s=",serial_strings[code]);
             for (i = 0; i < st->left->nfreqs; i++){
