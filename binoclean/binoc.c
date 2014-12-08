@@ -6880,7 +6880,6 @@ int next_frame(Stimulus *st)
                 //Ali CheckKeyboard(D, allframe);
                 if (ExptIsRunning() && (mode & ANIMATE_BIT) )
                 {
-                    inexptstim = 1;
                     if(optionflags[RUN_SEQUENCE] && expt.stimpertrial > 2){
                         framesdone = RunExptStimSeq(TheStim, TheStim->nframes, expt.stimpertrial,D);
                         stimstate = POSTSTIMULUS;

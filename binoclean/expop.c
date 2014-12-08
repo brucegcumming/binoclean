@@ -12332,6 +12332,10 @@ int CheckStimDuration(int retval)
     sprintf(buf,"#du%.3f(%d:%.3f)\n",frametimes[framesdone],framesdone,(framesdone-0.5)/expt.mon->framerate);
     SerialString(buf,0);
     if (optionflags[FIXNUM_PAINTED_FRAMES]){
+        if(frametimes[framesdone]  > (1+framesdone)/expt.mon->framerate && retval != BADFIX_STATE){
+            if (seroutfile)
+                fprintf(seroutfile,"#rptframes%d\n",(int)(round(frametimes[framesdone]*mon.framerate)-framesdone));
+        }
         if(frametimes[framesdone]  > (framesdone-1.1)/expt.mon->framerate || saveframetimes){
             sprintf(buf,"%d frames took %.3f",framesdone,frametimes[framesdone]);
             fprintf(stderr,"%s\n",buf);
