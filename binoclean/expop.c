@@ -300,7 +300,7 @@ extern Log thelog;
 extern struct BWSTRUCT thebwstruct;
 extern FILE *testfd;
 extern struct timeval signaltime,now,endstimtime,firstframetime,zeroframetime,frametime,alarmstart;
-extern struct timeval calctime,paintframetime,changeframetime,paintfinishtime,sessiontime;
+extern struct timeval calctime,paintframetime,changeframetime,paintfinishtime,sessiontime,progstarttime;
 struct timeval exptstimtime;
 extern vcoord conjpos[],fixpos[];
 static time_t lastcmdread;
@@ -3960,7 +3960,7 @@ float ExptProperty(Expt *exp, int flag)
         case MAGIC_ID:
             val = (float)expt.magicnumber;
             break;
-        case UFF_TIME:
+        case UFF_TIME: //sessiontime is recorded every time a new connection is made. 
             gettimeofday(&now,NULL);
             val = timediff(&now,&sessiontime);
             break;
@@ -14570,8 +14570,10 @@ int InterpretLine(char *line, Expt *ex, int frompc)
                 lastticks = bwticks;
             }
             if(seroutfile){
-                fprintf(seroutfile,"#%s\n",s);
-                fprintf(seroutfile,"#%.4f bwticks = %s\n",bwticks,binocTimeString());
+                fprintf(seroutfile,"#%s\n",line);
+                gettimeofday(&now,NULL);
+                val = timediff(&now,&progstarttime);
+                fprintf(seroutfile,"#%.4f bwticks = %s, %.3f dt = %.3f\n",bwticks,binocTimeString(),val,val - bwticks);
             }
         }
             break;
