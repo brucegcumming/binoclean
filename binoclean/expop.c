@@ -12322,8 +12322,10 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
 int CheckStimDuration(int retval)
 {
     int i = 0,j =0, n = 0, rpt =0,nrpt = 0,nf=0,k=0;
-    char buf[LONGBUF+10],tmp[LONGBUF+10];
+    char buf[LONGBUF+10],tmp[LONGBUF+10],*s;
     float val;
+    time_t tt;
+    
     float framevals[MAXFRAMES], diffmax, diffmin;
     
     rpt = (expt.st->framerepeat < 1) ? 1 : expt.st->framerepeat;
@@ -12333,8 +12335,12 @@ int CheckStimDuration(int retval)
     SerialString(buf,0);
     if (optionflags[FIXNUM_PAINTED_FRAMES]){
         if(frametimes[framesdone]  > (1+framesdone)/expt.mon->framerate && retval != BADFIX_STATE){
-            if (seroutfile)
-                fprintf(seroutfile,"#rptframes%d\n",(int)(round(frametimes[framesdone]*mon.framerate)-framesdone));
+            if (seroutfile){
+                tt= (time_t)(firstframetime.tv_sec);
+                s = ctime(&tt);
+                s = nonewline(s);
+                fprintf(seroutfile,"#rptframes%d start %s %.3f\n",(int)(round(frametimes[framesdone]*mon.framerate)-framesdone),s,(float)(firstframetime.tv_usec)/1000000.0);
+            }
         }
         if(frametimes[framesdone]  > (framesdone-1.1)/expt.mon->framerate || saveframetimes){
             sprintf(buf,"%d frames took %.3f",framesdone,frametimes[framesdone]);

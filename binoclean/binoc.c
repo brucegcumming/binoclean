@@ -2973,7 +2973,7 @@ void clear_display(int flag)
     clear_screen(TheStim, 1);
     if(stimstate == STIMSTOPPED && clearcolor != TheStim->background)
         search_background();
-    if(stimstate == POSTTRIAL && monkeypress == WURTZ_OK_W)
+    if(stimstate == POSTTRIAL && monkeypress == WURTZ_OK_W && afc_s.wrongtimeout > 0)
         chessboard(128,128);
     if(flag)
     {
@@ -5091,7 +5091,11 @@ void start_timeout(int mode)
         glDrawBuffer(GL_FRONT_AND_BACK);
         setmask(ALLMODE);
         TheStim->fixcolor = expt.vals[BLANKCOLOR_CODE];
-        if(optionflag & FRAME_ONLY_BIT)
+        if (mode == WURTZ_OK_W && afc_s.wrongtimeout <= 0){
+            clearcolor = expt.vals[SETCLEARCOLOR];
+            glClearColor(clearcolor,TheStim->gammaback,clearcolor,clearcolor);
+        }
+        else if(optionflag & FRAME_ONLY_BIT)
         {
             clearcolor = dogamma(expt.vals[SETCLEARCOLOR]);
             glClearColor(clearcolor,clearcolor,clearcolor,clearcolor);
@@ -5145,7 +5149,9 @@ void start_timeout(int mode)
                 search_background();
             break;
         case WURTZ_OK_W:
-            chessboard(128,128);
+            if (afc_s.wrongtimeout > 0){
+                chessboard(128,128);
+            }
             stimstate = POSTTRIAL;
             break;
 	}
@@ -7503,10 +7509,12 @@ int next_frame(Stimulus *st)
             {
                 markercolor = 0;
                 //	  mySwapBuffers();
-                setmask(BOTHMODE);
-                chessboard(128,128);
+                if(afc_s.wrongtimeout>0){
+                    setmask(BOTHMODE);
+                    chessboard(128,128);
+                }
             }
-            if((val = timediff(&now, &starttimeout)) > duration)
+            if((val = timediff(&now, &starttimeout)) > duration || duration ==0)
             {
                 if(timeout_type == SHAKE_TIMEOUT_PART1){
                     timeout_type = SHAKE_TIMEOUT_PART2;

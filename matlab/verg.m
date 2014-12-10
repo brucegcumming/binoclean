@@ -3465,7 +3465,8 @@ function CheckTrialDurations(DATA, varargin)
         durs = [T.dur];
         id = find(Nf == nf+1); %completed.
         err = 1+ durs(id).*DATA.binoc{1}.fz - Nf(id);
-        if strcmp(plottype,'hist')
+sz=2
+if strcmp(plottype,'hist')
             GetFigure(DATA.tag.plotwin);
             hist(err,[-10:0.5:10]);
             title(sprintf('Real-Expected Duration at %.1fHz',DATA.binoc{1}.fz));
@@ -4176,6 +4177,10 @@ function CheckInput(a,b, fig, varargin)
         return;
     end
     lastread = now;
+    if DATA.timerperiod > 0.1 && DATA.tobinocfid > 0
+        a = datevec(now);
+        fprintf(DATA.tobinocfid,'Ping at %.0f:%.0f.%.3f\n',a(4),a(5),a(6));
+    end
     if DATA.network == 2 %don't ping binoc during stims
         a = dir('/tmp/binocstimisup');
         b = dir('/tmp/binocstimisdone');
