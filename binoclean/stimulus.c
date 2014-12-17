@@ -2113,7 +2113,7 @@ void calc_stimulus(Stimulus *st)
     if(st->next != NULL && (optionflags[PAINT_BACKGROUND] || rdspair(st)
                             || rlspair(st) || corrugpair(st) || sqcorrugpair(st)))
     {
-        if(!(optionflag & BACKGROUND_FIXED_BIT))
+        if(!(optionflag & (BACKGROUND_FIXED_BIT)))
         {
             st->next->pos.xy[0] = st->pos.xy[0];
             st->next->pos.xy[1] = st->pos.xy[1];

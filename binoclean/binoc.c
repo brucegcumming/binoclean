@@ -11986,7 +11986,8 @@ void Stim2PsychFile(int state, FILE *fd)
         fprintf(fd," %.2lf %.2f %.2f",t,
                 GetProperty(&expt,expt.st,XPOS),
                 GetProperty(&expt,expt.st,YPOS));
-        fprintf(fd," %s %s=%.4f %s expt=%d x=0 x=0\n",StimString(INITIAL_APPLY_MAX),serial_strings[JDEATH],GetProperty(&expt,expt.st,JDEATH),StimString(VERSION_NUMBER),state);
+        fprintf(fd," %s",StimString(INITIAL_APPLY_MAX));
+                fprintf(fd," %s=%.4f %s expt=%d x=0 x=0\n",serial_strings[JDEATH],GetProperty(&expt,expt.st,JDEATH),StimString(VERSION_NUMBER),state);
         
         
         
