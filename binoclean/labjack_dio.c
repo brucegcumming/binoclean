@@ -117,11 +117,14 @@ cleanmem:
 
 int DIOWrite(BYTE output)
 {
-    printf("this is the old DIO!!!!!\n");
+    printf("this is the old DIO!!!!! Did not write to Labjack\n");
 }
 
 int DIOWriteBit(int Channel, BYTE output)
 {
+    struct timeval now;
+    char buf[2048];
+
     if(!isok)
         return(0);
     
@@ -195,11 +198,14 @@ int DIOWriteBit(int Channel, BYTE output)
     
     if (r < 0 )
     {
-        // can get errors from first write. ? when its resqesting the same state?
+        gettimeofday(&now, NULL);
+        sprintf(buf,"DIO ERROR (%d) while writing %d to %d at %.3f",r,Channel,output,ufftime(&now));
+        fprintf(stderr,"%s\n",buf);        // can get errors from first write. ? when its resqesting the same state?
         // so don't report an error until the second failure. isok is set to 2 at startup
-        if (isok ==1)
-            acknowledge("DIO Write Error",NULL);
-        fprintf(stderr,"DIO ERROR while writing");
+        if (isok ==1){
+            acknowledge(buf,NULL);
+            return(-1);
+        }
     }
     isok = 1;
     return 0;

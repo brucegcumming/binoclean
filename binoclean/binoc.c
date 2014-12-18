@@ -71,6 +71,7 @@ int lastbutton = -1000;
 int renderoff;
 char *chartrack;
 int testloops = 0;
+static int newrewardset = 0;
 
 static int track_resets[] = {XPOS, YPOS, FIXPOS_X, FIXPOS_Y, -1};
 
@@ -5236,7 +5237,7 @@ void SendMovements()
 void WriteSignal()
 {
     char c = ' ';
-
+    int i;
     struct timeval atime;
     float val;
     
@@ -5254,7 +5255,9 @@ void WriteSignal()
 #ifdef NIDAQ
         if (optionflags[MICROSTIM])
             DIOWriteBit(1, 1);
-        DIOWriteBit(2, 1);
+        if ((i = DIOWriteBit(2, 1)) < 0){
+            fprintf(seroutfile,"#DIO error at Stim on\n");
+        }
 #endif
         stimchanged = 0;
 	    c = FRAME_SIGNAL;
@@ -5280,8 +5283,10 @@ void WriteSignal()
 	if(mode & LAST_FRAME_BIT)
     {
 #ifdef NIDAQ
-        DIOWriteBit(2,0);
-#endif        
+        if ((i = DIOWriteBit(2, 0)) < 0){
+            fprintf(seroutfile,"#DIO error at Stim off\n");
+        }
+#endif
         gettimeofday(&endstimtime,NULL);
  	    c = END_STIM;
         if(seroutfile)
@@ -5320,7 +5325,7 @@ int change_frame()
 {
 	char c = FRAME_SIGNAL;
 	char buf[BUFSIZ];
-	int lastframe,oldmode = mode;
+	int lastframe,oldmode = mode,i;
 	static int framesswapped = 0;
     int blockallframes = 0;
     float tval;
@@ -5393,7 +5398,7 @@ int change_frame()
 	framesswapped++;
 #ifdef NIDAQ
     if (stimchanged){
-        DIOWriteBit(0, 0);                 
+        i = DIOWriteBit(0, 0);
         stimchanged = 0;
     }
 #endif
@@ -6812,7 +6817,6 @@ int next_frame(Stimulus *st)
                  */
                 if(optionflags[INITIAL_TRAINING])
                     optionflags[INITIAL_TRAINING] = 2;
-                
             }
 // need to set rw again here in case its a manual expt that mixes AFC trials with NonAFC trial
             if (option2flag & AFC){
@@ -6821,9 +6825,10 @@ int next_frame(Stimulus *st)
             else{
                 expt.st->fix.rwsize = expt.st->fix.fixrwsize;
             }
-            if (laststate!= PREFIXATION){
+            if (laststate != PREFIXATION && newrewardset){
                 SerialSend(REWARD_SIZE);
                 SendToGui(REWARD_SIZE);
+                newrewardset = 0;
             }
             wipescreen(clearcolor);
             RunBetweenTrials(st, pos);
@@ -11453,6 +11458,7 @@ int GotChar(char c)
                 SerialSend(REWARD_SIZE);
                 expt.vals[REWARD_SIZE] = TheStim->fix.rwsize;
                 TheStim->fix.rwsize = oldrw;		    
+                newrewardset = 1;
                 
                 if(stimstate == WAIT_FOR_RESPONSE && monkeypress != WURTZ_STOPPED)
                 {
