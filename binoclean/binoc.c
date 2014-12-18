@@ -2356,6 +2356,7 @@ void StartRunning()
     mode |= CURSOR_IS_ON;
     
     i = mode;
+    printString(StimString(VERSION_NUMBER),0);
     setstimuli(0);
     ResetCustomVals(i);
     
@@ -11183,6 +11184,8 @@ int GotChar(char c)
                     trialdursum = 0;
                 }
                 else if(c==BAD_FIXATION){
+//if this is caused by a microsaccade, variable microsccade will be > 0
+//this is handled in printpsychline()
                     result = 'B';
                     jonresult = FOUL;
                     presult = 3;
