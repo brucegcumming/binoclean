@@ -226,7 +226,7 @@ void calc_cylinder(Stimulus  *st)
     float delta, vel, fraction, sign;
     int flag = st->flag;	
     float disparity, deathchance;
-    int countdown;
+    int countdown,nac;
     float widthfactor, heightfactor;
     float dx,dy;
     float rotatefactor[2];
@@ -255,7 +255,8 @@ void calc_cylinder(Stimulus  *st)
      calc_subpix_disp(balls, cyl->numdots, flag, st->disp, pos, widthfactor, heightfactor);
      }
      else{*/
-	for(i=0;i<cyl->numdots;i++){		
+    nac = 0;
+	for(i=0;i<cyl->numdots;i++){
 	    if (flag & FLAT_DISPARITY)
 		    balls[i].offset = disparity * balls[i].left_right; 
 	    else
@@ -270,6 +271,14 @@ void calc_cylinder(Stimulus  *st)
             balls[i].dot=balls[i].proportion;
 	    else
             balls[i].dot=1;
+        balls[i].corr = 1;
+        if(st->corrmix >= 0 && i > 0){
+            if ((float)(nac)/i < st->corrmix)
+            {
+                nac++;
+                balls[i].corr = -1;
+            }
+        }
 	}
     return;
 }
@@ -281,6 +290,7 @@ int paint_balls(Stimulus *st, int mode, OneStim *cyl,float *vcolor, float *bcolo
     ball_s *balls = cyl->balls;
     Locator *pos = &st->pos;
     int i=0,j,r;
+    float *black = bcolor,*white = vcolor;
     
     if((st->flag & (FRONT_ONLY | BACK_ONLY | FRONT_SURFACE_OCCLUDES)) == 0){
         for (i = 0; i <cyl->numdots; i++) { 
@@ -296,10 +306,18 @@ int paint_balls(Stimulus *st, int mode, OneStim *cyl,float *vcolor, float *bcolo
                     continue;
                 }
             }
+            if (balls[i].corr < 0 && mode == JONRIGHT){
+                black = vcolor;
+                white = bcolor;
+            }
+            else{
+                black = bcolor;
+                white = vcolor;
+            }
             if(((balls[i].lrnd >>16) & 0xff) > st->dotfrac*255)
-                mycolor(vcolor);      
+                mycolor(white);
             else
-                mycolor(bcolor);
+                mycolor(black);
             draw_dot(rotatefactor, hdotsize, balls[i].position[X], balls[i].position[Y], balls[i].offset, cyl->standing_disp, balls[i].dot, mode,pos,st->flag,&balls[i]);
         }
         return(i);
