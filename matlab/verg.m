@@ -3020,14 +3020,23 @@ function ShowHelp(a,b,file)
   function BuildQuickMenu(DATA, hm)
         
     if isfield(DATA.quickexpts,'submenu')
-    subs = unique({DATA.quickexpts.submenu});
-    for j = 1:length(subs)-1
-        sm(j) = uimenu(hm,'Label',subs{j+1});
+        sms = {DATA.quickexpts.submenu};
+        
+%add submenus in the order they were created in the file        
+    subs = unique(sms);
+    for j= 2:length(subs)
+        id = find(strcmp(subs{j},sms));
+        order(j) = id(1);
+    end
+    [a,b] = sort(order);
+    subs = subs(b(2:end)); %1st element is blank
+    for j = 1:length(subs)
+        sm(j) = uimenu(hm,'Label',subs{j});
     end
     for j = 1:length(DATA.quickexpts)
-        k = strmatch(DATA.quickexpts(j).submenu,subs);
-        if k > 1
-            uimenu(sm(k-1),'Label',DATA.quickexpts(j).name,'Callback',{@verg, 'quick', DATA.quickexpts(j).filename});
+        k = find(strcmp(DATA.quickexpts(j).submenu,subs));
+        if ~isempty(k)
+            uimenu(sm(k),'Label',DATA.quickexpts(j).name,'Callback',{@verg, 'quick', DATA.quickexpts(j).filename});
         else
             uimenu(hm,'Label',DATA.quickexpts(j).name,'Callback',{@verg, 'quick', DATA.quickexpts(j).filename});
         end
@@ -4175,6 +4184,10 @@ function CheckInput(a,b, fig, varargin)
         return;
     end
     lastread = now;
+    if DATA.timerperiod > 0.1 && DATA.tobinocfid > 0
+        a = datevec(now);
+        fprintf(DATA.tobinocfid,'Ping at %2d:%2d.%.3f\n',a(4),a(5),a(6));
+    end
     if DATA.network == 2 %don't ping binoc during stims
         a = dir('/tmp/binocstimisup');
         b = dir('/tmp/binocstimisdone');

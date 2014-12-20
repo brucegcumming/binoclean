@@ -33,6 +33,7 @@ typedef struct  {
     float position[XY];
     float dot;
     long lrnd;
+    int corr; // for mixed C/AC
 } ball_s;
 
 

@@ -300,7 +300,7 @@ extern Log thelog;
 extern struct BWSTRUCT thebwstruct;
 extern FILE *testfd;
 extern struct timeval signaltime,now,endstimtime,firstframetime,zeroframetime,frametime,alarmstart;
-extern struct timeval calctime,paintframetime,changeframetime,paintfinishtime,sessiontime;
+extern struct timeval calctime,paintframetime,changeframetime,paintfinishtime,sessiontime,progstarttime;
 struct timeval exptstimtime;
 extern vcoord conjpos[],fixpos[];
 static time_t lastcmdread;
@@ -3899,6 +3899,7 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
         case REWARD_BIAS:
         case TONETIME:
         case TARGET_RATIO:
+        case XY_FSD:
             SerialSend(flag);
             expt.codesent = 1;
             break;
@@ -3959,7 +3960,7 @@ float ExptProperty(Expt *exp, int flag)
         case MAGIC_ID:
             val = (float)expt.magicnumber;
             break;
-        case UFF_TIME:
+        case UFF_TIME: //sessiontime is recorded every time a new connection is made. 
             gettimeofday(&now,NULL);
             val = timediff(&now,&sessiontime);
             break;
@@ -6726,7 +6727,6 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
     
     switch(code)
     {
-            
         case SET_SF_COMPONENTS:
             sprintf(cbuf,"%s=",serial_strings[code]);
             for (i = 0; i < st->left->nfreqs; i++){
@@ -12322,8 +12322,10 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
 int CheckStimDuration(int retval)
 {
     int i = 0,j =0, n = 0, rpt =0,nrpt = 0,nf=0,k=0;
-    char buf[LONGBUF+10],tmp[LONGBUF+10];
+    char buf[LONGBUF+10],tmp[LONGBUF+10],*s;
     float val;
+    time_t tt;
+    
     float framevals[MAXFRAMES], diffmax, diffmin;
     
     rpt = (expt.st->framerepeat < 1) ? 1 : expt.st->framerepeat;
@@ -12332,6 +12334,14 @@ int CheckStimDuration(int retval)
     sprintf(buf,"#du%.3f(%d:%.3f)\n",frametimes[framesdone],framesdone,(framesdone-0.5)/expt.mon->framerate);
     SerialString(buf,0);
     if (optionflags[FIXNUM_PAINTED_FRAMES]){
+        if(frametimes[framesdone]  > (1+framesdone)/expt.mon->framerate && retval != BADFIX_STATE){
+            if (seroutfile){
+                tt= (time_t)(firstframetime.tv_sec);
+                s = ctime(&tt);
+                s = nonewline(s);
+                fprintf(seroutfile,"#rptframes%d start %s %.3f\n",(int)(round(frametimes[framesdone]*mon.framerate)-framesdone),s,(float)(firstframetime.tv_usec)/1000000.0);
+            }
+        }
         if(frametimes[framesdone]  > (framesdone-1.1)/expt.mon->framerate || saveframetimes){
             sprintf(buf,"%d frames took %.3f",framesdone,frametimes[framesdone]);
             fprintf(stderr,"%s\n",buf);
@@ -14560,8 +14570,10 @@ int InterpretLine(char *line, Expt *ex, int frompc)
                 lastticks = bwticks;
             }
             if(seroutfile){
-                fprintf(seroutfile,"#%s\n",s);
-                fprintf(seroutfile,"#%.4f bwticks = %s\n",bwticks,binocTimeString());
+                fprintf(seroutfile,"#%s\n",line);
+                gettimeofday(&now,NULL);
+                val = timediff(&now,&progstarttime);
+                fprintf(seroutfile,"#%.4f bwticks = %s, %.3f dt = %.3f\n",bwticks,binocTimeString(),val,val - bwticks);
             }
         }
             break;
