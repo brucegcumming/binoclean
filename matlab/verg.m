@@ -330,6 +330,15 @@ function DATA = CheckStateAtStart(DATA)
         str = 'You Can define A "reset" stimfile that is Run before loading each new Expt. Put ereset=path in verg.setup or your stimfile';
         msgbox(str);
     end
+    if DATA.verbose(4) && 0
+    for j = 1:length(DATA.comcodes)
+       if ~isfield(DATA.helpstrs,DATA.comcodes(j).code) 
+           if ~strcmp('xx',DATA.comcodes(j).code)
+               fprintf('No help for %s\n',DATA.comcodes(j).code);
+           end
+       end
+    end
+    end
     
  function txt = InsertLine(txt, line, s)
  
@@ -1085,7 +1094,7 @@ for j = 1:length(strs{1})
                 code = find(strcmp(newcode,stimf));
             elseif id(k+1) < id(k)+2
                 fprintf('Code too short %s\n',s(id(k):end));
-            elseif isempty(code) && DATA.togglecodesreceived == 0
+            elseif isempty(code) && DATA.togglecodesreceived == 0 && isvarname(code)
 
                 DATA.showflags.(newcode) = 1;
                 if ~isshown
@@ -1114,20 +1123,7 @@ for j = 1:length(strs{1})
         end
     end %end of 3 char codes
     elseif strncmp(s,'helpfile=',9)
-        s = s(10:end);
-        id = strfind(s,'"');
-        if ~isempty(id)
-            n = [];
-            lbl = s(2:id(end)-1);
-            if isfield(DATA.helpfiles,'label')
-            n = find(strcmp(lbl,{DATA.helpfiles.label}));
-            end
-            if isempty(n)
-                n = length(DATA.helpfiles)+1;
-            end
-            DATA.helpfiles(n).filename = s(id(end)+1:end);
-            DATA.helpfiles(n).label = s(2:id(end)-1);
-        end
+        DATA = AddHelpFile(DATA,s);
     elseif sum(strncmp(s, {'et' 'e2' 'e3' 'n2' 'n3' 'em' 'm2' 'm3' 'op' 'ei' 'i2' 'i3' },2))
     if strncmp(s,'et',2)
         DATA.exptype{1} = sscanf(s,'et=%s');
@@ -2986,6 +2982,22 @@ function ShowHelp(a,b,file)
   catch
       fprintf('%s\n',lasterr)
   end
+  
+  function DATA = AddHelpFile(DATA, s)
+    s = s(10:end);
+        id = strfind(s,'"');
+        if ~isempty(id)
+            n = [];
+            lbl = s(2:id(end)-1);
+            if isfield(DATA.helpfiles,'label')
+            n = find(strcmp(lbl,{DATA.helpfiles.label}));
+            end
+            if isempty(n)
+                n = length(DATA.helpfiles)+1;
+            end
+            DATA.helpfiles(n).filename = s(id(end)+1:end);
+            DATA.helpfiles(n).label = s(2:id(end)-1);
+        end
 
   
   function DATA = AddHelpFiles(DATA, varargin)
@@ -5342,7 +5354,7 @@ function CodesPopup(a,b, type)
     hm = uimenu(cntrl_box,'Label','Search');
     sm = uimenu(hm,'Label','Ignore case','callback',{@SearchList, 'IgnoreCase'},'Tag','IgnoreCase','checked','on');
     
-    uicontrol(gcf,'style','pop','string','Search: All|Search: Codes|Search: Labels|Search: Help','tag','SearchMode',...
+    uicontrol(gcf,'style','pop','string','Search: All|Search: Codes|Search: Labels|Search: Help|Search: HelpFile','tag','SearchMode',...
         'units','norm', 'Position',[0 0.01 0.3 0.08]);
 
     srch = uicontrol(gcf, 'Style','edit','String', '',...

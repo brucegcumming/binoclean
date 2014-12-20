@@ -17,6 +17,8 @@ extern char * VERSION_STRING;
 
 
 int dispcounts[MAXDISPS];
+Stimulus *rdsstims[100] = {NULL};
+
 static int twod = 0;
 extern int option2flag;
 extern double gammaval;
@@ -147,6 +149,11 @@ int init_rds(Stimulus *st,  Substim *sst, float density)
     
   if(density > 0)
     sst->density = sst->density = density;
+  else if(density <= -1) // n dots
+  {
+      sst->density = sst->density = 20.0;
+      ndots = -density;
+  }
   else if(sst->density <= 0.0)
     sst->density = sst->density = 20.0;
   /*
@@ -158,7 +165,8 @@ int init_rds(Stimulus *st,  Substim *sst, float density)
     sst->nw = ceil(2*pos->radius[0]/sst->dotsiz[0]);
     sst->nh = ceil(2*pos->radius[1]/sst->dotsiz[1]);
   }
-  ndots = CalcNdots(sst);
+    if (density >= 0)
+        ndots = CalcNdots(sst);
   if(verbose)
     printf("New RDS %d dots %.2f %.1fx%.1f %.2fx%.2f\n",ndots,sst->density,
 	   sst->pos.radius[0],sst->pos.radius[1],sst->dotsiz[0] ,sst->dotsiz[1]);
@@ -1979,7 +1987,11 @@ int SaveRdsTxt(Stimulus *st, FILE *fd)
     double pixmul;
     static int nsaved = 0;
         
-        
+      
+      if (testflags[SAVE_IMAGES] ==11){
+          i = SaveRdsTxt(st, fd);
+          return(i);
+      }
         
     /*
      * divide pixm by 2 because this disparity is applied
