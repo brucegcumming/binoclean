@@ -1,6 +1,8 @@
 #define X	0
 #define Y	1
-#define XY	2
+#define RX 2
+#define RY 3
+#define XY	4
 
 #define RGB_BLACK	0x00000000  
 #define RGB_WHITE	0x00ffffff

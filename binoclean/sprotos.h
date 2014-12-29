@@ -54,8 +54,6 @@ void plc_paint_cylinder(Stimulus *st);
 void paint_track(Stimulus *st);
 float calc_newoffset(float maxdisparity, float xpos);
 float calc_offset(float minaxis, float x, float viewdist, float halfiod, int left_right);
-void calc_cyl_motion(ball_s *balls, float vel, int ndots, int flag, int lifeframes, float deathchance, int width);
-void calc_subpix_disp(ball_s *balls, int numdots, int flag, float disparity, Locator *pos, float widthfactor, float heightfactor);
 OneStim *NewGabor(Stimulus *st, Substim *sst, Substim *copy);
 void free_gabor_ptr(OneStim *ptr);
 void free_gabor(Substim *st);

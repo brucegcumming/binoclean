@@ -2714,10 +2714,10 @@ void paint_stimulus(Stimulus *st, int follow)
             
             if(st->flag & TRACK_DOT){
                 delta = fabsf(st->left->ptr->velocity * cos(asin(st->left->ptr->trackball.pos[X])));  	
-                st->left->ptr->trackball.pos[X] += (st->left->ptr->trackball.left_right * delta); 		
+                st->left->ptr->trackball.pos[X] += (st->left->ptr->trackball.left_right[X] * delta);
                 if ( (st->left->ptr->trackball.pos[X] >= 1.0) || (st->left->ptr->trackball.pos[X] <= -1.0)) {
                     st->left->ptr->trackball.pos[X] -=(st->left->ptr->trackball.pos[X] * delta);
-                    st->left->ptr->trackball.left_right*=-1; 						     
+                    st->left->ptr->trackball.left_right[X]*=-1;
                 } 	
                 paint_track(st);
             }

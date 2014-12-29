@@ -15169,10 +15169,10 @@ int InterpretLine(char *line, Expt *ex, int frompc)
                     fflush(penlog);
                 }
                 if (todaylog != NULL){
-                    fprintf(todaylog,"R7 %s bt=%.2f time=%s\n",line,timediff(&now,&sessiontime),binocTimeString());
+                    fprintf(todaylog,"R7 bt=%.2f time=%s %s\n",timediff(&now,&sessiontime),binocTimeString(),line);
                 }
                     if (psychlog != NULL){
-                    fprintf(psychlog,"R7 %s bt=%.2f time=%$s\n",line,timediff(&now,&sessiontime),binocTimeString());
+                    fprintf(psychlog,"R7 bt=%.2f time=%$s %s\n",timediff(&now,&sessiontime),binocTimeString(),line);
                 }
             }
             break;

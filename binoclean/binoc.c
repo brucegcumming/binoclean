@@ -4008,6 +4008,8 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
                         SetStimulus(st->next, val, CORRELATION, event);
                 }
             }
+            else if (st->type == STIM_CYLINDER)
+                st->correlation = val;            
             else
                 st->correlation = 1;
             expt.vals[CORRELATION] = val;
@@ -9467,6 +9469,8 @@ float StimulusProperty(Stimulus *st, int code)
                 value = 0;
             else if(st->type == STIM_IMAGE && st->flag & UNCORRELATE)
                 value = 0;
+            else if(st->type == STIM_CYLINDER)
+                value = st->correlation;
             else
                 value = 1.0;
             break;

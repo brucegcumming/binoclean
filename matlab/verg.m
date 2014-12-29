@@ -3135,7 +3135,7 @@ function MenuHit(a,b, arg)
     elseif strcmp(arg,'showpsych')
         DATA = SetFigure('VergPsych', DATA);
         DATA.psych.blockmode = 'Current';
-        DATA = PlotPsych(DATA);
+        DATA = PlotPsych(DATA, 'force');
         if ~isempty(DATA.err)
             fprintf('%s\n',DATA.err);
         end
@@ -6444,6 +6444,16 @@ function HitToggle(a,b, flag)
     DATA = GetDataFromFig(a);
 %    flag = get(a,'Tag');
     DATA.optionflags.(flag) = get(a,'value');
+%Don't allow Rmonoc and Lmonoc to be checked at the same time    
+    if strcmp(flag,'lm') 
+        if DATA.optionflags.lm && DATA.optionflags.rm
+            DATA.optionflags.rm = 0;
+        end
+    elseif strcmp(flag,'rm') 
+        if DATA.optionflags.lm && DATA.optionflags.rm
+            DATA.optionflags.lm = 0;
+        end
+    end
     s = 'op=';
     f = fields(DATA.optionflags);
     for j = 1:length(f)
@@ -6453,7 +6463,9 @@ function HitToggle(a,b, flag)
 %            s = [s '-' f{j}];
         end
     end
-    fprintf('op=0\n%s\n',s);
+    if DATA.verbose(4)
+        fprintf('op=%s\n',s);
+    end
     outprintf(DATA,'op=0\n%s\n',s);
     ReadFromBinoc(DATA);
     CheckTimer(DATA);
@@ -7168,6 +7180,8 @@ function ChoosePsych(a,b, mode)
             Expts = ReadPsychFile([path '/' name]);
             setappdata(gcf,'Expts',Expts);
             PsychMenu(DATA,Expts);
+            GetFigure('Expts Summary');
+            PlotExptsSummary(Expts);
         end
     elseif strmatch(mode,'readpsychfile')
         Expts = ReadPsychFile(DATA.binoc{1}.psychfile);
@@ -7258,15 +7272,23 @@ function DATA = CheckExpts(DATA)
     end
     
 function DATA = PlotPsych(DATA, Expts)
-    
+
+    forcewin = 0;
+
     if nargin ==1
         Expts = {};
+    elseif ischar(Expts)
+        vararg = Expts;
+        Expts = {};
+        if strcmp(vararg,'force');
+            forcewin =1;
+        end
     end
     
     DATA.err = '';
     if (isempty(DATA.Expts) || isempty(DATA.Trials)) && isempty(Expts)
         DATA.err = sprintf('No Trials/Expts');
-        return;
+%        return;
     end
     if strmatch(DATA.psych.blockmode,'None')
         DATA.err = sprintf('Plotting Off - See ''Expts'' Menu');
@@ -7275,9 +7297,14 @@ function DATA = PlotPsych(DATA, Expts)
     if isempty(Expts)
         DATA = CheckExpts(DATA);
         Expts = DATA.Expts;
+        
 
     Expt = [];
     e = length(DATA.Expts);
+    if e == 0 && forcewin ==0
+        return;
+    end
+    
     allid = [];
     if strcmp(DATA.psych.blockmode,'All') || sum(DATA.plotexpts)
         if strmatch(DATA.psych.blockmode,'All')
@@ -7288,25 +7315,32 @@ function DATA = PlotPsych(DATA, Expts)
         %can only combine expts if have same et,e2 types.  Check each
         %against last in list
         if sum(strcmp(DATA.psych.blockmode,{'Current' 'All'}))
-            Expt = DATA.Expts{e};
+            Expt = Expts{e};
         else
-            Expt = DATA.Expts{expts(end)};
+            Expt = Expts{expts(end)};
         end
         
         for j = expts
-            if isfield(DATA.Expts{j},'last')
-                last = DATA.Expts{j}.last;
+            if isfield(Expts{j},'last')
+                last = Expts{j}.last;
             else
                 last = length(DATA.Trials);
             end                
-            if strcmp(DATA.Expts{j}.Stimvals.et,Expt.Stimvals.et) && ...
-               strcmp(DATA.Expts{j}.Stimvals.e2,Expt.Stimvals.e2)
-                allid= [allid DATA.Expts{j}.first:last];
+            if strcmp(Expts{j}.Stimvals.et,Expt.Stimvals.et) && ...
+               strcmp(Expts{j}.Stimvals.e2,Expt.Stimvals.e2)
+                allid= [allid Expts{j}.first:last];
             end
         end
-    else
-        Expt = DATA.Expts{e};
+    elseif sum(e) > 0
+        Expt = Expts{e};
     end
+    if forcewin
+        DATA = SetFigure('VergPsych', DATA);
+    end
+    if isempty(Expt)
+        return;
+    end
+
     %Always update trial list for current expt
     id = DATA.Expts{e}.first:length(DATA.Trials);
         DATA.Expts{e}.Trials = DATA.Trials(id);
