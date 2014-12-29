@@ -30,7 +30,7 @@ void plc_paint_cylinder(Stimulus *st);
 void rect_paint_cylinder(Stimulus *st, int mode);
 void rect_calc_cylinder(Stimulus *st);
 void draw_dot(float rotatefactor[XY], float hdotsize[XY], float xpos, float ypos, float offset, float standing_disp,  float dotwidth, int mode, Locator *pos, int flag, ball_s *ball);
-void calc_cyl_motion(ball_s *balls, float vel, int ndots, int flag, int lifeframes, float deathchance, int width);
+void calc_cyl_motion(ball_s *balls, float vel, int ndots, int flag, int lifeframes, float deathchance, int width, int mode);
 void calc_subpix_disp(ball_s *balls, int numdots, int flag, float disparity, Locator *pos, float widthfactor, float heightfactor);
 
 /*
@@ -87,7 +87,7 @@ OneStim *NewCylinder(Stimulus *st, Substim *sst, Substim  *copy)
     
     pcyl->trackball.pos[X]=0.0;
     pcyl->trackball.pos[Y]=0.0;
-    pcyl->trackball.left_right=1;
+    pcyl->trackball.left_right[X]=1;
     
     /* short term solution */
     
@@ -177,9 +177,9 @@ void fill_balls(int ndots, ball_s *balls, int flag, int lifeframes)
 			drnd = mydrand();
 			balls[i].pos[Y] = 2.0 * (drnd - 0.5); /* -1 to +1 */
 			if (mydrand() >= 0.5)
-			    balls[i].left_right = JONRIGHT;
+			    balls[i].left_right[X] = JONRIGHT;
 			else 
-			    balls[i].left_right = JONLEFT;
+			    balls[i].left_right[X] = JONLEFT;
 			balls[i].lrnd = myrnd_u();
 			balls[i].countdown = balls[i].lrnd % (lifeframes+1);
 		}  
@@ -189,13 +189,19 @@ void fill_balls(int ndots, ball_s *balls, int flag, int lifeframes)
 			balls[i].pos[X] = sinf(M_PI * (mydrand() - 0.5)); /* sin(-pi/2 -> pi/2 */
 			drnd = mydrand();
 			balls[i].pos[Y] = 2.0 * (drnd - 0.5); /* -1 to +1 */
+			balls[i].pos[RX] = sinf(M_PI * (mydrand() - 0.5)); /* sin(-pi/2 -> pi/2 */
+			drnd = mydrand();
+			balls[i].pos[RY] = 2.0 * (drnd - 0.5); /* -1 to +1 */
+            
 			if (mydrand() >= 0.5) 
-			    balls[i].left_right = JONRIGHT;
+			    balls[i].left_right[RX] = balls[i].left_right[X] = JONRIGHT;
 			else 
-			    balls[i].left_right = JONLEFT;
+			    balls[i].left_right[RX] = balls[i].left_right[X] = JONLEFT;
 			balls[i].lrnd = myrnd_u();
 			balls[i].countdown = balls[i].lrnd % (lifeframes+1);
 		}
+        if (ndots > 0 && 0)
+            balls[0].pos[RX] = balls[0].pos[X]; // for testing
 	}
 }
 
@@ -217,20 +223,29 @@ void free_cylinder(Substim *st)
 
 
 /*******************************************************************************************/
-void calc_cylinder(Stimulus  *st) 
+void calc_dots(Stimulus  *st, int mode)
 {         
     OneStim *cyl = (OneStim *)st->left->ptr;       /* points to st->left->ptr */
     ball_s *balls = cyl->balls;
     Locator *pos = &st->pos;
-    int i;
+    int i,xi,yi;
     float delta, vel, fraction, sign;
     int flag = st->flag;	
     float disparity, deathchance;
-    int countdown,nac;
+    int countdown,nac,nuc,ncorr;
     float widthfactor, heightfactor;
     float dx,dy;
     float rotatefactor[2];
     
+    
+    if (mode == JONRIGHT){
+        xi = RX;
+        yi = RY;
+    }
+    else{
+        xi = X;
+        yi = Y;
+    }
     rotatefactor[X]=cosf(pos->angle-(M_PI/2));
     rotatefactor[Y]=sinf(pos->angle-(M_PI/2));
     
@@ -238,7 +253,7 @@ void calc_cylinder(Stimulus  *st)
     dx = (disparity * rotatefactor[X])/2;
     dy = (disparity * rotatefactor[Y])/2;
     widthfactor = (pos->imsize[Y]/2) - (cyl->dotsiz[X]); /*j width and height swapped from earlier so direction same as sine and rds*/
-    heightfactor = (pos->imsize[X]/2) - (cyl->dotsiz[Y]); 
+    heightfactor = (pos->imsize[X]/2) - (cyl->dotsiz[Y]);
     
     
     for(i = 0; i < 2; i++){ /*j*/
@@ -249,28 +264,23 @@ void calc_cylinder(Stimulus  *st)
     
     /*j 3/2/97 motion calculation now in separate function
      does calculation for all balls i=0 i<cyl.numdots + plus tests whether dot should die or not*/
-    calc_cyl_motion(balls, cyl->velocity, cyl->numdots, flag, cyl->lifeframes, cyl->deathchance, pos->imsize[X] );      	
+    calc_cyl_motion(balls, cyl->velocity, cyl->numdots, flag, cyl->lifeframes, cyl->deathchance, pos->imsize[X], mode );
     
     /*if(option2flag & JSUBPIX){
      calc_subpix_disp(balls, cyl->numdots, flag, st->disp, pos, widthfactor, heightfactor);
      }
      else{*/
     nac = 0;
+    nuc = 0;
+    ncorr = 0;
 	for(i=0;i<cyl->numdots;i++){
 	    if (flag & FLAT_DISPARITY)
-		    balls[i].offset = disparity * balls[i].left_right; 
+		    balls[i].offset = disparity * balls[i].left_right[xi];
 	    else
-		    balls[i].offset = disparity * balls[i].proportion * balls[i].left_right; 		
+		    balls[i].offset = disparity * balls[i].proportion[xi] * balls[i].left_right[xi];
 	    
 	    /*j convert to position in pixels*/		
-	    balls[i].position[X] = balls[i].pos[X] * widthfactor;
-	    balls[i].position[Y] = balls[i].pos[Y] * heightfactor; 
-	    if(st->flag & CARDS)
-            balls[i].dot=1 - balls[i].proportion;
-	    else if(st->flag & TEXTURE)
-            balls[i].dot=balls[i].proportion;
-	    else
-            balls[i].dot=1;
+
         balls[i].corr = 1;
         if(st->corrmix >= 0 && i > 0){
             if ((float)(nac)/i < st->corrmix)
@@ -279,6 +289,116 @@ void calc_cylinder(Stimulus  *st)
                 balls[i].corr = -1;
             }
         }
+        if(st->correlation ==0){
+            balls[i].corr = 0;
+        }
+        else if (st->correlation > 0 && st->correlation < 1){
+            if ((float)(ncorr)/i > st->correlation){
+                nuc++;
+                balls[i].corr = 0;
+            }
+            else{
+                ncorr++;
+                balls[i].corr = 1;
+            }
+        }
+
+        if (balls[i].corr ==0 && mode == JONRIGHT){
+            balls[i].position[xi] = balls[i].pos[xi] * widthfactor;
+            balls[i].position[yi] = balls[i].pos[yi] * heightfactor;
+        }
+        else{
+            balls[i].position[xi] = balls[i].pos[X] * widthfactor;
+            balls[i].position[yi] = balls[i].pos[Y] * heightfactor;
+        }
+	    if(st->flag & CARDS)
+            balls[i].dot=1 - balls[i].proportion[xi];
+	    else if(st->flag & TEXTURE)
+            balls[i].dot=balls[i].proportion[xi];
+	    else
+            balls[i].dot=1;
+	}
+    return;
+}
+/*******************************************************************************************/
+void calc_cylinder(Stimulus  *st)
+{
+    OneStim *cyl = (OneStim *)st->left->ptr;       /* points to st->left->ptr */
+    ball_s *balls = cyl->balls;
+    Locator *pos = &st->pos;
+    int i;
+    float delta, vel, fraction, sign;
+    int flag = st->flag;
+    float disparity, deathchance;
+    int countdown,nac;
+    float widthfactor, heightfactor;
+    float dx,dy;
+    float rotatefactor[2];
+    
+    calc_dots(st, JONRIGHT);
+    calc_dots(st, JONLEFT);
+    return;
+    
+    rotatefactor[X]=cosf(pos->angle-(M_PI/2));
+    rotatefactor[Y]=sinf(pos->angle-(M_PI/2));
+    
+    disparity= st->disp*2;
+    dx = (disparity * rotatefactor[X])/2;
+    dy = (disparity * rotatefactor[Y])/2;
+    widthfactor = (pos->imsize[Y]/2) - (cyl->dotsiz[X]); /*j width and height swapped from earlier so direction same as sine and rds*/
+    heightfactor = (pos->imsize[X]/2) - (cyl->dotsiz[Y]);
+    
+    
+    for(i = 0; i < 2; i++){ /*j*/
+        if(pos->imsize[i] == 0)
+            pos->imsize[i] = 256;
+        pos->radius[i] = pos->imsize[i]/2;
+    }
+    
+    /*j 3/2/97 motion calculation now in separate function
+     does calculation for all balls i=0 i<cyl.numdots + plus tests whether dot should die or not*/
+    calc_cyl_motion(balls, cyl->velocity, cyl->numdots, flag, cyl->lifeframes, cyl->deathchance, pos->imsize[X] , JONLEFT);
+    
+    /*if(option2flag & JSUBPIX){
+     calc_subpix_disp(balls, cyl->numdots, flag, st->disp, pos, widthfactor, heightfactor);
+     }
+     else{*/
+    nac = 0;
+	for(i=0;i<cyl->numdots;i++){
+	    if (flag & FLAT_DISPARITY)
+		    balls[i].offset = disparity * balls[i].left_right[X];
+	    else
+		    balls[i].offset = disparity * balls[i].proportion[X] * balls[i].left_right[X];
+	    
+	    /*j convert to position in pixels*/
+	    balls[i].position[X] = balls[i].pos[X] * widthfactor;
+	    balls[i].position[Y] = balls[i].pos[Y] * heightfactor;
+        balls[i].corr = 1;
+        if(st->corrmix >= 0 && i > 0){
+            if ((float)(nac)/i < st->corrmix)
+            {
+                nac++;
+                balls[i].corr = -1;
+            }
+        }
+        if(st->correlation ==0){
+            balls[i].corr = 0;
+        }
+        
+        if (balls[i].corr ==0){
+            balls[i].position[RX] = balls[i].pos[RX] * widthfactor;
+            balls[i].position[RY] = balls[i].pos[RY] * heightfactor;
+        }
+        else{
+            balls[i].position[RX] = balls[i].pos[X] * widthfactor;
+            balls[i].position[RY] = balls[i].pos[Y] * heightfactor;
+        }
+	    if(st->flag & CARDS)
+            balls[i].dot=1 - balls[i].proportion[X];
+	    else if(st->flag & TEXTURE)
+            balls[i].dot=balls[i].proportion[X];
+	    else
+            balls[i].dot=1;
 	}
     return;
 }
@@ -291,7 +411,10 @@ int paint_balls(Stimulus *st, int mode, OneStim *cyl,float *vcolor, float *bcolo
     Locator *pos = &st->pos;
     int i=0,j,r;
     float *black = bcolor,*white = vcolor;
+    int xi = X;
     
+    if (mode == JONRIGHT)
+        xi = RX;
     if((st->flag & (FRONT_ONLY | BACK_ONLY | FRONT_SURFACE_OCCLUDES)) == 0){
         for (i = 0; i <cyl->numdots; i++) { 
             /* calculate parameters for hole */
@@ -318,7 +441,10 @@ int paint_balls(Stimulus *st, int mode, OneStim *cyl,float *vcolor, float *bcolo
                 mycolor(white);
             else
                 mycolor(black);
-            draw_dot(rotatefactor, hdotsize, balls[i].position[X], balls[i].position[Y], balls[i].offset, cyl->standing_disp, balls[i].dot, mode,pos,st->flag,&balls[i]);
+            if (mode == JONRIGHT)
+                draw_dot(rotatefactor, hdotsize, balls[i].position[RX], balls[i].position[RY], balls[i].offset, cyl->standing_disp, balls[i].dot, mode,pos,st->flag,&balls[i]);
+            else
+                draw_dot(rotatefactor, hdotsize, balls[i].position[X], balls[i].position[Y], balls[i].offset, cyl->standing_disp, balls[i].dot, mode,pos,st->flag,&balls[i]);
         }
         return(i);
     }
@@ -339,7 +465,7 @@ int paint_balls(Stimulus *st, int mode, OneStim *cyl,float *vcolor, float *bcolo
                     continue;
                 }
             }
-            if(balls[i].left_right == JONRIGHT){
+            if(balls[i].left_right[xi] == JONRIGHT){
                 if(((balls[i].lrnd >>16) & 0xff) > st->dotfrac * 255)
                     mycolor(vcolor);      
                 else
@@ -366,7 +492,7 @@ int paint_balls(Stimulus *st, int mode, OneStim *cyl,float *vcolor, float *bcolo
                     continue;
                 }
             }
-            if(balls[i].left_right == JONLEFT){
+            if(balls[i].left_right[xi] == JONLEFT){
                 if(((balls[i].lrnd >>16) & 0xff) > st->dotfrac*255)
                     mycolor(vcolor);      
                 else
@@ -625,6 +751,7 @@ void plc_paint_cylinder(Stimulus *st)
     float halfheightpix = (pos->imsize[Y]/2) - (cyl->dotsiz[Y]);    /* plus the dotsize so all drawn within stim area */
     int factor = 1;
     int flag = st->flag;
+    int xi = X;
     
     if(flag & FLAT_DISPARITY) 
         radpix -= st->disp; /* to avoid painting outside boundary square */
@@ -644,34 +771,34 @@ void plc_paint_cylinder(Stimulus *st)
     
     dot[X]=1;
     for (i = 0; i <cyl->numdots; i++) { 
-        if ( !((cyl->direction_r && balls[i].left_right == RIGHT) || (!cyl->direction_r && balls[i].left_right == LEFT)) ){
+        if ( !((cyl->direction_r && balls[i].left_right[xi] == RIGHT) || (!cyl->direction_r && balls[i].left_right[xi] == LEFT)) ){
             xpospix = floorf(balls[i].pos[X] * radpix);
             ypospix = floorf(balls[i].pos[Y] * halfheightpix); 
             
-            vcolor[0] = vcolor[1] = vcolor[2] = ( -(balls[i].proportion) * LEVELS) + meanintensity;
+            vcolor[0] = vcolor[1] = vcolor[2] = ( -(balls[i].proportion[X]) * LEVELS) + meanintensity;
             mycolor(vcolor);
             
             if(flag & CARDS)
-                dot[X]=1 - balls[i].proportion;
+                dot[X]=1 - balls[i].proportion[X];
             if(flag & TEXTURE)
-                dot[X]=balls[i].proportion;
+                dot[X]=balls[i].proportion[X];
             
             glRects(xpospix - cyl->dotsiz[X]/2*dot[X], ypospix - cyl->dotsiz[Y]/2,
                     xpospix + cyl->dotsiz[X]/2*dot[X], ypospix + cyl->dotsiz[Y]/2);
         }   
     }
     for (i = 0; i <cyl->numdots; i++) { 
-        if ( ((cyl->direction_r && balls[i].left_right == RIGHT) || (!cyl->direction_r && balls[i].left_right == LEFT)) ){
+        if ( ((cyl->direction_r && balls[i].left_right[xi] == RIGHT) || (!cyl->direction_r && balls[i].left_right[xi] == LEFT)) ){
             xpospix = floorf(balls[i].pos[X] * radpix);
             ypospix = floorf(balls[i].pos[Y] * halfheightpix); 
             
-            vcolor[0] = vcolor[1] = vcolor[2] = ( (balls[i].proportion) * LEVELS) + meanintensity;
+            vcolor[0] = vcolor[1] = vcolor[2] = ( (balls[i].proportion[X]) * LEVELS) + meanintensity;
             mycolor(vcolor);
             
             if(flag & CARDS)
-                dot[X]=1 - balls[i].proportion;
+                dot[X]=1 - balls[i].proportion[X];
             if(flag & TEXTURE)
-                dot[X]=balls[i].proportion;
+                dot[X]=balls[i].proportion[X];
             
             glRects(xpospix - cyl->dotsiz[X]/2*dot[X], ypospix - cyl->dotsiz[Y]/2,
                     xpospix + cyl->dotsiz[X]/2*dot[X], ypospix + cyl->dotsiz[Y]/2);
@@ -712,7 +839,7 @@ float calc_offset(float minaxis, float x, float viewdist, float halfiod, int lef
     float disp, depth, offset;
     
     depth = minaxis*sqrt(1-(x*x)); /* d=b*sqrt(1-(x*x)/(a*a)) a=1.0 in radius units*/
-    depth *= left_right; 
+    depth *= left_right;
     disp = (atan(halfiod/(viewdist-depth)) - atan(halfiod/viewdist))*2;
     offset = (viewdist*tan(disp))/2;
     
@@ -800,17 +927,23 @@ void draw_dot(float rotatefactor[XY], float hdotsize[XY], float xpos, float ypos
 }   
 /*******************************************************************************************/
 
-void calc_cyl_motion(ball_s *balls, float vel, int ndots, int flag, int lifeframes, float deathchance, int width)
+void calc_cyl_motion(ball_s *balls, float vel, int ndots, int flag, int lifeframes, float deathchance, int width, int mode)
 {    
     float delta, fraction, sign, rnd;
     int i;
+    int xi = X,yi = Y;
+    
+    if (mode == JONRIGHT){
+        xi = RX;
+        yi = RY;
+    }
     for (i = 0; i < ndots; i++) {
-        balls[i].proportion = cos(asin(balls[i].pos[X])); /* sinusoidal variation from -1 -> 1 */ 
+        balls[i].proportion[xi] = cos(asin(balls[i].pos[xi])); /* sinusoidal variation from -1 -> 1 */
         if (flag & FLAT_SURFACES) {
 		    if (flag & COUNTDOWN){
                 if (balls[i].countdown-- <= 0){ 
-				    balls[i].pos[X] = (2.0) * (mydrand() - 0.5);	
-				    balls[i].pos[Y] = (2.0) * (mydrand() - 0.5);
+				    balls[i].pos[xi] = (2.0) * (mydrand() - 0.5);	
+				    balls[i].pos[yi] = (2.0) * (mydrand() - 0.5);
 				    balls[i].countdown = (lifeframes - 1);
                     nreplaced++;
                     
@@ -818,8 +951,8 @@ void calc_cyl_motion(ball_s *balls, float vel, int ndots, int flag, int lifefram
 		    }
 		    else
                 if (mydrand() < deathchance) { 
-                    balls[i].pos[X] = (2.0) * (mydrand() - 0.5);
-                    balls[i].pos[Y] = (2.0) * (mydrand() - 0.5);
+                    balls[i].pos[xi] = (2.0) * (mydrand() - 0.5);
+                    balls[i].pos[yi] = (2.0) * (mydrand() - 0.5);
                     nreplaced++;
                 }
             
@@ -828,27 +961,27 @@ void calc_cyl_motion(ball_s *balls, float vel, int ndots, int flag, int lifefram
         else {
 		    if (flag & COUNTDOWN){
                 if (balls[i].countdown-- <= 0){ /* should do comparrison then subtract 1 */
-				    balls[i].pos[X] = sinf(M_PI * (mydrand() - 0.5));	
-				    balls[i].pos[Y] = (2.0) * (mydrand() - 0.5);
+				    balls[i].pos[xi] = sinf(M_PI * (mydrand() - 0.5));	
+				    balls[i].pos[yi] = (2.0) * (mydrand() - 0.5);
 				    balls[i].countdown = (lifeframes - 1);	
 			    }	    
 		    }
 		    else
                 if ((rnd = mydrand()) < deathchance) { 
-                    balls[i].pos[X] = sinf(M_PI * (mydrand() - 0.5)); /* sin(-pi/2 -> pi/2 */
-                    balls[i].pos[Y] = (2.0) * (mydrand() - 0.5);
+                    balls[i].pos[xi] = sinf(M_PI * (mydrand() - 0.5)); /* sin(-pi/2 -> pi/2 */
+                    balls[i].pos[yi] = (2.0) * (mydrand() - 0.5);
                     nreplaced++;
                 }	
-            delta = fabsf(vel * balls[i].proportion);  	/* theta=asin(x)/r, dotvel=cos(theta)) */  
+            delta = fabsf(vel * balls[i].proportion[xi]);  	/* theta=asin(x)/r, dotvel=cos(theta)) */  
         }
-        balls[i].pos[X] += (balls[i].left_right * delta)/width*1000; 		/* adds or subtracts delta */
+        balls[i].pos[xi] += (balls[i].left_right[xi] * delta)/width*1000; 		/* adds or subtracts delta */
         
-        if ((balls[i].pos[X] >= 1.0) || (balls[i].pos[X] <= -1.0)) {
-            fraction = (modff(balls[i].pos[X], &sign));
-            balls[i].pos[X] = sign - fraction;
-            balls[i].left_right*=-1;		/* swaps LEFT and RIGHT */
+        if ((balls[i].pos[xi] >= 1.0) || (balls[i].pos[xi] <= -1.0)) {
+            fraction = (modff(balls[i].pos[xi], &sign));
+            balls[i].pos[xi] = sign - fraction;
+            balls[i].left_right[xi]*=-1;		/* swaps LEFT and RIGHT */
             if (flag & NO_WRAP)
-                balls[i].pos[Y] = (2.0) * (mydrand() - 0.5);    						     
+                balls[i].pos[yi] = (2.0) * (mydrand() - 0.5);    						     
         }
     }
 }
@@ -871,9 +1004,9 @@ void calc_subpix_disp(ball_s *balls, int numdots, int flag, float disparity, Loc
         /* if negative then take an extra pixel off and use appropriate primitive */
         /* e.g. minus 1.5 is minus 2 pixels, and the middle primitive */
     	if (flag & FLAT_DISPARITY){
-		    balls[i].primitive_num[0] = (int)floorf(numlevels * modff( ((dotpospix+disparity) * balls[i].left_right), &pixs)); 		
+		    balls[i].primitive_num[0] = (int)floorf(numlevels * modff( ((dotpospix+disparity) * balls[i].left_right[X]), &pixs));
 		    balls[i].rectposition[0] = pixs + pix_xy[X];
-		    balls[i].primitive_num[1] = (int)floorf(numlevels * modff( ((dotpospix-disparity) * balls[i].left_right), &pixs)); 		
+		    balls[i].primitive_num[1] = (int)floorf(numlevels * modff( ((dotpospix-disparity) * balls[i].left_right[X]), &pixs));
 		    balls[i].rectposition[1] = pixs + pix_xy[X];
 		    for(j=0;j<2;j++){
                 if (balls[i].primitive_num[j] < 0){
@@ -883,9 +1016,9 @@ void calc_subpix_disp(ball_s *balls, int numdots, int flag, float disparity, Loc
 		    }
         }
         else{   /* the modff frunction gives the fraction part to work out the prim number and the integer part to balls[i].offset both signed */
-            balls[i].primitive_num[0] = (int)floorf(numlevels * modff( dotpospix+(disparity * balls[i].proportion * balls[i].left_right), &pixs)); 		
+            balls[i].primitive_num[0] = (int)floorf(numlevels * modff( dotpospix+(disparity * balls[i].proportion[X] * balls[i].left_right[X]), &pixs));
             balls[i].rectposition[0] = pixs + pix_xy[X];
-            balls[i].primitive_num[0] = (int)floorf(numlevels * modff( dotpospix-(disparity * balls[i].proportion * balls[i].left_right), &pixs)); 		
+            balls[i].primitive_num[0] = (int)floorf(numlevels * modff( dotpospix-(disparity * balls[i].proportion[X] * balls[i].left_right[X]), &pixs));
             balls[i].rectposition[1] = pixs + pix_xy[X];
     		/*printf("\nprim: %d rawoff: %.3f", balls[i].primitive_num, balls[i].offset);*/
 		    for(j=0;j<2;j++){
