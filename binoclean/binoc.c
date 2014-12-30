@@ -56,7 +56,7 @@
 
 extern char * VERSION_STRING;
 extern char * SHORT_VERSION_NUMBER;
-extern float frametimes[];
+extern float frametimes[],bwtimeoffset[];
 /*GLUquadricObj *gluq;*/
 static GLuint base,bigbase,mediumbase;
 static int eventstate = 0,window_is_mapped = 0;
@@ -347,7 +347,7 @@ char *binocTimeString()
     tval = time(NULL);
     t = ctime(&tval);
     t[19] = 0;
-    return (&t[10]);
+    return (&t[11]);
 }
 
 char *binocDateString(int full)
@@ -10816,7 +10816,7 @@ int PrintPsychLine(int presult, int sign, FILE *fd)
     if (todaylog != NULL && fd != todaylog){
         PrintPsychLine(presult, sign, todaylog);
     }
-    start = timediff(&now,&progstarttime);
+    start = timediff(&firstframetime,&progstarttime);
     down = timediff(&now,&wurtzframetime);
     
     if(fd != NULL){
@@ -12043,8 +12043,8 @@ void Stim2PsychFile(int state, FILE *fd)
 
         r = binocTimeString();
         if(state == START_EXPT || state == START_EXPT+100){
-            fprintf(fd,"R7 %s date=%s\n", StimString(STIMULUS_TYPE_CODE),binocDateString(1));
-            fprintf(fd,"R7 binoclean=%s time=%s %s bt=%.2f", s, &r[1],StimString(OPTION_CODE));
+            fprintf(fd,"R7 %s date=%s progtime=%.3f bt=%.3f diff=%.3f\n", StimString(STIMULUS_TYPE_CODE),binocDateString(1),timediff(&now,&progstarttime),timediff(&now,&sessiontime),bwtimeoffset[1]);
+            fprintf(fd,"R7 binoclean=%s time=%s %s", s, &r[1],StimString(OPTION_CODE));
             fprintf(fd," bt=%.2f", timediff(&now,&sessiontime));
             fprintf(fd," %s",StimString(UFF_PREFIX));
             fprintf(fd," %s",StimString(EXPT_NAME));

@@ -4257,7 +4257,7 @@ ok = 1;
      outprintf(DATA,'magic=');
      ts = now;
      trialcount = DATA.nt;
-     while DATA.binoc{1}.magic ~= newmagic && mytoc(ts) < DATA.draintimeout && ok == 0
+     while (DATA.binoc{1}.magic ~= newmagic || ok == 0) && mytoc(ts) < DATA.draintimeout
          [DATA, str] = ReadHttp(DATA);
          if DATA.nt > trialcount
              ok = 1;
@@ -5538,9 +5538,9 @@ function DATA = RunExptSequence(DATA, str, line)
     if ~iscellstr(str)
         str = cellstr(str);
     end
-    runlines = find(strncmp('!expt',str,5));
+    runlines = find(strncmp('!expt',str,5) | strncmp('!trial',str,5)) ;
     if isempty(runlines)
-        warndlg('Sequence must contain !expt','Sequence file error');
+        warndlg('Sequence must contain !expt or !trial','Sequence file error');
         lastline = 1;
     else
         lastline = runlines(end);
@@ -5633,6 +5633,10 @@ for j = line:length(str)
         DATA = AddTextToGui(DATA,sprintf('Seq Line %d-%d %s',line,j,lastline),'norec');
 
         return;
+    elseif strncmp(str{j},'!trial',5)
+        outprintf(DATA,'!onetrial\n');
+        pause(0.2);
+        DATA = DrainBinocPipe(DATA,'waitforstim');
     elseif strncmp(str{j},'!mat',4)
         DATA.Statuslines{end+1} = sprintf('RunSequence Line %d: %s',str{j});
         if isfield(DATA.matexpres,'abort') && DATA.matexpres.abort > 0

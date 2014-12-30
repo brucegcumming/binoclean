@@ -126,6 +126,8 @@ double fakestim =0;
 
 int usenewdirs=0;
 int saveframetimes = 0;
+float bwtimeoffset[2] = {0};
+
 extern int inexptstim;
 static int pcmode = SPIKE2;
 static char **expmenustrings;
@@ -14569,11 +14571,14 @@ int InterpretLine(char *line, Expt *ex, int frompc)
                 fprintf(penlog,"%.4f bwticks = %s\n",bwticks,binocTimeString());
                 lastticks = bwticks;
             }
+            gettimeofday(&now,NULL);
+            val = timediff(&now,&sessiontime);
+            bwtimeoffset[1] = val-bwticks;
+            val = timediff(&now,&progstarttime);
+            bwtimeoffset[0] = val-bwticks;
             if(seroutfile){
                 fprintf(seroutfile,"#%s\n",line);
-                gettimeofday(&now,NULL);
-                val = timediff(&now,&progstarttime);
-                fprintf(seroutfile,"#%.4f bwticks = %s, %.3f dt = %.3f\n",bwticks,binocTimeString(),val,val - bwticks);
+                fprintf(seroutfile,"#%.4f bwticks = %s, %.3f dt = %.3f\n",bwticks,binocTimeString(),val,bwtimeoffset[0]);
             }
         }
             break;
@@ -15172,7 +15177,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
                     fprintf(todaylog,"R7 bt=%.2f time=%s %s\n",timediff(&now,&sessiontime),binocTimeString(),line);
                 }
                     if (psychlog != NULL){
-                    fprintf(psychlog,"R7 bt=%.2f time=%$s %s\n",timediff(&now,&sessiontime),binocTimeString(),line);
+                    fprintf(psychlog,"R7 bt=%.2f time=%s %s\n",timediff(&now,&sessiontime),binocTimeString(),line);
                 }
             }
             break;
