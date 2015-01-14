@@ -1,3 +1,4 @@
+monkey=nby
 clearquick
 monitor=/local/monitors/Default
 mo=0
@@ -178,7 +179,7 @@ du2.400	#STIMULUS DURATION
 po=0.00	#POSTPERIOD
 mo=+db+zb	#Mode
 nt=5	#N Stim (Expt 1)
-uf=d:\bw\data\ruby\rbtest	#Uff Prefix
+uf=C:\Spike2\data\nby\test	#Uff Prefix
 hx=0.0000	#High X Value for Interleaves
 sM=0.0000	#Stimulus mode
 wr=0.62	#WURTZ task response period

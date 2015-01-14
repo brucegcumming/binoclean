@@ -11665,8 +11665,8 @@ void chessboard(float w, float h)
     static float lastc = 0,laps = 0;
     
     
-    o[0] = deg2pix(expt.vals[FIXPOS_X]);
-    o[1] = deg2pix(expt.vals[FIXPOS_Y]);
+    o[0] = deg2pix(expt.vals[IMAGEXPOS]);
+    o[1] = deg2pix(expt.vals[IMAGEYPOS]);
     c = TheStim->pos.contrast_amp;
     c = expt.vals[TIMEOUT_CONTRAST];
     a = (c+1)/2;
