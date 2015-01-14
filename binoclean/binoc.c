@@ -6584,7 +6584,7 @@ int next_frame(Stimulus *st)
             }
             if(timeout_type == SHAKE_TIMEOUT_PART1)
                 timeout_type = SHAKE_TIMEOUT_PART2;
-            if(expt.vals[GRIDSIZE] > 20){
+            if(expt.vals[GRIDSIZE] > 100){ //specify in pixels, not degrees
                 setmask(ALLMODE);
                 chessboard((int)(expt.vals[GRIDSIZE]), (int)(expt.vals[GRIDSIZE]));
             }
@@ -6594,6 +6594,13 @@ int next_frame(Stimulus *st)
                     i = (int)(expt.st->pos.contrast_phase) % expt.nstim[0];
                     expt.vals[TIMEOUT_CONTRAST] = ((float)(i)/(floor(expt.nstim[0]/2)))-1;
                 }
+                else{ // not contrast reversing, use initial phase value to set which contrast
+                    i = (int)(round(expt.st->vals[START_PHASE]));
+                    i = i % expt.nstim[0];
+                    // 0 -> -1 nt/2 -> 0, nt->1
+                    expt.vals[TIMEOUT_CONTRAST] = expt.st->pos.contrast_amp;
+                }
+                
                 setmask(ALLMODE);
                 chessboard(deg2pix(expt.vals[GRIDSIZE]), deg2pix(expt.vals[GRIDSIZE]));
                 if((int)(expt.vals[ALTERNATE_STIM_MODE]) == CROSS_TALK){	
@@ -11654,16 +11661,25 @@ void chessboard(float w, float h)
     int squares=8;
     float x, y;
     int i, j;
-    float a,b,c;
+    float a,b,c,o[2],starto[2];
     static float lastc = 0,laps = 0;
     
     
+    o[0] = deg2pix(expt.vals[FIXPOS_X]);
+    o[1] = deg2pix(expt.vals[FIXPOS_Y]);
     c = TheStim->pos.contrast_amp;
     c = expt.vals[TIMEOUT_CONTRAST];
     a = (c+1)/2;
     b = 1-a;
     x = winsiz[0]/w;
     y = 1 + (winsiz[1]-1)/h;
+    if(o[0] > 0){
+        starto[0] = o[0] - w;
+        starto[1] = o[1] - h;
+    }
+    else{
+        starto[0] = starto[1] = 0;
+    }
     if(lastc != c){
         printf("Lum %.3f %.3f gamma %.3f\n",a,b,gammaval);
         if (seroutfile){
@@ -11674,13 +11690,13 @@ void chessboard(float w, float h)
     if (option2flag & PSYCHOPHYSICS_BIT || optionflag & SEARCH_MODE_BIT) //set this to get full screen
         b = a;
     
-    for (i = -x-1; i < x; i++) {
-        for (j = -y; j < y; j++) {
+    for (i = -x-1+starto[0]; i < x; i++) {
+        for (j = -y+starto[1]; j < y; j++) {
             if (ODD(i + j))
-                SetColor(a,1);
+                SetColor(a,0);
             else
-                SetColor(b,1);
-            myrect((float)(i*w), (float)(j*h), (float)(i*w+w), (float)(j*h+h));
+                SetColor(b,0);
+            myrect((float)(i*w)+o[0], (float)(j*h)+o[1], (float)(i*w+w)+o[0], (float)(j*h+h)+o[0]);
         }
     }
     

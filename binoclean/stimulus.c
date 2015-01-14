@@ -731,7 +731,7 @@ void SetColor(float cindex, int correct)
     float cval;
     
     if(correct)
-        cval = dogamma(cindex);
+        cval = dogamma(cindex); //shouldnt do anytthing anymore
     else
         cval = cindex;
     glColor4f(cval,cval,cval,cval);
@@ -2914,7 +2914,7 @@ int grid(vcoord w, vcoord  h, int eye)
     }
     glEnd();
     glBegin(GL_LINES);
-    if(expt.vals[GRIDSIZE] > 10){
+    if(expt.vals[GRIDSIZE] > 100){
         ReadGridVals();
         for (i = 0; i < nhlines; i++) {
             x[1] = deg2pix(hlines[i]);
