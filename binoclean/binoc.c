@@ -2345,6 +2345,7 @@ int ClearStimLine(int n){
 void StartRunning()
 {
     int i;
+    float linew[10];
     
     if(optionflag & DITHERMODE) //Ali && confirm_no("Are You Sure You want Dithering?",NULL))
         optionflag &= (~DITHERMODE);
@@ -2380,6 +2381,9 @@ void StartRunning()
     }
     glGetDoublev(GL_PROJECTION_MATRIX,pmatrix);
     glPushMatrix();
+    glGetFloatv(GL_ALIASED_LINE_WIDTH_RANGE, linew);
+    fprintf(stderr,
+            "Max Supported Line Width %.1f = %.2f deg\n",linew[1],pix2deg(linew[1]));
     binocrunning = 1;
     if(TheStim->left->baseseed == 0){
         NewSeed(TheStim);
@@ -5734,8 +5738,17 @@ void increment_stimulus(Stimulus *st, Locator *pos)
     }
     else if( isadotstim(st) && st->left->seedloop > 1) //seedloop now sets # of repeated frames
     { //if RANDOM_PAHSE is off, this is sampled motion
-        if(expt.framesdone%rds->seedloop == 0 && rds->seedloop > 1)
-            pos->locn[0] += (st->posinc * rds->seedloop);
+        if (rds->seedloop > 1){
+// in a fast sequecne where Fr is 1 and seedloop is 3, change dot pattern with stimulus
+            if (expt.vals[FAST_SEQUENCE_RPT] <= rds->seedloop && optionflags[FAST_SEQUENCE]){
+                if(expt.framesdone % (int)expt.vals[FAST_SEQUENCE_RPT] == 0){
+                    rds->baseseed +=2;
+                }
+            
+            }
+            if(expt.framesdone%rds->seedloop == 0)
+                pos->locn[0] += (st->posinc * rds->seedloop);
+        }
     }
     if(st->type == STIM_CYLINDER || st->type == STIM_RDS && st->left->seedloop == 1){
         if(realframecount == 0)
