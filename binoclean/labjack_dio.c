@@ -124,6 +124,7 @@ int DIOWriteBit(int Channel, BYTE output)
 {
     struct timeval now;
     char buf[2048];
+    float ut,ufftime();
 
     if(!isok)
         return(0);
@@ -199,6 +200,7 @@ int DIOWriteBit(int Channel, BYTE output)
     if (r < 0 )
     {
         gettimeofday(&now, NULL);
+        ut = ufftime(&now);
         sprintf(buf,"DIO ERROR (%d) while writing %d to %d at %.3f",r,Channel,output,ufftime(&now));
         fprintf(stderr,"%s\n",buf);        // can get errors from first write. ? when its resqesting the same state?
         // so don't report an error until the second failure. isok is set to 2 at startup

@@ -6568,9 +6568,11 @@ int next_frame(Stimulus *st)
 // be sure these are off in case did uStim....
 //ideally would sample currentstate and change if necessary
 #ifdef NIDAQ
-            DIOWriteBit(2,  0);
-            DIOWriteBit(1,  0);
-            DIOWriteBit(0,  0);
+            if (laststate != stimstate){
+                DIOWriteBit(2,  0);
+                DIOWriteBit(1,  0);
+                DIOWriteBit(0,  0);
+            }
             
 #endif
             if(rdspair(expt.st))
