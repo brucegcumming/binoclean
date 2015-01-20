@@ -1940,7 +1940,7 @@ char *ReadManualStim(char *file, int stimid){
     if((fin = fopen(file,"r")) == NULL)
     {
         sprintf(cbuf,"Can't read %s",file);
-        if (lastresult >= 0) // don't send multiple acks
+        if (lastresult != -1) // don't send multiple acks
             acklog(cbuf,0);
         lastresult = -1;
         return(NULL);
@@ -2038,7 +2038,9 @@ char *ReadManualStim(char *file, int stimid){
     fclose(fin);
     if (stimframes > expt.st->nframes+1){
         sprintf(mssg,"%d Frame Values in %s, but only %d frames (nf) set for duration",stimframes,file,expt.st->nframes);
-        acknowledge(mssg,NULL);
+        if (lastresult != -2) // don't send multiple acks
+            acklog(mssg,0);
+        lastresult = -2;
     }
     if (expt.st->preload && expt.st->next->type == STIM_IMAGE && nframes > 0){
         st = expt.st;
