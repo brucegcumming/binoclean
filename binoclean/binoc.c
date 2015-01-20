@@ -11465,6 +11465,8 @@ int GotChar(char c)
                 {
                     if(optionflags[SHOW_REWARD_BIAS])
                         TheStim->fix.rwsize = expt.vals[REWARD_SIZE3];
+                    else if (!(SACCREQD(afc_s)))
+                        TheStim->fix.rwsize = TheStim->fix.fixrwsize;
                     else if(afc_s.goodinarow >= (afc_s.bonuslevel2) && afc_s.bonuslevel2 > 0)
                         TheStim->fix.rwsize = expt.vals[REWARD_SIZE3];		 
                     else if(afc_s.goodinarow >= (afc_s.bonuslevel) && afc_s.bonuslevel > 0)
@@ -11479,7 +11481,7 @@ int GotChar(char c)
                 }
                 else if(rndbonus > 0 && (i = random())%rndbonus == 0 && !optionflags[INITIAL_TRAINING]){
                     fprintf(stderr,"Rnd was %ld: (seed %d) big reward\n",i,totaltrials);
-                    TheStim->fix.rwsize = oldrw * 3;
+                    TheStim->fix.rwsize = TheStim->fix.fixrwsize * 3;
                 }
                 SerialSend(REWARD_SIZE);
                 expt.vals[REWARD_SIZE] = TheStim->fix.rwsize;
