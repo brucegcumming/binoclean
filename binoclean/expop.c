@@ -1930,6 +1930,7 @@ char *ReadManualStim(char *file, int stimid){
     Stimulus *st;
     static char cbuf[BUFSIZ*10];
     static int lastresult = 0;
+    int stimframes = 0;
     
     manualprop[0] = -1;  //in case file error
     if(file == NULL)
@@ -1985,6 +1986,8 @@ char *ReadManualStim(char *file, int stimid){
                 t = s;
             }
             nframes= j;
+            if (nframes > stimframes) // find lonest list across all lines with ":"
+                stimframes = nframes;
             if(!strncmp(inbuf,"imx",3)){
                 memcpy(imx,manualstimvals[nprop],nframes * sizeof(float));
             }
@@ -2033,6 +2036,10 @@ char *ReadManualStim(char *file, int stimid){
     }
     manualprop[nprop] = -1;
     fclose(fin);
+    if (stimframes > expt.st->nframes+1){
+        sprintf(mssg,"%d Frame Values in %s, but only %d frames (nf) set for duration",stimframes,file,expt.st->nframes);
+        acknowledge(mssg,NULL);
+    }
     if (expt.st->preload && expt.st->next->type == STIM_IMAGE && nframes > 0){
         st = expt.st;
         for (j = 0; j < nframes; j++){
