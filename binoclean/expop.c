@@ -2036,12 +2036,6 @@ char *ReadManualStim(char *file, int stimid){
     }
     manualprop[nprop] = -1;
     fclose(fin);
-    if (stimframes > expt.st->nframes+1){
-        sprintf(mssg,"%d Frame Values in %s, but only %d frames (nf) set for duration",stimframes,file,expt.st->nframes);
-        if (lastresult != -2) // don't send multiple acks
-            acklog(mssg,0);
-        lastresult = -2;
-    }
     if (expt.st->preload && expt.st->next->type == STIM_IMAGE && nframes > 0){
         st = expt.st;
         for (j = 0; j < nframes; j++){
@@ -2070,8 +2064,16 @@ char *ReadManualStim(char *file, int stimid){
         }
         expt.st->next->preloaded = j;
     }
-    lastresult = 0;   
-    return(cbuf);
+    if (stimframes > expt.st->nframes+1){
+        sprintf(mssg,"%d Frame Values in %s, but only %d frames (nf) set for duration",stimframes,file,expt.st->nframes);
+        if (lastresult != -2) // don't send multiple acks
+            acklog(mssg,0);
+        lastresult = -2;
+    }
+    else{
+        lastresult = 0;
+    }
+   return(cbuf);
 }
 
 int SendManualSequence()
