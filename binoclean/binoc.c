@@ -12075,6 +12075,7 @@ void Stim2PsychFile(int state, FILE *fd)
             *(r-4) = 0;
 
         r = binocTimeString();
+        tval = RunTime();
         if(state == START_EXPT || state == START_EXPT+100){
             fprintf(fd,"R7 %s date=%s progtime=%.3f bt=%.3f diff=%.3f\n", StimString(STIMULUS_TYPE_CODE),binocDateString(1),timediff(&now,&progstarttime),timediff(&now,&sessiontime),bwtimeoffset[1]);
             fprintf(fd,"R7 binoclean=%s time=%s %s", s, &r[1],StimString(OPTION_CODE));
@@ -12113,11 +12114,10 @@ void Stim2PsychFile(int state, FILE *fd)
         fprintf(fd,"R4 %s=%.2f %s=%.2f sn=0",
                 serial_strings[COVARY_XPOS],afc_s.ccvar,
                 serial_strings[TARGET_RATIO],expt.vals[TARGET_RATIO]);
-        tval = RunTime();
         ts = binocTimeString();
         ts[3] = '.';
         ts[6] = 0;
-        fprintf(fd," %ld %s %d",now.tv_sec,ts,expt.nstim[6]);
+        fprintf(fd," %ld %.3f %d",now.tv_sec,tval,expt.nstim[6]);
         fprintf(fd," %s=%.2f %s=%.2f %s=NaN %s=NaN %s=NaN x=0\n",serial_strings[XPOS],GetProperty(&expt,expt.st,XPOS),serial_strings[YPOS],GetProperty(&expt,expt.st,YPOS),
                 serial_strings[expt.mode],
                 serial_strings[expt.type2],
