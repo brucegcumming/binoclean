@@ -56,7 +56,7 @@
 
 extern char * VERSION_STRING;
 extern char * SHORT_VERSION_NUMBER;
-extern float frametimes[];
+extern float frametimes[],bwtimeoffset[];
 /*GLUquadricObj *gluq;*/
 static GLuint base,bigbase,mediumbase;
 static int eventstate = 0,window_is_mapped = 0;
@@ -347,7 +347,7 @@ char *binocTimeString()
     tval = time(NULL);
     t = ctime(&tval);
     t[19] = 0;
-    return (&t[10]);
+    return (&t[11]);
 }
 
 char *binocDateString(int full)
@@ -2345,6 +2345,7 @@ int ClearStimLine(int n){
 void StartRunning()
 {
     int i;
+    float linew[10];
     
     if(optionflag & DITHERMODE) //Ali && confirm_no("Are You Sure You want Dithering?",NULL))
         optionflag &= (~DITHERMODE);
@@ -2380,6 +2381,9 @@ void StartRunning()
     }
     glGetDoublev(GL_PROJECTION_MATRIX,pmatrix);
     glPushMatrix();
+    glGetFloatv(GL_ALIASED_LINE_WIDTH_RANGE, linew);
+    fprintf(stderr,
+            "Max Supported Line Width %.1f = %.2f deg\n",linew[1],pix2deg(linew[1]));
     binocrunning = 1;
     if(TheStim->left->baseseed == 0){
         NewSeed(TheStim);
@@ -5734,8 +5738,17 @@ void increment_stimulus(Stimulus *st, Locator *pos)
     }
     else if( isadotstim(st) && st->left->seedloop > 1) //seedloop now sets # of repeated frames
     { //if RANDOM_PAHSE is off, this is sampled motion
-        if(expt.framesdone%rds->seedloop == 0 && rds->seedloop > 1)
-            pos->locn[0] += (st->posinc * rds->seedloop);
+        if (rds->seedloop > 1){
+// in a fast sequecne where Fr is 1 and seedloop is 3, change dot pattern with stimulus
+            if (expt.vals[FAST_SEQUENCE_RPT] <= rds->seedloop && optionflags[FAST_SEQUENCE]){
+                if(expt.framesdone % (int)expt.vals[FAST_SEQUENCE_RPT] == 0){
+                    rds->baseseed +=2;
+                }
+            
+            }
+            if(expt.framesdone%rds->seedloop == 0)
+                pos->locn[0] += (st->posinc * rds->seedloop);
+        }
     }
     if(st->type == STIM_CYLINDER || st->type == STIM_RDS && st->left->seedloop == 1){
         if(realframecount == 0)
@@ -6555,9 +6568,11 @@ int next_frame(Stimulus *st)
 // be sure these are off in case did uStim....
 //ideally would sample currentstate and change if necessary
 #ifdef NIDAQ
-            DIOWriteBit(2,  0);
-            DIOWriteBit(1,  0);
-            DIOWriteBit(0,  0);
+            if (laststate != stimstate){
+                DIOWriteBit(2,  0);
+                DIOWriteBit(1,  0);
+                DIOWriteBit(0,  0);
+            }
             
 #endif
             if(rdspair(expt.st))
@@ -6584,7 +6599,7 @@ int next_frame(Stimulus *st)
             }
             if(timeout_type == SHAKE_TIMEOUT_PART1)
                 timeout_type = SHAKE_TIMEOUT_PART2;
-            if(expt.vals[GRIDSIZE] > 20){
+            if(expt.vals[GRIDSIZE] > 100){ //specify in pixels, not degrees
                 setmask(ALLMODE);
                 chessboard((int)(expt.vals[GRIDSIZE]), (int)(expt.vals[GRIDSIZE]));
             }
@@ -6594,6 +6609,13 @@ int next_frame(Stimulus *st)
                     i = (int)(expt.st->pos.contrast_phase) % expt.nstim[0];
                     expt.vals[TIMEOUT_CONTRAST] = ((float)(i)/(floor(expt.nstim[0]/2)))-1;
                 }
+                else{ // not contrast reversing, use initial phase value to set which contrast
+                    i = (int)(round(expt.st->vals[START_PHASE]));
+                    i = i % expt.nstim[0];
+                    // 0 -> -1 nt/2 -> 0, nt->1
+                    expt.vals[TIMEOUT_CONTRAST] = expt.st->pos.contrast_amp;
+                }
+                
                 setmask(ALLMODE);
                 chessboard(deg2pix(expt.vals[GRIDSIZE]), deg2pix(expt.vals[GRIDSIZE]));
                 if((int)(expt.vals[ALTERNATE_STIM_MODE]) == CROSS_TALK){	
@@ -10816,7 +10838,7 @@ int PrintPsychLine(int presult, int sign, FILE *fd)
     if (todaylog != NULL && fd != todaylog){
         PrintPsychLine(presult, sign, todaylog);
     }
-    start = timediff(&now,&progstarttime);
+    start = timediff(&firstframetime,&progstarttime);
     down = timediff(&now,&wurtzframetime);
     
     if(fd != NULL){
@@ -11443,6 +11465,8 @@ int GotChar(char c)
                 {
                     if(optionflags[SHOW_REWARD_BIAS])
                         TheStim->fix.rwsize = expt.vals[REWARD_SIZE3];
+                    else if (!(SACCREQD(afc_s)))
+                        TheStim->fix.rwsize = TheStim->fix.fixrwsize;
                     else if(afc_s.goodinarow >= (afc_s.bonuslevel2) && afc_s.bonuslevel2 > 0)
                         TheStim->fix.rwsize = expt.vals[REWARD_SIZE3];		 
                     else if(afc_s.goodinarow >= (afc_s.bonuslevel) && afc_s.bonuslevel > 0)
@@ -11457,7 +11481,7 @@ int GotChar(char c)
                 }
                 else if(rndbonus > 0 && (i = random())%rndbonus == 0 && !optionflags[INITIAL_TRAINING]){
                     fprintf(stderr,"Rnd was %ld: (seed %d) big reward\n",i,totaltrials);
-                    TheStim->fix.rwsize = oldrw * 3;
+                    TheStim->fix.rwsize = TheStim->fix.fixrwsize * 3;
                 }
                 SerialSend(REWARD_SIZE);
                 expt.vals[REWARD_SIZE] = TheStim->fix.rwsize;
@@ -11654,16 +11678,25 @@ void chessboard(float w, float h)
     int squares=8;
     float x, y;
     int i, j;
-    float a,b,c;
+    float a,b,c,o[2],starto[2];
     static float lastc = 0,laps = 0;
     
     
+    o[0] = deg2pix(expt.vals[IMAGEXPOS]);
+    o[1] = deg2pix(expt.vals[IMAGEYPOS]);
     c = TheStim->pos.contrast_amp;
     c = expt.vals[TIMEOUT_CONTRAST];
     a = (c+1)/2;
     b = 1-a;
     x = winsiz[0]/w;
     y = 1 + (winsiz[1]-1)/h;
+    if(o[0] > 0){
+        starto[0] = o[0] - w;
+        starto[1] = o[1] - h;
+    }
+    else{
+        starto[0] = starto[1] = 0;
+    }
     if(lastc != c){
         printf("Lum %.3f %.3f gamma %.3f\n",a,b,gammaval);
         if (seroutfile){
@@ -11674,13 +11707,13 @@ void chessboard(float w, float h)
     if (option2flag & PSYCHOPHYSICS_BIT || optionflag & SEARCH_MODE_BIT) //set this to get full screen
         b = a;
     
-    for (i = -x-1; i < x; i++) {
-        for (j = -y; j < y; j++) {
+    for (i = -x-1+starto[0]; i < x; i++) {
+        for (j = -y+starto[1]; j < y; j++) {
             if (ODD(i + j))
-                SetColor(a,1);
+                SetColor(a,0);
             else
-                SetColor(b,1);
-            myrect((float)(i*w), (float)(j*h), (float)(i*w+w), (float)(j*h+h));
+                SetColor(b,0);
+            myrect((float)(i*w)+o[0], (float)(j*h)+o[1], (float)(i*w+w)+o[0], (float)(j*h+h)+o[0]);
         }
     }
     
@@ -12042,9 +12075,10 @@ void Stim2PsychFile(int state, FILE *fd)
             *(r-4) = 0;
 
         r = binocTimeString();
+        tval = RunTime();
         if(state == START_EXPT || state == START_EXPT+100){
-            fprintf(fd,"R7 %s date=%s\n", StimString(STIMULUS_TYPE_CODE),binocDateString(1));
-            fprintf(fd,"R7 binoclean=%s time=%s %s bt=%.2f", s, &r[1],StimString(OPTION_CODE));
+            fprintf(fd,"R7 %s date=%s progtime=%.3f bt=%.3f diff=%.3f\n", StimString(STIMULUS_TYPE_CODE),binocDateString(1),timediff(&now,&progstarttime),timediff(&now,&sessiontime),bwtimeoffset[1]);
+            fprintf(fd,"R7 binoclean=%s time=%s %s", s, &r[1],StimString(OPTION_CODE));
             fprintf(fd," bt=%.2f", timediff(&now,&sessiontime));
             fprintf(fd," %s",StimString(UFF_PREFIX));
             fprintf(fd," %s",StimString(EXPT_NAME));
@@ -12080,11 +12114,10 @@ void Stim2PsychFile(int state, FILE *fd)
         fprintf(fd,"R4 %s=%.2f %s=%.2f sn=0",
                 serial_strings[COVARY_XPOS],afc_s.ccvar,
                 serial_strings[TARGET_RATIO],expt.vals[TARGET_RATIO]);
-        tval = RunTime();
         ts = binocTimeString();
         ts[3] = '.';
         ts[6] = 0;
-        fprintf(fd," %ld %s %d",now.tv_sec,ts,expt.nstim[6]);
+        fprintf(fd," %ld %.3f %d",now.tv_sec,tval,expt.nstim[6]);
         fprintf(fd," %s=%.2f %s=%.2f %s=NaN %s=NaN %s=NaN x=0\n",serial_strings[XPOS],GetProperty(&expt,expt.st,XPOS),serial_strings[YPOS],GetProperty(&expt,expt.st,YPOS),
                 serial_strings[expt.mode],
                 serial_strings[expt.type2],
