@@ -25,14 +25,15 @@ typedef struct monitor{
 typedef struct  {
     float pos[XY];
     float countdown;
-    int left_right;
-    float proportion;
+    int left_right[XY];
+    float proportion[XY];
     float offset;
     int primitive_num[2];
     float rectposition[3];
     float position[XY];
     float dot;
     long lrnd;
+    int corr; // for mixed C/AC
 } ball_s;
 
 

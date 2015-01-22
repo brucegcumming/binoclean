@@ -1,9 +1,10 @@
+monkey=nby
 clearquick
 monitor=/local/monitors/Default
 mo=0
 mo=+db+zb
 op=0
-op=+sq+se+fc+fb+sw-bm+gm+cS+C3
+op=+sq+fc+fb+sw-bm+gm+cS
 mo=fore
 xo=-4.9717      #Fore X offset
 yo=-1.9586      #Fore Y offset
@@ -40,8 +41,6 @@ od=0.0000       #Fore delta ori
 ds=0.0000       #Fore delta SF
 dg=0.0000       #Fore disp grad
 dm=0.0000       #Fore depth modulation
-ta=0.0000       #Fore twobar angle
-dr=0.0000       #Fore Disp Ramp
 dq=0.0000       #Fore pDisp 2
 rp=0.0000       #Fore Rel Phase
 Pd=0.0000       #Fore Phase Disp as Disp
@@ -84,8 +83,6 @@ od=0.0000       #Back delta ori
 ds=0.0000       #Back delta SF
 dg=0.0000       #Back disp grad
 dm=0.0000       #Back depth modulation
-ta=-71.5650     #Back twobar angle
-dr=0.0000       #Back Disp Ramp
 dq=0.0000       #Back pDisp 2
 rp=0.0000       #Back Rel Phase
 Pd=0.0000       #Back Phase Disp as Disp
@@ -127,8 +124,6 @@ od=0.0000       #Choice 1 delta ori
 ds=0.0000       #Choice 1 delta SF
 dg=0.0000       #Choice 1 disp grad
 dm=0.0000       #Choice 1 depth modulation
-ta=0.0000       #Choice 1 twobar angle
-dr=0.0000       #Choice 1 Disp Ramp
 dq=0.0000       #Choice 1 pDisp 2
 rp=0.0000       #Choice 1 Rel Phase
 ce=1.0000       #Choice 1 Correlation
@@ -168,8 +163,6 @@ od=0.0000       #Choice 2 delta ori
 ds=0.0000       #Choice 2 delta SF
 dg=0.0000       #Choice 2 disp grad
 dm=0.0000       #Choice 2 depth modulation
-ta=0.0000       #Choice 2 twobar angle
-dr=0.0000       #Choice 2 Disp Ramp
 dq=0.0000       #Choice 2 pDisp 2
 rp=0.0000       #Choice 2 Rel Phase
 ce=1.0000       #Choice 2 Correlation
@@ -177,26 +170,22 @@ dw=0.0000       #Choice 2 Dot Width
 mo=fore
 dw=0.0859	#Dot Width
 fc=1.00	#Fixation Color
-zx=1.00	#Zoom
 bc=0.50	#BackGround Color 
 dt=0.0000	#Delay
 pr=0.000	#PREPERIOD
 et=dx	#Expt1 Type
 fz=60.00	#FRAMERATE
 du2.400	#STIMULUS DURATION
-vc=0.00	#CLAMP_DISPARITY
 po=0.00	#POSTPERIOD
 mo=+db+zb	#Mode
-vr=0.00	#RAMP_VERGENCE
 nt=5	#N Stim (Expt 1)
-uf=d:\bw\data\ruby\rbtest	#Uff Prefix
+uf=C:\Spike2\data\nby\test	#Uff Prefix
 hx=0.0000	#High X Value for Interleaves
 sM=0.0000	#Stimulus mode
 wr=0.62	#WURTZ task response period
 mD=0.00000	#Max disp Initial manip
-op=+sq+se+fc+fb+sw-bm+gm+cS+C3	#optionflag setup
+op=+sq+fc+fb+sw-bm+gm+cS	#optionflag setup
 nr=1	#N Repetitions
-tl=291.67	#trigger level
 fw=0.50	#fixation window
 ch0-,fs5.00,co14
 ch1-,fs5.00,co13
@@ -216,26 +205,19 @@ ch14-,fs5.00,co1
 ch15-,fs5.00,co2
 ch16-,fs5.00,co0
 ch17-,fs5.00,co0
-	#channel Set code
-sv=0.0000	#Static Vergence
-wf=60.00	#mean fixation period
+#channel Set code
 Bc=1.00	#Background Contrast
 ei=0.2000lin	#Expt incr
 em=0.00000	#Expt Mean
 is=0.200	#ISI
-bw=100.00	#bin width
 nf=144.00	#N Frames
 bd=0.0000	#backgound disparity
-rk=0.0000	#ramp coefficient
 fx=0.0000	#fixation x pos 
 fy=0.0000	#fixation y pos 
 fs=0.12	#fixation size 
-cj=0.0000	#mean conjugate
 rw=0.0000	#Reward Size
-vh=0.00	#Vergence RAMP and Hold
 ti1.000	#TIMEOUT
 so=0 0 0 0	#Software Offsets 62 
-ra=0.0000	#Ramp Amplitude
 lb=0.0000	#Initial Blank Period
 vw=0.0000	#Vergence Window
 sp0.000	#Short Prem Trial Length
@@ -268,9 +250,6 @@ oR=90.38	#ORI_RIGHT
 ve=4.90	#Version
 cb=1.00	#Backround Correlation
 sd=0.0000	#Seed Delay
-2t=291.67	#Trigger 2
-3t=291.67	#Trigger 3
-4t=291.67	#Trigger 4
 cs=0.0000	#RC seed
 fn=1.00	#frame repeat
 Ro=0.0000	#RF Ori
@@ -311,9 +290,8 @@ vd=83.50	#VIEWD_CODE
 sP=0.0000	#Stim pulses
 pw=0.0000	#pulse width
 pi=0.0000	#Pursuit Increment
-	#Backgr Image
+#Backgr Image
 Br=0.0000	#Fast Rpt B
-bz=1.00	#Backgr Zoom
 rr=0.0000	#Rc repeats
 ap=0.50	#AFC Proportion
 Fr=1.00	#FastSeq Repeat
@@ -328,19 +306,12 @@ xr=0.0000	#XMINSAMPLE_RATIO
 xm=0.0000	#XMAXSAMPLE_RATIO
 Sv=1.27	#Stimulus Version
 pl=0.50	#PLC magnitude
-To=0.0000	#Target Offset
 fl=+pc+nc+sq	#STIMULUS_FLAG
-si=1.00	#SWAPINTERVAL
-Tz=0.000000 0.000000	#trapezoidal scaling
 Rw=0.0000	#RF_WIDTH
 Rh=0.0000	#RF_HEIGHT
 Rx=50.00	#RF_X
 Ry=10.00	#RF_Y
 sg=10.00	#SPIKE_GAIN
-Pw=0.0000	#PLOTW
-Ph=0.0000	#PLOTH
-Px=2000.00	#PLOTX
-Py=100.00	#PLOTY
 ga=-10000.00 0.0000	#Gamma value
 lc=1.00	#CORRECTION_LEAVE_CRIT
 ec=3.00	#CORRECTION_ENTRY_CRIT
@@ -349,7 +320,6 @@ cc=0.0000	#COVARY_XPOS
 bl=0.0000	#BONUS_CRITERION
 b2=0.0000	#BONUS2_CRITERION
 bs=1.00	#EXPT_BLKSIZ
-tb=0.0000	#Twobar sep
 Fl=0.0160	#Fixation Linw
 cg=0.50	#SETCLEARCOLOR
 bj=0.0000	#BACKJUMP
@@ -357,20 +327,10 @@ rx=0.0000	#X randomization
 ox=0.0000	#Ori randomization
 bb=0.0000	#dOri F+B
 dk=0.0000	#dOri Back
-cy1 0 0 0 0 0 0.0000
-cy2 0 0 0 0 0 0.0000
-cy3 0 2 0 0 0 0.0000
-cy4 0 0 0 0 0 0.0000
-cy5 0 0 0 0 0 0.0000
-cy6 0 0 0 0 0 0.0000
-cy7 0 0 0 0 0 0.0000
-cy8 0 0 0 0 0 0.0000
-	#Cyberamp channels
+#Cyberamp channels
 lw=1.00	#Line Width for online plott
-ps=1.00	#Plot Smoothing for online RC
 pf=+do+sq+lm+rm+cf+ts+sw+bw+sm+rh+fl+ei+ic+iu+py+sc+iz+to+x2+ht+hq+I0+Iu+lf+no+pf+tl:+pc+nc	#Flags Shown on panel
 pt=1.00	#Stimuli per fixation Trial
-ri=0.0000	#RC delay
 cr=1.00	#Contrast Ratio
 gr=0.0000	#Grid Size
 dO=0.0000	#Orthog Disp
@@ -385,7 +345,6 @@ hr=-1.9983	#Head Restrained
 tr=0.0160	#Target Ratio
 hs=16.00	#High SF val
 ht=36.00	#High TF val
-sL=0.0000	#Stepper Plot Length
 r1=0.0000	#Reward 1
 r2=0.0000	#Reward 2
 r3=0.0000	#Reward 3
@@ -393,15 +352,12 @@ Tc=1.00	#Timeout Contrast
 nR=0.0000	#RC File Counter
 As=0.0000	#Alternative Stimulus
 T1=0.0000	#Test value 1
-T2=0.0000	#Test value 2
 Ba=0.0000	#Size to add for background
 Is=1.00	#Scale factor for IFC expts
 Sd=0.0000	#Size Disparity
 fm=0.0000	#FixPt Ocularity
 uk=0.33 0.66 0.60 0.10 2.00	#Uka Stair Coeffs
-PX=1680.00	#Panel X position
 by=0.0000	#Background Vertical Disp
-PY=61.00	#Panel Y position
 sC=0.0000	#Counterphase
 ui=Not Set	#User id
 Tw=0.0000	#Time Ori BW
@@ -430,7 +386,6 @@ qe=/local/c/binoclean/stims/demo/rds
 qe=/local/c/binoclean/stims/demo/bwtask
 qe="Cyl"./q1exp
 exps=+or+dx+dy+bd+sf+tf+lT+hi+wi+sz+eo+el+os+Op+xo+Pp+yo+dO+dP+cd+dp+dc+fx+fy+ss+me+cj+dd+dw+c0+ds+od+dm+dg+ph+ip+oL+Ol+rd+bb+dk+se+ce+dr+Fs+Fa+co+zf+vv+mf+Is+vm+d1+d2+wd+hd+Sd+wL+hL+cr+sy+Sb+pa+ns+Pd+dq+O2+sd+by+rf+ar+ob+Dc+sP+pw+IB+ba+jv+Tw-ds-od-dm-dg-ph-ip-oL-Ol-rd-bb-dk-se-ce-dr-Fs-Fa-co-zf-vv-mf-Is-vm-d1-d2-wd-hd-Sd-wL-hL-cr-sy-Sb-pa-ns-Pd-dq-O2-sd-by-rf-ar-ob-Dc-sP-pw-IB-ba-jv-Tw
-mycodes=
 helpfile=""Odd" Codes"/local/c/binoclean/help/OddCodes.hlp
 helpfile="Cylinders"/local/c/binoclean/help/Cylinder.hlp
 helpfile="Mimic:"/local/c/binoclean/help/mimic.hlp
@@ -438,13 +393,7 @@ helpfile="RevCor"/local/c/binoclean/help/ReverseCorr.hlp
 helpfile="EyeMovements"/local/c/binoclean/help/EyeMovements.hlp
 helpfile="Commands"/local/c/binoclean/help/Commands.hlp
 helpfile="Ori Psych"/local/c/binoclean/help/orpsych.hlp
-popup=dx
 slider0=or
 slider1=sz
 slider2=jv
-eslider=tl
-stepperxy=80 10
-penwinxy=80 10
-bwwinxy=80 200
 optionwinxy=2276 53
-afcwinxy=80 200

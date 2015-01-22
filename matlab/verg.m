@@ -3058,14 +3058,23 @@ function ShowHelp(a,b,file)
   function BuildQuickMenu(DATA, hm)
         
     if isfield(DATA.quickexpts,'submenu')
-    subs = unique({DATA.quickexpts.submenu});
-    for j = 1:length(subs)-1
-        sm(j) = uimenu(hm,'Label',subs{j+1});
+        sms = {DATA.quickexpts.submenu};
+        
+%add submenus in the order they were created in the file        
+    subs = unique(sms);
+    for j= 2:length(subs)
+        id = find(strcmp(subs{j},sms));
+        order(j) = id(1);
+    end
+    [a,b] = sort(order);
+    subs = subs(b(2:end)); %1st element is blank
+    for j = 1:length(subs)
+        sm(j) = uimenu(hm,'Label',subs{j});
     end
     for j = 1:length(DATA.quickexpts)
-        k = strmatch(DATA.quickexpts(j).submenu,subs);
-        if k > 1
-            uimenu(sm(k-1),'Label',DATA.quickexpts(j).name,'Callback',{@verg, 'quick', DATA.quickexpts(j).filename});
+        k = find(strcmp(DATA.quickexpts(j).submenu,subs));
+        if ~isempty(k)
+            uimenu(sm(k),'Label',DATA.quickexpts(j).name,'Callback',{@verg, 'quick', DATA.quickexpts(j).filename});
         else
             uimenu(hm,'Label',DATA.quickexpts(j).name,'Callback',{@verg, 'quick', DATA.quickexpts(j).filename});
         end
@@ -3164,7 +3173,7 @@ function MenuHit(a,b, arg)
     elseif strcmp(arg,'showpsych')
         DATA = SetFigure('VergPsych', DATA);
         DATA.psych.blockmode = 'Current';
-        DATA = PlotPsych(DATA);
+        DATA = PlotPsych(DATA, 'force');
         if ~isempty(DATA.err)
             fprintf('%s\n',DATA.err);
         end
@@ -3307,7 +3316,7 @@ function DATA = LoadLastSettings(DATA, varargin)
         if go
             txt = scanlines(d.name);
             for s = {'id' 'se' 'ed' 'Rx' 'Ry' 'Ro' 'Rw' 'Rh' 'Xp' 'Yp' 'Pn' 'Electrode' 'hemi'...
-                    'ui' 'ePr' 'eZ' 'monkey' 'coarsemm' 'adapter' 'Trw' 'Tg' 'nT' 'Tb' 'uf'}
+                    'ui' 'ePr' 'eZ' 'monkey' 'coarsemm' 'adapter' 'Trw' 'Tg' 'nT' 'Tb' 'uf' 'fx' 'fy' 'so'}
             id = find(strncmp(s,txt,length(s{1})));
             if ~isempty(id)
                 cprintf('blue','Setting %s from %s\n',txt{id(1)},d.name);
@@ -4213,6 +4222,10 @@ function CheckInput(a,b, fig, varargin)
         return;
     end
     lastread = now;
+    if DATA.timerperiod > 0.1 && DATA.tobinocfid > 0
+        a = datevec(now);
+        fprintf(DATA.tobinocfid,'Ping at %2d:%2d.%.3f\n',a(4),a(5),a(6));
+    end
     if DATA.network == 2 %don't ping binoc during stims
         a = dir('/tmp/binocstimisup');
         b = dir('/tmp/binocstimisdone');
@@ -4281,7 +4294,7 @@ ok = 1;
      outprintf(DATA,'magic=');
      ts = now;
      trialcount = DATA.nt;
-     while DATA.binoc{1}.magic ~= newmagic && mytoc(ts) < DATA.draintimeout && ok == 0
+     while (DATA.binoc{1}.magic ~= newmagic || ok == 0) && mytoc(ts) < DATA.draintimeout
          [DATA, str] = ReadHttp(DATA);
          if DATA.nt > trialcount
              ok = 1;
@@ -5614,9 +5627,9 @@ function DATA = RunExptSequence(DATA, str, line)
     if ~iscellstr(str)
         str = cellstr(str);
     end
-    runlines = find(strncmp('!expt',str,5));
+    runlines = find(strncmp('!expt',str,5) | strncmp('!trial',str,5)) ;
     if isempty(runlines)
-        warndlg('Sequence must contain !expt','Sequence file error');
+        warndlg('Sequence must contain !expt or !trial','Sequence file error');
         lastline = 1;
     else
         lastline = runlines(end);
@@ -5707,6 +5720,10 @@ for j = line:length(str)
         outprintf(DATA,'%s\n',str{j}); %this runs expt in binoc
         DATA = AddStatusLine(DATA,sprintf('RunSequence Line %d. at %s %d Repeats left',line,datestr(now,'hh:mm.ss'),DATA.rptexpts),4);
         return;
+    elseif strncmp(str{j},'!trial',5)
+        outprintf(DATA,'!onetrial\n');
+        pause(0.2);
+        DATA = DrainBinocPipe(DATA,'waitforstim');
     elseif strncmp(str{j},'!mat',4)
         DATA = AddStatusLine(DATA, printf('RunSequence Line %d: %s',str{j}),4);
         if isfield(DATA.matexpres,'abort') && DATA.matexpres.abort > 0
@@ -6529,6 +6546,16 @@ function HitToggle(a,b, flag)
     DATA = GetDataFromFig(a);
 %    flag = get(a,'Tag');
     DATA.optionflags.(flag) = get(a,'value');
+%Don't allow Rmonoc and Lmonoc to be checked at the same time    
+    if strcmp(flag,'lm') 
+        if DATA.optionflags.lm && DATA.optionflags.rm
+            DATA.optionflags.rm = 0;
+        end
+    elseif strcmp(flag,'rm') 
+        if DATA.optionflags.lm && DATA.optionflags.rm
+            DATA.optionflags.lm = 0;
+        end
+    end
     s = 'op=';
     f = fields(DATA.optionflags);
     for j = 1:length(f)
@@ -6538,7 +6565,9 @@ function HitToggle(a,b, flag)
 %            s = [s '-' f{j}];
         end
     end
-    fprintf('op=0\n%s\n',s);
+    if DATA.verbose(4)
+        fprintf('op=%s\n',s);
+    end
     outprintf(DATA,'op=0\n%s\n',s);
     ReadFromBinoc(DATA);
     CheckTimer(DATA);
@@ -7255,6 +7284,8 @@ function ChoosePsych(a,b, mode)
             Expts = ReadPsychFile([path '/' name]);
             setappdata(gcf,'Expts',Expts);
             PsychMenu(DATA,Expts);
+            GetFigure('Expts Summary');
+            PlotExptsSummary(Expts);
         end
     elseif strmatch(mode,'readpsychfile')
         Expts = ReadPsychFile(DATA.binoc{1}.psychfile);
@@ -7345,15 +7376,23 @@ function DATA = CheckExpts(DATA)
     end
     
 function DATA = PlotPsych(DATA, Expts)
-    
+
+    forcewin = 0;
+
     if nargin ==1
         Expts = {};
+    elseif ischar(Expts)
+        vararg = Expts;
+        Expts = {};
+        if strcmp(vararg,'force');
+            forcewin =1;
+        end
     end
     
     DATA.err = '';
     if (isempty(DATA.Expts) || isempty(DATA.Trials)) && isempty(Expts)
         DATA.err = sprintf('No Trials/Expts');
-        return;
+%        return;
     end
     if strmatch(DATA.psych.blockmode,'None')
         DATA.err = sprintf('Plotting Off - See ''Expts'' Menu');
@@ -7362,9 +7401,14 @@ function DATA = PlotPsych(DATA, Expts)
     if isempty(Expts)
         DATA = CheckExpts(DATA);
         Expts = DATA.Expts;
+        
 
     Expt = [];
     e = length(DATA.Expts);
+    if e == 0 && forcewin ==0
+        return;
+    end
+    
     allid = [];
     if strcmp(DATA.psych.blockmode,'All') || sum(DATA.plotexpts)
         if strmatch(DATA.psych.blockmode,'All')
@@ -7375,25 +7419,32 @@ function DATA = PlotPsych(DATA, Expts)
         %can only combine expts if have same et,e2 types.  Check each
         %against last in list
         if sum(strcmp(DATA.psych.blockmode,{'Current' 'All'}))
-            Expt = DATA.Expts{e};
+            Expt = Expts{e};
         else
-            Expt = DATA.Expts{expts(end)};
+            Expt = Expts{expts(end)};
         end
         
         for j = expts
-            if isfield(DATA.Expts{j},'last')
-                last = DATA.Expts{j}.last;
+            if isfield(Expts{j},'last')
+                last = Expts{j}.last;
             else
                 last = length(DATA.Trials);
             end                
-            if strcmp(DATA.Expts{j}.Stimvals.et,Expt.Stimvals.et) && ...
-               strcmp(DATA.Expts{j}.Stimvals.e2,Expt.Stimvals.e2)
-                allid= [allid DATA.Expts{j}.first:last];
+            if strcmp(Expts{j}.Stimvals.et,Expt.Stimvals.et) && ...
+               strcmp(Expts{j}.Stimvals.e2,Expt.Stimvals.e2)
+                allid= [allid Expts{j}.first:last];
             end
         end
-    else
-        Expt = DATA.Expts{e};
+    elseif sum(e) > 0
+        Expt = Expts{e};
     end
+    if forcewin
+        DATA = SetFigure('VergPsych', DATA);
+    end
+    if isempty(Expt)
+        return;
+    end
+
     %Always update trial list for current expt
     id = DATA.Expts{e}.first:length(DATA.Trials);
         DATA.Expts{e}.Trials = DATA.Trials(id);

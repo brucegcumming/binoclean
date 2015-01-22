@@ -731,7 +731,7 @@ void SetColor(float cindex, int correct)
     float cval;
     
     if(correct)
-        cval = dogamma(cindex);
+        cval = dogamma(cindex); //shouldnt do anytthing anymore
     else
         cval = cindex;
     glColor4f(cval,cval,cval,cval);
@@ -2115,7 +2115,7 @@ void calc_stimulus(Stimulus *st)
     if(st->next != NULL && (optionflags[PAINT_BACKGROUND] || rdspair(st)
                             || rlspair(st) || corrugpair(st) || sqcorrugpair(st)))
     {
-        if(!(optionflag & BACKGROUND_FIXED_BIT))
+        if(!(optionflag & (BACKGROUND_FIXED_BIT)))
         {
             st->next->pos.xy[0] = st->pos.xy[0];
             st->next->pos.xy[1] = st->pos.xy[1];
@@ -2732,10 +2732,10 @@ void paint_stimulus(Stimulus *st, int follow)
             
             if(st->flag & TRACK_DOT){
                 delta = fabsf(st->left->ptr->velocity * cos(asin(st->left->ptr->trackball.pos[X])));  	
-                st->left->ptr->trackball.pos[X] += (st->left->ptr->trackball.left_right * delta); 		
+                st->left->ptr->trackball.pos[X] += (st->left->ptr->trackball.left_right[X] * delta);
                 if ( (st->left->ptr->trackball.pos[X] >= 1.0) || (st->left->ptr->trackball.pos[X] <= -1.0)) {
                     st->left->ptr->trackball.pos[X] -=(st->left->ptr->trackball.pos[X] * delta);
-                    st->left->ptr->trackball.left_right*=-1; 						     
+                    st->left->ptr->trackball.left_right[X]*=-1;
                 } 	
                 paint_track(st);
             }
@@ -2932,7 +2932,7 @@ int grid(vcoord w, vcoord  h, int eye)
     }
     glEnd();
     glBegin(GL_LINES);
-    if(expt.vals[GRIDSIZE] > 10){
+    if(expt.vals[GRIDSIZE] > 100){
         ReadGridVals();
         for (i = 0; i < nhlines; i++) {
             x[1] = deg2pix(hlines[i]);
