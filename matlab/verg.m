@@ -841,6 +841,8 @@ for j = 1:length(strs{1})
             DATA.trialcounts = sscanf(s(7:end),'%f');
             if length(DATA.trialcounts) < 8
                 DATA.trialcounts(8) = 0;
+            else
+                rwdiff = DATA.trialcounts(8) - DATA.binoc{1}.Trw;
             end
             ShowStatus(DATA);
             if DATA.verbose(3)

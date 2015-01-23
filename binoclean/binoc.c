@@ -1215,7 +1215,10 @@ int SendTrialCount()
     else
         stim = stimno;
     
-    sprintf(buf,"STIMC %d %d %d %d %d %d %d %.1f\n",goodtrials, totaltrials, badtrials, latetrials, fixtrials,stim,expt.nstim[6],totalreward);
+    sprintf(buf,"STIMC %d %d %d %d %d %d %d %.1f",goodtrials, totaltrials, badtrials, latetrials, fixtrials,stim,expt.nstim[6],totalreward);
+    if (seroutfile)
+        fprintf(seroutfile,"#%s Trw=%.2f\n",buf,expt.vals[TOTAL_REWARD]);
+    strcat(buf,"\n");
     notify(buf);
 }
 
@@ -5312,7 +5315,9 @@ void WriteSignal()
 	    write(ttys[0],&c,1);
         stimchanged = 1;
 #ifdef NIDAQ
-	    DIOWriteBit(0, 1);                  
+	    if ((i = DIOWriteBit(0, 1)) < 0){
+            fprintf(seroutfile,"#DIO Error at StimChange\n");
+        }
 #endif
 	    if(!optionflags[REDUCE_SERIAL_OUTPUT]){
             if(seroutfile)
@@ -6498,7 +6503,7 @@ int next_frame(Stimulus *st)
     struct tm *ltime;
     static double lasto = 0,lastt = 0;
     char exptchr = ' ';
-    int nf;
+    int nf,nerr;
     int crasher = 0;
     static int stimerr = 0;
     
@@ -6569,9 +6574,15 @@ int next_frame(Stimulus *st)
 //ideally would sample currentstate and change if necessary
 #ifdef NIDAQ
             if (laststate != stimstate){
-                DIOWriteBit(2,  0);
-                DIOWriteBit(1,  0);
-                DIOWriteBit(0,  0);
+                nerr = 0;
+                if((i = DIOWriteBit(2,  0)) < 0)
+                    nerr++;
+                if((i = DIOWriteBit(1,  0)) < 0)
+                      nerr++;
+                if((i = DIOWriteBit(0,  0)) < 0)
+                      nerr++;
+                if(nerr&& seroutfile != NULL)
+                    fprintf(seroutfile,"#DIO Error at StimStopped\n");
             }
             
 #endif
@@ -6698,9 +6709,17 @@ int next_frame(Stimulus *st)
             break;
         case INTERTRIAL:
 #ifdef NIDAQ
-            DIOWriteBit(2,  0);
-            DIOWriteBit(1,  0);
-            DIOWriteBit(0,  0);
+            if (laststate != INTERTRIAL){
+                nerr = 0;
+                if((i = DIOWriteBit(2,  0)) < 0)
+                   nerr++;
+                if((i = DIOWriteBit(1,  0)) < 0)
+                    nerr++;
+                if((i = DIOWriteBit(0,  0)) < 0)
+                    nerr++;
+                if (nerr && seroutfile != NULL)
+                    fprintf(seroutfile,"#DIO Error at InterTrial\n");
+            }
 //            DIOval = 0; DIOWrite(0);
 #endif
             newtimeout = 1;
@@ -10905,7 +10924,7 @@ int GotChar(char c)
 	int topline;
 	int monkey_dir,x,y,aid,ns=0;
 	float oldrw,sacth;
-	int sign,code,trueafc = 0;
+	int sign,code,trueafc = 0,nerr = 0;
     
 	totalchrs++;
     
@@ -11164,9 +11183,16 @@ int GotChar(char c)
                 gettimeofday(&endtrialtime, NULL);
                 
 #ifdef NIDAQ
-                DIOWriteBit(2,  0);
-                DIOWriteBit(1,  0);
-                DIOWriteBit(0,  0);
+                nerr = 0;
+                if((i = DIOWriteBit(2,  0)) < 0)
+                    nerr++;
+                if((i = DIOWriteBit(1,  0)) < 0)
+                    nerr++;
+                if((i = DIOWriteBit(0,  0)) < 0)
+                    nerr++;
+                if (nerr && seroutfile != NULL){
+                    fprintf(seroutfile,"#DIO Error GotChar%d\n",(int)c);
+                }
 //                DIOWrite(0); DIOval = 0;
 #endif
                 expstate = c;

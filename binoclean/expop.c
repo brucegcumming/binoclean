@@ -8372,6 +8372,15 @@ Thisstim *getexpval(int stimi)
     return(&stimret);
 }
 
+void SerialLog(char *s)
+{
+    if (seroutfile){
+        if (s[strlen(s)-1] == '\n')
+            fprintf(seroutfile,"%s",s);
+        else
+            fprintf(seroutfile,"%s\n",s);
+    }
+}
 
 void acklog(char *s, int flag)
 {
