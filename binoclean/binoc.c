@@ -11957,11 +11957,15 @@ void expt_over(int flag)
         }
         sprintf(timeoutstring,"Expt Over");
     }
+//Clear screen to search screen here, since some file operations below can be slow
     if(demomode == 0){
         SetStopButton(STOP);
+        
         clear_display(1);
+        search_background();
     }
     glFinishRenderAPPLE();
+    glSwapAPPLE();
     
     /*
      * work on expt file _AFTER_ clearing the display and telling BW that the expt is over
