@@ -3167,6 +3167,7 @@ function CopyLog(DATA,type)
                     msg = sprintf('Copy %s to %s?',bncfile,tgt)
                 end
                 if confirm(msg);
+                    fprintf('Copying %s to %s\n',bncfile,tgt);
                     try
                         copyfile(bncfile,tgt);
                     end
@@ -3183,7 +3184,8 @@ function CopyLog(DATA,type)
             else
                 msg = sprintf('Copy %s to %s?',logfile,tgt);
             end
-            if confirm(msg);
+            if confirm(msg)
+                fprintf('Copying %s to %s\n',logfile,tgt);
                 try
                     copyfile(logfile,tgt);
                 end
@@ -3200,6 +3202,7 @@ function CopyLog(DATA,type)
                 go = confirm(sprintf('Copy %s to %s?',logfile,tgt));
             end
             if go
+                fprintf('Copying %s to %s\n',logfile,tgt);
                 try
                     copyfile(logfile,tgt);
                 end

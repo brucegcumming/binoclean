@@ -86,7 +86,7 @@ long DIOFeedback(HANDLE hDevice, uint8 *inIOTypesDataBuff, long inIOTypesDataSiz
     
     if (1){
     
-    //Reading response from U3
+    //Reading response from U3. Apparently required by U3 protocol. 
     if( (recChars = LJUSB_Read(hDevice, recBuff, (commandBytes+recDWSize))) < commandBytes+recDWSize )
     {
         if( recChars == -1 )

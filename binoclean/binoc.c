@@ -60,7 +60,7 @@ extern float frametimes[],bwtimeoffset[];
 /*GLUquadricObj *gluq;*/
 static GLuint base,bigbase,mediumbase;
 static int eventstate = 0,window_is_mapped = 0;
-static int rndbonus = 10;
+static int rndbonus = 15;
 static int forcestart = 0;
 static float painttimes[MAXFRAMES],calctimes[MAXFRAMES],processtimes[MAXFRAMES],swaptimes[MAXFRAMES],waittimes[MAXFRAMES];
 
@@ -6866,7 +6866,7 @@ int next_frame(Stimulus *st)
                 expt.st->fix.rwsize = expt.st->fix.afcrwsize;
             }
             else{
-                expt.st->fix.rwsize = expt.st->fix.fixrwsize;
+                expt.st->fix.rwsize = expt.st->fix.fixrwsize * expt.st->fix.rwbonus;
             }
             if (laststate != PREFIXATION && newrewardset){
                 SerialSend(REWARD_SIZE);
@@ -11212,7 +11212,8 @@ int GotChar(char c)
                         afctrials++;
                         afc_s.lasttrial = c;
                     }
-                    totalreward += expt.vals[REWARD_SIZE];
+                    totalreward +=  expt.st->fix.rwsize;
+// that is what is sent do bw, not         expt.vals[REWARD_SIZE];
                 }
 			    else if(c==BAD_FIXATION)
                 {
@@ -11487,6 +11488,7 @@ int GotChar(char c)
                  */
                 srandom(totaltrials);
                 oldrw = TheStim->fix.rwsize;
+                expt.st->fix.rwbonus = 1;
                 if(option2flag & AFC && expt.biasedreward == 0)
                 {
                     if(optionflags[SHOW_REWARD_BIAS])
@@ -11508,6 +11510,10 @@ int GotChar(char c)
                 else if(rndbonus > 0 && (i = random())%rndbonus == 0 && !optionflags[INITIAL_TRAINING]){
                     fprintf(stderr,"Rnd was %ld: (seed %d) big reward\n",i,totaltrials);
                     TheStim->fix.rwsize = TheStim->fix.fixrwsize * 3;
+                    expt.st->fix.rwbonus = 3;
+                }
+                else{
+                    TheStim->fix.rwsize = TheStim->fix.fixrwsize;
                 }
                 SerialSend(REWARD_SIZE);
                 expt.vals[REWARD_SIZE] = TheStim->fix.rwsize;
@@ -11895,6 +11901,8 @@ void expt_over(int flag)
     SetProperty(&expt,expt.st,SETZXOFF,expt.vals[SETZXOFF]);
     SetProperty(&expt,expt.st,SETZYOFF,expt.vals[SETZYOFF]);
     SetProperty(&expt,expt.st,MODULATION_F,expt.stimvals[MODULATION_F]);
+    SetProperty(&expt,expt.st,DISP_X,expt.stimvals[DISP_X]);
+    SetProperty(&expt,expt.st,DISP_Y,expt.stimvals[DISP_Y]);
     if(expt.type3 == FIXPOS_Y)
         SetProperty(&expt,expt.st,FIXPOS_Y,expt.mean3);
     expt.stimvals[FIXPOS_X] = expt.fixpos[0];

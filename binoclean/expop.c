@@ -7752,6 +7752,7 @@ void InitExpt()
             case SETZYOFF:
                 expt.vals[i] = GetProperty(&expt,expt.st,i);
             case DISP_X:
+            case DISP_Y:
             case DEPTH_MOD:
             case STIM_WIDTH:
             case STIM_HEIGHT:
