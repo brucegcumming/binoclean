@@ -60,7 +60,7 @@ extern float frametimes[],bwtimeoffset[];
 /*GLUquadricObj *gluq;*/
 static GLuint base,bigbase,mediumbase;
 static int eventstate = 0,window_is_mapped = 0;
-static int rndbonus = 15;
+static int rndbonus = 10;
 static int forcestart = 0;
 static float painttimes[MAXFRAMES],calctimes[MAXFRAMES],processtimes[MAXFRAMES],swaptimes[MAXFRAMES],waittimes[MAXFRAMES];
 
@@ -6359,6 +6359,7 @@ int RunBetweenTrials(Stimulus *st, Locator *pos)
         paint_frame(WHOLESTIM, !(mode & FIXATION_OFF_BIT));
         increment_stimulus(st, pos);
         loopframes++;
+        expt.framesdone = loopframes%expt.st->nframes; // mimics things that depend on frame count
         return(1);
     }
     else if (afc_s.target_in_trial != 0){
@@ -10925,6 +10926,8 @@ int GotChar(char c)
 	int monkey_dir,x,y,aid,ns=0;
 	float oldrw,sacth;
 	int sign,code,trueafc = 0,nerr = 0;
+    static int lastresult = 0;
+    
     
 	totalchrs++;
     
@@ -11202,8 +11205,8 @@ int GotChar(char c)
                 fixed[wurtzctr%avglen] = (int)c;
                 fixx[wurtzctr%avglen] = expt.stimvals[FIXPOS_X];
                 fixy[wurtzctr%avglen] = expt.stimvals[FIXPOS_Y];
-                
                 fixed[(wurtzctr+1)%avglen] = -1;
+                
 			    if(c== WURTZ_OK){
                     if(goodtrials %50 == 0 && goodtrials > 0 && penlog)
                         fprintf(penlog,"Rewards %d of %d. %.1ml\n",goodtrials,totaltrials,expt.vals[TOTAL_REWARD]);
@@ -11507,7 +11510,8 @@ int GotChar(char c)
                 }
                 else if(option2flag & AFC){
                 }
-                else if(rndbonus > 0 && (i = random())%rndbonus == 0 && !optionflags[INITIAL_TRAINING]){
+                else if(lastresult == WURTZ_OK && rndbonus > 0 && (i = random())%rndbonus == 0 && !optionflags[INITIAL_TRAINING]){
+//Only give random bonus if last trial was good
                     fprintf(stderr,"Rnd was %ld: (seed %d) big reward\n",i,totaltrials);
                     TheStim->fix.rwsize = TheStim->fix.fixrwsize * 3;
                     expt.st->fix.rwbonus = 3;
@@ -11519,6 +11523,7 @@ int GotChar(char c)
                 expt.vals[REWARD_SIZE] = TheStim->fix.rwsize;
                 TheStim->fix.rwsize = oldrw;		    
                 newrewardset = 1;
+                lastresult = c;
                 
                 if(stimstate == WAIT_FOR_RESPONSE && monkeypress != WURTZ_STOPPED)
                 {
