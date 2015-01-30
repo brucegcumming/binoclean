@@ -4668,6 +4668,11 @@ int ReadCommand(char *s)
     else if(!strncasecmp(s,"savefile=",9)){
         SaveExptFile(&s[9],0);
     }
+    else if(!strncasecmp(s,"saverf",6)){
+        memcpy(&oldrfs[rfctr],expt.rf,sizeof(Expstim));
+        if(++rfctr >= MAXRF)
+            rfctr = 0;        
+    }
     else if(!strncasecmp(s,"stop",2)){
         StopGo(STOP);
     }
@@ -7919,12 +7924,11 @@ void InitExpt()
         fprintf(seroutfile,"Expt %d\n",expt.nstim[5] * expt.nreps);
         fprintf(seroutfile,"\nStimulus %s\n",DescribeStim(expt.st));
     }
-    if(psychfile){
-        if(option2flag & PSYCHOPHYSICS_BIT) //human psych
-            Stim2PsychFile(START_EXPT,psychfile);
-        else
-            Stim2PsychFile(START_EXPT+100, psychfile); //monkey psych or fix
-    }
+    if(option2flag & PSYCHOPHYSICS_BIT) //human psych
+        Stim2PsychFile(START_EXPT,psychfile);
+    else
+        Stim2PsychFile(START_EXPT+100, psychfile); //monkey psych or fix
+    
     if(psychfilelog){
         tstart = time(NULL);
         fprintf(psychfilelog,"Expt at %s by binoc Version %s\n",nonewline(ctime(&tstart)),VERSION_STRING);

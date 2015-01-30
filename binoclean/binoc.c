@@ -2063,12 +2063,14 @@ int HandleMouse(WindowEvent e)
             eventstate = 0;
             break;
         case ScrollNotify:
+            if (optionflag & PSYCHOPHYSICS_BIT){
             if(e.mouseButton == Button2){
                 eventstate |= MBUTTON;
                 ButtonDown(start, endpt, e);
                 if(e.scrolldelta < -1 && !(ExptIsRunning())){
                     runexpt(NULL,NULL,NULL);
                 }
+            }
             }
             break;
         case ButtonPress:
@@ -2998,6 +3000,22 @@ void clear_display(int flag)
     glFinishRenderAPPLE();
 }
 
+
+void DrawUserLines(struct plotdata  *plot)
+{
+    Expstim *es;
+    short *pl;
+    int i;
+
+    if((pl = plot->linedata) != NULL)
+        for(i = 0; i <= expt.nlines; i++,pl+=4)
+            MyLine(pl[0],pl[1],pl[2],pl[3],LINES_COLOR);
+    for(i = 0; i < rfctr; i++)
+        ShowBox(&oldrfs[i],0.2);
+
+    
+}
+
 void redraw_overlay(struct plotdata  *plot)
 {
     Expstim *es;
@@ -3022,12 +3040,7 @@ void redraw_overlay(struct plotdata  *plot)
     if(stimstate == STIMSTOPPED)
         ShowTime();
 
-
-    if((pl = plot->linedata) != NULL)
-        for(i = 0; i <= expt.nlines; i++,pl+=4)
-            MyLine(pl[0],pl[1],pl[2],pl[3],LINES_COLOR);
-    for(i = 0; i < rfctr; i++)
-        ShowBox(&oldrfs[i],0.2);
+    DrawUserLines(plot);
     
     if(optionflags[SPLITSCREEN])
     {
@@ -6692,6 +6705,8 @@ int next_frame(Stimulus *st)
             setmask(ALLMODE);
             draw_conjpos(cmarker_size,PLOT_COLOR);
             ShowBox(expt.rf,RF_COLOR);
+            DrawUserLines(expt.plot);
+
             glSwapAPPLE();
             gettimeofday(&now,NULL);
             if ((optionflag & SHOW_CONJUG_BIT) && (val = timediff(&now,&lastsertime)) > 2){
