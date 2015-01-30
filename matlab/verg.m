@@ -1679,14 +1679,20 @@ if fid > 0
     a = textscan(fid,'%s','delimiter','\n');
     DATA.exptlines = a{1};
     fclose(fid);
-    if strcmp(DATA.exptlines{1},'sequence')
-        SequencePopup(DATA,DATA.exptlines(2:end),'popup');
-        outprintf(DATA,'\neventcontinue\n');
-    else
-        [DATA, details] = ReadExptLines(DATA,a{1},'fromstim');
+    sid = find(strcmp('sequence',DATA.exptlines));
+    if ~isempty(sid)
+        SequencePopup(DATA,DATA.exptlines(sid+1:end),'popup');
+        if sid > 1
+            DATA.exptlines = DATA.exptlines(1:sid-1);
+        end
+    end
+    if isempty(sid) || sid > 1
+        [DATA, details] = ReadExptLines(DATA,DATA.exptlines,'fromstim');
         if details.badcodes > 1
             fprintf('Choose Fix from the file menu, or run verg([],''checkstim'') to remove bad/old codes from %s\n',name);
         end
+    else %just a sequence file
+        outprintf(DATA,'\neventcontinue\n');
     end
 else
     try

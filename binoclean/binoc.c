@@ -12136,7 +12136,7 @@ void Stim2PsychFile(int state, FILE *fd)
         tval = RunTime();
         if(state == START_EXPT || state == START_EXPT+100){
             fprintf(fd,"R7 %s date=%s progtime=%.3f bt=%.3f diff=%.3f\n", StimString(STIMULUS_TYPE_CODE),binocDateString(1),timediff(&now,&progstarttime),timediff(&now,&sessiontime),bwtimeoffset[1]);
-            fprintf(fd,"R7 binoclean=%s time=%s %s", s, &r[1],StimString(OPTION_CODE));
+            fprintf(fd,"R7 binoclean=%s time=%s %s", s, &r[0],StimString(OPTION_CODE));
             fprintf(fd," bt=%.2f", timediff(&now,&sessiontime));
             fprintf(fd," %s",StimString(UFF_PREFIX));
             fprintf(fd," %s",StimString(EXPT_NAME));
