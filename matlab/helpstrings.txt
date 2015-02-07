@@ -432,6 +432,7 @@ USp phase of microstim pulses.  See also USd,USf #usimt
 vd viewing distance eye - screen in cm
 ve Read only. Binoclean version number
 verbose controls level of diagnostic printouts
+videocapture x y w h sets what part of screen is saved when !savemovie is used
 vm Spatial modulation of vertical disparity in sqcorrug +- vm
 Vn Records Visual Ares For log files V1, V@, MT, Vc (calcarine). #Penetration Log
 Vs Applies a gradient of vertical disparity.  Should be 1.
