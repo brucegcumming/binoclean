@@ -63,6 +63,7 @@ static int eventstate = 0,window_is_mapped = 0;
 static int rndbonus = 10;
 static int forcestart = 0;
 static float painttimes[MAXFRAMES],calctimes[MAXFRAMES],processtimes[MAXFRAMES],swaptimes[MAXFRAMES],waittimes[MAXFRAMES];
+static int makingserialconnection = 0;
 
 int teststate = 0;
 static int nostore = 0;
@@ -1429,7 +1430,10 @@ void MakeConnection(int flag)
 {
 	int i;
     char buf[BUFSIZ];
-    
+
+    makingserialconnection = flag;
+
+    fprintf(stderr,"Connecting to PC flag %d OK %d\n",flag,mode & SERIAL_OK);
 	if(!(mode & SERIAL_OK))
 	{
 		SerialSignal(BW_IS_READY);
@@ -1448,6 +1452,7 @@ void MakeConnection(int flag)
         gettimeofday(&sessiontime,NULL);
         SerialSignal(END_EXPT);
 	}
+    fprintf(stderr,"Connected to PC flag %d OK %d\n",flag,mode & SERIAL_OK);
 }
 
 
@@ -9429,8 +9434,8 @@ float StimulusProperty(Stimulus *st, int code)
         case ABS_ORTHOG_POS:
             cosa = cos(expt.rf->angle * M_PI/180.0);
             sina = sin(expt.rf->angle * M_PI/180.0);
-            x =  -StimulusProperty(st,XPOS);
-            y = StimulusProperty(st,YPOS);
+            x =  -StimulusProperty(st,RF_X);
+            y = StimulusProperty(st,RF_Y);
             value = x * sina +  y * cosa;
             break;
         case RF_ORTHO:
@@ -9470,8 +9475,8 @@ float StimulusProperty(Stimulus *st, int code)
         case ABS_PARA_POS:
             cosa = cos(expt.rf->angle * M_PI/180.0);
             sina = sin(expt.rf->angle * M_PI/180.0);
-            x =  -StimulusProperty(st,XPOS);
-            y = StimulusProperty(st,YPOS);
+            x =  -StimulusProperty(st,RF_X);
+            y = StimulusProperty(st,RF_Y);
             value = y * sina -  x * cosa;
             break;
         case RF_PARA:
@@ -11022,6 +11027,11 @@ int GotChar(char c)
                 fprintf(stderr,"Should get StartExpt Here\n");                
             }
         }
+//        if (makingserialconnection > 0)
+//        {
+////ignore this, we are about to send everything anyway, and we don't want recursive calls
+//            fprintf(stderr,"Recursive Connection attempted from Spike2 (mode %d)\n",spike2mode);
+//        }
         if (timediff(&now,&lastconnecttime) < 1){
             if(seroutfile){
                 ns=0;
@@ -11034,15 +11044,19 @@ int GotChar(char c)
                 }
                 else
                     ns=-1;
-                fprintf(seroutfile,"#Double Connection attempted %d StartExpts\n",ns);
+                fprintf(seroutfile,"#Double Connection attempted %d StartExpts connection flag %d\n",ns,makingserialconnection);
                 fflush(seroutfile);
             }
-//Just write StimChange bit if here, for diagnostics
-            DIOWriteBit(0,1);
-            fsleep(0.01);
-            DIOWriteBit(0,0);
-            sprintf(buf,"Very Short interval between Serial Connect at %.2f: %s",ufftime(&now),binocTimeString());
-            acklog(buf,NULL);
+//If we have just made a connection, and Spike2 has just been started, it will re-send START_EXPT.
+//  Save to ingore these cases
+            if (makingserialconnection != 1){
+                //Just write StimChange bit if here, for diagnostics
+                DIOWriteBit(0,1);
+                fsleep(0.01);
+                DIOWriteBit(0,0);
+                sprintf(buf,"Very Short interval between Serial Connect at %.2f: %s",ufftime(&now),binocTimeString());
+                acklog(buf,NULL);
+            }
         }
         else{
             TriggerExpt();

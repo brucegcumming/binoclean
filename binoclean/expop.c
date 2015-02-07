@@ -6712,7 +6712,7 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
     
     char *scode = valstrings[valstringindex[code]].code; //char code matching icode code
     char temp[BUFSIZ],cadd[BUFSIZ];
-    float val,version,subversion;
+    float val,version,subversion,xval,yval;
     double *f;
     int ret = 0,ival =0,i,pcflag =0,nstim = 0,icode = 0;
     time_t tval;
@@ -7377,6 +7377,15 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
                 sprintf(cbuf,"");
             else
                 sprintf(cbuf,"%s%d=%.*f",scode,ival,3,expt.manualvalues[ival]);
+            break;
+        case ABS_ORTHOG_POS:
+            val = StimulusProperty(st,code);
+            xval = StimulusProperty(st,RF_X);
+            yval = StimulusProperty(st,RF_X);
+            if (flag == TO_GUI)
+                sprintf(cbuf,"%s%s%.*f (%.3f,%.3f)",scode,temp,nfplaces[code],val,xval,yval);
+            else
+                sprintf(cbuf,"%s%s%.*f",scode,temp,nfplaces[code],val);
             break;
         case TRIGGER_LEVEL1:
             if(flag != TO_BW)

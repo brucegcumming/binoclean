@@ -32,8 +32,8 @@ adapter Dedscription of any adapter on recording chamber
 ap Proportion of Donw/Left choices rewarded on random reward trials
 Al When > 0, binoc monitors mean eye position for good trials, and ajdusts software offset every Al trials to remove the mean difference of the last Al Trials.
 annTyp sets whether annulus is painted on top of background, before, or not at all
-aOp Position relative to 0,0 but in direction orthogonal to RF ori
-aPp Position relative to 0,0 but in direction parallel to RF ori
+aOp Position of RF relative to 0,0 but in direction orthogonal to RF ori
+aPp Position of RF relative to 0,0 but in direction parallel to RF ori
 ar Aspect ratio for long thin strips of rls/rds
 As (Kludge) Implements some special cases. Should be 0 unless you are sure you need somthing else
 #As1-7 Stroboscopic versions of interocular delay
@@ -365,6 +365,7 @@ USf frequency of microstim pulses See alos USd,USp #ustim
 USp phase of microstim pulses.  See also USd,USf #usimt
 vd viewing distance eye - screen in cm
 verbose controls level of diagnostic printouts
+videocapture x y w h sets what part of screen is saved when !savemovie is used
 Vn Records Visual Ares For log files V1, V@, MT, Vc (calcarine). #Penetration Log
 Vs Applies a gradient of vertical disparity.  Should be 1.
 vs size of vertical component of choice saccade #Psychophysics
@@ -388,6 +389,7 @@ Yp For log files. #Penetration Log
 yR y pos for R eye
 !saveimage saves a .pgm image of the current stimulus
 !saveim saves a .pgm image of the last frame of the last stimulus in the current expt
-!savemovie saves a .pgm image for every frame shown
+!savemovie saves a .pgm image for every frame shown. Saves a fixed window, determined by videocapture= (usually in binoc.setup)
 #!savemovie=pathname  sets the folder name where images will be written
 #!saveim2  saves only the last frame of the last stimulus in the experiment
+!onestim runs one stimulus presentation, saving each frame. #saveimage
