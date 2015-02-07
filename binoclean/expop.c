@@ -4668,6 +4668,11 @@ int ReadCommand(char *s)
     else if(!strncasecmp(s,"savefile=",9)){
         SaveExptFile(&s[9],0);
     }
+    else if(!strncasecmp(s,"saverf",6)){
+        memcpy(&oldrfs[rfctr],expt.rf,sizeof(Expstim));
+        if(++rfctr >= MAXRF)
+            rfctr = 0;        
+    }
     else if(!strncasecmp(s,"stop",2)){
         StopGo(STOP);
     }
@@ -6707,7 +6712,7 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
     
     char *scode = valstrings[valstringindex[code]].code; //char code matching icode code
     char temp[BUFSIZ],cadd[BUFSIZ];
-    float val,version,subversion;
+    float val,version,subversion,xval,yval;
     double *f;
     int ret = 0,ival =0,i,pcflag =0,nstim = 0,icode = 0;
     time_t tval;
@@ -7373,6 +7378,15 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
             else
                 sprintf(cbuf,"%s%d=%.*f",scode,ival,3,expt.manualvalues[ival]);
             break;
+        case ABS_ORTHOG_POS:
+            val = StimulusProperty(st,code);
+            xval = StimulusProperty(st,RF_X);
+            yval = StimulusProperty(st,RF_X);
+            if (flag == TO_GUI)
+                sprintf(cbuf,"%s%s%.*f (%.3f,%.3f)",scode,temp,nfplaces[code],val,xval,yval);
+            else
+                sprintf(cbuf,"%s%s%.*f",scode,temp,nfplaces[code],val);
+            break;
         case TRIGGER_LEVEL1:
             if(flag != TO_BW)
                 return(-1);
@@ -7752,6 +7766,7 @@ void InitExpt()
             case SETZYOFF:
                 expt.vals[i] = GetProperty(&expt,expt.st,i);
             case DISP_X:
+            case DISP_Y:
             case DEPTH_MOD:
             case STIM_WIDTH:
             case STIM_HEIGHT:
@@ -7918,12 +7933,11 @@ void InitExpt()
         fprintf(seroutfile,"Expt %d\n",expt.nstim[5] * expt.nreps);
         fprintf(seroutfile,"\nStimulus %s\n",DescribeStim(expt.st));
     }
-    if(psychfile){
-        if(option2flag & PSYCHOPHYSICS_BIT) //human psych
-            Stim2PsychFile(START_EXPT,psychfile);
-        else
-            Stim2PsychFile(START_EXPT+100, psychfile); //monkey psych or fix
-    }
+    if(option2flag & PSYCHOPHYSICS_BIT) //human psych
+        Stim2PsychFile(START_EXPT,psychfile);
+    else
+        Stim2PsychFile(START_EXPT+100, psychfile); //monkey psych or fix
+    
     if(psychfilelog){
         tstart = time(NULL);
         fprintf(psychfilelog,"Expt at %s by binoc Version %s\n",nonewline(ctime(&tstart)),VERSION_STRING);

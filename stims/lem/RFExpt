@@ -6,5 +6,13 @@ hi=3
 tf=0
 et=Op
 e2=Fr
+pt=1
 exp=/local/expts/RFRC
 op=+exm+sq
+!mat=BuildRFExpt('ops',[-0.95:0.15:0.95],'longisi');
+ce=1
+sequence
+!mat=BuildRFExpt('ops',[-0.95:0.15:0.95],'longisi');
+!expt
+!mat=BuildRFExpt('ops',[-0.95:0.15:0.95],'noisi');
+!expt
