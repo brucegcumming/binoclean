@@ -4483,7 +4483,7 @@ int SaveImage(Stimulus *st, int type)
 {
     GLubyte *pix;
     FILE *ofd;
-    char imname[BUFSIZ];
+    char imname[BUFSIZ],buf[LONGBUF];
     int x,y,w,h,i=0,done = 0,n = 0;
     static int imstimid = 0,pcode = 5;
     char eyec[3] = "LR";
@@ -4522,7 +4522,10 @@ int SaveImage(Stimulus *st, int type)
             if((ofd = fopen(imname,"w")) == NULL)
                 fprintf(stderr,"Can't write image to %s\n",imname);
             else{
-                fprintf(ofd,"P5\n#se%d id%d\n %d %d 255\n",expt.st->left->baseseed,expt.allstimid,w,h);
+                fprintf(ofd,"P5\n#se%d id%d\n",expt.st->left->baseseed,expt.allstimid);
+                MakeString(VERSION_CODE,buf,&expt,expt.st,TO_FILE);
+                fprintf(ofd,"#%s\n",buf);
+                fprintf(ofd,"%d %d 255\n",w,h);
                 fwrite(pix, sizeof(GLubyte), w*h, ofd);
                 done++;
                 fclose(ofd);
@@ -5734,7 +5737,7 @@ int ReadStimOrder(char *file)
 
     FILE *fd;
     char buf[BUFSIZ*10],*s,*t;
-    int ival,nt=0,imax = 0,ok;
+    int ival,nt=0,imax = 0,ok,i,pad = 10;
  
     if (expt.strings[EXPT_PREFIX] != NULL){
         sprintf(buf,"%s/stimorder",expt.strings[EXPT_PREFIX]);
@@ -5769,6 +5772,12 @@ int ReadStimOrder(char *file)
             }
         }
         fclose(fd);
+    }
+// add a few extra at the end in case 4per presents more stimuli than requested
+    if (nt < 10)
+        pad = nt;
+    for(i = 0; i < pad; i++){
+        stimorder[nt+i] = stimorder[i];
     }
     expt.nstim[5] = imax;
     sprintf(buf,"Manual Stimorder %d stim over %d trials\n",imax+1,nt);
