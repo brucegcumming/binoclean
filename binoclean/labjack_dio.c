@@ -12,6 +12,7 @@
 static int isok = 0;
 
 static HANDLE hDevice = 0;
+static char errbuf[BUFSIZ];
 
 int DIOInit()
 {
@@ -39,6 +40,7 @@ long DIOFeedback(HANDLE hDevice, uint8 *inIOTypesDataBuff, long inIOTypesDataSiz
     
     ret = 0;
     commandBytes = 6;
+    sprintf(errbuf,"OK");
     
     if( ((sendDWSize = inIOTypesDataSize + 1)%2) != 0 )
         sendDWSize++;
@@ -76,29 +78,36 @@ long DIOFeedback(HANDLE hDevice, uint8 *inIOTypesDataBuff, long inIOTypesDataSiz
             fprintf(stderr,"ehFeedback error : write failed\n");
         else
             fprintf(stderr,"ehFeedback error : did not write all of the buffer\n");
+        sprintf(errbuf,"write fail",recChars);
+
         ret = -1;
         goto cleanmem;
     }
     
     if (1){
     
-    //Reading response from U3
+    //Reading response from U3. Apparently required by U3 protocol. 
     if( (recChars = LJUSB_Read(hDevice, recBuff, (commandBytes+recDWSize))) < commandBytes+recDWSize )
     {
         if( recChars == -1 )
         {
+            sprintf(errbuf,"ehFeedback read fail",recChars);
             fprintf(stderr,"ehFeedback error : read failed\n");
-            ret = -1;
+            ret = -2;
             goto cleanmem;
         }
         else if( recChars < 8 )
         {
             fprintf(stderr,"ehFeedback error : response buffer is too small\n");
-            ret = -1;
+            sprintf(errbuf,"ehFeedback only %d chars returned",recChars);
+            ret = -3;
             goto cleanmem;
         }
-        else
+        else{
+            sprintf(errbuf,"ehFeedback read error got %d, expected %d",recChars,commandBytes+recDWSize);
+            ret = -4;
             fprintf(stderr,"ehFeedback error : did not read all of the expected buffer (received %d, expected %d )\n", recChars, commandBytes+recDWSize);
+        }
     }
     errorcode = recBuff[6];
     errorframe = recBuff[7];
@@ -205,9 +214,14 @@ int DIOWriteBit(int Channel, BYTE output)
         fprintf(stderr,"%s\n",buf);        // can get errors from first write. ? when its resqesting the same state?
         // so don't report an error until the second failure. isok is set to 2 at startup
         if (isok ==1){
-            acknowledge(buf,NULL);
+            if (r == -1) //error occured when wriging
+                acknowledge(buf,NULL);
+            else
+                SerialLog(buf);
             return(-1);
         }
+        else
+            SerialLog(buf);
     }
     isok = 1;
     return 0;

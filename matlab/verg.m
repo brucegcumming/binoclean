@@ -866,6 +866,8 @@ for j = 1:length(strs{1})
             DATA.trialcounts = sscanf(s(7:end),'%f');
             if length(DATA.trialcounts) < 8
                 DATA.trialcounts(8) = 0;
+            else
+                rwdiff = DATA.trialcounts(8) - DATA.binoc{1}.Trw;
             end
             ShowStatus(DATA);
             if DATA.verbose(3)
@@ -1688,14 +1690,20 @@ if fid > 0
     a = textscan(fid,'%s','delimiter','\n');
     DATA.exptlines = a{1};
     fclose(fid);
-    if strcmp(DATA.exptlines{1},'sequence')
-        SequencePopup(DATA,DATA.exptlines(2:end),'popup');
-        outprintf(DATA,'\neventcontinue\n');
-    else
-        [DATA, details] = ReadExptLines(DATA,a{1},'fromstim');
+    sid = find(strcmp('sequence',DATA.exptlines));
+    if ~isempty(sid)
+        SequencePopup(DATA,DATA.exptlines(sid+1:end),'popup');
+        if sid > 1
+            DATA.exptlines = DATA.exptlines(1:sid-1);
+        end
+    end
+    if isempty(sid) || sid > 1
+        [DATA, details] = ReadExptLines(DATA,DATA.exptlines,'fromstim');
         if details.badcodes > 1
             fprintf('Choose Fix from the file menu, or run verg([],''checkstim'') to remove bad/old codes from %s\n',name);
         end
+    else %just a sequence file
+        outprintf(DATA,'\neventcontinue\n');
     end
 else
     try
@@ -2880,6 +2888,7 @@ function DATA = InitInterface(DATA)
     uimenu(hm,'Label','Pause Expt','Callback',{@SendStr, '\pauseexpt'});
     uimenu(hm,'Label','Center stimulus','Callback',{@SendStr, 'centerstim'});
     uimenu(hm,'Label','Clear Drawn Lines','Callback',{@SendStr, '!clearlines'});
+    uimenu(hm,'Label','Remember This RF','Callback',{@SendStr, '!saverf'});
     AddMarkMenu(uimenu(hm,'Label','Mark'));
     
     uimenu(hm,'Label','BlackScreen (shake)','Callback',{@MenuHit, 'setshake'},'accelerator','B');
@@ -3202,6 +3211,7 @@ function CopyLog(DATA,type)
                     msg = sprintf('Copy %s to %s?',bncfile,tgt)
                 end
                 if confirm(msg);
+                    fprintf('Copying %s to %s\n',bncfile,tgt);
                     try
                         copyfile(bncfile,tgt);
                     end
@@ -3218,7 +3228,8 @@ function CopyLog(DATA,type)
             else
                 msg = sprintf('Copy %s to %s?',logfile,tgt);
             end
-            if confirm(msg);
+            if confirm(msg)
+                fprintf('Copying %s to %s\n',logfile,tgt);
                 try
                     copyfile(logfile,tgt);
                 end
@@ -3235,6 +3246,7 @@ function CopyLog(DATA,type)
                 go = confirm(sprintf('Copy %s to %s?',logfile,tgt));
             end
             if go
+                fprintf('Copying %s to %s\n',logfile,tgt);
                 try
                     copyfile(logfile,tgt);
                 end
@@ -3316,7 +3328,7 @@ function DATA = LoadLastSettings(DATA, varargin)
         if go
             txt = scanlines(d.name);
             for s = {'id' 'se' 'ed' 'Rx' 'Ry' 'Ro' 'Rw' 'Rh' 'Xp' 'Yp' 'Pn' 'Electrode' 'hemi'...
-                    'ui' 'ePr' 'eZ' 'monkey' 'coarsemm' 'adapter' 'Trw' 'Tg' 'nT' 'Tb' 'uf' 'fx' 'fy' 'so'}
+                    'ui' 'ePr' 'eZ' 'monkey' 'coarsemm' 'adapter' 'Trw' 'Tg' 'nT' 'Tb' 'uf' 'fx' 'fy' 'so' 'oldrf'}
             id = find(strncmp(s,txt,length(s{1})));
             if ~isempty(id)
                 cprintf('blue','Setting %s from %s\n',txt{id(1)},d.name);
@@ -6554,6 +6566,13 @@ function HitToggle(a,b, flag)
     elseif strcmp(flag,'rm') 
         if DATA.optionflags.lm && DATA.optionflags.rm
             DATA.optionflags.lm = 0;
+        end
+    elseif strcmp(flag,'ts') %storage on/off confirm before off mid expt 
+        if DATA.optionflags.ts == 0 && DATA.inexpt
+            yn = confirm('Sure you want to turn storage off mid expt?');            
+            if (yn == 0)
+                DATA.optionflags.ts = 1;
+            end
         end
     end
     s = 'op=';

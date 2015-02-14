@@ -63,6 +63,7 @@ static int eventstate = 0,window_is_mapped = 0;
 static int rndbonus = 10;
 static int forcestart = 0;
 static float painttimes[MAXFRAMES],calctimes[MAXFRAMES],processtimes[MAXFRAMES],swaptimes[MAXFRAMES],waittimes[MAXFRAMES];
+static int makingserialconnection = 0;
 
 int teststate = 0;
 static int nostore = 0;
@@ -1428,7 +1429,10 @@ void MakeConnection(int flag)
 {
 	int i;
     char buf[BUFSIZ];
-    
+
+    makingserialconnection = flag;
+
+    fprintf(stderr,"Connecting to PC flag %d OK %d\n",flag,mode & SERIAL_OK);
 	if(!(mode & SERIAL_OK))
 	{
 		SerialSignal(BW_IS_READY);
@@ -1447,6 +1451,7 @@ void MakeConnection(int flag)
         gettimeofday(&sessiontime,NULL);
         SerialSignal(END_EXPT);
 	}
+    fprintf(stderr,"Connected to PC flag %d OK %d\n",flag,mode & SERIAL_OK);
 }
 
 
@@ -2062,12 +2067,14 @@ int HandleMouse(WindowEvent e)
             eventstate = 0;
             break;
         case ScrollNotify:
+            if (optionflag & PSYCHOPHYSICS_BIT){
             if(e.mouseButton == Button2){
                 eventstate |= MBUTTON;
                 ButtonDown(start, endpt, e);
                 if(e.scrolldelta < -1 && !(ExptIsRunning())){
                     runexpt(NULL,NULL,NULL);
                 }
+            }
             }
             break;
         case ButtonPress:
@@ -2997,6 +3004,22 @@ void clear_display(int flag)
     glFinishRenderAPPLE();
 }
 
+
+void DrawUserLines(struct plotdata  *plot)
+{
+    Expstim *es;
+    short *pl;
+    int i;
+
+    if((pl = plot->linedata) != NULL)
+        for(i = 0; i <= expt.nlines; i++,pl+=4)
+            MyLine(pl[0],pl[1],pl[2],pl[3],LINES_COLOR);
+    for(i = 0; i < rfctr; i++)
+        ShowBox(&oldrfs[i],0.2);
+
+    
+}
+
 void redraw_overlay(struct plotdata  *plot)
 {
     Expstim *es;
@@ -3021,12 +3044,7 @@ void redraw_overlay(struct plotdata  *plot)
     if(stimstate == STIMSTOPPED)
         ShowTime();
 
-
-    if((pl = plot->linedata) != NULL)
-        for(i = 0; i <= expt.nlines; i++,pl+=4)
-            MyLine(pl[0],pl[1],pl[2],pl[3],LINES_COLOR);
-    for(i = 0; i < rfctr; i++)
-        ShowBox(&oldrfs[i],0.2);
+    DrawUserLines(plot);
     
     if(optionflags[SPLITSCREEN])
     {
@@ -5314,7 +5332,9 @@ void WriteSignal()
 	    write(ttys[0],&c,1);
         stimchanged = 1;
 #ifdef NIDAQ
-	    DIOWriteBit(0, 1);                  
+	    if ((i = DIOWriteBit(0, 1)) < 0){
+            fprintf(seroutfile,"#DIO Error at StimChange\n");
+        }
 #endif
 	    if(!optionflags[REDUCE_SERIAL_OUTPUT]){
             if(seroutfile)
@@ -6356,6 +6376,7 @@ int RunBetweenTrials(Stimulus *st, Locator *pos)
         paint_frame(WHOLESTIM, !(mode & FIXATION_OFF_BIT));
         increment_stimulus(st, pos);
         loopframes++;
+        expt.framesdone = loopframes%expt.st->nframes; // mimics things that depend on frame count
         return(1);
     }
     else if (afc_s.target_in_trial != 0){
@@ -6500,7 +6521,7 @@ int next_frame(Stimulus *st)
     struct tm *ltime;
     static double lasto = 0,lastt = 0;
     char exptchr = ' ';
-    int nf;
+    int nf,nerr;
     int crasher = 0;
     static int stimerr = 0;
     
@@ -6571,9 +6592,15 @@ int next_frame(Stimulus *st)
 //ideally would sample currentstate and change if necessary
 #ifdef NIDAQ
             if (laststate != stimstate){
-                DIOWriteBit(2,  0);
-                DIOWriteBit(1,  0);
-                DIOWriteBit(0,  0);
+                nerr = 0;
+                if((i = DIOWriteBit(2,  0)) < 0)
+                    nerr++;
+                if((i = DIOWriteBit(1,  0)) < 0)
+                      nerr++;
+                if((i = DIOWriteBit(0,  0)) < 0)
+                      nerr++;
+                if(nerr&& seroutfile != NULL)
+                    fprintf(seroutfile,"#DIO Error at StimStopped\n");
             }
             
 #endif
@@ -6682,6 +6709,8 @@ int next_frame(Stimulus *st)
             setmask(ALLMODE);
             draw_conjpos(cmarker_size,PLOT_COLOR);
             ShowBox(expt.rf,RF_COLOR);
+            DrawUserLines(expt.plot);
+
             glSwapAPPLE();
             gettimeofday(&now,NULL);
             if ((optionflag & SHOW_CONJUG_BIT) && (val = timediff(&now,&lastsertime)) > 2){
@@ -6700,9 +6729,17 @@ int next_frame(Stimulus *st)
             break;
         case INTERTRIAL:
 #ifdef NIDAQ
-            DIOWriteBit(2,  0);
-            DIOWriteBit(1,  0);
-            DIOWriteBit(0,  0);
+            if (laststate != INTERTRIAL){
+                nerr = 0;
+                if((i = DIOWriteBit(2,  0)) < 0)
+                   nerr++;
+                if((i = DIOWriteBit(1,  0)) < 0)
+                    nerr++;
+                if((i = DIOWriteBit(0,  0)) < 0)
+                    nerr++;
+                if (nerr && seroutfile != NULL)
+                    fprintf(seroutfile,"#DIO Error at InterTrial\n");
+            }
 //            DIOval = 0; DIOWrite(0);
 #endif
             newtimeout = 1;
@@ -6849,7 +6886,7 @@ int next_frame(Stimulus *st)
                 expt.st->fix.rwsize = expt.st->fix.afcrwsize;
             }
             else{
-                expt.st->fix.rwsize = expt.st->fix.fixrwsize;
+                expt.st->fix.rwsize = expt.st->fix.fixrwsize * expt.st->fix.rwbonus;
             }
             if (laststate != PREFIXATION && newrewardset){
                 SerialSend(REWARD_SIZE);
@@ -9395,8 +9432,8 @@ float StimulusProperty(Stimulus *st, int code)
         case ABS_ORTHOG_POS:
             cosa = cos(expt.rf->angle * M_PI/180.0);
             sina = sin(expt.rf->angle * M_PI/180.0);
-            x =  -StimulusProperty(st,XPOS);
-            y = StimulusProperty(st,YPOS);
+            x =  -StimulusProperty(st,RF_X);
+            y = StimulusProperty(st,RF_Y);
             value = x * sina +  y * cosa;
             break;
         case RF_ORTHO:
@@ -9436,8 +9473,8 @@ float StimulusProperty(Stimulus *st, int code)
         case ABS_PARA_POS:
             cosa = cos(expt.rf->angle * M_PI/180.0);
             sina = sin(expt.rf->angle * M_PI/180.0);
-            x =  -StimulusProperty(st,XPOS);
-            y = StimulusProperty(st,YPOS);
+            x =  -StimulusProperty(st,RF_X);
+            y = StimulusProperty(st,RF_Y);
             value = y * sina -  x * cosa;
             break;
         case RF_PARA:
@@ -10906,7 +10943,9 @@ int GotChar(char c)
 	int topline;
 	int monkey_dir,x,y,aid,ns=0;
 	float oldrw,sacth;
-	int sign,code,trueafc = 0;
+	int sign,code,trueafc = 0,nerr = 0;
+    static int lastresult = 0;
+    
     
 	totalchrs++;
     
@@ -10986,6 +11025,11 @@ int GotChar(char c)
                 fprintf(stderr,"Should get StartExpt Here\n");                
             }
         }
+//        if (makingserialconnection > 0)
+//        {
+////ignore this, we are about to send everything anyway, and we don't want recursive calls
+//            fprintf(stderr,"Recursive Connection attempted from Spike2 (mode %d)\n",spike2mode);
+//        }
         if (timediff(&now,&lastconnecttime) < 1){
             if(seroutfile){
                 ns=0;
@@ -10998,15 +11042,19 @@ int GotChar(char c)
                 }
                 else
                     ns=-1;
-                fprintf(seroutfile,"#Double Connection attempted %d StartExpts\n",ns);
+                fprintf(seroutfile,"#Double Connection attempted %d StartExpts connection flag %d\n",ns,makingserialconnection);
                 fflush(seroutfile);
             }
-//Just write StimChange bit if here, for diagnostics
-            DIOWriteBit(0,1);
-            fsleep(0.01);
-            DIOWriteBit(0,0);
-            sprintf(buf,"Very Short interval between Serial Connect at %.2f: %s",ufftime(&now),binocTimeString());
-            acklog(buf,NULL);
+//If we have just made a connection, and Spike2 has just been started, it will re-send START_EXPT.
+//  Save to ingore these cases
+            if (makingserialconnection != 1){
+                //Just write StimChange bit if here, for diagnostics
+                DIOWriteBit(0,1);
+                fsleep(0.01);
+                DIOWriteBit(0,0);
+                sprintf(buf,"Very Short interval between Serial Connect at %.2f: %s",ufftime(&now),binocTimeString());
+                acklog(buf,NULL);
+            }
         }
         else{
             TriggerExpt();
@@ -11165,9 +11213,16 @@ int GotChar(char c)
                 gettimeofday(&endtrialtime, NULL);
                 
 #ifdef NIDAQ
-                DIOWriteBit(2,  0);
-                DIOWriteBit(1,  0);
-                DIOWriteBit(0,  0);
+                nerr = 0;
+                if((i = DIOWriteBit(2,  0)) < 0)
+                    nerr++;
+                if((i = DIOWriteBit(1,  0)) < 0)
+                    nerr++;
+                if((i = DIOWriteBit(0,  0)) < 0)
+                    nerr++;
+                if (nerr && seroutfile != NULL){
+                    fprintf(seroutfile,"#DIO Error GotChar%d\n",(int)c);
+                }
 //                DIOWrite(0); DIOval = 0;
 #endif
                 expstate = c;
@@ -11177,8 +11232,8 @@ int GotChar(char c)
                 fixed[wurtzctr%avglen] = (int)c;
                 fixx[wurtzctr%avglen] = expt.stimvals[FIXPOS_X];
                 fixy[wurtzctr%avglen] = expt.stimvals[FIXPOS_Y];
-                
                 fixed[(wurtzctr+1)%avglen] = -1;
+                
 			    if(c== WURTZ_OK){
                     if(goodtrials %50 == 0 && goodtrials > 0 && penlog)
                         fprintf(penlog,"Rewards %d of %d. %.1ml\n",goodtrials,totaltrials,expt.vals[TOTAL_REWARD]);
@@ -11187,7 +11242,8 @@ int GotChar(char c)
                         afctrials++;
                         afc_s.lasttrial = c;
                     }
-                    totalreward += expt.vals[REWARD_SIZE];
+                    totalreward +=  expt.st->fix.rwsize;
+// that is what is sent do bw, not         expt.vals[REWARD_SIZE];
                 }
 			    else if(c==BAD_FIXATION)
                 {
@@ -11462,6 +11518,7 @@ int GotChar(char c)
                  */
                 srandom(totaltrials);
                 oldrw = TheStim->fix.rwsize;
+                expt.st->fix.rwbonus = 1;
                 if(option2flag & AFC && expt.biasedreward == 0)
                 {
                     if(optionflags[SHOW_REWARD_BIAS])
@@ -11480,14 +11537,20 @@ int GotChar(char c)
                 }
                 else if(option2flag & AFC){
                 }
-                else if(rndbonus > 0 && (i = random())%rndbonus == 0 && !optionflags[INITIAL_TRAINING]){
+                else if(lastresult == WURTZ_OK && rndbonus > 0 && (i = random())%rndbonus == 0 && !optionflags[INITIAL_TRAINING]){
+//Only give random bonus if last trial was good
                     fprintf(stderr,"Rnd was %ld: (seed %d) big reward\n",i,totaltrials);
                     TheStim->fix.rwsize = TheStim->fix.fixrwsize * 3;
+                    expt.st->fix.rwbonus = 3;
+                }
+                else{
+                    TheStim->fix.rwsize = TheStim->fix.fixrwsize;
                 }
                 SerialSend(REWARD_SIZE);
                 expt.vals[REWARD_SIZE] = TheStim->fix.rwsize;
                 TheStim->fix.rwsize = oldrw;		    
                 newrewardset = 1;
+                lastresult = c;
                 
                 if(stimstate == WAIT_FOR_RESPONSE && monkeypress != WURTZ_STOPPED)
                 {
@@ -11870,6 +11933,8 @@ void expt_over(int flag)
     SetProperty(&expt,expt.st,SETZXOFF,expt.vals[SETZXOFF]);
     SetProperty(&expt,expt.st,SETZYOFF,expt.vals[SETZYOFF]);
     SetProperty(&expt,expt.st,MODULATION_F,expt.stimvals[MODULATION_F]);
+    SetProperty(&expt,expt.st,DISP_X,expt.stimvals[DISP_X]);
+    SetProperty(&expt,expt.st,DISP_Y,expt.stimvals[DISP_Y]);
     if(expt.type3 == FIXPOS_Y)
         SetProperty(&expt,expt.st,FIXPOS_Y,expt.mean3);
     expt.stimvals[FIXPOS_X] = expt.fixpos[0];
@@ -11924,11 +11989,15 @@ void expt_over(int flag)
         }
         sprintf(timeoutstring,"Expt Over");
     }
+//Clear screen to search screen here, since some file operations below can be slow
     if(demomode == 0){
         SetStopButton(STOP);
+        
         clear_display(1);
+        search_background();
     }
     glFinishRenderAPPLE();
+    glSwapAPPLE();
     
     /*
      * work on expt file _AFTER_ clearing the display and telling BW that the expt is over
@@ -12079,7 +12148,7 @@ void Stim2PsychFile(int state, FILE *fd)
         tval = RunTime();
         if(state == START_EXPT || state == START_EXPT+100){
             fprintf(fd,"R7 %s date=%s progtime=%.3f bt=%.3f diff=%.3f\n", StimString(STIMULUS_TYPE_CODE),binocDateString(1),timediff(&now,&progstarttime),timediff(&now,&sessiontime),bwtimeoffset[1]);
-            fprintf(fd,"R7 binoclean=%s time=%s %s", s, &r[1],StimString(OPTION_CODE));
+            fprintf(fd,"R7 binoclean=%s time=%s %s", s, &r[0],StimString(OPTION_CODE));
             fprintf(fd," bt=%.2f", timediff(&now,&sessiontime));
             fprintf(fd," %s",StimString(UFF_PREFIX));
             fprintf(fd," %s",StimString(EXPT_NAME));

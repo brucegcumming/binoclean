@@ -22,7 +22,7 @@ float calc_newoffset(float maxdisparity, float xpos);
 OneStim *NewCylinder(Stimulus *st, Substim *sst, Substim  *copy);
 int init_cylinder(Stimulus *st,  Substim *sst);                  
 ball_s *get_mem(int ndots);
-void fill_balls(int ndots, ball_s *balls, int flag, int lifeframes); 
+void fill_balls(int ndots, ball_s *balls, int flag, int lifeframes, float correlation);
 void free_cylinder(Substim *st);
 float calc_offset(float minaxis, float x, float viewdist, float halfiod, int left_right);
 void calc_cylinder(Stimulus *st); 
@@ -125,7 +125,7 @@ int init_cylinder(Stimulus *st,  Substim *sst) /* passed st, st->left (pointer t
 	
     myrnd_init(st->left->baseseed);
     srand48(st->left->baseseed);
-	fill_balls(cyl->numdots, cyl->balls, st->flag, cyl->lifeframes);      /* fill balls structure with random numbers */
+	fill_balls(cyl->numdots, cyl->balls, st->flag, cyl->lifeframes,st->correlation);      /* fill balls structure with random numbers */
     /*flag will give whether flat or cylindriical motion */
 	/* if subpix mode and calprims set ie. new or size has changed set new list of primitives */
 	/*if((option2flag & JSUBPIX) && (cyl->dotsiz[X] != cyl->olddotsize[X])){
@@ -161,14 +161,18 @@ ball_s *get_mem(int ndots)
 }
 
 /*******************************************************************************************/
-void fill_balls(int ndots, ball_s *balls, int flag, int lifeframes) 
+void fill_balls(int ndots, ball_s *balls, int flag, int lifeframes, float correlation)
 {
 	int i;
 	double drnd;
-	
+	int needright = 0;
+    
+    if (correlation < 1)
+        needright = 1;
     
 	if(verbose)
         printf("%d dots replaced, %d dots each frame\n",nreplaced,ndots);
+
 	nreplaced = 0;
 	if(flag & FLAT_SURFACES){
 		for (i = 0; i < ndots; i++) {
@@ -189,9 +193,15 @@ void fill_balls(int ndots, ball_s *balls, int flag, int lifeframes)
 			balls[i].pos[X] = sinf(M_PI * (mydrand() - 0.5)); /* sin(-pi/2 -> pi/2 */
 			drnd = mydrand();
 			balls[i].pos[Y] = 2.0 * (drnd - 0.5); /* -1 to +1 */
-			balls[i].pos[RX] = sinf(M_PI * (mydrand() - 0.5)); /* sin(-pi/2 -> pi/2 */
-			drnd = mydrand();
-			balls[i].pos[RY] = 2.0 * (drnd - 0.5); /* -1 to +1 */
+            if (needright){
+                balls[i].pos[RX] = sinf(M_PI * (mydrand() - 0.5)); /* sin(-pi/2 -> pi/2 */
+                drnd = mydrand();
+                balls[i].pos[RY] = 2.0 * (drnd - 0.5); /* -1 to +1 */
+            }
+            else{
+                balls[i].pos[RY] = balls[i].pos[Y];
+                balls[i].pos[RX] = balls[i].pos[X];
+            }
             
 			if (mydrand() >= 0.5) 
 			    balls[i].left_right[RX] = balls[i].left_right[X] = JONRIGHT;
@@ -232,7 +242,7 @@ void calc_dots(Stimulus  *st, int mode)
     float delta, vel, fraction, sign;
     int flag = st->flag;	
     float disparity, deathchance;
-    int countdown,nac,nuc,ncorr;
+    int countdown,nac,nuc,ncorr,usexi = X;
     float widthfactor, heightfactor;
     float dx,dy;
     float rotatefactor[2];
@@ -241,6 +251,17 @@ void calc_dots(Stimulus  *st, int mode)
     if (mode == JONRIGHT){
         xi = RX;
         yi = RY;
+        if (st->correlation > 0.99 && st->corrmix <= 0){
+            for (i = 0; i < cyl->numdots; i++){
+                balls[i].position[xi] = balls[i].position[X];
+                balls[i].position[yi] = balls[i].position[Y];
+                balls[i].pos[xi] = balls[i].pos[X];
+                balls[i].pos[yi] = balls[i].pos[Y];
+                balls[i].left_right[xi] = balls[i].left_right[X];
+                balls[i].proportion[xi] = balls[i].proportion[X];
+            }
+            return;
+        }
     }
     else{
         xi = X;
@@ -261,11 +282,15 @@ void calc_dots(Stimulus  *st, int mode)
             pos->imsize[i] = 256;
         pos->radius[i] = pos->imsize[i]/2;
     }
-    
+
+    nreplaced = 0;
     /*j 3/2/97 motion calculation now in separate function
      does calculation for all balls i=0 i<cyl.numdots + plus tests whether dot should die or not*/
     calc_cyl_motion(balls, cyl->velocity, cyl->numdots, flag, cyl->lifeframes, cyl->deathchance, pos->imsize[X], mode );
-    
+
+    if(verbose)
+        printf("%d/%d dots replaced\n",nreplaced,cyl->numdots);
+
     /*if(option2flag & JSUBPIX){
      calc_subpix_disp(balls, cyl->numdots, flag, st->disp, pos, widthfactor, heightfactor);
      }
@@ -274,12 +299,6 @@ void calc_dots(Stimulus  *st, int mode)
     nuc = 0;
     ncorr = 0;
 	for(i=0;i<cyl->numdots;i++){
-	    if (flag & FLAT_DISPARITY)
-		    balls[i].offset = disparity * balls[i].left_right[xi];
-	    else
-		    balls[i].offset = disparity * balls[i].proportion[xi] * balls[i].left_right[xi];
-	    
-	    /*j convert to position in pixels*/		
 
         balls[i].corr = 1;
         if(st->corrmix >= 0 && i > 0){
@@ -302,6 +321,23 @@ void calc_dots(Stimulus  *st, int mode)
                 balls[i].corr = 1;
             }
         }
+
+        
+        if (balls[i].corr == 0 && mode == JONRIGHT){
+            usexi = xi;
+        }
+        else{
+            usexi = X;
+       }
+    
+
+        if (flag & FLAT_DISPARITY)
+		    balls[i].offset = disparity * balls[i].left_right[usexi];
+	    else
+		    balls[i].offset = disparity * balls[i].proportion[usexi] * balls[i].left_right[usexi];
+	    
+	    /*j convert to position in pixels*/		
+
 
         if (balls[i].corr ==0 && mode == JONRIGHT){
             balls[i].position[xi] = balls[i].pos[xi] * widthfactor;
@@ -334,9 +370,16 @@ void calc_cylinder(Stimulus  *st)
     float widthfactor, heightfactor;
     float dx,dy;
     float rotatefactor[2];
-    
-    calc_dots(st, JONRIGHT);
+
+/* 
+ * calculate motion of left cylinder first
+ * because if correlated right ist set = left
+ */
     calc_dots(st, JONLEFT);
+    calc_dots(st, JONRIGHT);
+
+    
+    
     return;
     
     rotatefactor[X]=cosf(pos->angle-(M_PI/2));

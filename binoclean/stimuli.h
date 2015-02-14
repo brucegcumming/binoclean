@@ -73,7 +73,7 @@ typedef struct WURTZ{
     int stimvar;
     float sacval[2];
     float timeout,minprem,rt;
-    float rwsize,afcrwsize,fixrwsize;
+    float rwsize,afcrwsize,fixrwsize,rwbonus;
     vcoord origfixpos[2];
     float stairfactor; /*j usually set to ROOT2*/
     float fixcolors[5]; /* for special tasks */

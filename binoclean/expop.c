@@ -4491,7 +4491,7 @@ int SaveImage(Stimulus *st, int type)
 {
     GLubyte *pix;
     FILE *ofd;
-    char imname[BUFSIZ];
+    char imname[BUFSIZ],buf[LONGBUF];
     int x,y,w,h,i=0,done = 0,n = 0;
     static int imstimid = 0,pcode = 5;
     char eyec[3] = "LR";
@@ -4547,7 +4547,10 @@ int SaveImage(Stimulus *st, int type)
             if((ofd = fopen(imname,"w")) == NULL)
                 fprintf(stderr,"Can't write image to %s\n",imname);
             else{
-                fprintf(ofd,"P5\n#se%d id%d\n %d %d 255\n",expt.st->left->baseseed,expt.allstimid,w,h);
+                fprintf(ofd,"P5\n#se%d id%d\n",expt.st->left->baseseed,expt.allstimid);
+                MakeString(VERSION_CODE,buf,&expt,expt.st,TO_FILE);
+                fprintf(ofd,"#%s\n",buf);
+                fprintf(ofd,"%d %d 255\n",w,h);
                 fwrite(pix, sizeof(GLubyte), w*h, ofd);
                 done++;
                 fclose(ofd);
@@ -4692,6 +4695,11 @@ int ReadCommand(char *s)
     }
     else if(!strncasecmp(s,"savefile=",9)){
         SaveExptFile(&s[9],0);
+    }
+    else if(!strncasecmp(s,"saverf",6)){
+        memcpy(&oldrfs[rfctr],expt.rf,sizeof(Expstim));
+        if(++rfctr >= MAXRF)
+            rfctr = 0;        
     }
     else if(!strncasecmp(s,"stop",2)){
         StopGo(STOP);
@@ -5754,7 +5762,7 @@ int ReadStimOrder(char *file)
 
     FILE *fd;
     char buf[BUFSIZ*10],*s,*t;
-    int ival,nt=0,imax = 0,ok;
+    int ival,nt=0,imax = 0,ok,i,pad = 10;
  
     if (expt.strings[EXPT_PREFIX] != NULL){
         sprintf(buf,"%s/stimorder",expt.strings[EXPT_PREFIX]);
@@ -5789,6 +5797,12 @@ int ReadStimOrder(char *file)
             }
         }
         fclose(fd);
+    }
+// add a few extra at the end in case 4per presents more stimuli than requested
+    if (nt < 10)
+        pad = nt;
+    for(i = 0; i < pad; i++){
+        stimorder[nt+i] = stimorder[i];
     }
     expt.nstim[5] = imax;
     sprintf(buf,"Manual Stimorder %d stim over %d trials\n",imax+1,nt);
@@ -6732,7 +6746,7 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
     
     char *scode = valstrings[valstringindex[code]].code; //char code matching icode code
     char temp[BUFSIZ],cadd[BUFSIZ];
-    float val,version,subversion;
+    float val,version,subversion,xval,yval;
     double *f;
     int ret = 0,ival =0,i,pcflag =0,nstim = 0,icode = 0;
     time_t tval;
@@ -7407,6 +7421,15 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
             else
                 sprintf(cbuf,"%s%d=%.*f",scode,ival,3,expt.manualvalues[ival]);
             break;
+        case ABS_ORTHOG_POS:
+            val = StimulusProperty(st,code);
+            xval = StimulusProperty(st,RF_X);
+            yval = StimulusProperty(st,RF_X);
+            if (flag == TO_GUI)
+                sprintf(cbuf,"%s%s%.*f (%.3f,%.3f)",scode,temp,nfplaces[code],val,xval,yval);
+            else
+                sprintf(cbuf,"%s%s%.*f",scode,temp,nfplaces[code],val);
+            break;
         case TRIGGER_LEVEL1:
             if(flag != TO_BW)
                 return(-1);
@@ -7786,6 +7809,7 @@ void InitExpt()
             case SETZYOFF:
                 expt.vals[i] = GetProperty(&expt,expt.st,i);
             case DISP_X:
+            case DISP_Y:
             case DEPTH_MOD:
             case STIM_WIDTH:
             case STIM_HEIGHT:
@@ -7952,12 +7976,11 @@ void InitExpt()
         fprintf(seroutfile,"Expt %d\n",expt.nstim[5] * expt.nreps);
         fprintf(seroutfile,"\nStimulus %s\n",DescribeStim(expt.st));
     }
-    if(psychfile){
-        if(option2flag & PSYCHOPHYSICS_BIT) //human psych
-            Stim2PsychFile(START_EXPT,psychfile);
-        else
-            Stim2PsychFile(START_EXPT+100, psychfile); //monkey psych or fix
-    }
+    if(option2flag & PSYCHOPHYSICS_BIT) //human psych
+        Stim2PsychFile(START_EXPT,psychfile);
+    else
+        Stim2PsychFile(START_EXPT+100, psychfile); //monkey psych or fix
+    
     if(psychfilelog){
         tstart = time(NULL);
         fprintf(psychfilelog,"Expt at %s by binoc Version %s\n",nonewline(ctime(&tstart)),VERSION_STRING);
@@ -8406,6 +8429,15 @@ Thisstim *getexpval(int stimi)
     return(&stimret);
 }
 
+void SerialLog(char *s)
+{
+    if (seroutfile){
+        if (s[strlen(s)-1] == '\n')
+            fprintf(seroutfile,"%s",s);
+        else
+            fprintf(seroutfile,"%s\n",s);
+    }
+}
 
 void acklog(char *s, int flag)
 {
