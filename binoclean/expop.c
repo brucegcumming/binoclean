@@ -265,7 +265,9 @@ Thisstim *stimseq = NULL;
 int trialctr = 0;
 int triallaps = 0;
 int reading_quickexp = 0;
-static float **rcstimvals = NULL;
+
+#define NRCREC 11  //number of rcstimvals tracked
+float **rcstimvals = NULL;
 float **rcrfreqs = NULL;
 float **rclfreqs = NULL;
 int **rcdps = NULL;
@@ -1852,8 +1854,8 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
     ex->rcvals = (float *)malloc(MAXFRAMES * sizeof(float));
     rcstimid = (int *)malloc(MAXFRAMES * sizeof(int));
     
-    rcstimvals = (float **)malloc(10 * sizeof(float *));
-    for(i = 0; i < 10; i++)
+    rcstimvals = (float **)malloc(NRCREC * sizeof(float *));
+    for(i = 0; i < NRCREC; i++)
         rcstimvals[i] = (float *)malloc(MAXFRAMES * sizeof(float));
     
     rclfreqs = (float **)malloc(MAXFREQS * sizeof(float *));
@@ -11839,6 +11841,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
             if(optionflags[RANDOM_CORRELATION]){
                 rcstimvals[9][framesdone] = st->correlation; 
             }
+            rcstimvals[10][framesdone] = st->phasedisp[0];
             if(finished)
                 lastframecount = rc;
             lastframesdone = framesdone;

@@ -21,7 +21,7 @@
 int *imagerec[MAXFRAMES] = {NULL};
 extern int verbose,newmonoc;
 extern int testflags[];
-extern float **rclfreqs,**rcrfreqs;
+extern float **rclfreqs,**rcrfreqs,**rcstimvals;
 extern int **rcdps;
 
 static vcoord vlines[20] = { -10.8, -8.1, -5.4, -2.7, 0, 2.7, 5.4, 8.1, 10.8,0};
@@ -112,8 +112,12 @@ void StimStringRecord(FILE *fd, Expt *ex)
                     sprintf(s,"%1x",*p++);
                 strcat(buf,s);
             }
+            if(rcstimvals[10][j] != 0){
+                sprintf(s,"!dp%.2f",rcstimvals[10][i]/expt.st->left->dotsiz[0]);
+            }
             strcat(buf,"\n");
         }
+        
         fputs(buf,fd);
     }
 }

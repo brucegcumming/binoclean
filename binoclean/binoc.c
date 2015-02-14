@@ -1216,9 +1216,10 @@ int SendTrialCount()
     else
         stim = stimno;
     
-    sprintf(buf,"STIMC %d %d %d %d %d %d %d %.1f\n",goodtrials, totaltrials, badtrials, latetrials, fixtrials,stim,expt.nstim[6],totalreward);
-    if(seroutfile)
-        fputs(buf,seroutfile);
+    sprintf(buf,"STIMC %d %d %d %d %d %d %d %.1f",goodtrials, totaltrials, badtrials, latetrials, fixtrials,stim,expt.nstim[6],totalreward);
+    if (seroutfile)
+        fprintf(seroutfile,"#%s Trw=%.2f\n",buf,expt.vals[TOTAL_REWARD]);
+    strcat(buf,"\n");
     notify(buf);
 }
 
