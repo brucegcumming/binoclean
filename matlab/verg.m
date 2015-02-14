@@ -6469,6 +6469,13 @@ function HitToggle(a,b, flag)
         if DATA.optionflags.lm && DATA.optionflags.rm
             DATA.optionflags.lm = 0;
         end
+    elseif strcmp(flag,'ts') %storage on/off confirm before off mid expt 
+        if DATA.optionflags.ts == 0 && DATA.inexpt
+            yn = confirm('Sure you want to turn storage off mid expt?');            
+            if (yn == 0)
+                DATA.optionflags.ts = 1;
+            end
+        end
     end
     s = 'op=';
     f = fields(DATA.optionflags);
