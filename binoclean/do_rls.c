@@ -1628,7 +1628,7 @@ void paint_rls(Stimulus *st, int mode)
         acknowledge("Painting more lines that Allocated NOt allowed",NULL);
         sst->npaint = sst->xpl;
     }
-    end = (sst->iim+sst->npaint)-10;
+    end = (sst->iim+sst->npaint);
     x = sst->xpos;
     y = sst->ypos;
     i = 0;
@@ -1683,7 +1683,7 @@ void paint_rls(Stimulus *st, int mode)
         else
             mycolor(gcolor);
         if(*p & dotmode){
-            printf("%.2f %.2f\n",*y,val);
+//            printf("%.2f %.2f\n",*y,val);
             z[0] = *x;
             z[1] = *y; 
             myvx(z);

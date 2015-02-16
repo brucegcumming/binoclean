@@ -227,6 +227,7 @@ uimenu(sm,'Label','Normal (1 mm/s)','tag','Normal','Checked','on','callback',@Se
 uimenu(sm,'Label','Fast (5 mm/s)','tag','Fast','callback',@SetMotorSpeed);
 uimenu(sm,'Label','Slow (0.5 mm/s)','tag','Slow','callback',@SetMotorSpeed);
 uimenu(sm,'Label','Very Slow (0.1 mm/s)','tag','VSlow','callback',@SetMotorSpeed);
+uimenu(sm,'Label','Retracting (0.025 mm/s)','tag','VVSlow','callback',@SetMotorSpeed);
 uimenu(sm,'Label','Automatic','tag','Auto','callback',@SetMotorSpeed);
 uimenu(sm,'Label','Custom','tag','Custom','callback',@SetMotorSpeed);
 sm = uimenu(mn,'Label','Verbose','callback',@SetOption,'tag','verbose');
@@ -328,6 +329,8 @@ elseif strcmp(tag,'Fast')
     DATA.motorspeed = 5;
 elseif strcmp(tag,'VSlow')
     DATA.motorspeed = 0.1;
+elseif strcmp(tag,'VVSlow')
+    DATA.motorspeed = 0.025;
 elseif strcmp(tag,'Auto')
     DATA.motorspeed = 0;
 elseif strcmp(tag,'Custom')

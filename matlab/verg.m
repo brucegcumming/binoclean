@@ -5745,7 +5745,7 @@ for j = line:length(str)
         pause(0.2);
         DATA = DrainBinocPipe(DATA,'waitforstim');
     elseif strncmp(str{j},'!mat',4)
-        DATA = AddStatusLine(DATA, printf('RunSequence Line %d: %s',str{j}),4);
+        DATA = AddStatusLine(DATA, sprintf('RunSequence Line %d: %s',str{j}),4);
         if isfield(DATA.matexpres,'abort') && DATA.matexpres.abort > 0
             vergwarning(sprintf('%s Says abort',DATA.matexpt));
             return;
