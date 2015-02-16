@@ -16,6 +16,9 @@ while j <= length(varargin)
         DATA.alldepths = varargin{j};
         j = j+1;
         DATA.alltimes = varargin{j};
+        if length(DATA.alltimes) > length(DATA.alldepths)
+            DATA.alltimes = DATA.alltimes(1:length(DATA.alldepths));
+        end
     elseif strncmpi(varargin{j},'position',5)
         j = j+1;
         figpos = varargin{j};
@@ -350,8 +353,10 @@ if DATA.motorspeed > 0
     fprintf('New Speed %.3f mm/sec  = %.0f RPM\n',DATA.motorspeed,ispeed);
     if ispeed < DATA.minrpm
         fprintf('%.1f less than min RPM (%.1f). Will use steps\n',ispeed, DATA.minrpm);
+        fprintf(DATA.sport,'SP%.0f\n',DATA.minrpm);
+    else
+        fprintf(DATA.sport,'SP%.0f\n',ispeed);
     end
-    fprintf(DATA.sport,'SP%.0f\n',ispeed);
     DATA.motorspeed = ispeed;
 end
 SetMenuCheck(a,'exclusive');
