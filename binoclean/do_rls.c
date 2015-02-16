@@ -14,6 +14,7 @@ extern int optionflag,optionflags[],testflags[];
 static FILE *rlsfd = NULL;
 extern FILE *seroutfile;
 extern Expt expt;
+extern Stimulus *rdsstims[];
 
 //Ali
 extern char * VERSION_STRING;
@@ -85,8 +86,11 @@ int init_rls(Stimulus *st,  Substim *sst, float density)
 	Locator *pos = &st->pos;
 	int ndots,nrect;
     
+	ndots = 1+(2 * pos->radius[1]/(sst->dotsiz[1]));
 	if(density > 0)
         sst->density = sst->density = density;
+	else if(density <= -0.9) //set # lines
+        ndots = 1-density;
 	else if(sst->density <= 0.0)
         sst->density = sst->density = 100.0;
     /*
@@ -94,7 +98,6 @@ int init_rls(Stimulus *st,  Substim *sst, float density)
      * N.B. 25 * dotsiz * dotsiz = 100 * dotsiz/2 * dotsiz/2,
      * = area of dot
      */
-	ndots = 1+(2 * pos->radius[1]/(sst->dotsiz[1]));
 	if(pos->ss[0] > 1 || expt.stimmode == RLS_TERMINATOR){
         nrect = 3+ (pos->radius[0] * 2)/pos->ss[0]; // add 3 to allow for extras at each end
         i = 3 + (pos->radius[0] * st->nfreqs);
@@ -205,6 +208,11 @@ void calc_rls(Stimulus *st, Substim *sst)
     int orthoguc = 0,orthogac = 0;
     int pblank = 0,*pi,maxconsec = 0;
     int painterr = 0;
+
+ 
+    if(st->preload && st->preloaded){
+        return;
+    }
 
     if (sst->density < 100)
         pblank = rint((100-sst->density) * 2.55);
@@ -1297,6 +1305,199 @@ void calc_rls_polys(Stimulus *st, Substim *sst)
     }
 }
 
+int CheckRLS(Stimulus *st)
+{
+    int i, *p;
+    for (i = 0; i < st->left->npaint; i++)
+    {
+        if (st->left->iim[i] != st->right->iim[i])
+        {
+            printf("%d:%d,%d\n",i,st->left->iim[i],st->right->iim[i]);
+        }
+        if (st->left->ypos[i] != st->right->ypos[i])
+        {
+            printf("%d:%.2f,%.2f\n",i,st->left->ypos[i],st->right->ypos[i]);
+        }
+    }
+}
+
+
+#define BINARY 0
+#define NOISE8BIT 1
+
+Stimulus *ReadRls(char *name)
+{
+    FILE *fd;
+    char eye;
+    int x,y,c,i,ndots = 100,got,seed;
+    Stimulus *st;
+    Substim *left,*right;
+    float w,h,dw;
+    char buf[BUFSIZ*10],*s;
+    int readmode,dot,hex,frame,*iim;
+    
+    
+    
+    frame =0;
+    dw = expt.st->left->dotsiz[0];
+    if((fd = fopen(name,"r")) != NULL){
+        fgets(buf, BUFSIZ*10, fd);
+        if (strncmp(buf,"id",2) == NULL)
+            readmode = BINARY;
+        else if (strncmp(buf,"1DNoise",7) == NULL)
+            readmode = NOISE8BIT;
+
+        dot = 0;
+        ndots = 1024;
+        
+        if (readmode == BINARY){
+            
+            i = fscanf(fd,"%s",buf);
+            while (i > 0){
+                frame = frame % MAXPRECALCSTIM;
+                if (rdsstims[frame] == NULL){
+                    st = rdsstims[frame] = NewStimulus(NULL);
+                    StimulusType(st, STIM_RDS);
+                }
+                else
+                    st = rdsstims[frame];
+                init_rls(st,st->left,-ndots);
+                init_rls(st,st->right,-ndots);
+                st->left->lum[0] = 0;
+                st->left->lum[1] = 1;
+                st->right->lum[0] = 0;
+                st->right->lum[1] = 1;
+                st->left->ptr->plaid_angle = expt.st->left->ptr->plaid_angle;
+                st->right->ptr->plaid_angle = expt.st->right->ptr->plaid_angle;
+                st->left->ptr->sx = expt.st->left->ptr->sy;
+                st->right->ptr->sx = expt.st->right->ptr->sy;
+                st->left->ptr->sy = expt.st->left->ptr->sy;
+                st->right->ptr->sy = expt.st->right->ptr->sy;
+                s = strchr(buf,':');
+                if (s == NULL)
+                    s = buf;
+                else{
+                    
+                    s++;
+                }
+                dot = 0;
+                while(*s != NULL && *s != '\n'){
+                   
+                    sscanf(s,"%1x",&hex);
+                    if (hex ==10){
+                        st->left->iim[dot] = WHITEMODE|LEFTDOT;
+                        st->right->iim[dot] = WHITEMODE|RIGHTDOT;
+                    }
+                    else if (hex == 0){
+                        st->left->iim[dot] = BLACKMODE|LEFTDOT;
+                        st->right->iim[dot] = BLACKMODE|RIGHTDOT;
+                    }
+                    else{
+                        st->left->iim[dot] = BLACKMODE|LEFTDOT;
+                        st->right->iim[dot] = WHITEMODE|RIGHTDOT;
+                    }
+                    dot++;
+                    s++;
+                }
+                st->left->npaint = st->right->npaint = dot;
+                for (i = 0; i < dot; i++){
+                    st->right->ypos[i] = st->left->ypos[i] = (i - dot/2) * dw;
+                    st->right->xpos[i] = st->left->xpos[i] = expt.st->pos.radius[0];
+                }
+                frame++;
+                i = fscanf(fd,"%s",buf);
+            }
+        }
+        else if(readmode == NOISE8BIT){
+            i = fscanf(fd,"%s",buf);
+            while (i > 0){
+                frame = frame % MAXPRECALCSTIM;
+                
+                s = strchr(buf,':');
+                if (*(s-1) == 'L'){
+                    if (rdsstims[frame] == NULL){
+                        st = rdsstims[frame] = NewStimulus(NULL);
+                        StimulusType(st, STIM_RDS);
+                    }
+                    else
+                        st = rdsstims[frame];
+                    init_rls(st,st->left,-ndots);
+                    init_rls(st,st->right,-ndots);
+                    st->left->lum[0] = 0;
+                    st->left->lum[1] = 1;
+                    st->right->lum[0] = 0;
+                    st->right->lum[1] = 1;
+                    st->left->ptr->plaid_angle = expt.st->left->ptr->plaid_angle;
+                    st->right->ptr->plaid_angle = expt.st->right->ptr->plaid_angle;
+                    st->left->ptr->sx = expt.st->left->ptr->sy;
+                    st->right->ptr->sx = expt.st->right->ptr->sy;
+                    st->left->ptr->sy = expt.st->left->ptr->sy;
+                    st->right->ptr->sy = expt.st->right->ptr->sy;
+                    st->dotdist = WHITENOISE8;
+                }
+                
+                iim = st->right->iim;
+                if (s == NULL)
+                    s = buf;
+                else{
+                    if (*(s-1) == 'L'){
+                        iim = st->left->iim;
+                        eye = LEFTMODE;
+                    }
+                    else{
+                        iim = st->right->iim;
+                        eye = RIGHTMODE;
+                    }
+                    s++;
+                }
+                dot = 0;
+                while(*s != NULL && *s != '\n'){
+                    
+                    sscanf(s,"%2x",&hex);
+                    iim[dot] = hex;
+                    dot++;
+                    s+=2;
+                }
+                st->left->npaint = st->right->npaint = dot;
+                for (i = 0; i < dot; i++){
+                    st->right->ypos[i] = st->left->ypos[i] = (i - dot/2) * dw;
+                    st->right->xpos[i] = st->left->xpos[i] = expt.st->pos.radius[0];
+                }
+                if (eye == RIGHTMODE){
+//                    CheckRLS(st);
+                    frame++;
+                }
+                i = fscanf(fd,"%s",buf);
+            }
+        }
+    }
+    else{
+        fprintf(stderr,"Cant Read RDS %d\n",name);
+    }
+    return(st);
+}
+
+
+
+int PreloadRls(void)
+{
+    int i,nframes;
+    char name[BUFSIZ * 10];
+    struct timeval ta,tb;
+    Stimulus *st;
+    
+    FILE *fd;
+    
+    nframes = expt.st->nframes+1;
+    
+    gettimeofday(&ta,NULL);
+    sprintf(name,"%s%d.rls",expt.st->imprefix, expt.st->left->imagei);
+    st = ReadRls(name);
+    gettimeofday(&tb,NULL);
+    fprintf(stderr,"preload took %.3f\n",timediff(&ta,&tb));
+    expt.st->preloaded = 1;
+}
+
 
 
 /*
@@ -1318,6 +1519,17 @@ void paint_rls(Stimulus *st, int mode)
     float angle,cosa,sina,val,valsum = 0,cscale;
     vcoord rect[8],crect[8];
     
+    
+    if (st->preload & st->preloaded){
+        if (rdsstims[st->framectr] != NULL){
+            st = rdsstims[st->framectr];
+            CopyStim(st, expt.st); //cops pos, ori
+//            CheckRLS(st);
+        }
+        else
+            fprintf(stderr,"No RLS loaded for frame %d\n",st->framectr);
+    }
+
     
     if (fabs(st->left->ptr->plaid_angle) > 0 && st->left->ptr->plaid_angle > -1000){
         paint_rls_plaid(st, mode);
@@ -1347,6 +1559,7 @@ void paint_rls(Stimulus *st, int mode)
     gcolor[0] = gcolor[1] = gcolor[2] = 0.5;
     if(mode == LEFTMODE)
     {
+        sst = st->left;
         dotmode = LEFTDOT;
         xmv = pos->xy[0]+st->disp;
         glTranslatef(xmv,pos->xy[1]+st->vdisp,0);
@@ -1415,7 +1628,7 @@ void paint_rls(Stimulus *st, int mode)
         acknowledge("Painting more lines that Allocated NOt allowed",NULL);
         sst->npaint = sst->xpl;
     }
-    end = (sst->iim+sst->npaint);
+    end = (sst->iim+sst->npaint)-10;
     x = sst->xpos;
     y = sst->ypos;
     i = 0;
@@ -1456,6 +1669,13 @@ void paint_rls(Stimulus *st, int mode)
             n++;
             glColor3f(val,val,val);
         }
+        else if(st->dotdist == WHITENOISE8){
+            val = 0.5 + (((float)(*p & 0xff)/0xfe) -0.5) * sst->pos.contrast;  //0 ->1, not 0 ->15/16
+            valsum += val;
+            n++;
+            glColor3f(val,val,val);
+            *p |= dotmode;
+        }
         else if(*p & BLACKMODE)
             mycolor(vcolor);      
         else if(*p & WHITEMODE)
@@ -1463,7 +1683,8 @@ void paint_rls(Stimulus *st, int mode)
         else
             mycolor(gcolor);
         if(*p & dotmode){
-            z[0] = *x; 
+            printf("%.2f %.2f\n",*y,val);
+            z[0] = *x;
             z[1] = *y; 
             myvx(z);
             z[0] = -*x; 
@@ -1494,6 +1715,13 @@ void paint_rls(Stimulus *st, int mode)
             valsum += val;
             n++;
             glColor3f(val,val,val);
+        }
+        else if(st->dotdist == WHITENOISE8){
+            val = 0.5 + (((float)(*p & 0xff)/0xfe) -0.5) * sst->pos.contrast;  //0 ->1, not 0 ->15/16
+            valsum += val;
+            n++;
+            glColor3f(val,val,val);
+            *p |= dotmode;
         }
         else if(*p & BLACKMODE)
             mycolor(vcolor);      
@@ -1641,6 +1869,7 @@ void paint_rls_plaid(Stimulus *st, int mode)
            valsum += val;
             n++;
             glColor4f(val,val,val,alpha);
+            *p |= dotmode;
         }
         else if(*p & BLACKMODE)
             glColor4f(vcolor[0], vcolor[1], vcolor[2], alpha);
@@ -1679,7 +1908,7 @@ void paint_rls_plaid(Stimulus *st, int mode)
             if(st->dotdist == WHITENOISE16){
                 val = (float)(*p & 0xf)*cscale;  //0 ->1, not 0 ->15/16
                 val = 0.5 + (((float)(*p & 0xf)/0xe) -0.5) * sst->pos.contrast;  //0 ->1, not 0 ->15/16
-              valsum += val;
+                valsum += val;
                 n++;
                 glColor3f(val,val,val);
             }

@@ -10544,6 +10544,9 @@ int PrepareExptStim(int show, int caller)
     if (expt.st->preload && expt.st->type == STIM_RDS){
         PreloadRds(expt);
     }
+    else if (expt.st->preload && expt.st->type == STIM_RLS){
+        PreloadRls(expt);
+    }
 
     if(optionflags[CALCULATE_ONCE_ONLY] || (expt.st->type == STIM_IMAGE && !expt.st->preload))
         calc_stimulus(expt.st);

@@ -17,7 +17,7 @@ extern char * VERSION_STRING;
 
 
 int dispcounts[MAXDISPS];
-Stimulus *rdsstims[100] = {NULL};
+Stimulus *rdsstims[MAXPRECALCSTIM] = {NULL};
 
 static int twod = 0;
 extern int option2flag;

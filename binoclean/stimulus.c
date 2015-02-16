@@ -1053,6 +1053,7 @@ int StimulusType(Stimulus *st, int i)
                 SetStimulus(st, val, SF, NOEVENT);
                 st->flag = st->prev->flag;
             }
+            st->preload = 0; // only should be used for image
             break;
         case STIM_CORRUG:
             st->left->ptr = NewCorrug(st,st->left,st->last);
@@ -2225,14 +2226,17 @@ int CopyStim(Stimulus *to, Stimulus *from)
     to->pos.angle = from->pos.angle;
     to->pos.xy[0] = from->pos.xy[0];
     to->pos.xy[1] = from->pos.xy[1];
+    to->disp = from->disp;
 
     to->left->pos.angle = from->left->pos.angle;
     to->left->pos.xy[0] = from->left->pos.xy[0];
     to->left->pos.xy[1] = from->left->pos.xy[1];
+    to->left->pos.contrast = from->left->pos.contrast;
 
     to->right->pos.angle = from->right->pos.angle;
     to->right->pos.xy[0] = from->right->pos.xy[0];
     to->right->pos.xy[1] = from->right->pos.xy[1];
+    to->right->pos.contrast = from->right->pos.contrast;
     
 }
 

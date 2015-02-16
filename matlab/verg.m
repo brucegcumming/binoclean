@@ -1059,10 +1059,13 @@ for j = 1:length(strs{1})
         id = find(strcmp(s,{DATA.quickexpts.filename}));
         end
         if isempty(id)
-        n = length(DATA.quickexpts)+1;
-        DATA.quickexpts(n).name = b;
-        DATA.quickexpts(n).filename = s;
-        DATA.quickexpts(n).submenu = submenu;
+            n = length(DATA.quickexpts)+1;
+            DATA.quickexpts(n).name = b;
+            DATA.quickexpts(n).filename = s;
+            DATA.quickexpts(n).submenu = submenu;
+            if strcmp(src,'fromgui')
+                ReBuildQuickMenu(DATA);
+            end
         end
         end
     elseif strncmp(s,'nt=',3)
@@ -3064,6 +3067,11 @@ function ShowHelp(a,b,file)
       SendCode(DATA, 'optionflag');
       SetGui(DATA);
    
+function ReBuildQuickMenu(DATA)
+    hm = findobj(allchild(DATA.toplevel),'flat','Label','Quick','Tag','QuickMenu');
+    delete(allchild(hm));
+    BuildQuickMenu(DATA, hm);
+          
   function BuildQuickMenu(DATA, hm)
         
     if isfield(DATA.quickexpts,'submenu')
@@ -5909,22 +5917,21 @@ uicontrol(gcf,'style','pushbutton','string','Pause', ...
     'Callback', {@SequencePopup, 'pause'} ,...
     'units', 'norm', 'position',bp,'value',1);
    
-usejava =1;
+usejava =0;
 if usejava
 lst = jcontrol(gcf,'javax.swing.JTextField',...
                     'Units','normalized',...
-            'HorizontalAlignment','left',...
-            'Max',10,'Min',0,...
              'Tag','SequenceList',...
                     'Position',[0.01 0.01 0.98 0.99-1./nr]);
+      set(lst,'Text','this is a test');
 else
 lst = uicontrol(gcf, 'Style','edit','String', 'sequence',...
         'HorizontalAlignment','left',...
         'Max',10,'Min',0,...
          'Tag','SequenceList',...
 'units','norm', 'Position',[0.01 0.01 0.99 0.99-1./nr]);
-end
 set(lst,'string',exptlines);
+end
 set(DATA.toplevel,'UserData',DATA);
 
 
