@@ -11845,7 +11845,7 @@ void WriteFrameData()
 
 void expt_over(int flag)
 {
-    int i;
+    int i,trialsdone;
     char buf[256];
     FILE *ofd;
     time_t tval;
@@ -11856,6 +11856,7 @@ void expt_over(int flag)
  * expt request
  */
     
+    trialsdone = stimno;
     mode &= (~BW_ERROR);
     eventstate = 0;
     if(stimstate == WAIT_FOR_RESPONSE && flag != CANCEL_EXPT){
@@ -12048,7 +12049,7 @@ void expt_over(int flag)
        fflush(netoutfile);
     }
     if(!(optionflag & FRAME_ONLY_BIT)){
-        sprintf(buf,"Expt over at %s",binocTimeString());
+        sprintf(buf,"Expt over %d stim at %s",trialsdone,binocTimeString());
         statusline(buf);
     }
     UpdateNetworkFile(expt);

@@ -5957,7 +5957,7 @@ void setstimulusorder(int warnings, int force)
         acknowledge(cbuf,NULL);
         return;
     }
-    expt.nstim[6] = ntoset;
+    expt.nstim[6] = nstimtotal*nreps;
     
     seed = expt.st->left->baseseed;
     for(i = 0; i< ntoset; i++){

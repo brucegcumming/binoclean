@@ -629,7 +629,7 @@ for j = 1:length(strs{1})
         else
             vergwarning(s(5:end));
         end
-        DATA = AddStateLine(DATA,s,3);
+        DATA = AddStatusLine(DATA,s,3);
         DATA.lastmsg = s;
 
         
@@ -833,9 +833,25 @@ for j = 1:length(strs{1})
                 vergwarning(DATA.lastmsg);
             end
             DATA.errors(1) = DATA.errors(1)+1;
-            stype = 3;
+            stype = 'error';
+        elseif sum(strncmp(s(8:end),{'No prefix'},7))
+            stype = 'error';            
         elseif sum(strncmp(s(8:end),{'Network Record'},10))
             DATA.lastmsg = s(8:end);
+        elseif sum(strncmp(s(8:end),{'Expt Starting'},10))
+            sstr = ['Expt ' Expt2Name(DATA.Expt) ' Starting'];
+            stype = 'expt';
+        elseif sum(strncmp(s(8:end),{'Expt over'},9))
+            if(DATA.optionflags.ts)
+                savestr = 'Saved';
+            else
+                savestr = 'completed (Not Saved)';
+            end
+            sstr = sprintf('%s %s',s(8:end),savestr);
+            stype = 'expt';
+        elseif sum(strncmp(s(8:end),{'Expt'},4))
+                savestr = 'Saved';
+            stype = 'expt';
         end
         DATA = AddStatusLine(DATA,sstr,stype);
         if ishandle(DATA.statusitem)
@@ -1397,6 +1413,12 @@ function DATA = AddStatusLine(DATA, str, type)
     %3 = Errors/warnings
     %4 = Expt Control
     DATA.Statuslines{end+1} = str;
+    if ischar(type)
+        type = find(strcmp(type,{'status' 'trial' 'error'  'expt'}));
+        if isempty(type)
+            type = 1;
+        end
+    end
     DATA.statustypes(length(DATA.Statuslines)) = type;
     ShowStatusStrings(DATA);
 
@@ -5608,8 +5630,7 @@ DATA.statusitem = lst;
 if ~isfield(DATA,'showstatus')
     DATA.showstatus.trials = 1;
     DATA.showstatus.status = 1;
-    DATA.showstatus.errors = 1;reco
-    
+    DATA.showstatus.errors = 1;    
     DATA.showstatus.expt = 1;
 end
 f = fields(DATA.showstatus)
@@ -5698,6 +5719,10 @@ for j = line:length(str)
     DATA.readpause = 0;
     DATA.rptexpts = rptstogo; %don't let stimfiles change this
     if strncmp(str{j},'!expt',5)
+        if DATA.inexpt
+            cprintf('red','!!Sequence !expt at line %d but already in Expt!!!',j);
+            return;
+        end
 %need to do this before sending !expt to binoc, so that UserData is set
 % before binoc calls back with settings
         cntrl_box = findobj('Tag',DATA.windownames{8},'type','figure');
@@ -5715,7 +5740,7 @@ for j = line:length(str)
             fprintf('Running %s\n',DATA.matexpt);
             DATA.matexpres = [];
             DATA.matexpres = eval(DATA.matexpt);            
-            DATA.matlabwasrun = 1;
+            DATA.matlabwasrun = 1;0
             if isfield(DATA.matexpres,'abort') && DATA.matexpres.abort > 0
                 vergwarning(sprintf('%s Says abort',DATA.matexpt));
                 return;
@@ -5726,6 +5751,13 @@ for j = line:length(str)
         DATA.nexpts = DATA.nexpts+1;
         DATA.Expts{DATA.nexpts} = ExptSummary(DATA);
         DATA.seqline = j;
+        if DATA.rptexpts > 0
+            xs = sprintf(' %d rpts to go',DATA.rptexpts);
+        else
+            xs = '';
+        end
+            
+        AddTextToGui(DATA,sprintf('#Expt %s Line %d of Sequence%s',Expt2Name(DATA.Expts{DATA.nexpts}),j,xs));
 
         if j > 1 && j <= length(str)
             s = str{j-1};
