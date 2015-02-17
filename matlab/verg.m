@@ -503,6 +503,8 @@ for j = 1:length(strs{1})
                 fprintf('%s**\n',strs{1}{j});
             end
             myprintf(DATA.frombinocfid,'%s%c%d %s\n',datestr(now),srcchr,DATA.inexpt,strs{1}{j});
+        elseif DATA.verbose(7) && DATA.frombinocfid %if both set, record every notification
+            myprintf(DATA.frombinocfid,'%s%c%d %s\n',datestr(now),srcchr,DATA.inexpt,strs{1}{j});
         end
     end
     
@@ -662,9 +664,16 @@ for j = 1:length(strs{1})
             if DATA.inexpt %in case reopen pipes mied expt
                 DATA.optionflags.do = 0;
             end
+            exptover = 1;
+            if strcmp(s,'EXPTOVERSTATE') %just reporting state, not an event
+                if DATA.inexpt == 0
+                    exptover = 0; %put a check in here to resolve confusions
+                end
+            end
+            
             wasexpt = DATA.inexpt;
             DATA.inexpt = 0;
-            if DATA.nexpts > 0  %may be 0 here if verg is fired up after a crash
+            if DATA.nexpts > 0  && exptover %may be 0 here if verg is fired up after a crash
                 DATA.Expts{DATA.nexpts}.End = now;
                 DATA.Expts{DATA.nexpts}.last = length(DATA.Trials);
                 if isfield(DATA.optionflags,'ts') && DATA.optionflags.ts
@@ -676,6 +685,10 @@ for j = 1:length(strs{1})
                     DATA.Expts{DATA.nexpts}.stored = -1;
                 end
             end
+            if exptover
+                CheckTrialDurations(DATA,'EXPTOVER');
+            end
+
     %        tic; DATA = GetState(DATA); toc  %binoc sends state at end expt,
     %        before sending ExptOver
             tic; PsychMenu(DATA); 
@@ -688,12 +701,9 @@ for j = 1:length(strs{1})
                     myprintf(DATA.frombinocfid,'-show','Expt over at %s\n',datestr(now));
                 end
             end
-            if strcmp(s,'EXPTOVERSTATE') %just reporting state, not an event
-                exptover = 0; %put a check in here to resolve confusions
-            else
-                exptover = 1;
-                CheckTrialDurations(DATA,'EXPTOVER');
-            end
+            
+%            DATA = DrainBinocPipe(DATA);
+
             if DATA.exptstoppedbyuser  
             %if user hist cancal/stop, dont repeat or move on to automatic next expt
                 DATA.exptstoppedbyuser = 0;
@@ -839,13 +849,15 @@ for j = 1:length(strs{1})
         elseif sum(strncmp(s(8:end),{'Network Record'},10))
             DATA.lastmsg = s(8:end);
         elseif sum(strncmp(s(8:end),{'Expt Starting'},10))
-            sstr = ['Expt ' Expt2Name(DATA.Expt) ' Starting'];
+            if ~isempty(DATA.Expts)
+                sstr = ['Expt ' Expt2Name(DATA.Expts{end}) ' Starting at ' datestr(now)];
+            end
             stype = 'expt';
         elseif sum(strncmp(s(8:end),{'Expt over'},9))
             if(DATA.optionflags.ts)
                 savestr = 'Saved';
             else
-                savestr = 'completed (Not Saved)';
+                savestr = '(Not Saved)';
             end
             sstr = sprintf('%s %s',s(8:end),savestr);
             stype = 'expt';
@@ -990,6 +1002,7 @@ for j = 1:length(strs{1})
             else
                 DATA.Trial.good = 0;
             end
+            DATA.Trial.saved = DATA.optionflags.ts;
             DATA.Trial.RespDir = a(1);
             if length(a) > 1
                 DATA.Trial.tr = a(2);
@@ -1414,7 +1427,7 @@ function DATA = AddStatusLine(DATA, str, type)
     %4 = Expt Control
     DATA.Statuslines{end+1} = str;
     if ischar(type)
-        type = find(strcmp(type,{'status' 'trial' 'error'  'expt'}));
+        type = find(strcmp(type,{'status' 'trial' 'error'  'expt' 'comment'}));
         if isempty(type)
             type = 1;
         end
@@ -2951,7 +2964,7 @@ function DATA = InitInterface(DATA)
     sm = uimenu(subm,'Label','Verbose');
     xm = uimenu(sm,'Label','To Binoc', 'Callback', {@SetVerbose, 1});
     SetMenuCheck(xm, DATA.verbose(1));
-    xm = uimenu(sm,'Label','From Binoc','Callback', {@SetVerbose, 2});
+    xm = uimenu(sm,'Label','From Binoc','Callback', {@SetVerbose, 7});
     SetMenuCheck(xm, DATA.verbose(7));
     xm = uimenu(sm,'Label','Trial Data', 'Callback',{@SetVerbose, 3});
     SetMenuCheck(xm, DATA.verbose(3));
@@ -3781,6 +3794,7 @@ function MenuGui(a,b)
 
 function DATA = AddComment(DATA, str, src)
     
+    DATA = AddStatusLine(DATA,str,'comment');
     DATA.Comments(end+1).comment = str;
     DATA.Comments(end).date = now;
     DATA.Comments(end).src = src;
@@ -4272,8 +4286,10 @@ function CheckInput(a,b, fig, varargin)
         a = dir('/tmp/binocstimisup');
         b = dir('/tmp/binocstimisdone');
         if ~isempty(a) && ~isempty(b) && a.datenum > b.datenum %binoc is in stim            
+ %           myprintf(DATA.frombinocfid,'Binoc In Stim at %s\n',datestr(now));
             return;
         elseif isempty(b) && ~isempty(a) %in stim and done file deleted
+%            myprintf(DATA.frombinocfid,'Binoc In Stim(D) at %s\n',datestr(now));
             return;
         end
     end
@@ -4635,6 +4651,8 @@ function Expt = ExptSummary(DATA)
     Expt.Stimvals.st = DATA.stimulusnames{DATA.stimtype(1)};
     Expt.Stimvals.Bs = DATA.stimulusnames{DATA.stimtype(2)};
     Expt.Start = now;
+    Expt.Header.Name = GetName(DATA.binoc{1}.uf);
+    
 
         
 function DATA = RunButton(a,b, type)
@@ -5632,6 +5650,7 @@ if ~isfield(DATA,'showstatus')
     DATA.showstatus.status = 1;
     DATA.showstatus.errors = 1;    
     DATA.showstatus.expt = 1;
+    DATA.showstatus.comment = 1;
 end
 f = fields(DATA.showstatus)
 onoff = {'off' 'on'};
@@ -5652,7 +5671,7 @@ SetData(DATA);
 
 function ShowStatusStrings(DATA)
     if ishandle(DATA.statusitem)
-        f = {'status' 'trials' 'errors' 'expt'};
+        f = {'status' 'trials' 'errors' 'expt' 'comment'};
         for j = 1:length(f)
             showlines(j) = DATA.showstatus.(f{j});
         end
@@ -5740,7 +5759,7 @@ for j = line:length(str)
             fprintf('Running %s\n',DATA.matexpt);
             DATA.matexpres = [];
             DATA.matexpres = eval(DATA.matexpt);            
-            DATA.matlabwasrun = 1;0
+            DATA.matlabwasrun = 1;
             if isfield(DATA.matexpres,'abort') && DATA.matexpres.abort > 0
                 vergwarning(sprintf('%s Says abort',DATA.matexpt));
                 return;
@@ -5905,6 +5924,7 @@ function SequencePopup(a,exptlines,type)
   cntrl_box = findobj('Tag',DATA.windownames{8},'type','figure');
   if ~strcmp(type,'popup')
       if strcmp(type,'run')
+          DATA = GetState(DATA,'runseq');
           DATA.runsequence = 1;
           lst = findobj(cntrl_box,'Tag','SequenceList');
           RunExptSequence(DATA,get(lst,'string'),1);
@@ -5944,11 +5964,15 @@ bp(4) = 1./nr;
 uicontrol(gcf,'style','pushbutton','string','Run', ...
     'Callback', {@SequencePopup, 'run'} ,...
     'units', 'norm', 'position',bp,'value',1);
-bp(1) = bp(1)+bp(3)+0.01;
-uicontrol(gcf,'style','pushbutton','string','Pause', ...
-    'Callback', {@SequencePopup, 'pause'} ,...
-    'units', 'norm', 'position',bp,'value',1);
+
+if Dev(DATA)
+    bp(1) = bp(1)+bp(3)+0.01;
+    uicontrol(gcf,'style','pushbutton','string','Pause', ...
+        'Callback', {@SequencePopup, 'pause'} ,...
+        'units', 'norm', 'position',bp,'value',1);
    
+end
+
 usejava =0;
 if usejava
 lst = jcontrol(gcf,'javax.swing.JTextField',...
@@ -5967,6 +5991,13 @@ end
 set(DATA.toplevel,'UserData',DATA);
 
 
+function d = Dev(DATA)
+    if isfield(DATA.binoc{1},'ui') && strcmp(DATA.binoc{1}.ui,'bgc')
+        d = true;
+    else
+        d = false;
+    end
+        
 function CodeListMenu(a,b,c)
     lst = get(get(a,'parent'),'userdata');
     strs = get(lst,'string')
@@ -7305,6 +7336,8 @@ function ChoosePsych(a,b, mode)
             it = findobj(get(a,'parent'),'Tag',DATA.psych.blockmode);
             set(it,'Checked','on');
         end
+    elseif strcmp(mode,'exptsummary')
+        PlotExptsSummary(DATA.Expts);
     elseif strmatch(mode,'Current')
         if strcmp(DATA.psych.blockmode,'Current')
             DATA.psych.blockmode = 'Select';
@@ -7346,9 +7379,18 @@ function ChoosePsych(a,b, mode)
             PlotExptsSummary(Expts);
         end
     elseif strmatch(mode,'readpsychfile')
-        Expts = ReadPsychFile(DATA.binoc{1}.psychfile);
-        setappdata(gcf,'Expts',Expts);
-        PsychMenu(DATA,Expts);
+        logfile = sprintf('/local/%s/logs/%s%s',DATA.binoc{1}.monkey,DATA.binoc{1}.monkey,datestr(now,'ddmmmyyyy')); 
+        if exist(DATA.binoc{1}.psychfile,'file')
+            Expts = ReadPsychFile(DATA.binoc{1}.psychfile);
+        elseif exist(logfile,'file')
+            Expts = ReadPsychFile(logfile,'useallexpts','nmin',3);
+        else            
+            Expts = {};
+        end
+        if ~isempty(Expts)
+            setappdata(gcf,'Expts',Expts);
+            PsychMenu(DATA,Expts);
+        end
     elseif strcmp(mode,'savetrials');
         [outname, pathname] = uiputfile(['/local/' DATA.binoc{1}.monkey '/PsychDat.mat']);
         if outname
@@ -7381,6 +7423,7 @@ function DATA = SetFigure(tag, DATA)
             sm = uimenu(hm,'Label','Save Trial Data','callback', {@ChoosePsych, 'savetrials'});
             sm = uimenu(hm,'Label','Read Todays PsychFile','callback', {@ChoosePsych, 'readpsychfile'});
             sm = uimenu(hm,'Label','Read Previous PsychFile','callback', {@ChoosePsych, 'choosepsychfile'});
+            sm = uimenu(hm,'Label','Plot Expt Summary','callback', {@ChoosePsych, 'exptsummary'});
             set(a,'UserData',DATA.toplevel);
             set(a,'DefaultUIControlFontSize',DATA.font.FontSize);
             set(a,'DefaultUIControlFontName',DATA.font.FontName);

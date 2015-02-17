@@ -7669,138 +7669,10 @@ int next_frame(Stimulus *st)
 //                mode |= FIRST_FRAME_BIT;
 //                stimstate = INSTIMULUS;
                 break;
-                    case WAIT_FOR_RESPONSE:
-                        // do POSTTRIAL commands here, then move on
-                        crasher =1;
-                        ShowTestCount(0, -1);
-                        if (crasher < 1){
-                            if(rdspair(expt.st))
-                                i = 0;
-                            if(seroutfile){
-                                fprintf(seroutfile,"#PostTrial, last %d stimno%d%c\n",laststate,stimno,exptchr);
-                                fflush(seroutfile);
-                            }
-                            if (netoutfile)
-                                fflush(netoutfile);
-                            if(option2flag & AFC)
-                                CountReps(stimno);
-                            if((option2flag & PSYCHOPHYSICS_BIT) || fixstate == BAD_FIXATION){
-                                ResetExpStim(0);
-                                if(ExptIsRunning())
-                                    PrepareExptStim(1,10);
-                                SetFixColor(expt);
-                                if(fixstate == BAD_FIXATION && TheStim->fix.timeout > 0){
-                                    search_background();
-                                    change_frame();
-                                    search_background();
-                                }
-                            }
-                            else{
-                                setmask(bothmask);
-                                wipescreen(clearcolor);
-                                RunBetweenTrials(st, pos);
-                                if (expt.vals[CHOICE_TARGET_DURATION] > 0  && monkeypress == WURTZ_OK)
-                                    paint_target(expt.targetcolor,2);
-                                change_frame();
-                            }
-                            if(debug) glstatusline("PostTrial",3);
-                        }
-                        if (crasher &2){
-                            if(fabs(expt.vals[PURSUIT_INCREMENT]) > 0.001 && fixstate != BAD_FIXATION){
-                                /*
-                                 * N.B. at this moment changes in PURSUIT INCREMENT as part of an expt will not
-                                 * have been made yet for the next trial. This works becuase the after pursuing in one direction, the next trial must be a pursuit back.
-                                 */
-                                dx = (expt.vals[PURSUIT_INCREMENT]) * (expt.st->nframes-1) * sin(expt.vals[FP_MOVE_DIR]);
-                                dy = cos(expt.vals[FP_MOVE_DIR]) * (expt.vals[PURSUIT_INCREMENT]) * (expt.st->nframes-1);
-                                
-                                
-                                if(pursued > 0.1 || stimno & 1){
-                                    pursuedir = -1;
-                                    if(altstimmode != MOVE_STIM_ONLY){
-                                        expt.vals[FIXPOS_X] = expt.fixpos[0] + dx;
-                                        expt.vals[FIXPOS_Y] = expt.fixpos[1] + dy;
-                                    }
-                                    TheStim->pos.xy[0] = deg2pix(expt.vals[XPOS] + dx);
-                                    TheStim->pos.xy[1] = deg2pix(expt.vals[YPOS] + dy);
-                                    //	    printf("P- %.3f\n",expt.vals[PURSUIT_INCREMENT]);
-                                }
-                                else{
-                                    pursuedir = 1;
-                                    expt.vals[FIXPOS_X] = expt.fixpos[0];
-                                    expt.vals[FIXPOS_Y] = expt.fixpos[1];
-                                    TheStim->pos.xy[0] = deg2pix(expt.vals[XPOS]);
-                                    TheStim->pos.xy[1] = deg2pix(expt.vals[YPOS]);
-                                    //	    printf("P+ %.3f\n",expt.vals[PURSUIT_INCREMENT]);
-                                }
-                                SerialSend(PURSUIT_INCREMENT);
-                                fixpos[0] = deg2pix(expt.vals[FIXPOS_X]);
-                                if(seroutfile){
-                                    fprintf(seroutfile,"#fx %.2f,%.2f (%.2f,%.2f) pi %.3f(%.0f) xo %.3f\n",expt.stimvals[FIXPOS_X],
-                                            expt.stimvals[FIXPOS_Y],dx,dy,
-                                            expt.vals[PURSUIT_INCREMENT],pursuedir,pix2deg(TheStim->pos.xy[0]));
-                                    fprintf(seroutfile,"#efx %.2f,%.2f stimno %d\n",expt.fixpos[0],expt.fixpos[1],stimno);
-                                }
-                            }
-                            else{
-                                expt.vals[FIXPOS_X] = expt.stimvals[FIXPOS_X];
-                                expt.vals[FIXPOS_Y] = expt.stimvals[FIXPOS_Y];
-                                fixpos[0] = deg2pix(expt.vals[FIXPOS_X]);
-                            }
-                            pursued = 0;
-                            fixpos[1] = deg2pix(expt.vals[FIXPOS_Y]);
-                            SerialSend(FIXPOS_XY);
-                            draw_fix(fixpos[0],fixpos[1], TheStim->fix.size, TheStim->fixcolor);
-                        }
-                        if (crasher & 4){
-                            /* stimseq[].result is used in human psychophysics for staircases */
-                            if(!(option2flag & PSYCHOPHYSICS_BIT))
-                                stimseq[trialctr].result = monkeypress;
-                            else
-                                ShowInfo();
-                            if(trialctr < TRIALBUFFERLEN)
-                                trialctr++;
-                            else{
-                                trialctr = 0;
-                                triallaps++;
-                            }
-                            stimseq[trialctr].a = stimseq[trialctr].b = 0;
-                        }
-                        
-                        if (crasher &2){
-                            /*
-                             * if expt stim is prepared during a timout, this undoes the setting
-                             * of saccval...
-                             afc_s.sacval[0] =  afc_s.abssac[0];
-                             afc_s.sacval[1] =  afc_s.abssac[1];
-                             */
-                            if (fixstate == BADFIX_STATE)
-                                CheckStimDuration(fixstate);
-                            
-                            if(fixstate == BADFIX_STATE && TheStim->fix.timeout > 0)
-                                stimstate = IN_TIMEOUT;
-                            else if(monkeypress == WURTZ_OK_W)
-                                stimstate = IN_TIMEOUT_W;
-                            else{
-                                stimstate = INTERTRIAL;
-                                // ONE_TRIAL meand one _good trial, so only stop if not a timeout
-                                if(states[ONE_TRIAL]){
-                                    StopGo(STOP);
-                                    states[ONE_TRIAL] = 0;
-                                }
-                            }
-                            if(stopgo == STOP)
-                                StopGo(STOP);
-                            if(stairfd){
-                                fprintf(stairfd,"Post%d(%d) ",stimno,stimorder[stimno]);
-                            }
-                        } //end crasher < 1
-                        if (crasher & 16){
-                            if (stimstate != POSTTRIAL)
-                                ReadCommandFile(expt.cmdinfile);
-                        }
-                        stimstate = INTERTRIAL;
-                        break;
+            case WAIT_FOR_RESPONSE:
+                 // do POSTTRIAL commands here, then move on
+                  stimstate = INTERTRIAL;
+                break;
             default:
 //                stimstate = INSTIMULUS;
                 break;
@@ -10713,90 +10585,6 @@ int ShowTrialCount(float down, float sum)
 	return(0);
 }
 
-int ShowTestCount(float down, float sum)
-{
-    int i,*iptr;
-    char result = '0',buf[256];
-    float val;
-    int crasher;
-    float fsum = 0;
-    
-    
-    crasher = 2;
- //15 crashed, to its not the loop.
- // looks like its overflowing mssg with some message?
-
-    
-    val = 0;
-    if (crasher & 1){
-    if(sum < 0)
-    {
-	    if(wurtzctr > avglen)
-        {
-            iptr = &fixed[wurtzctr-avglen];
-            fsum = 0;
-            for(i = 0; i < avglen; i++){
-                if (crasher & 16){
-                    if(*iptr++ == (int)WURTZ_OK)
-                        fsum += 1.0;
-                }
-                else if (crasher & 32){
-                    *iptr++;
-                }
-                else if (crasher & 64){
-                    if(*iptr == (int)WURTZ_OK)
-                        fsum += 1.0;
-                }
-            }
-            for(i = 0; i < avglen && i < wurtzctr; i++){
-                if(fixed[i] == (int)WURTZ_OK)
-                    fsum += 1.0;
-            }
-        }
-        else
-            fsum = 0;
-    }
-    }
-    if (crasher & 8){
-	val = StimDuration();
-    if (val < 0)
-        val = timediff(&now, &firstframetime);
-    }
-	if(debug)
-        sprintf(tmssg,"%s(%.2f) Frames: %d/%d (%.3f sec) %d/%d %d late %d bad (%.2f), %0f/%d",binocTimeString(),ufftime(&now),framesdone,TheStim->nframes,val,goodtrials,totaltrials,
-                totaltrials-(goodtrials+fixtrials),fixtrials,down,fsum,avglen);
-	else
-        sprintf(tmssg,"%s Frames: %d/%d (%.3f sec) %d/%d %d late %d bad (%.2f), %.0f/%d",binocTimeString(),framesdone,TheStim->nframes,val,goodtrials,wurtzctr,
-                totaltrials-(goodtrials+fixtrials),fixtrials,down,fsum,avglen);
-    
-    if (crasher & 4){
-        sprintf(buf," rw%.1f ",totalreward);
-        strcat(tmssg,buf);
-        if(TheStim->mode & EXPTPENDING)
-        {
-            sprintf(buf,"Ex: %d/%d",stimno,expt.nstim[6]);
-            strcat(tmssg,buf);
-        }
-        strcat(tmssg,resbuf);
-        if(endbadctr)
-        {
-            sprintf(buf,"Bad: %d",endbadctr);
-            strcat(tmssg,buf);
-        }
-        if(optionflag & FRAME_ONLY_BIT)
-        {
-            sprintf(tmssg,"Ex: %ld/%d %.1f +- SD %.2f %d,%d outliers",frametotal,expt.nreps*expt.nstim[5],framemean,framesd,outliers[0],outliers[1]);
-        }
-    }
-    
-    if (crasher & 2){
-        statusline(tmssg);
-    }
-    i = strlen(tmssg);
-    if (i > BUFSIZ)
-        fprintf(stderr,"%s: Message too long %d\n",tmssg,i);
-	return(0);
-}
 
 int ShowLastCodes()
 {
@@ -12049,7 +11837,10 @@ void expt_over(int flag)
        fflush(netoutfile);
     }
     if(!(optionflag & FRAME_ONLY_BIT)){
-        sprintf(buf,"Expt over %d stim at %s",trialsdone,binocTimeString());
+        if (flag == CANCEL_EXPT)
+            sprintf(buf,"Expt cancelled after %d stim at %s",trialsdone,binocTimeString());
+        else
+            sprintf(buf,"Expt over %d stim at %s",trialsdone,binocTimeString());
         statusline(buf);
     }
     UpdateNetworkFile(expt);
