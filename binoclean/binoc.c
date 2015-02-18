@@ -2155,10 +2155,14 @@ void SetStopButton(int onoff)
          * the call to handle_pushbuttons toggles ANIMATE_BIT
          * EG: GO unsets ANIMATE_BIT, whihc is then set in handle_pusbuttons
          */
-        if(onoff == STOP)
+        if(onoff == STOP){
             mode |= ANIMATE_BIT;
-        if(onoff == GO)
+            optionflag |= GO_BIT;
+        }
+        if(onoff == GO){
             mode &= (~ANIMATE_BIT);
+            optionflag &= (~GO_BIT);
+        }
     }
 }
 
@@ -6615,6 +6619,8 @@ int next_frame(Stimulus *st)
             }
             if(TheStim->mode & EXPTPENDING && mode & ANIMATE_BIT)
                 stimstate = INTERTRIAL;
+            else if (mode & ANIMATE_BIT)
+                stimstate = INTERTRIAL;
             if(timeout_type == SHAKE_TIMEOUT_PART2){
                 ShowTime();
                 if((val = timediff(&now, &starttimeout)) > expt.vals[SHAKE_TIMEOUT_DURATION]){
@@ -7631,6 +7637,7 @@ int next_frame(Stimulus *st)
             paint_frame(WHOLESTIM,1);
             TheStim->mode |= EXPTPENDING;
             mode |= ANIMATE_BIT;
+            optionflag |= (GO_BIT);
            break;
     }
     lastval = val;
@@ -10092,6 +10099,14 @@ void setoption()
     {
         /*      SetWPanel();*/
     }
+    if (new & GO_BIT){
+        if (optionflag & GO_BIT)
+            mode |= ANIMATE_BIT;
+        else
+            mode &= (~ANIMATE_BIT);
+        
+    }
+        
     
     if(new2 & PSYCHOPHYSICS_BIT && option2flag & PSYCHOPHYSICS_BIT)
         srandom(getpid());
@@ -11821,14 +11836,17 @@ void expt_over(int flag)
     sprintf(buf,"%2s+\n",serial_strings[STOP_BUTTON]);
     SerialString(buf,0);
     optionflag &= (~GO_BIT);
-    if(!testflags[PLAYING_EXPT])
+    if(!testflags[PLAYING_EXPT]){
         mode &= (~ANIMATE_BIT);
+        optionflag &= (~GO_BIT);
+    }
     if(optionflag & FRAME_ONLY_BIT)
         WriteFrameData();
     if (seroutfile){
         fprintf(seroutfile,"#EXPTOVER at %s",ctime(&tval));
         fflush(seroutfile);
     }
+    unlink("/tmp/binocstimisup"); //make sure comms not blocked
     notify("\nEXPTOVERE\n");
     SaveExptFile("./leaneo.stm",SAVE_STATE);
     SendAllToGui();

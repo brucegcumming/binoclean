@@ -1010,9 +1010,15 @@ void calc_cyl_motion(ball_s *balls, float vel, int ndots, int flag, int lifefram
 			    }	    
 		    }
 		    else
-                if ((rnd = mydrand()) < deathchance) { 
-                    balls[i].pos[xi] = sinf(M_PI * (mydrand() - 0.5)); /* sin(-pi/2 -> pi/2 */
-                    balls[i].pos[yi] = (2.0) * (mydrand() - 0.5);
+                if ((rnd = mydrand()) < deathchance) {
+                    if (flag & REVERSING_DOTS){
+                        balls[i].left_right[xi]*=-1;		/* swaps LEFT and RIGHT */
+                    }
+                        else{
+                            balls[i].pos[xi] = sinf(M_PI * (mydrand() - 0.5)); /* sin(-pi/2 -> pi/2 */
+                            balls[i].pos[yi] = (2.0) * (mydrand() - 0.5);
+                        }
+                        
                     nreplaced++;
                 }	
             delta = fabsf(vel * balls[i].proportion[xi]);  	/* theta=asin(x)/r, dotvel=cos(theta)) */  

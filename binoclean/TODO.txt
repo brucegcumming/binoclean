@@ -112,3 +112,4 @@ remove XMIN/MAX SAMPLERATIO
 *allow searching of .hlp files.  E.g I would like to know where to find how to make movies....
 ? diable dx for "twoeyes" image mode, on theory that it shoud be done in the file?  Or use Pd/dp  to encode manual disparities done there.
 WHat does sequence pause do that you can't do with the go checkbox?
+replace mode & ANIMATE_BIT with optionflag & GO_BIT so that GUI is really in control
