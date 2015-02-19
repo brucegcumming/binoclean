@@ -93,9 +93,9 @@ Things that need fixing:
 Allow circular checkers.
 Allow drifing checkers.
 -seqpause not initialised properly
-aknowlegde before window up is just fprintf.  ? keep track and report later? 
-Expt restart - get penlog info 
-Parse Stim durations in Verg, to look into frame dropping
+*aknowlegde before window up is just fprintf.  ? keep track and report later? 
+*Expt restart - get penlog info
+*Parse Stim durations in Verg, to look into frame dropping
 *Check out Grating AA. ? Draw Lines Twice?
 *Spped up interpret line. Have case/ifelse by first letter?  Force use of = sign so that can always have exact code?
 *dont send status=stopped repeatedly.  Have status line sent in Getstate/Querystate
@@ -111,4 +111,4 @@ remove XMIN/MAX SAMPLERATIO
 *add help for !commands
 *allow searching of .hlp files.  E.g I would like to know where to find how to make movies....
 ? diable dx for "twoeyes" image mode, on theory that it shoud be done in the file?  Or use Pd/dp  to encode manual disparities done there.
-WHat does sequence pause do that you can't do with the go checkbox?
+WHat does sequence pause buttpn do that you can't do with the go checkbox?

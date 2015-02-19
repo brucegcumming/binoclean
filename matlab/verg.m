@@ -5789,7 +5789,7 @@ for j = line:length(str)
         set(DATA.toplevel,'UserData',DATA);
         outprintf(DATA,'#From RunSequence\n');
         outprintf(DATA,'%s\n',str{j}); %this runs expt in binoc
-        DATA = AddStatusLine(DATA,sprintf('RunSequence Line %d. at %s %d Repeats left',line,datestr(now,'hh:mm.ss'),DATA.rptexpts),4);
+        DATA = AddStatusLine(DATA,sprintf('RunSequence Line %d. at %s %d Repeats left',j,datestr(now,'hh:mm.ss'),DATA.rptexpts),4);
         return;
     elseif strncmp(str{j},'!trial',5)
         outprintf(DATA,'!onetrial\n');
@@ -5926,8 +5926,9 @@ function SequencePopup(a,exptlines,type)
       if strcmp(type,'run')
           DATA = GetState(DATA,'runseq');
           DATA.runsequence = 1;
+          DATA.seqline = 0;
           lst = findobj(cntrl_box,'Tag','SequenceList');
-          RunExptSequence(DATA,get(lst,'string'),1);
+          DATA = RunExptSequence(DATA,get(lst,'string'),1);
       elseif strcmp(type,'pause')
           str = get(a,'string');
           if strcmp(str,'pause');

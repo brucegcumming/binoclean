@@ -4245,20 +4245,20 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
             st->vdisp = deg2pix(val)/2;
             CheckRect(stimptr);
             break;
-        case XMAXSAMPLE_RATIO:
-            st->sample_ratio[1] = val;
-            fval = st->sample_ratio[0];
-            SetStimulus(st, fval, XMINSAMPLE_RATIO, NULL);
-            break;
-        case XMINSAMPLE_RATIO:
-            st->sample_ratio[0] = val;
-            if(st->type != STIM_RDS)
-            {
-                fval = deg2pix(1/st->f)/val;
-                if(fval < st->sample_ratio[1])
-                    SetStimulus(st, fval, XSAMPLES, NULL);
-            }
-            break;
+//        case XMAXSAMPLE_RATIO:
+//            st->sample_ratio[1] = val;
+//            fval = st->sample_ratio[0];
+//            SetStimulus(st, fval, XMINSAMPLE_RATIO, NULL);
+//            break;
+//        case XMINSAMPLE_RATIO:
+//            st->sample_ratio[0] = val;
+//            if(st->type != STIM_RDS)
+//            {
+//                fval = deg2pix(1/st->f)/val;
+//                if(fval < st->sample_ratio[1])
+//                    SetStimulus(st, fval, XSAMPLES, NULL);
+//            }
+//            break;
         case DOT_DENSITY:
             if(st->type == STIM_RDS || st->type == STIM_RDSSINE || st->type == STIM_RLS || st->type == STIM_CHECKER)
             {
@@ -9497,12 +9497,12 @@ float StimulusProperty(Stimulus *st, int code)
         case SWAPINTERVAL:
             value = TheStim->swapinterval;
             break;
-        case XMINSAMPLE_RATIO:
-            value = st->sample_ratio[0];
-            break;
-        case XMAXSAMPLE_RATIO:
-            value = st->sample_ratio[1];
-            break;
+//        case XMINSAMPLE_RATIO:
+//            value = st->sample_ratio[0];
+//            break;
+//        case XMAXSAMPLE_RATIO:
+//            value = st->sample_ratio[1];
+//            break;
         case ASPECT_RATIO:
             value = pix2deg(pos->imsize[0])/pix2deg(pos->imsize[1]);
             break;
