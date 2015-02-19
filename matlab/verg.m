@@ -2152,6 +2152,7 @@ function DATA = SetDefaults(DATA)
 
 scrsz = get(0,'Screensize');
 DATA = SetField(DATA,'ip','http://localhost:1110/');
+DATA.lastreadtime = now;
 DATA.network = 2;
 DATA.lastmsg = '';
 DATA.errors(1) = 0; %keep track of  erros received, so only acknowlge first
@@ -4283,6 +4284,10 @@ function CheckInput(a,b, fig, varargin)
         fprintf(DATA.tobinocfid,'Ping at %2d:%2d.%.3f\n',a(4),a(5),a(6));
     end
     if DATA.network == 2 %don't ping binoc during stims
+        ts = (lastread - DATA.lastreadtime)/(60*60*24);
+        if ts > 5
+            fprintf('Have not heard from binoc for %.1f sec',ts);
+        end
         a = dir('/tmp/binocstimisup');
         b = dir('/tmp/binocstimisdone');
         if ~isempty(a) && ~isempty(b) && a.datenum > b.datenum %binoc is in stim            
@@ -4450,6 +4455,7 @@ end
         [DATA,lastts] = CheckForNewBinoc(DATA,lastts);
     else
         DATA = InterpretLine(DATA,str,['frombinoc' srcchr],args{:});
+        DATA.lastreadtime = now;
     end
 %    myprintf(DATA.frombinocfid,'ReadBinoc%s:  %s',datestr(now),str);
     if ~isfield(DATA,'trialcounts')

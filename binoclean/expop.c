@@ -3287,7 +3287,11 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
                 expt.st->flag |= (FLAT_SURFACES | FLAT_DISPARITY | NO_WRAP);
             }
             if(expt.stimmode == NORMAL_CYLINDER){
-                expt.st->flag &= (~(FLAT_SURFACES | FLAT_DISPARITY | NO_WRAP));
+                expt.st->flag &= (~(FLAT_SURFACES | FLAT_DISPARITY | NO_WRAP | REVERSING_DOTS));
+                expt.stimmode = 0;
+            }
+            if(expt.stimmode == DISRUPTED_CYLINDER){
+                expt.st->flag |= (REVERSING_DOTS);
                 expt.stimmode = 0;
             }
             break;
