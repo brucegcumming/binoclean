@@ -1485,7 +1485,7 @@ function [code, codeid] = FindCode(DATA, s)
     if id
         code = s(1:id(1)-1);
         codeid = find(strcmp(code,{DATA.comcodes.code}));
-    else
+    elseif length(s) > 1
         id = find(strcmp(s(1:2),{DATA.comcodes.code}));
         codeid = id;
         if length(id) == 1

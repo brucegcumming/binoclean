@@ -193,7 +193,7 @@ int init_rls(Stimulus *st,  Substim *sst, float density)
 void calc_rls(Stimulus *st, Substim *sst)
 {
     int i,j,partdisp,ndots,nx = 0;
-    float cval,f,sy,cm,deg,iscale[2],val[2];
+    float cval,f,sy,cm,deg,iscale[2],val[4];
     float asq,bsq = 0,csq,dsq,xsq,ysq,pixdisp[2],offset[2];
     int *p,*q,*cend,yi,lastp,lastq;
     vcoord *x,*y,w,h,lastx,eh=0,lasty,*zy,*zx,lastzx,lastzy;
@@ -208,6 +208,7 @@ void calc_rls(Stimulus *st, Substim *sst)
     int orthoguc = 0,orthogac = 0;
     int pblank = 0,*pi,maxconsec = 0;
     int painterr = 0;
+    float c2 = pos->contrast2;
 
  
     if(st->preload && st->preloaded){
@@ -217,9 +218,9 @@ void calc_rls(Stimulus *st, Substim *sst)
     if (sst->density < 100)
         pblank = rint((100-sst->density) * 2.55);
     
-    if (expt.stimmode == ORTHOG_UC || (st->left->ptr->plaid_angle) > M_2_PI)
+    if (expt.stimmode == ORTHOG_UC)
         orthoguc = 1;
-    if (expt.stimmode == ORTHOG_AC || (st->left->ptr->plaid_angle) > 2 * M_2_PI)
+    if (expt.stimmode == ORTHOG_AC)
         orthogac = 1;
     
     if(expt.stimmode == RLS_HIGHPASS)
@@ -243,6 +244,8 @@ void calc_rls(Stimulus *st, Substim *sst)
         val[0]  = 1.0;
     else
         val[0] = (double)st->background * (1 + contrast);
+    val[2] = (double)st->background * (1 - c2);
+    val[3] = (double)st->background * (1 + c2);
     if(st->flag & CONTRAST_POSITIVE)
     {
         if(contrast >= 1.0)
@@ -252,7 +255,7 @@ void calc_rls(Stimulus *st, Substim *sst)
     }
     else
         val[1] = val[0];
-    for(i = 0; i < 2; i++)
+    for(i = 0; i < 4; i++)
         sst->lum[i] = dogamma(val[i]);
     
     offset[0] = offset[1] = 0;
@@ -413,8 +416,22 @@ void calc_rls(Stimulus *st, Substim *sst)
     for(i = 0; i < 10; i++){
         sst->bits[i] = 0;
     }
+    rq = rp;
+    for(i = 0; i < sst->ndots; i++,rp++){
+        if(sst->corrdots == 0 && sst->mode == RIGHTMODE && !seedcall)
+            myrnd_init(sst->seed+200),seedcall++;
+        *rp = myrnd_i();
+    }
+    if (expt.stimmode == ORTHOG_DYNAMIC){
+        rq = rp;
+        myrnd_init(sst->seed+st->framectr);
+        for(i = 0; i < sst->ndots; i++,rp++){
+            *rp = myrnd_i();
+        }
+    }
     
     sst->npaint = sst->npainta = sst->ndots;
+    rp =rndarray;
     for(i = 0; i < sst->ndots; )
     {
         *x = 0;
@@ -439,9 +456,6 @@ void calc_rls(Stimulus *st, Substim *sst)
          * corrdots lines are ALL the same, then the remainder are all uncorrelated
          * i.e. its because these are painted in order, unlike rds....
          */
-        if(sst->corrdots == 0 && sst->mode == RIGHTMODE && !seedcall)
-            myrnd_init(sst->seed+200),seedcall++;
-        *rp = myrnd_i();
         if(i == sst->ndots -2)
             j = *rp & 1;
         /*
@@ -460,20 +474,20 @@ void calc_rls(Stimulus *st, Substim *sst)
         }
         if (sst->mode == RIGHTMODE && orthoguc)
         {
-            if(*rp & (1<<4))
+            if(*rq & (1<<4))
                 *q = WHITEMODE;
             else
                 *q = BLACKMODE;
         }
         if (sst->mode == RIGHTMODE && orthogac)
         {
-            if(*rp & (1<<3))
+            if(*rq & (1<<3))
                 *q = BLACKMODE;
             else
                 *q = WHITEMODE;
         }
         else{
-                if(*rp & (1<<3))
+                if(*rq & (1<<3))
                     *q = WHITEMODE;
                 else
                     *q = BLACKMODE;
@@ -659,7 +673,7 @@ void calc_rls(Stimulus *st, Substim *sst)
             lastq = *q;
             lastzy = *zy;
         }
-        i++,x++,y++,p++,rp++,q++,zx++,zy++,pi++;
+        i++,x++,y++,p++,rp++,q++,zx++,zy++,pi++,rq++;
         nx++;
         if (sst->npaint > sst->xpla){
             sst->npaint = sst->xpla;
@@ -1931,7 +1945,10 @@ void paint_rls_plaid(Stimulus *st, int mode)
         glEnd();
     }
     
-    
+// now paint second ori
+    vcolor[3] = vcolor[1] = vcolor[2] = vcolor[0] = sst->lum[2];
+    bcolor[3] = bcolor[1] = bcolor[2] = bcolor[0] = sst->lum[3];
+
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_LIGHTING);
     glEnable(GL_BLEND);
