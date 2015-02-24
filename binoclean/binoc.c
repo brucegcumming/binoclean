@@ -2991,7 +2991,7 @@ void clear_display(int flag)
     newtimeout = 1;
     glDrawBuffer(GL_FRONT_AND_BACK);
     clear_screen(TheStim, 1);
-    if(stimstate == STIMSTOPPED && clearcolor != TheStim->background)
+    if(stimstate ==  STIMSTOPPED && clearcolor != TheStim->background)
         search_background();
     if(stimstate == POSTTRIAL && monkeypress == WURTZ_OK_W && afc_s.wrongtimeout > 0)
         chessboard(128,128);
@@ -5036,7 +5036,9 @@ void search_background()
         tempstim->left->nbars = tempstim->right->nbars = nb;
         tempstim->noclear = 1;
         
- 
+
+        if (expt.vals[ALTERNATE_STIM_MODE] == ANTICORR_TIMEOUT)
+            tempstim->flag |= ANTICORRELATE;
         rndval = (float)(newtimeout*expt.st->angleinc);
         init_stimulus(tempstim);
         srandom(TheStim->left->baseseed);
@@ -5052,14 +5054,26 @@ void search_background()
                     val = (val * val)/99.7;
                 else
                     val = -(val * val)/99.7;
-                tempstim->left->imc[nb] =  0;
+                if (tempstim->flag & ANTICORRELATE){
+                    if (rnd & 1){
+                    tempstim->left->imc[nb] =  1;
+                    tempstim->right->imc[nb] =  0;
+                    }
+                    else{
+                        tempstim->left->imc[nb] =  0;
+                        tempstim->right->imc[nb] =  1;
+                    }
+                }
+                else{
+                    tempstim->left->imc[nb] =  0;
+                    tempstim->right->imc[nb] =  0;
+                }
                 tempstim->left->imb[nb] =  (expt.rf->angle + val) * 2 * M_PI/360.0;
                 tempstim->left->ypos[nb] = j;
                 tempstim->left->xpos[nb] = i;
                 tempstim->right->imb[nb] =  (expt.rf->angle + val) * 2 * M_PI/360.0;
                 tempstim->right->ypos[nb] = j;
                 tempstim->right->xpos[nb] = i;
-                tempstim->right->imc[nb] =  0;
                 nb++;
                 if (tempstim->f < 5 || tempstim->left->pos.sf < 5 ||tempstim->right->pos.sf < 5 || tempstim->right->pos.radius[0] > 200)
                 {
