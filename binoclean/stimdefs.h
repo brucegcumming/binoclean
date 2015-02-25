@@ -646,6 +646,7 @@ long rnd_i(void);
 #define QUICK_CAL 19
 #define ZERO_BACK_DELAY 20
 #define MOVE_STIM_ONLY 21
+#define ANTICORR_TIMEOUT 22
 
 #define isinduced(x) (x > 11.9 && x < 14.1)
 #define isharris(x) (x > 14.9 && x < 16.1)

@@ -134,6 +134,9 @@ void paint_bar(Stimulus *st, Substim *sst, int mode)
     }
     else if(mode == RIGHTMODE)
     {
+        if (st->flag & ANTICORRELATE)
+            vcolor[1] = vcolor[2] = 1-cval;
+
         cc = &vcolor[1];
         rc = &vcolor[2];
     }
