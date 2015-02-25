@@ -3730,7 +3730,8 @@ function DATA = SetNewPenetration(DATA)
     end
     [pes, id] = sort(pe,'descend');
     fprintf('Recent Penetrations:\n');
-    for j = 3:-1:1
+    %may not be 3 pends here
+    for j = min([length(id) 3]):-1:1
         pendata{j} = ReadPen([DATA.cwd '/' d(id(j)).name],'noplot');
         fprintf('%d: %.1f,%.1f',pendata{j}.num,pendata{j}.pos);
         if isfield(pendata{j},'Electrode')
