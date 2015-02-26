@@ -3371,7 +3371,7 @@ function DATA = LoadLastSettings(DATA, varargin)
         end
         if go
             txt = scanlines(d.name);
-            for s = {'id' 'se' 'ed' 'Rx' 'Ry' 'Ro' 'Rw' 'Rh' 'Xp' 'Yp' 'Pn' 'Electrode' 'hemi'...
+            for s = {'id' 'se' 'ed' 'Rx' 'Ry' 'Ro' 'Rw' 'Rh' 'Xp' 'Yp' 'Pn' 'pe' 'Electrode' 'hemi'...
                     'ui' 'ePr' 'eZ' 'monkey' 'coarsemm' 'adapter' 'Trw' 'Tg' 'nT' 'Tb' 'uf' 'fx' 'fy' 'so' 'oldrf'}
             id = find(strncmp(s,txt,length(s{1})));
             if ~isempty(id)
@@ -7081,7 +7081,7 @@ function s = StripComments(str)
         str = deblank(str(1:id(1)-1));
     end
     id = strfind(str,'?');
-    if ~isempty(id)
+    if length(id) > 1
         str = deblank(str(2:id(2)-1));
     end
     s = regexprep(str,'\s\#.*','');

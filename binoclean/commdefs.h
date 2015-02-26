@@ -282,7 +282,7 @@
 //Add above here anything that needs to go to Spike2
 
 
-#define MAXSERIALCODES (LAST_STIMULUS_CODE+179)/* 218 */
+#define MAXSERIALCODES (LAST_STIMULUS_CODE+179)/* 222 */
 #define OPPOSITE_DELAY  MAXSERIALCODES
 #define FAST_SEQUENCE_RPT MAXSERIALCODES+1
 #define BRIGHTSHIFT_CODE MAXSERIALCODES+2
@@ -459,7 +459,7 @@
 #define NETWORK_PREFIX MAXSERIALCODES+173
 #define XY_FSD MAXSERIALCODES+174
 
-#define MAXSAVECODES MAXSERIALCODES+175 //393
+#define MAXSAVECODES MAXSERIALCODES+175 //397
 //Add above here anything that needs to be saved to .stm files
 //Below here are temporary/convenience/state parameters that do not need saving
 
