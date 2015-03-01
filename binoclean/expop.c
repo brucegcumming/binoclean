@@ -15296,7 +15296,10 @@ int InterpretLine(char *line, Expt *ex, int frompc)
         default:
             if(code < TOTALCODES && valstrings[icode].ctype == 'C')
             {
-                SetExptString(&expt,expt.st, code, s);
+                if (goteq)
+                    SetExptString(&expt,expt.st, code, s);
+                else
+                    fprintf(stderr,"Char Code %s, no =, then %s\n",valstrings[icode].code,s);
             }
             else if(code <= expt.maxcode)
             {
