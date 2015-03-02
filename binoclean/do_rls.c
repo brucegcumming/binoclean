@@ -432,6 +432,7 @@ void calc_rls(Stimulus *st, Substim *sst)
     
     sst->npaint = sst->npainta = sst->ndots;
     rp =rndarray;
+    sst->yrange[0] = sst->yrange[1] = 0;
     for(i = 0; i < sst->ndots; )
     {
         *x = 0;
@@ -442,6 +443,8 @@ void calc_rls(Stimulus *st, Substim *sst)
         if(*zy > h/2)
             *zy -= h;
         
+        if (*y < sst->yrange[0])
+            sst->yrange[0] = *y;
         /*     
          * Aproach 1. Don't reset the seed, just call lrand again.
          * must then keep track of values, can't just generate again. Alsp
@@ -1532,6 +1535,7 @@ void paint_rls(Stimulus *st, int mode)
     Locator *pos = &st->pos;
     float angle,cosa,sina,val,valsum = 0,cscale;
     vcoord rect[8],crect[8];
+    int ypos;
     
     
     if (st->preload & st->preloaded){
@@ -1676,7 +1680,7 @@ void paint_rls(Stimulus *st, int mode)
             glBegin(GL_QUAD_STRIP);
         }
         lasty = *y;
-        
+        ypos = rint(*y + sst->yrange[0]/sst->dotsiz[0]);
         if(st->dotdist == WHITENOISE16){
             val = 0.5 + (((float)(*p & 0xf)/0xe) -0.5) * sst->pos.contrast;  //0 ->1, not 0 ->15/16
             valsum += val;
@@ -1705,6 +1709,8 @@ void paint_rls(Stimulus *st, int mode)
             z[1] = *y; 
             myvx(z);
         }
+        sst->iimb[ypos] = *p;
+
     }
     glEnd();
  
