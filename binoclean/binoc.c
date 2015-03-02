@@ -5039,6 +5039,9 @@ void search_background()
 
         if (expt.vals[ALTERNATE_STIM_MODE] == ANTICORR_TIMEOUT)
             tempstim->flag |= ANTICORRELATE;
+        else
+            tempstim->flag &= (~ANTICORRELATE);
+        
         rndval = (float)(newtimeout*expt.st->angleinc);
         init_stimulus(tempstim);
         srandom(TheStim->left->baseseed);
