@@ -433,12 +433,16 @@ void calc_rls(Stimulus *st, Substim *sst)
     sst->npaint = sst->npainta = sst->ndots;
     rp =rndarray;
     sst->yrange[0] = sst->yrange[1] = 0;
+    lasty = -h/2;
     for(i = 0; i < sst->ndots; )
     {
         *x = 0;
         *y = -h/2 + i * sst->dotsiz[1] + xshift[1];
-        if(*y > h/2)
+        if (lasty > h/2)
             *y -= h;
+        else if(*y > h/2)
+            *y = h/2;
+        lasty = *y;
         *zy = -h/2 + i * sst->dotsiz[1] + xshift[2];
         if(*zy > h/2)
             *zy -= h;
@@ -1533,10 +1537,10 @@ void paint_rls(Stimulus *st, int mode)
     int dotmode = 0;
     Substim *sst = st->left;
     Locator *pos = &st->pos;
-    float angle,cosa,sina,val,valsum = 0,cscale;
+    float angle,cosa,sina,val,valsum = 0,cscale,partw = 0;
     vcoord rect[8],crect[8];
     int ypos;
-    
+    int ytrack[BUFSIZ];
     
     if (st->preload & st->preloaded){
         if (rdsstims[st->framectr] != NULL){
@@ -1678,9 +1682,10 @@ void paint_rls(Stimulus *st, int mode)
         if(*y < lasty){
             glEnd();
             glBegin(GL_QUAD_STRIP);
+            partw = (*y-sst->yrange[0])/sst->dotsiz[0];
         }
         lasty = *y;
-        ypos = rint(*y + sst->yrange[0]/sst->dotsiz[0]);
+        ypos = rint((*y - sst->yrange[0])/sst->dotsiz[0]);
         if(st->dotdist == WHITENOISE16){
             val = 0.5 + (((float)(*p & 0xf)/0xe) -0.5) * sst->pos.contrast;  //0 ->1, not 0 ->15/16
             valsum += val;
@@ -1709,8 +1714,9 @@ void paint_rls(Stimulus *st, int mode)
             z[1] = *y; 
             myvx(z);
         }
-        sst->iimb[ypos] = *p;
-
+        if(ypos >= 0 && ypos < sst->ndots+5)
+            sst->iimb[ypos] = *p;
+        ytrack[i++] = ypos;
     }
     glEnd();
  
