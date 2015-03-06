@@ -6,6 +6,10 @@ verbose = [];
 startdepth = NaN;
 
 
+%
+% Command SR1 -> SR20  changes period with which servo is polled (10KHz ->
+% 500Hz). But does not seem likely to help with noise
+
 j = 1;
 while j <= length(varargin)
     if strncmpi(varargin{j},'callback',5)

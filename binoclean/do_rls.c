@@ -193,11 +193,12 @@ int init_rls(Stimulus *st,  Substim *sst, float density)
 void calc_rls(Stimulus *st, Substim *sst)
 {
     int i,j,partdisp,ndots,nx = 0;
-    float cval,f,sy,cm,deg,iscale[2],val[2];
+    float cval,f,sy,cm,deg,iscale[2],val[4];
     float asq,bsq = 0,csq,dsq,xsq,ysq,pixdisp[2],offset[2];
     int *p,*q,*cend,yi,lastp,lastq;
     vcoord *x,*y,w,h,lastx,eh=0,lasty,*zy,*zx,lastzx,lastzy;
-    int xshift[3],iw,ih;
+    int iw,ih;
+    vcoord xshift[3];
     Locator *pos = &sst->pos;
     float phase,contrast = pos->contrast;
     int pixmul = 1,seedcall = 0;
@@ -207,8 +208,9 @@ void calc_rls(Stimulus *st, Substim *sst)
     uint64_t *rp,rnd,*rq;
     int orthoguc = 0,orthogac = 0;
     int pblank = 0,*pi,maxconsec = 0;
-    int painterr = 0;
-
+    int painterr = 0,idot= 0,nextra = 0;
+    float c2 = pos->contrast2;
+    float lastpos,posfix;
  
     if(st->preload && st->preloaded){
         return;
@@ -217,9 +219,9 @@ void calc_rls(Stimulus *st, Substim *sst)
     if (sst->density < 100)
         pblank = rint((100-sst->density) * 2.55);
     
-    if (expt.stimmode == ORTHOG_UC || (st->left->ptr->plaid_angle) > M_2_PI)
+    if (expt.stimmode == ORTHOG_UC)
         orthoguc = 1;
-    if (expt.stimmode == ORTHOG_AC || (st->left->ptr->plaid_angle) > 2 * M_2_PI)
+    if (expt.stimmode == ORTHOG_AC)
         orthogac = 1;
     
     if(expt.stimmode == RLS_HIGHPASS)
@@ -243,6 +245,8 @@ void calc_rls(Stimulus *st, Substim *sst)
         val[0]  = 1.0;
     else
         val[0] = (double)st->background * (1 + contrast);
+    val[2] = (double)st->background * (1 - c2);
+    val[3] = (double)st->background * (1 + c2);
     if(st->flag & CONTRAST_POSITIVE)
     {
         if(contrast >= 1.0)
@@ -252,11 +256,11 @@ void calc_rls(Stimulus *st, Substim *sst)
     }
     else
         val[1] = val[0];
-    for(i = 0; i < 2; i++)
+    for(i = 0; i < 4; i++)
         sst->lum[i] = dogamma(val[i]);
     
     offset[0] = offset[1] = 0;
-    ndots = 1+(2 * pos->radius[1]/(sst->dotsiz[1]));
+    ndots = 1+ceil((2 * pos->radius[1]/(sst->dotsiz[1])));
     if(ndots > sst->ndots)
         init_rls(st,sst,sst->density);
     sst->ndots = ndots;
@@ -319,8 +323,8 @@ void calc_rls(Stimulus *st, Substim *sst)
     
     if(sst->xshift != 0)
     {
-        xshift[0] = (int)(rint(sst->xshift * cos(pos->angle)));
-        xshift[1] = (int)(rint(sst->xshift * sin(pos->angle)));
+        xshift[0] = (rint(sst->xshift * cos(pos->angle)));
+        xshift[1] = (rint(sst->xshift * sin(pos->angle)));
         /*
          * don't want this now xshift is used for 
          * drifting the RLS
@@ -359,7 +363,7 @@ void calc_rls(Stimulus *st, Substim *sst)
         bsq = pos->radius[1] * pos->radius[1];
         eh = pos->radius[0]/10;
         /* 
-         * calculate parameters for hole 
+         * calculate parameters for hole
          */
         if(st->prev != NULL && st->prev->type == STIM_RLS)
         {
@@ -413,18 +417,68 @@ void calc_rls(Stimulus *st, Substim *sst)
     for(i = 0; i < 10; i++){
         sst->bits[i] = 0;
     }
+    rq = rp;
+    for(i = 0; i < sst->ndots; i++,rp++){
+        if(sst->corrdots == 0 && sst->mode == RIGHTMODE && !seedcall)
+            myrnd_init(sst->seed+200),seedcall++;
+        *rp = myrnd_i();
+    }
+    if (expt.stimmode == ORTHOG_DYNAMIC){
+        rq = rp;
+        myrnd_init(sst->seed+st->framectr);
+        for(i = 0; i < sst->ndots; i++,rp++){
+            *rp = myrnd_i();
+        }
+    }
     
     sst->npaint = sst->npainta = sst->ndots;
-    for(i = 0; i < sst->ndots; )
+    rp =rndarray;
+    sst->yrange[0] = sst->yrange[1] = 0;
+    lastpos = -h;
+    posfix = 0;
+    nextra = 0;
+    idot = 0;
+// idot keeps track of which bar in the sequnce is currently being plotted
+// so gets adjusted when extra vertices are added for partial bars
+// idot get decremented after setting rp for the current dot. So if hte current do
+// is the one that is partial.
+    for(i = 0; i < sst->ndots+nextra; )
     {
         *x = 0;
-        *y = -h/2 + i * sst->dotsiz[1] + xshift[1];
-        if(*y > h/2)
-            *y -= h;
+        *y = -h/2 + idot * sst->dotsiz[1] + xshift[1] - posfix;
+        rp = &rndarray[idot];
+        if (*y >= h/2){
+            posfix += (h);
+            *y = h/2;
+            idot--;
+            nextra++;
+            sst->npaint++;
+        }
+        if (*y < lastpos && *y > -h/2){
+            // if a dot gets split at the edge need 1 extra pair of vertices
+            // for second half of dot. And an extra pair to join the last dor
+            // to the first
+            *y = -h/2;
+            nextra++;
+            sst->npaint++;
+            idot--;
+        }
+        if (*y <-h/2){ // posfix is too bif=g
+            posfix -= (h/2 - *y);
+            *y += (h/2 - *y);
+        }
+        if(lastpos < sst->ypos[0] && *y > sst->ypos[0])
+            *y=sst->ypos[0];
+        if(lastpos == -h/2) // first dot of the image
+            sst->firstw = (*y-lastpos)/sst->dotsiz[1];
+        yi = (int)floor((*y-h/2)/sst->dotsiz[0]);
+        lastpos = *y;
         *zy = -h/2 + i * sst->dotsiz[1] + xshift[2];
         if(*zy > h/2)
             *zy -= h;
         
+        if (*y < sst->yrange[0])
+            sst->yrange[0] = *y;
         /*     
          * Aproach 1. Don't reset the seed, just call lrand again.
          * must then keep track of values, can't just generate again. Alsp
@@ -439,9 +493,6 @@ void calc_rls(Stimulus *st, Substim *sst)
          * corrdots lines are ALL the same, then the remainder are all uncorrelated
          * i.e. its because these are painted in order, unlike rds....
          */
-        if(sst->corrdots == 0 && sst->mode == RIGHTMODE && !seedcall)
-            myrnd_init(sst->seed+200),seedcall++;
-        *rp = myrnd_i();
         if(i == sst->ndots -2)
             j = *rp & 1;
         /*
@@ -460,20 +511,20 @@ void calc_rls(Stimulus *st, Substim *sst)
         }
         if (sst->mode == RIGHTMODE && orthoguc)
         {
-            if(*rp & (1<<4))
+            if(*rq & (1<<4))
                 *q = WHITEMODE;
             else
                 *q = BLACKMODE;
         }
         if (sst->mode == RIGHTMODE && orthogac)
         {
-            if(*rp & (1<<3))
+            if(*rq & (1<<3))
                 *q = BLACKMODE;
             else
                 *q = WHITEMODE;
         }
         else{
-                if(*rp & (1<<3))
+                if(*rq & (1<<3))
                     *q = WHITEMODE;
                 else
                     *q = BLACKMODE;
@@ -485,7 +536,8 @@ void calc_rls(Stimulus *st, Substim *sst)
                 *p = 0;
             *pi = 1;
         }
-        
+        sst->iimb[yi] = *pi;
+
         
         if(sst->corrdots > 0 && sst->corrdots < sst->ndots && sst->mode == RIGHTMODE){
             rnd = (*rp>>3) % sst->ndots;
@@ -659,11 +711,13 @@ void calc_rls(Stimulus *st, Substim *sst)
             lastq = *q;
             lastzy = *zy;
         }
-        i++,x++,y++,p++,rp++,q++,zx++,zy++,pi++;
+        i++,x++,y++,p++,rp++,q++,zx++,zy++,pi++,rq++;
         nx++;
+        idot++;
         if (sst->npaint > sst->xpla){
-            sst->npaint = sst->xpla;
+            sst->npaint = sst->xpla-1;
             painterr++;
+            i = ndots;
         }
     }
     if (painterr){
@@ -1516,9 +1570,10 @@ void paint_rls(Stimulus *st, int mode)
     int dotmode = 0;
     Substim *sst = st->left;
     Locator *pos = &st->pos;
-    float angle,cosa,sina,val,valsum = 0,cscale;
+    float angle,cosa,sina,val,valsum = 0,cscale,partw = 0;
     vcoord rect[8],crect[8];
-    
+    int ypos;
+    int ytrack[BUFSIZ];
     
     if (st->preload & st->preloaded){
         if (rdsstims[st->framectr] != NULL){
@@ -1660,9 +1715,10 @@ void paint_rls(Stimulus *st, int mode)
         if(*y < lasty){
             glEnd();
             glBegin(GL_QUAD_STRIP);
+            partw = (*y-sst->yrange[0])/sst->dotsiz[0];
         }
         lasty = *y;
-        
+        ypos = rint((*y - sst->yrange[0])/sst->dotsiz[0]);
         if(st->dotdist == WHITENOISE16){
             val = 0.5 + (((float)(*p & 0xf)/0xe) -0.5) * sst->pos.contrast;  //0 ->1, not 0 ->15/16
             valsum += val;
@@ -1691,6 +1747,9 @@ void paint_rls(Stimulus *st, int mode)
             z[1] = *y; 
             myvx(z);
         }
+        if(ypos >= 0 && ypos < sst->ndots+5)
+            sst->iimb[ypos] = *p;
+        ytrack[i++] = ypos;
     }
     glEnd();
  
@@ -1931,7 +1990,10 @@ void paint_rls_plaid(Stimulus *st, int mode)
         glEnd();
     }
     
-    
+// now paint second ori
+    vcolor[3] = vcolor[1] = vcolor[2] = vcolor[0] = sst->lum[2];
+    bcolor[3] = bcolor[1] = bcolor[2] = bcolor[0] = sst->lum[3];
+
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_LIGHTING);
     glEnable(GL_BLEND);

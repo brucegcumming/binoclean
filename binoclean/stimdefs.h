@@ -258,6 +258,7 @@ float pix2degy(float val);
 #define RLS_HIGHPASS 30
 #define WHITENOISE8 31
 #define DISRUPTED_CYLINDER 32
+#define ORTHOG_DYNAMIC 33
 
 #define issfrc(x) (x == RANDOM_ONOFF || x == RANDOM_ONOFF_LOG || x == INDEP_ONOFF || x == INDEP_ONOFF_LOG || x == BINOC_INDEP_ONOFF_LOG || x== THREE_CONTRAST_LEVEL || x == BINOC_INDEP_ONOFF)
 
