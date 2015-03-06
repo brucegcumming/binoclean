@@ -509,6 +509,7 @@ for j = 1:length(strs{1})
     end
     
     donestr = 0;
+    
     if frombinoc == 0
         donestr = 1;
         oldsend = sendtobinoc;
@@ -894,7 +895,7 @@ for j = 1:length(strs{1})
             DATA.trialcounts = sscanf(s(7:end),'%f');
             if length(DATA.trialcounts) < 8
                 DATA.trialcounts(8) = 0;
-            else
+            elseif isfield(DATA.binoc{1},'Trw')
                 rwdiff = DATA.trialcounts(8) - DATA.binoc{1}.Trw;
             end
             ShowStatus(DATA);
@@ -977,7 +978,13 @@ for j = 1:length(strs{1})
             DATA.comcodes(code).code = s(id(1)+1:id(2)-1);
             DATA.comcodes(code).const = code;
             DATA.comcodes(code).type = s(id(end)-1);
-            DATA.comcodes(code).group = str2num(s(id(end)+1:end));
+            is = sscanf(s(id(end)+1:end),'%d.%d');
+            DATA.comcodes(code).group = is(1);
+            if length(is) > 1
+                DATA.comcodes(code).save = is(2);
+            else
+                DATA.comcodes(code).save = NaN;                
+            end
             try
                 DATA.codeids.(DATA.comcodes(code).code) = code; %index of codes
             catch
@@ -1946,18 +1953,17 @@ function SaveExpt(DATA, name)
     SendChoiceTargets(fid, DATA);
     fprintf(fid,'mo=fore\n');
     fprintf(fid,'st=%s\n',DATA.stimulusnames{DATA.stimtype(1)});
+%order of code wrting set by order of fields
     allf = fields(DATA.binoc{1});
     [a,b] = ismember(allf,{DATA.comcodes.code});
     f = {DATA.comcodes(sort(b)).code};
     for j = 1:length(f)
-        [s, lbl, type] = CodeText(DATA, f{j});
-        if bitand(type, 512) == 0
+        [s, lbl, type, cid] = CodeText(DATA, f{j});
+        if bitand(type, 512) == 0 && DATA.comcodes(cid).save == 1;
             fprintf(fid,'%s\t#%s\n',s,lbl);
+        elseif strcmp(GetValue(DATA,'ui'),'bgc')
+            fprintf('%s not saved %s\n',s,lbl);
         end        
-    end
-    id = find(~a)
-    for j = id(:)';
-        [s, lbl, type] = CodeText(DATA, f{j});
     end
     f = fields(DATA.binocstr);
     for j = 1:length(f)
@@ -3267,12 +3273,22 @@ function CopyLog(DATA,type)
         d = dir(logfile);
         if length(d) == 1 && now - d.datenum < 1
             tgt = [DATA.binoc{1}.netpref '/' dfile '.online'];
+            ntgt = sprintf('/b/data/%s/%s/%s.online',DATA.binoc{1}.monkey, dfile)
             if exist(tgt)
-                msg = sprintf('Overwrite %s with %s?',tgt,logfile);                
+                msg = sprintf('Overwrite %s with %s?',tgt,logfile);           %s/d     
             else
-                msg = sprintf('Copy %s to %s?',logfile,tgt);
+                msg = sprintf('Copy %s to %s?(Network)\nor%s(PC)',logfile,ntgt,tgt);
             end
-            if confirm(msg)
+            
+            T = 'Copying Log to Newrok';
+            ok = 0;
+            strs = {'To Network' 'To PC' 'I''ll copy manually'};
+            yn = questdlg(['Copy ' dfile ' to?'] , T, strs{:}, strs{1});
+            ok = find(strcmp(yn,strs));
+            if ok == 1
+                tgt = ntgt;
+            end
+            if ok ~= 3
                 fprintf('Copying %s to %s\n',logfile,tgt);
                 try
                     copyfile(logfile,tgt);
@@ -6711,10 +6727,11 @@ else
     end
 end
     
-function [s, lbl, type] = CodeText(DATA,code, varargin)
+function [s, lbl, type, cid] = CodeText(DATA,code, varargin)
 s = [];
 lbl = [];
 type = 0;
+id = 0;
 
 cstim = DATA.currentstim;
 j = 1;
@@ -6728,6 +6745,9 @@ while j <= length(varargin)
     end
     j = j+1;
 end
+
+
+cid = find(strcmp(code,{DATA.comcodes.code}));
 
 if strcmp(code,'optionflag')
         s = 'op=';
@@ -6765,12 +6785,11 @@ if strcmp(code,'optionflag')
         f = fields(DATA.showflags);
         s = sprintf('pf=%s',sprintf('+%s',f{:}));
     elseif isfield(DATA.binoc{cstim},code)
-        id = find(strcmp(code,{DATA.comcodes.code}));
-        if length(id) ==1
-            lbl = DATA.comcodes(id).label;
-            type = DATA.comcodes(id).group;
+        if length(cid) ==1
+            lbl = DATA.comcodes(cid).label;
+            type = DATA.comcodes(cid).group;
         end
-        if length(id) ==1 && DATA.comcodes(id).type == 'C'
+        if length(cid) ==1 && DATA.comcodes(cid).type == 'C'
             s = sprintf('%s=%s',code,DATA.binoc{cstim}.(code));
             if isempty(DATA.binoc{cstim}.(code))
                 type = -1;

@@ -1500,12 +1500,17 @@ void PrintCodes(int mode)
 {
     char s[LONGBUF],tmp[BUFSIZ],ctype = 'N';
     int i,showcode = 1;
+    struct timeval timea;
+    float t;
+    
+    gettimeofday(&timea, NULL);
     
     sprintf(s,"");
     for(i = 0; i < expt.totalcodes; i++)
     {
+//Don't mess with number of spaces on this line - will need chagnes to verg.
         if(valstrings[i].codesend < SEND_READ_ONLY || valstrings[i].codesend == SEND_VERG_ONLY){
-            sprintf(tmp,"CODE %s %d %s%c %d\n",valstrings[i].code,valstrings[i].icode,valstrings[i].label,valstrings[i].ctype,valstrings[i].group);
+            sprintf(tmp,"CODE %s %d %s%c %d.%d\n",valstrings[i].code,valstrings[i].icode,valstrings[i].label,valstrings[i].ctype,valstrings[i].group,valstrings[i].codesave);
             if (strlen(s)+strlen(tmp) < LONGBUF)
                 strcat(s,tmp);
         }
@@ -1521,6 +1526,11 @@ void PrintCodes(int mode)
     notify(s);
     SendExptTypesToGui();
     SendToggleCodesToGui();
+    gettimeofday(&now, NULL);
+    t = timediff(&now,&timea);
+    if (t > 1){
+        fprintf(stderr,"Sending Codes took %.2f\n",t);
+    }
 }
 
 

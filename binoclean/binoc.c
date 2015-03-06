@@ -4380,7 +4380,8 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
                 pos->contrast_phase = val; //Not really phase. this %nstims = greylevel
             else
                 pos->contrast_phase = 0;
-            if(fabsf(val) < 10)
+//only force phase if moving
+            if(fabsf(val) < 10 && st->posinc != 0)
                 pos->locn[0] = 0;
             if(st->type == STIM_BAR){
                 st->right->pos.phase = pos->phase;

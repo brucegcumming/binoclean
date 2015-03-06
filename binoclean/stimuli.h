@@ -237,7 +237,7 @@ typedef struct SUBSTIM{
     float boundarypos;
     float boundaryV;
     int imalloc;
-    float yrange[2],xrange[2];
+    float yrange[2],xrange[2],firstw;
     
 
 } Substim;

@@ -1121,7 +1121,7 @@ ValueCode valstrings[] = {
   {"Dr",  "dot repeat ",DOTREPEAT, 1 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
   {"sa", "saccade amplitude ",SACCADE_AMPLITUDE, 8 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
   {"fo", "Color when fixation off",FIX_OFF_CODE, 8 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
-  {"lo", "Logfile",LOGFILE_CODE, 128 , 'C' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
+  {"lo", "Logfile",LOGFILE_CODE, 1 , 'C' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
   {"sc", "stop criterion", STOP_CRITERION, 128 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
   {"rl", "running average length", RUNAVERAGE_LENGTH, 0 , 'N' ,2, SEND_EXPLICIT, SAVE_ALWAYS},
   {"os", "SIDE_OFFSET",SIDE_OFFSET, 512 , 'N' ,2, SEND_EXPLICIT, SAVE_NEVER},

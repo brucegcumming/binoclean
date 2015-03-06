@@ -197,7 +197,8 @@ void calc_rls(Stimulus *st, Substim *sst)
     float asq,bsq = 0,csq,dsq,xsq,ysq,pixdisp[2],offset[2];
     int *p,*q,*cend,yi,lastp,lastq;
     vcoord *x,*y,w,h,lastx,eh=0,lasty,*zy,*zx,lastzx,lastzy;
-    int xshift[3],iw,ih;
+    int iw,ih;
+    vcoord xshift[3];
     Locator *pos = &sst->pos;
     float phase,contrast = pos->contrast;
     int pixmul = 1,seedcall = 0;
@@ -207,9 +208,9 @@ void calc_rls(Stimulus *st, Substim *sst)
     uint64_t *rp,rnd,*rq;
     int orthoguc = 0,orthogac = 0;
     int pblank = 0,*pi,maxconsec = 0;
-    int painterr = 0;
+    int painterr = 0,idot= 0,nextra = 0;
     float c2 = pos->contrast2;
-
+    float lastpos,posfix;
  
     if(st->preload && st->preloaded){
         return;
@@ -259,7 +260,7 @@ void calc_rls(Stimulus *st, Substim *sst)
         sst->lum[i] = dogamma(val[i]);
     
     offset[0] = offset[1] = 0;
-    ndots = 1+(2 * pos->radius[1]/(sst->dotsiz[1]));
+    ndots = 1+ceil((2 * pos->radius[1]/(sst->dotsiz[1])));
     if(ndots > sst->ndots)
         init_rls(st,sst,sst->density);
     sst->ndots = ndots;
@@ -322,8 +323,8 @@ void calc_rls(Stimulus *st, Substim *sst)
     
     if(sst->xshift != 0)
     {
-        xshift[0] = (int)(rint(sst->xshift * cos(pos->angle)));
-        xshift[1] = (int)(rint(sst->xshift * sin(pos->angle)));
+        xshift[0] = (rint(sst->xshift * cos(pos->angle)));
+        xshift[1] = (rint(sst->xshift * sin(pos->angle)));
         /*
          * don't want this now xshift is used for 
          * drifting the RLS
@@ -362,7 +363,7 @@ void calc_rls(Stimulus *st, Substim *sst)
         bsq = pos->radius[1] * pos->radius[1];
         eh = pos->radius[0]/10;
         /* 
-         * calculate parameters for hole 
+         * calculate parameters for hole
          */
         if(st->prev != NULL && st->prev->type == STIM_RLS)
         {
@@ -433,16 +434,45 @@ void calc_rls(Stimulus *st, Substim *sst)
     sst->npaint = sst->npainta = sst->ndots;
     rp =rndarray;
     sst->yrange[0] = sst->yrange[1] = 0;
-    lasty = -h/2;
-    for(i = 0; i < sst->ndots; )
+    lastpos = -h;
+    posfix = 0;
+    nextra = 0;
+    idot = 0;
+// idot keeps track of which bar in the sequnce is currently being plotted
+// so gets adjusted when extra vertices are added for partial bars
+// idot get decremented after setting rp for the current dot. So if hte current do
+// is the one that is partial.
+    for(i = 0; i < sst->ndots+nextra; )
     {
         *x = 0;
-        *y = -h/2 + i * sst->dotsiz[1] + xshift[1];
-        if (lasty > h/2)
-            *y -= h;
-        else if(*y > h/2)
+        *y = -h/2 + idot * sst->dotsiz[1] + xshift[1] - posfix;
+        rp = &rndarray[idot];
+        if (*y >= h/2){
+            posfix += (h);
             *y = h/2;
-        lasty = *y;
+            idot--;
+            nextra++;
+            sst->npaint++;
+        }
+        if (*y < lastpos && *y > -h/2){
+            // if a dot gets split at the edge need 1 extra pair of vertices
+            // for second half of dot. And an extra pair to join the last dor
+            // to the first
+            *y = -h/2;
+            nextra++;
+            sst->npaint++;
+            idot--;
+        }
+        if (*y <-h/2){ // posfix is too bif=g
+            posfix -= (h/2 - *y);
+            *y += (h/2 - *y);
+        }
+        if(lastpos < sst->ypos[0] && *y > sst->ypos[0])
+            *y=sst->ypos[0];
+        if(lastpos == -h/2) // first dot of the image
+            sst->firstw = (*y-lastpos)/sst->dotsiz[1];
+        yi = (int)floor((*y-h/2)/sst->dotsiz[0]);
+        lastpos = *y;
         *zy = -h/2 + i * sst->dotsiz[1] + xshift[2];
         if(*zy > h/2)
             *zy -= h;
@@ -506,7 +536,8 @@ void calc_rls(Stimulus *st, Substim *sst)
                 *p = 0;
             *pi = 1;
         }
-        
+        sst->iimb[yi] = *pi;
+
         
         if(sst->corrdots > 0 && sst->corrdots < sst->ndots && sst->mode == RIGHTMODE){
             rnd = (*rp>>3) % sst->ndots;
@@ -682,9 +713,11 @@ void calc_rls(Stimulus *st, Substim *sst)
         }
         i++,x++,y++,p++,rp++,q++,zx++,zy++,pi++,rq++;
         nx++;
+        idot++;
         if (sst->npaint > sst->xpla){
-            sst->npaint = sst->xpla;
+            sst->npaint = sst->xpla-1;
             painterr++;
+            i = ndots;
         }
     }
     if (painterr){
