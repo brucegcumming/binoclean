@@ -14648,9 +14648,9 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             n = sscanf(s,"%f %f %f %f %f %f %f %f %f %f %f %f %f %f %f %f",
                        &in[0],&in[1],&in[2],&in[3],&in[4],&in[5],&in[6],&in[7],&in[8],&in[9],&in[10],&in[11],&in[12],&in[13],&in[14],&in[15]);
             for(i = 0; i < n; i++)
-                expt.st->left->incrs[i] = in[i] * M_2_PI/mon.framerate;
+                expt.st->left->incrs[i] = in[i] * 2 * M_PI/mon.framerate;
+            expt.st->tfmode = TFINDEP;
             break;
-
         case USENEWDIRS:
             sscanf(s,"%d",&usenewdirs);
             break;
