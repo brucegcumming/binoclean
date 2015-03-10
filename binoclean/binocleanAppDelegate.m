@@ -50,7 +50,8 @@ void NSacknowledge(char * a ,int b)
     NSLog(@"Acknowledge! %s", a);
     [[NSNotificationCenter defaultCenter] postNotificationName:@"updateinfotext" object:nil userInfo:[NSDictionary dictionaryWithObject:[NSString stringWithUTF8String:a] forKey:@"text"]];
     [[NSNotificationCenter defaultCenter] postNotificationName:@"updatecommandhistory" object:nil userInfo:[NSDictionary dictionaryWithObject:[NSString stringWithUTF8String:a] forKey:@"text"]];
-    return;
+    if (b != 1)
+        return;
     if([NSApplication sharedApplication])
         if ([[NSApplication sharedApplication] windows])
             if([[[NSApplication sharedApplication] windows] count]>0)
@@ -303,8 +304,13 @@ int  processUIEvents()
         printf("Starting DIO\n");
 	/* Try twice - it sometimes fails */
 	if(useDIO && DIOInit() < 0){
-        acknowledge("Can't Open DIO - Restart Binoc\nUse binoc -noDIO to ignore error","/bgc/bgc/c/binoc/help/DIOerr");
+//send to matlab if its there
+        acknowledge("Can't Open DIO - Restart Binoc\nUse binoc -noDIO to ignore error",NULL);
+//but be sure to show the user
+        NSacknowledge("Can't Open DIO - Restart Binoc\nUse binoc -noDIO to ignore error\nExiting in 5 sec",1);
         fprintf(stderr,"Use binoc -noDIO to ingore this error\n");
+//        printString("Cannot Open DIO (LabJack)", 20); Doesn't update before exit
+
         DIOClose();
         fsleep(5);
         exit(1);

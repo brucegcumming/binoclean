@@ -6129,7 +6129,10 @@ function DATA = ReadLogFile(DATA, name)
             if length(we) > 1 && we(2) > 0
                 DATA.Coil.CriticalWeight = we(2);
             end
-        elseif sum(strncmp(s{j},{'MicroDrive'},6)) && ~isempty(code)
+        elseif sum(strncmp(s{j},{'MicroDrive'},6)) 
+            if isempty(code) %no ==
+                value = regexprep(s{j},'.*\s','');
+        end
             DATA.Coil.Xtra.(code) = value;
         end
     end
