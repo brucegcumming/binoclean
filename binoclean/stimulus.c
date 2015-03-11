@@ -76,6 +76,7 @@ int *RecordImage(int frame, Stimulus *st){
             for (j = 0; j < st->left->ndots; j++) {
                 *p++ = st->left->iimb[j] | (st->right->iimb[j] << 2);
             }
+            *p = st->left->iimb[st->left->ndots+2];
         }
         else if  (st->type == STIM_CHECKER){
             for (j = 0; j < st->left->ndots; j++) {
@@ -103,7 +104,7 @@ void StimStringRecord(FILE *fd, Expt *ex)
         if (p != NULL){
             sprintf(s,"%x:",j);
             strcat(buf,s);
-            for(i = 0; i < expt.st->left->ndots; i++){
+            for(i = 0; i <= expt.st->left->ndots; i++){
                 if (*p == -1){ //a blank frame
                     sprintf(s,"NaN");
                     i = expt.st->left->ndots;
