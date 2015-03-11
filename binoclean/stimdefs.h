@@ -624,7 +624,10 @@ long rnd_i(void);
 #define CIRCULAR_GRATING 2
 #define SPIRAL_GRATING 3
 
-
+// modes for tf mode
+#define TFFIXED 0
+#define TFMOVE 1
+#define TFINDEP 2
 
 /*
  *  ALTERNATE_STIM_MODE a flag for doing a variety 

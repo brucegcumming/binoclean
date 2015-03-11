@@ -308,6 +308,7 @@ struct STIMULUS{
     int aamode;
     int firstseed;
     int precalculate;
+    int tfmode;
 };
 
 typedef struct STIMULUS Stimulus;

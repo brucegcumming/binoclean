@@ -3379,7 +3379,7 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
             else if(st->type == STIM_GRATINGN){
                 for (i = 0; i < st->nfreqs; i++)
                     st->left->incrs[i] = val * st->freqs[i] * M_PI * 2/mon.framerate;
-                st->left->ptr->velocity = (val/(mon.framerate));
+                st->left->ptr->velocity = (val/(mon.framerate)); //?in degreees/frame
             }
             else
                 st->left->ptr->velocity = (val/(mon.framerate*180/M_PI));
@@ -3398,6 +3398,7 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
                 tf = pos->sf * val;
                 SetStimulus(st, tf, TF, event);
             }
+            expt.st->tfmode = TFMOVE;
             break;
         case JF_INTENSITY:
             if(st->type == STIM_CYLINDER)
@@ -3773,6 +3774,11 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
                 if(val > 0)
                     lasttf = val;
             }
+            if(st->type == STIM_GRATINGN){
+                for (i = 0; i < st->left->nfreqs; i++)
+                    st->left->incrs[i] = st->incr;
+            }
+            expt.st->tfmode = TFFIXED;
             break;
         case DISP_A:
             meandisp = StimulusProperty(st,DISP_X);
@@ -4832,12 +4838,7 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
         case NCOMPONENTS:
             st->nfreqs = (int)val;
             st->freqmode = AUTO_FREQ;
-            a = StimulusProperty(st,SF2);
-            for(i = 0; i < st->nfreqs; i++){
-//  why + and - freqs here?  Changed Sep 2013
-//                st->freqs[i] = st->f + (a - st->f) * (i - floor(st->nfreqs/2));
-                st->freqs[i] = st->f + (a - st->f) * (i);
-            }
+            SetGratingFrequencies(st);
             if (st->type == STIM_RLS){
                 init_rls(st, st->left,100);
                 init_rls(st, st->right,100);
@@ -5040,6 +5041,9 @@ void search_background()
 
         if (expt.vals[ALTERNATE_STIM_MODE] == ANTICORR_TIMEOUT)
             tempstim->flag |= ANTICORRELATE;
+        else
+            tempstim->flag &= (~ANTICORRELATE);
+        
         rndval = (float)(newtimeout*expt.st->angleinc);
         init_stimulus(tempstim);
         srandom(TheStim->left->baseseed);
@@ -6036,7 +6040,7 @@ void increment_stimulus(Stimulus *st, Locator *pos)
 		}
 		else if (st->type == STIM_GRATINGN)
         {
-		    if (st->left->ptr->velocity > 0){
+		    if (st->left->ptr->velocity > 0 || st->tfmode == TFINDEP){
                 for(i = 0; i < st->nfreqs; i++)
                     st->phases[i] += st->left->incrs[i];
 		    }
