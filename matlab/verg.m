@@ -6151,7 +6151,7 @@ function DATA = ReadLogFile(DATA, name)
                 DATA.Coil.CriticalWeight = we(2);
             end
         elseif sum(strncmp(s{j},{'MicroDrive'},6)) 
-            if isempty(code) %no ==
+            if isempty(code) %no =, use first space as delimiter
                 code = regexprep(s{j},'\s.*','');
                 value = strrep(s{j},code,'');
                 code = genvarname(code);
