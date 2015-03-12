@@ -4607,6 +4607,10 @@ int SaveImage(Stimulus *st, int type)
                     fprintf(stderr,"Seed %d,%d written to %s (dx%.3f S%d) %dx%d pix\n",st->left->baseseed,st->left->seed,imname,st->disp,stimstate,w,h);
                 }
             }
+            if (done){
+                sprintf(buf,"Image Saved to %s\n",imname);
+                statusline(buf);
+            }
         }
         done++;
         n = st->left->ndots;

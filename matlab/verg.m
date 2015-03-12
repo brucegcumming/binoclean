@@ -2991,6 +2991,7 @@ function DATA = InitInterface(DATA)
     uimenu(sm,'Label','Run/Cancel','Callback',{@TestIO, 'cancel'});
     uimenu(sm,'Label','Freeze','Callback',{@TestIO, 'freeze'});
     uimenu(sm,'Label','Step','Callback',{@TestIO, 'step'});
+    uimenu(sm,'Label','Save Image','Callback',{@TestIO, 'saveimage'});
 
     
     hm = uimenu(cntrl_box,'Label','Help','Tag','HelpMenu');
@@ -4842,7 +4843,10 @@ function DATA = RunButton(a,b, type)
                uimenu(DATA.toplevel,'Label','Step','Tag','StepFrame','callback',{@TestIO,'step'});
             end
         elseif strcmp(str,'step')
+            fprintf('Stepping frame\n');
             outprintf(DATA,'!step\n');
+        elseif strcmp(str,'saveimage')
+            outprintf(DATA,'!saveimage\n');
         end
         set(DATA.toplevel,'UserData',DATA);
         
@@ -6148,9 +6152,13 @@ function DATA = ReadLogFile(DATA, name)
             end
         elseif sum(strncmp(s{j},{'MicroDrive'},6)) 
             if isempty(code) %no ==
-                value = regexprep(s{j},'.*\s','');
-        end
-            DATA.Coil.Xtra.(code) = value;
+                code = regexprep(s{j},'\s.*','');
+                value = strrep(s{j},code,'');
+                code = genvarname(code);
+            end
+            if ~isempty(code)
+                DATA.Coil.Xtra.(code) = value;
+            end
         end
     end
     fclose(fid);
