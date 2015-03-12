@@ -2040,7 +2040,7 @@ char *ReadManualStim(char *file, int stimid){
                 SerialString(inbuf,0);
                 SerialString("\n",0);
             }
-            if (strncmp(inbuf,"exvals",5) != NULL && strlen(inbuf) < 100){
+            if (strncmp(inbuf,"exvals",5) != NULL&& strncmp(inbuf,"manexpvals",8) && strlen(inbuf) < 100){
                 strcat(cbuf, inbuf);
                 strcat(cbuf, " ");
             }
@@ -4657,6 +4657,12 @@ int ReadCommand(char *s)
     }
     else if(!strncmp(s,"expttrigger",12)){
         TriggerExpt();
+    }
+    else if(!strncasecmp(s,"freeze",5)){
+        if (freezestimulus)
+            freezestimulus = 0;
+        else
+            freezestimulus = 2;
     }
     else if(!strncasecmp(s,"step",4)){
         sprintf(command_result,"step to %d",step_stimulus());
@@ -9267,6 +9273,8 @@ int PrepareExptStim(int show, int caller)
         }
         sprintf(ebuf,"%s/stim%d",expt.strings[EXPT_PREFIX],stimorder[stimno]);
         s = ReadManualStim(ebuf, stimorder[stimno]);
+        if (netoutfile)
+            fprintf(netoutfile,"stim:%s\n",s);
         val = afc_s.stimsign = expt.vals[PSYCH_VALUE];
         if (fabs(val) > 0.00001)
             code = afc_s.stimsign = (int)(val/fabs(val));
@@ -9281,7 +9289,7 @@ int PrepareExptStim(int show, int caller)
             return(-1);
         }
         stimulus_is_prepared = 1;
-        sprintf(cbuf,"exvals %.4f %.4f %.4f %d\n",expt.currentval[0],expt.currentval[1],expt.currentval[2],stimorder[stimno]);
+        sprintf(cbuf,"exvals %.5f %.5f %.5f %d\n",expt.currentval[0],expt.currentval[1],expt.currentval[2],stimorder[stimno]);
         SerialString(cbuf,0);
         notify(cbuf);
         statusline(cbuf);
@@ -11957,8 +11965,10 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
              * so video frames elapsed after change_frame is getframecount+2: Add one because zeroframetime is when frame 1 appears. Add another because the count is always 1 frame behind (the last time the CPU blocked at paint_stimulus
              *
              */
-            if(freezestimulus)
+            if(freezestimulus){
                 rc = 0;
+                inexptstim = 0;
+            }
             
             if(optionflags[FAST_SEQUENCE]){
                 sframetimes[framesdone] = frametimes[framesdone];

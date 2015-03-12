@@ -2989,6 +2989,8 @@ function DATA = InitInterface(DATA)
     uimenu(subm,'Label','Log Inputs','Callback',{@ReadIO, 'openlog'});
     sm = uimenu(subm,'Label','Tests');
     uimenu(sm,'Label','Run/Cancel','Callback',{@TestIO, 'cancel'});
+    uimenu(sm,'Label','Freeze','Callback',{@TestIO, 'freeze'});
+    uimenu(sm,'Label','Step','Callback',{@TestIO, 'step'});
 
     
     hm = uimenu(cntrl_box,'Label','Help','Tag','HelpMenu');
@@ -4820,12 +4822,27 @@ function DATA = RunButton(a,b, type)
      
     function TestIO(a,b, str)
         
+        onoff = {'off' 'on'};
         DATA = GetDataFromFig(a);
         if ~isfield(DATA,'outpipe')
             DATA = OpenPipes(DATA, 1);
         end
         if strcmp(str,'cancel')
             DATA.canceltimer = 10;
+        elseif strcmp(str,'freeze')
+            outprintf(DATA,'!freeze');
+            if ~isfield(DATA,'freezestimulus')
+                DATA.freezestimulus =1;
+            else
+                DATA.freezestimulus = ~DATA.freezestimulus;
+            end
+            set(a,'checked',onoff{DATA.freezestimulus+1});
+            hm = findobj(allchild(DATA.toplevel),'flat','type','uimenu','Tag','StepFrame');
+            if isempty(hm)
+               uimenu(DATA.toplevel,'Label','Step','Tag','StepFrame','callback',{@TestIO,'step'});
+            end
+        elseif strcmp(str,'step')
+            outprintf(DATA,'!step\n');
         end
         set(DATA.toplevel,'UserData',DATA);
         

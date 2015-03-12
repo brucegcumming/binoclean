@@ -4039,7 +4039,7 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
                  */
                 
                 if(!(optionflag & BACKGROUND_FIXED_BIT)){
-                    if(st->next != NULL && expt.stimvals[BACK_CORRELATION] > 0)
+                    if(st->next != NULL)
                         SetStimulus(st->next, val, CORRELATION, event);
                 }
             }
@@ -9721,7 +9721,7 @@ float StimulusProperty(Stimulus *st, int code)
                 value = 0;
             break;
         case DISP_X:
-            value = pix2deg(st->disp) *2;
+            value = pix2deg(st->disp*2);
             break;
         case DISP_RAMP:
             if(isharris(altstimmode))
