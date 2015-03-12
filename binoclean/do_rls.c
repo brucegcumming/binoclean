@@ -210,7 +210,7 @@ void calc_rls(Stimulus *st, Substim *sst)
     int pblank = 0,*pi,maxconsec = 0;
     int painterr = 0,idot= 0,nextra = 0;
     float c2 = pos->contrast2;
-    float lastpos,posfix;
+    float lastpos,posfix,partw;
  
     if(st->preload && st->preloaded){
         return;
@@ -435,7 +435,7 @@ void calc_rls(Stimulus *st, Substim *sst)
     rp =rndarray;
     sst->yrange[0] = sst->yrange[1] = 0;
     lastpos = -h;
-    posfix = 0;
+    posfix = 0;                             
     nextra = 0;
     idot = 0;
 // idot keeps track of which bar in the sequnce is currently being plotted
@@ -458,6 +458,7 @@ void calc_rls(Stimulus *st, Substim *sst)
             // if a dot gets split at the edge need 1 extra pair of vertices
             // for second half of dot. And an extra pair to join the last dor
             // to the first
+            partw = (*y + h/2)/sst->dotsiz[1];
             *y = -h/2;
             nextra++;
             sst->npaint++;
@@ -471,7 +472,7 @@ void calc_rls(Stimulus *st, Substim *sst)
             *y=sst->ypos[0];
         if(lastpos == -h/2) // first dot of the image
             sst->firstw = (*y-lastpos)/sst->dotsiz[1];
-        yi = (int)floor((*y-h/2)/sst->dotsiz[0]);
+        yi = (int)floor((*y+h/2)/sst->dotsiz[0]);
         lastpos = *y;
         *zy = -h/2 + i * sst->dotsiz[1] + xshift[2];
         if(*zy > h/2)
@@ -722,6 +723,10 @@ void calc_rls(Stimulus *st, Substim *sst)
     }
     if (painterr){
         acknowledge("Trying to Calc Too many dots",NULL);
+        
+    }
+    else{ // record partial linew at en of iimb
+        sst->iimb[sst->ndots+2]  = (int)floor(partw*8);        
     }
     
     if(maxconsec > 0){
@@ -1747,9 +1752,9 @@ void paint_rls(Stimulus *st, int mode)
             z[1] = *y; 
             myvx(z);
         }
-        if(ypos >= 0 && ypos < sst->ndots+5)
-            sst->iimb[ypos] = *p;
-        ytrack[i++] = ypos;
+//        if(ypos >= 0 && ypos < sst->ndots+5)
+//            sst->iimb[ypos] = *p;
+//        ytrack[i++] = ypos;
     }
     glEnd();
  
