@@ -1,0 +1,22 @@
+xo=4.55
+yo=-6
+fx=-7
+fy=0
+mo=fore
+dw=0.095
+dd=5
+mo=back
+st=rds
+sz=4
+ce=1
+mixac=-1
+mo=fore
+op=+bf+afc
+mixac=0.5
+et=dx
+e2=mixac
+e3=dd
+nf=41
+psychfile=/local/data/psych/lem/HalfMatchDATE	#Psych results file
+
+
