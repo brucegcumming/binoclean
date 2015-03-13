@@ -1031,7 +1031,7 @@ void write_expvals(FILE *ofd, int flag)
             fprintf(ofd,"EA%d=%.3f\n",i,expval[i]);
     if(optionflags[CUSTOM_EXPVALB])
         for(i = expt.nstim[0]; i < expt.nstim[0]+expt.nstim[1]; i++)
-            fprintf(ofd,"EB%d=%.3f\n",i-expt.nstim[0],expval[i]);
+            fprintf(ofd,"EB%d=%.3f\n",i-expt.nstim[0],expt.exp2vals[i-expt.nstim[0]]);
     if(flag == QUICK_SAVE)
         return;
     for(i = 1; i <= nquickexpts; i++){
@@ -6657,6 +6657,7 @@ void setstimuli(int flag)
             {
                 val = log10(expt.mean2) + loginc *( (i-offset) - (float)(ns-1)/2);
                 expval[i] = pow(10.0,val);
+                expt.exp2vals[i-offset] = expval[i];
             }
             if(optionflags[INTERLEAVE_SINE])
                 expval[offset+expt.nstim[1]-1] = INTERLEAVE_EXPT;
@@ -6673,6 +6674,7 @@ void setstimuli(int flag)
             for(i = offset; i < offset+expt.nstim[1]; i++)
             {
                 expval[i] = val2;
+                expt.exp2vals[i-offset] = expval[i];
                 val2 += expt.incr2;
             }
         }
@@ -13323,7 +13325,8 @@ void SetPlotLabels(struct plotdata *plot)
 void MakePlotLabel(struct plotdata *plot, char *s, int i, int flip)
 {
     int j;
-    float val;
+    float val,eval;
+    
     if(i < expt.nstim[2])
         sprintf(s,"%s",extralabels[i]);
     else
@@ -13334,6 +13337,10 @@ void MakePlotLabel(struct plotdata *plot, char *s, int i, int flip)
         {
             if(!flip)
                 i = expt.nstim[2] + j +  expt.nstim[0];
+            if (optionflags[CUSTOM_EXPVALB])
+                eval = expt.exp2vals[j];
+            else
+                eval = expval[i]; //old way
             if(expt.type2 == STIMULUS_TYPE_CODE)
             {
                 j = (int)(expt.st->type);
@@ -13347,7 +13354,7 @@ void MakePlotLabel(struct plotdata *plot, char *s, int i, int flip)
                     sprintf(s,"??");
             }
             else if(expt.type2 == MONOCULARITY_EXPT){
-                if((val=expval[i]) < -0.4)
+                if((val=eval) < -0.4)
                     sprintf(s,"Left");
                 else if(val > 0.4)
                     sprintf(s,"Right");
@@ -13355,16 +13362,16 @@ void MakePlotLabel(struct plotdata *plot, char *s, int i, int flip)
                     sprintf(s,"Binoc");
             }
             else if((expt.type2 == DISP_P2 || expt.type2 == CONTRAST_RATIO)
-                    && expval[i] < -1000)
+                    && eval < -1000)
             {
-                if(expval[i] == -1003)
+                if(eval == -1003)
                     sprintf(s,"SF %.2f",StimulusProperty(expt.st,SF));
                 if(plot->stims[i].x[1] == -1004)
                     sprintf(s,"SF %.2f",StimulusProperty(expt.st,SF2));
                 
             }
             else{
-                sprintf(s,"%.*f",nfplaces[expt.mode],expval[i]);
+                sprintf(s,"%.*f",nfplaces[expt.mode],eval);
             }
         }
         else{ //expt
@@ -14596,6 +14603,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
                 {
                     s++;
                     sscanf(s,"%lf",&expval[expt.nstim[0]+i+expt.nstim[2]]);
+                    expt.exp2vals[i] = expval[expt.nstim[0]+i+expt.nstim[2]];
                     optionflags[CUSTOM_EXPVALB] = 1;
                 }
                 if (frompc < 2)
