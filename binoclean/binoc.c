@@ -3147,6 +3147,7 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
 	if(val == INTERLEAVE_EXPT_UNCORR){
         st->flag |= UNCORRELATE;
         setuc = 1;
+        val = 0;
 	}
 	else if(setuc){
         st->flag &= (~UNCORRELATE);
@@ -3173,6 +3174,7 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
 	if(val == INTERLEAVE_EXPT_BLANK && !expt.st->preload){
         st->type = STIM_NONE;
         setblank = 1;
+        val = 0;
 	}
 	else if(st->type == STIM_NONE && setblank && st->prev == NULL){
         /*

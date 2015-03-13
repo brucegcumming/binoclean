@@ -1887,7 +1887,7 @@ function SendState(DATA, varargin)
     if DATA.electrodeid > 0
         outprintf(DATA,'Electrode=%s\n',DATA.electrodestrings{DATA.electrodeid});
     end
-    
+        
     outprintf(DATA,'\neventcontinue\n');
 
 function WriteStr(DATA, fid, varargin)
@@ -2949,15 +2949,16 @@ function DATA = InitInterface(DATA)
 
     subm = uimenu(cntrl_box,'Label','&Windows');
     uimenu(subm,'Label','&Options','Callback',{@OptionPopup},'accelerator','O');
-    uimenu(subm,'Label','Penetration Log','Callback',{@PenLogPopup});
-    uimenu(subm,'Label','Current Pen Log Contents','Callback',{@ShowPenLog, 'popup'});
-    uimenu(subm,'Label','Monkey Log','Callback',{@MonkeyLogPopup, 'popup'});
-    uimenu(subm,'Label','List Codes','Callback',{@CodesPopup, 'popup'},'accelerator','L');
-    uimenu(subm,'Label','Status Lines','Callback',{@StatusPopup, 'popup'});
-    uimenu(subm,'Label','Psych Window','Callback',{@MenuHit, 'showpsych'});
     uimenu(subm,'Label','Electrode Control','Callback',{@ElectrodePopup, 'popup'});
     uimenu(subm,'Label','Comments','Callback',{@CommentPopup, 'popup'});
-    uimenu(subm,'Label','Check Trial Duratione','Callback',{@MenuHit, 'checkdur'});
+    uimenu(subm,'Label','List Codes','Callback',{@CodesPopup, 'popup'},'accelerator','L');
+    uimenu(subm,'Label','Monkey Log','Callback',{@MonkeyLogPopup, 'popup'});
+    uimenu(subm,'Label','Penetration Log','Callback',{@PenLogPopup});
+    uimenu(subm,'Label','Pen Log Contents','Callback',{@ShowPenLog, 'popup'});
+    uimenu(subm,'Label','Psych Window','Callback',{@MenuHit, 'showpsych'});
+    uimenu(subm,'Label','Status Lines','Callback',{@StatusPopup, 'popup'});
+    uimenu(subm,'Label','Software Offset','Callback',{@SoftoffPopup, 'popup'});
+    uimenu(subm,'Label','Check Trial Durations','Callback',{@MenuHit, 'checkdur'});
 
     subm = uimenu(cntrl_box,'Label','Pipes');
     uimenu(subm,'Label','Reopen Pipes','Callback',{@ReadIO, 6});
@@ -3397,6 +3398,9 @@ function DATA = LoadLastSettings(DATA, varargin)
                 cprintf('blue','Setting %s from %s\n',txt{id(1)},d.name);
                 DATA = InterpretLine(DATA, txt{id(1)},'tobinoc');
             end
+            end
+            if GetValue(DATA,'Pn') > 0
+                outprintf(DATA,'!openpen\n');
             end
             DATA = GetState(DATA);
         end
@@ -3974,6 +3978,10 @@ function DATA = AddComment(DATA, str, src)
         stop(DATA.timerobj);
          DATA = OpenPipes(DATA, 0);
          SendState(DATA,'all');
+         if GetValue(DATA,'Pn') > 0
+             outprintf(DATA,'!openpen\n');
+         end
+
          DATA = GetState(DATA,'Reopen');
          SetGui(DATA);
          StartTimer(DATA);

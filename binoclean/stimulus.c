@@ -58,14 +58,14 @@ extern struct timeval frametime, zeroframetime;
 int *RecordImage(int frame, Stimulus *st){
     int *p,j,ldot,rdot;
     
-    if(st->type == STIM_RLS || st->type == STIM_CHECKER){
-    if(frame > MAXFRAMES-1)
-        frame = 0;
+    if(st->type == STIM_RLS || st->type == STIM_CHECKER || st->type == STIM_NONE){
+        if(frame > MAXFRAMES-1)
+            frame = 0;
     
-    if (imagerec[frame] == NULL){
-        imagerec[frame] = (int *)malloc(sizeof(int) * 4096); //MAX # bars......
-    }
-    p=imagerec[frame];
+        if (imagerec[frame] == NULL){
+            imagerec[frame] = (int *)malloc(sizeof(int) * 4096); //MAX # bars......
+        }
+        p=imagerec[frame];
 // For RLS 0 = Black, 1 = grey, 2 = whiee
 // For RDS 0 = Grey, 1 = BLACK, 2 = white
         if(st->type == STIM_RLS){
@@ -86,6 +86,9 @@ int *RecordImage(int frame, Stimulus *st){
                 *p++ = ldot | (rdot << 2);
             }
             
+        }
+        else if(st->type == STIM_NONE){
+            *p = -1;            
         }
     }
 }
@@ -114,10 +117,13 @@ void StimStringRecord(FILE *fd, Expt *ex)
                     sprintf(s,"%1x",*p++);
                 strcat(buf,s);
             }
+            if(*p >= 0){
             sprintf(s,"L%1xR%1x",*p++,*p++);
             strcat(buf,s);
             if(rcstimvals[10][j] != 0){
-                sprintf(s,"!dp%.2f",rcstimvals[10][i]/expt.st->left->dotsiz[0]);
+                sprintf(s,"!dp%.2f",2*rcstimvals[10][j]/expt.st->left->dotsiz[1]);
+                strcat(buf,s);
+            }
             }
             strcat(buf,"\n");
         }

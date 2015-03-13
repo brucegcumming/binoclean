@@ -745,6 +745,9 @@ void calc_rls(Stimulus *st, Substim *sst)
         sst->iimb[sst->ndots+2]  = (int)floor(partw*16);
     }
     
+    if (partw < 0.9)
+        p = sst->iim;
+    
     if(maxconsec > 0){
         p = sst->iim;
         lastq = *(p+sst->ndots-1)  & (WHITEMODE | BLACKMODE);
@@ -1726,6 +1729,9 @@ void paint_rls(Stimulus *st, int mode)
 //            glEnable(GL_POLYGON_SMOOTH);
 		glLineWidth(1.0);
 	}
+    else
+		glDisable(GL_LINE_SMOOTH);
+    
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     
     glBegin(GL_QUAD_STRIP);
