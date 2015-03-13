@@ -1,0 +1,11 @@
+mo=fore
+st=rls
+dw=0.1
+wi=3
+mo=back
+wi=3
+hi=5
+mo=fore
+op=+sq+exm
+exp=/local/expts/RLSEndStop
+!mat=Table2Expt('/local/expts/RLSEndStop/ExTable','basedir','/local/expts/RLSEndStop')

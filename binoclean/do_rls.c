@@ -468,8 +468,11 @@ void calc_rls(Stimulus *st, Substim *sst)
             posfix -= (h/2 - *y);
             *y += (h/2 - *y);
         }
-        if(lastpos < sst->ypos[0] && *y > sst->ypos[0])
+//if we have overlapped the first point, we are done
+        if(lastpos < sst->ypos[0] && *y > sst->ypos[0]){
             *y=sst->ypos[0];
+            nextra = sst->ndots-i;
+        }
         if(lastpos == -h/2) // first dot of the image
             sst->firstw = (*y-lastpos)/sst->dotsiz[1];
         yi = (int)floor((*y+h/2)/sst->dotsiz[0]);
@@ -726,7 +729,7 @@ void calc_rls(Stimulus *st, Substim *sst)
         
     }
     else{ // record partial linew at en of iimb
-        sst->iimb[sst->ndots+2]  = (int)floor(partw*8);        
+        sst->iimb[sst->ndots+2]  = (int)floor(partw*16);
     }
     
     if(maxconsec > 0){
