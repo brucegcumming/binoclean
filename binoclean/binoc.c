@@ -987,8 +987,9 @@ char **argv;
 	if((i = OpenSerial(theport)) <= 0)
 		mode |= NO_SERIAL_PORT;
     
-    
-	OpenPenetrationLog(0); /* open a dummy so ed is ALWAYS saved */
+// dont need to do this any more. Its in serial line, and
+// in the matlab GUI
+//	OpenPenetrationLog(0); /* open a dummy so ed is ALWAYS saved */
 //    OpenStepSerial(stepperport);
     
 	while(argc >1)
@@ -3127,7 +3128,7 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
 	static int laststimtype[2] = {STIM_NONE};
 	static int setblank = 0, setuc = 0, setleft = 0, setright = 0;
     int notsent = 0;
-    
+    float dw;
 	
 	psine = (OneStim *)(st->left->ptr);
 	rds = st->left;
@@ -3500,6 +3501,10 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
             if((fval = deg2pix(val)) < 0)
                 break;
             pos->imsize[1] =  rint(fval);
+            if (st->type == STIM_RLS && expt.stimmode == CONSTRAINED_SIZE){
+                dw = StimulusProperty(st, DOT_SIZE);
+                pos->imsize[1] =  rint(fval/dw) * dw;
+            }
             /* 
              * Aug 95, don't add bar width to radius, this prevents using a
              * stationary bar

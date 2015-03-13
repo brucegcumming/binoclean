@@ -4893,6 +4893,14 @@ function ElectrodePopup(a,b, fcn, varargin)
       end
       X = ServoDrive('ttyname',DATA.servoport,'callback',{@ElectrodeMoved, DATA.toplevel},args{:});
       DATA.servofig = X.toplevel;
+      figure(DATA.servofig); %force to front
+      
+      hm = findobj(allchild(DATA.servofig),'flat','type','uimenu','Tag','MarkMenu');
+      if isempty(hm)
+          hm = uimenu(gcf,'label','Mark','Tag','MarkMenu');
+          AddMarkMenu(hm);
+      end
+
       DATA.servotimer = timer('timerfcn',{@CheckServo, DATA.toplevel},'Period',1,'executionmode','fixedspacing');
       start(DATA.servotimer);
       set(DATA.toplevel,'UserData',DATA);
@@ -4907,6 +4915,13 @@ function PenLogPopup(a,b)
   cntrl_box = findobj('Tag',DATA.windownames{9},'type','figure');
   if ~isempty(cntrl_box)
       figure(cntrl_box);
+      if strcmp(b,'show')
+          if isfield(DATA.binoc{1},'Pn') && DATA.binoc{1}.Pn > 0
+              set(cntrl_box,'name',sprintf('Penetration %d',DATA.binoc{1}.Pn));
+          else
+              set(cntrl_box,'name','Penetration Log (No log open)');
+          end
+      end
       return;
   end
 if length(DATA.winpos{9}) ~= 4
@@ -6652,6 +6667,7 @@ function OpenPenLog(a,b, varargin)
     fprintf(DATA.penid,'Penetration %d at %.1f,%.1f Opened %s\n',DATA.binoc{1}.Pn,DATA.binoc{1}.px,DATA.binoc{1}.py,datestr(now));
     fprintf(DATA.penid,'Electrode %s\n',DATA.binoc{1}.Electrode);
     end
+    PenLogPopup(DATA,'show');
     set(DATA.toplevel,'UserData',DATA);
     
     

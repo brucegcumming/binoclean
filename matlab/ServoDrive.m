@@ -86,8 +86,16 @@ it = findobj(DATA.toplevel,'tag','StepSize');
 
 if strcmp(fcn,'moveto')
     newpos = str2num(get(DATA.setdepth,'string'));
-    if abs(newpos - DATA.position) > 1000
-        DATA.motorspeed = 0; %force automatic speed setting
+    v = rpm2speed(DATA);
+%For large moves at 100uM/sec or faster, check with the user    
+    if abs(newpos - DATA.position) > 1000 && v > 0.09
+        str = sprintf('Do you want speed of %.3fuM/s, or automatic (slow)?',v.*1000);
+        yn = questdlg(str,'Large Fast Move', 'Yes', 'Auto','Yes');
+        if ~strcmp(yn,'Yes')
+            DATA.lastspeed = DATA.motorspeed;
+            DATA.motorspeed = 0; %force automatic speed setting
+            SetData(DATA);
+        end
     end
     DATA = SetNewPosition(DATA, newpos);
 elseif strcmp(fcn,'readposition')
@@ -220,7 +228,7 @@ DATA.depthlabel = uicontrol(gcf,'style','text','string','0 uM', ...
         'fontsize',24,'fontweight','bold');
 mn = uimenu(F,'Label','Close','callback',@CloseServoPort);
 mn = uimenu(F,'Label','Reopen','callback',@OpenServoPort);
-mn = uimenu(F,'Label','Stop','callback',@StopMotor);
+mn = uimenu(F,'Label','Stop','callback',@StopMotor,'Tag','StopButton');
 mn = uimenu(F,'Label','Options');
 sm = uimenu(mn,'Label','Read Position','callback',{@MoveMicroDrive, 'readposition'},'accelerator','R');
 sm = uimenu(mn,'Label','Plots');
@@ -255,12 +263,15 @@ for j = 1:length(tags)
         set(it,'visible',state);
     end
 end
+it = findobj(DATA.toplevel,'tag','StopButton');
+set(it,'enable','on');
 
 function MenuOptions(a,b,fcn)
    DATA = GetDataFromFig(a);
 if strcmp(fcn,'showbuttons')
     EnableMoveButtons(DATA,'on');
 end
+
 
 
 function SetOption(a,b)
@@ -366,6 +377,10 @@ end
 SetMenuCheck(a,'exclusive');
 set(DATA.toplevel,'UserData',DATA);
 
+
+function v = rpm2speed(DATA)
+v = DATA.motorspeed * 1000./(DATA.speedscale .* DATA.stepscale);
+
 function CloseServoPort(a,b)
 DATA = GetDataFromFig(a);
 %tell verg first
@@ -426,6 +441,7 @@ DATA.customspeed = 1; %also default
 DATA.motorspeed = round(DATA.customspeed.* DATA.speedscale.*DATA.stepscale/1000);
 DATA.setupfile = '/local/servomotor.setup';
 DATA.logfile = '/local/servolog.mat';
+DATA.lastspeed = 0;
 
 DATA.motorid = -1; %< 0 means dont set id
 DATA = addfield(DATA,{'stepsize' 'customstep' 'position'},0);
@@ -507,9 +523,13 @@ end
 function StopMotor(a,b)
 DATA = GetDataFromFig(a);
 if DATA.motorid >= 0
-fprintf(DATA.sport,'%dDI\n',DATA.motorid);
+    fprintf(DATA.sport,'%dDI\n',DATA.motorid);
 else
-fprintf(DATA.sport,'DI\n');
+    fprintf(DATA.sport,'DI\n');
+end
+%If the speed was set to automatic, reset this
+if DATA.motorspeed == 0 && DATA.lastspeed > 0
+    DATA.motorspeed = DATA.lastspeed;
 end
 
 
@@ -523,10 +543,20 @@ nstep = floor(abs((pos-d)/10));  %divide into 10uM steps
 smallstep = (pos -d)./nstep;
 positions = d + smallstep .* [1:nstep];
 
-oldspeed = DATA.motorspeed;
+if DATA.motorspeed > 0
+    oldspeed = DATA.motorspeed;
+elseif DATA.lastspeed > 0
+    oldspeed = DATA.lastspeed;
+else
+    oldspeed = DATA.minrpm;
+end
+
+%real motor speed will be 100uM/sec, with 1 sec pauses
 ispeed = round(0.1.*DATA.speedscale.*DATA.stepscale/1000);
 fprintf(DATA.sport,'SP%.0f\n',ispeed);
 DATA.motorspeed = ispeed;
+stopb = findobj(DATA.toplevel,'tag','StopButton');
+set(stopb,'enable','off');
 stopui = findobj(DATA.toplevel,'tag','EmergencyStop');
 
 
@@ -551,6 +581,7 @@ if istop
     fprintf('Stopped by User\n');
     set(stopui,'value',0);
 end
+set(stopb,'enable','on');
 
 fprintf(DATA.sport,'SP%.0f\n',oldspeed);
 DATA.motorspeed = oldspeed;

@@ -93,7 +93,7 @@ int *RecordImage(int frame, Stimulus *st){
 void StimStringRecord(FILE *fd, Expt *ex)
 {
     int j,*p,i;
-    char s[10];
+    char s[BUFSIZ];
     char buf[BUFSIZ*1000];
     
     

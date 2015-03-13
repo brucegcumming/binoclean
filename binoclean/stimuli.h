@@ -418,6 +418,7 @@ struct EXPERIMENT{
     float *rcvals;
     int *rccounts,*rcn,ipen,nsaved,newpen;
     float exp3vals[MAXSTIM];
+    float exp2vals[MAXSTIM];
     int plot3type;
     float customvals[MAXSTIM];
     float custombvals[MAXSTIM];
