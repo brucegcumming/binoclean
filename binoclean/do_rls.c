@@ -448,11 +448,19 @@ void calc_rls(Stimulus *st, Substim *sst)
         *y = -h/2 + idot * sst->dotsiz[1] + xshift[1] - posfix;
         rp = &rndarray[idot];
         if (*y >= h/2){
+            if (nextra > 1){
+                *y = h/2;
+            }
             posfix += (h);
             *y = h/2;
-            idot--;
-            nextra++;
-            sst->npaint++;
+//if this is the last vertex, stop here, otherwise add a vertex, spliiting this dot
+//if the first vertex is close to the right edge, can reach this point with the last dot
+// so might need this 
+            if (i < sst->ndots+nextra){
+                idot--;
+                nextra++;
+                sst->npaint++;
+            }
         }
         if (*y < lastpos && *y > -h/2){
             // if a dot gets split at the edge need 1 extra pair of vertices
@@ -540,7 +548,12 @@ void calc_rls(Stimulus *st, Substim *sst)
                 *p = 0;
             *pi = 1;
         }
-        sst->iimb[yi] = *pi;
+// The first vertex does not set a color. The first dot is the color of the
+// second vertex. This point should get set by the last vertext painted
+        if (i > 0)
+            sst->iimb[yi] = *pi;
+        else
+            sst->iimb[yi] = 1; //grey
 
         
         if(sst->corrdots > 0 && sst->corrdots < sst->ndots && sst->mode == RIGHTMODE){

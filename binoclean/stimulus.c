@@ -1850,8 +1850,16 @@ void calc_stimulus(Stimulus *st)
              */
             if(testflags[REPEAT_DOTS])
                 rds->seed++;
-            st->left->pos.phase = st->phasedisp[0];
-            st->right->pos.phase = -st->phasedisp[0];
+//March 2015. Phase disp now applie asymmetrically to RLS, so that when dp is a mulitple of dw,
+//the bar locations are the same. (Otherwies dp=dw means taht each bar is move 0.5*dw in each eye
+            if (st->phasedisp[0] > 0){
+                st->left->pos.phase = 2 * st->phasedisp[0];
+                st->right->pos.phase = 0;
+            }
+            else{
+                st->left->pos.phase = 0;
+                st->right->pos.phase = -2 * st->phasedisp[0];
+            }
             rds->newdots = rdsr->newdots = 1;
             st->left->pos.phase2 = st->phasedisp[1];
             st->right->pos.phase2 = -st->phasedisp[1];
