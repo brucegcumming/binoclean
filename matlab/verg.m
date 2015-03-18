@@ -31,6 +31,8 @@ while j <= length(varargin)
         end
     elseif strcmp(varargin{j},'autoquit')
         autoquit = 1;
+    elseif strcmp(varargin{j},'demo') && j == 1
+        varargin{1} = '/local/c/binoclean/stims/demo/demo.stm';
     elseif strcmp(varargin{j},'host')
         j = j+1;
         DATA.ip = ['http://' varargin{j} ':1110/'];
@@ -3224,10 +3226,18 @@ function MenuHit(a,b, arg)
         prefix = regexprep(prefix,'[0-9][0-9][A-Z][a-z][a-z]20[0-9][0-9]','');
         prefix = regexprep(prefix,'DATE$','');
         srcfile = DATA.binoc{1}.psychfile;
-        if ~exist(srcfile)
-            vergwarning(sprintf('Cannot Start pipelog until %s exists. Come back after running a trial',srcfile));
+        if strcmp(srcfile,'NotSet')
+            srcfile = GetValue(DATA,'daylog');
+            if ~exist(srcfile)
+                vergwarning(sprintf('Cannot Start pipelog until Log exists. Come back after running a trial',srcfile));
+            end
+            system([GetFilePath('perl') '/pipelog ' DATA.binoc{1}.monkey ' log &']);
+        else
+            if ~exist(srcfile)
+                vergwarning(sprintf('Cannot Start pipelog until %s exists. Come back after running a trial',srcfile));
+            end
+            system([GetFilePath('perl') '/pipelog ' DATA.binoc{1}.monkey ' ' prefix ' &']);
         end
-        system([GetFilePath('perl') '/pipelog ' DATA.binoc{1}.monkey ' ' prefix ' &']);
         DATA.pipelog = 1;
         DATA = AddTextToGui(DATA,['Pipelog ' prefix]);
     elseif strcmp(arg,'setshake')
@@ -3483,11 +3493,11 @@ function AddTodayMenu(DATA, id,label)
     end
     
 function CheckForUpdate(DATA)
-    CheckFileUpdate([DATA.netmatdir '/verg.m'],[DATA.localmatdir '/verg.m']);
+    CheckFileUpdate([DATA.netmatdir '/verg.m'],[DATA.localmatdir '/verg.m'],'backup');
     CheckFileUpdate([DATA.netmatdir '/helpstrings.txt'],[DATA.localmatdir '/helpstrings.txt']);
     CheckFileUpdate([DATA.netmatdir '/DownArrow.mat'],[DATA.localmatdir '/DownArrow.mat'],'new');
     CheckFileUpdate([DATA.netmatdir '/vergversion.m'],[DATA.localmatdir '/vergversion.m']);
-
+    CheckFileUpdate([DATA.netmatdir '/ServoDrive.m'],[DATA.localmatdir '/ServoDrive.m'],'backup');
     
  function CheckFileUpdate(src, tgt, chkmode)
      if nargin < 3
@@ -3514,6 +3524,10 @@ function CheckForUpdate(DATA)
         yn = questdlg(sprintf('%s is newer. Copy to %s?',src,tgt),'Update Check','Yes','No','Yes');
         if strcmp(yn,'Yes')
             try  %This will produce and error becuase verg.m is in use. But the copy succeeds
+                if strncmp(chkmode,'backup',3)
+                    BackupFile(src);
+                end
+
                 [a,b,c] = copyfile(src,tgt);
             catch ME
                 cprintf('errors',ME.message);

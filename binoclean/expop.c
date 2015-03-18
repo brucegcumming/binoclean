@@ -1755,6 +1755,7 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
     ex->penfile = NULL;
     ex->backprefix = NULL;
     ex->cmdinfile = NULL;
+    
     ex->username = myscopy(ex->username, "not set");
     for(i = 0; i < MAXBACKIM; i++)
         backims[i].ptr = NULL;
@@ -2900,7 +2901,8 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
             break;
             
         case MONKEYNAME:
-            expt.monkey = myscopy(expt.monkey,s);
+            if (strcmp(s,"NotSet")){
+                expt.monkey = myscopy(expt.monkey,s);
             sprintf(expt.cwd,"/local/%s",expt.monkey);
             if (chdir(expt.cwd)!=0)
             {
@@ -2915,7 +2917,8 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
             if (todaylog != NULL)
                 fclose(todaylog);
             todaylog = fopen(buf,"a");
-            
+            expt.strings[DAYLOGFILE] = myscopy(expt.strings[DAYLOGFILE],buf);
+            }
             break;
             
         case HELPFILE_PATH:

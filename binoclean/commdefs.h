@@ -513,7 +513,9 @@
 #define EXPT1CUSTOMVAL (MAXSAVECODES+47)
 #define EXPT2CUSTOMVAL (MAXSAVECODES+48)
 #define EXPT3CUSTOMVAL (MAXSAVECODES+49)
-#define MAXTOTALCODES (MAXSAVECODES+50)  //440
+#define DAYLOGFILE (MAXSAVECODES+50)
+
+#define MAXTOTALCODES (MAXSAVECODES+51)  //440
 
 
 /*
@@ -1328,6 +1330,7 @@ ValueCode valstrings[] = {
     {"onlineprefix", "Folder for online files on Mac", ONLINEPREFIX, 0, 'C', 0, SEND_VERG_ONLY, SAVE_ALWAYS},
     {"cmdfile", "File for remote commands", COMMAND_FILE, 0, 'C', 0, SEND_VERG_ONLY, SAVE_ALWAYS},
     {"psychfile", "Psych results file", PSYCHFILE, 0, 'C', 0, SEND_VERG_ONLY, SAVE_ALWAYS},
+    {"daylog", "Dail Log File", DAYLOGFILE, 0, 'C', 0, SEND_VERG_ONLY, SAVE_NEVER},
     {"impref", "prefix for image files", IMAGELOAD_PREFIX, 0, 'C', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {"immode", "image mode", IMAGELOAD_MODE, 0, 'C', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {"imload", "image load type", IMAGELOAD_TYPE,  0, 'C', 0, SEND_EXPLICIT, SAVE_ALWAYS},
