@@ -4905,6 +4905,10 @@ function ElectrodePopup(a,b, fcn, varargin)
 
   if ~isempty(DATA.servoport)
       args = {};
+      
+%If DATA.servodata.alldepths exists, then Verg has already communicated with 
+%ServoDrive.  Might still want to check that it has not been turned off and
+%lost position
       if ~isempty(DATA.servodata.alldepths)
           args = {'depths' DATA.servodata.alldepths DATA.servodata.alltimes};
       else

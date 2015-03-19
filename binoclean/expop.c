@@ -8921,9 +8921,10 @@ char *ShowStimVals(Thisstim *stp)
 int SetFrameStim(int i, unsigned long long lrnd, double inc, Thisstim *stp, int *nstim)
 {
     int nv = expt.nfast;
-    int rnd = lrnd % (nv + expt.fastextras);
+    int rnd = 0;
     double minval = expt.minval, pb = 0,frnd = 1, forcex = 0,drnd;
     int nextra = expt.fastextras,xoff = 0;
+    int retval = 0;
     
     if(expt.vals[BLANK_P] > 0 && nextra){ //need to have +blank and pblank set
         nextra--;
@@ -8939,7 +8940,13 @@ int SetFrameStim(int i, unsigned long long lrnd, double inc, Thisstim *stp, int 
         frnd = expt.vals[BLANK_P] + 1;
         xoff = 0;
     }
-    rnd = lrnd % (nv + nextra);
+    if (nv+nextra == 0){ //shouldn't happen, but don't let it crash us
+        rnd = 0;
+        retval = -1;
+    }
+    else{
+        rnd = lrnd % (nv + nextra);
+    }
     rndcounts[rnd]++;
     frameiseq[i] = rnd+xoff;
     
@@ -9073,6 +9080,7 @@ int SetFrameStim(int i, unsigned long long lrnd, double inc, Thisstim *stp, int 
         fastvals[frameiseq[i]] = frameseq[i];
         fastbvals[frameiseq[i]] = frameseqb[i];
     }
+    return(retval);
 }
 
 

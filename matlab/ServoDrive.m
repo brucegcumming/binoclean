@@ -122,11 +122,26 @@ set(DATA.toplevel,'UserData',DATA);
 
 
 function DATA = SetStartDepth(DATA, startdepth)
+
 % set initial position, but check that drive has not already been used;
 if isnan(startdepth)
-    return;
-end
-if length(DATA.alldepths) && max(DATA.alltimes)-now < 2/24
+%not setting startdepth. So if alldepths exists, this should be a continuation
+%If depth does not match last recorded, Motor might have been turned off.
+%Check whether to restore previous value
+
+    yn = 'No';
+    if isfield(DATA,'alldepths') && ~isempty(DATA.alldepths)
+        startdepth = DATA.alldepths(end);
+        x = GetCurrentPosition(DATA);
+        if abs(startdepth-DATA.position) > 10
+            msg = sprintf('MicroDrive was %.0fuM At %s. Now Reads %.0f\nPerhaps it was turned off.\n Reset (no movement) to  %.0f?',DATA.alldepths(end),datestr(DATA.alltimes(end)),x,startdepth);
+            yn = questdlg(msg,'ServoDrive Message','Yes','No','Yes');
+        end
+    end
+    if strcmp(yn,'No')
+        return;
+    end    
+elseif length(DATA.alldepths) && max(DATA.alltimes)-now < 2/24
     x = GetCurrentPosition(DATA);
     msg = sprintf('MicroDrive set to %.0fuM on %s. Now %.0f, Sure you want to set %.0f?',DATA.alldepths(end),datestr(DATA.alltimes(end)),x,startdepth);
     yn = questdlg(msg,'ServoDrive Message','Yes','No','Yes');
@@ -287,13 +302,14 @@ function SetOption(a,b)
    
    
 function DATA = OpenDiskLog(DATA)
-
+%If the history file has positions from the last 12 hours
+%read them into the history that will be displayed/checked
 if exist(DATA.logfile,'file')
     X = load(DATA.logfile);
     logdate = max(X.alltimes);
     a = datevec(logdate);
     b = datevec(now);
-    if now - logdate > 1  || a(3) < b(3)
+    if now - logdate > 0.5  || a(3) < b(3)
         BackupFile(DATA.logfile);
     else
         X = load(DATA.logfile);
@@ -905,15 +921,15 @@ function DATA = OpenServoPort(a,b)
 DATA = GetDataFromFig(a);
 x = instrfind('type','serial');
 delete(x);
-DATA.sport = serial(DATA.ttyname,'BaudRate',9600);
+DATA.sport = serial(DATA.ttyname,'BaudRate',9600,'Timeout',1);
 fopen(DATA.sport);
 fprintf(DATA.sport,'ANSW1\n'); %?0 would stop unwanted "OK"
-fprintf(DATA.sport,'SOR0\n');
+fprintf(DATA.sport,'SOR0\n'); %Source is Serial Line
 fprintf(DATA.sport,'NET0\n');
 fprintf(DATA.sport,'BAUD%d\n',9600);
 fprintf(DATA.sport,'SP%d\n',DATA.motorspeed);
 
-fprintf(DATA.sport,'APL1\n');
+fprintf(DATA.sport,'APL1\n'); %ACtivate Position Limits
 fprintf(DATA.sport,'LL%.0f\n',-DATA.maxrange);
 fprintf(DATA.sport,'LL%.0f\n',DATA.maxrange);
 fprintf(DATA.sport,'APL1\n');
