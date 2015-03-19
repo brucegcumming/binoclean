@@ -728,7 +728,7 @@ for j = 1:length(strs{1})
                     DATA = RestartBinoc(DATA);
                 end
                 myprintf(DATA.frombinocfid,'-show','Running Next of %d expts\n',DATA.rptexpts);
-                outprintf(DATA,'#Nrpt is %d\n',DATA.rptexpts);
+                outprintf(DATA,'//Nrpt is %d\n',DATA.rptexpts);
                 DATA.rptexpts = DATA.rptexpts-1;
                 it = findobj(DATA.toplevel,'Tag','RptExpts');
                 set(it,'string',num2str(DATA.rptexpts));

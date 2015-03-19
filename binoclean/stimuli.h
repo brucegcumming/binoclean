@@ -450,7 +450,7 @@ struct EXPERIMENT{
     char cwd[BUFSIZ*2];
     int expseed;
     char *username;
-    int codesent;
+    int codesent,rptexpt;
     char *loadfile;
     float codevalue;
     int magicnumber;

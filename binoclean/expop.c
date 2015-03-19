@@ -14004,7 +14004,12 @@ int InterpretLine(char *line, Expt *ex, int frompc)
         TheStim = ex->st->next;
     TheStim = stimptr;
 
-
+//# has to be quoted as \# to get through urlread
+    if (strncmp(line,"//",2) == NULL){
+        line = &line[1];
+        *line = '#';
+    }
+    
     s = strchr(line, '=');
     if(s)
         goteq = 1;
@@ -14030,6 +14035,9 @@ int InterpretLine(char *line, Expt *ex, int frompc)
         *t = 0;
     }
     else if(line[0] == '#'  && frompc ==2){
+        if (strncmp(line,"#Nrpt is",6) == NULL) {
+            sscanf(line,"#Nrpt is %d",&expt.rptexpt);
+        }
         SerialString(line,0);
         SerialString("\n",0);
         return(-1);
