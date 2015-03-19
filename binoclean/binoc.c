@@ -3504,7 +3504,7 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
                 break;
             pos->imsize[1] =  rint(fval);
             if (st->type == STIM_RLS && expt.stimmode == CONSTRAINED_SIZE){
-                dw = StimulusProperty(st, DOT_SIZE);
+                dw = st->left->dotsiz[1]; // in pixels
                 pos->imsize[1] =  rint(fval/dw) * dw;
             }
             /* 
@@ -3917,6 +3917,9 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
                 st->phaseangle = 0;
             else if(st->type == STIM_RLS){
                 st->phasedisp[0] = deg2pix(val/2);
+                if (expt.stimmode == CONSTRAINED_SIZE){
+                    st->phasedisp[0] = st->left->dotsiz[1] * rint(2 * st->phasedisp[0]/st->left->dotsiz[1])/2;
+                }
                 st->phaseangle = 0;
             }
             break;
@@ -4340,7 +4343,7 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
             fval = deg2pix(val);
             if(st->type == STIM_RDS || st->type == STIM_RLS || st->type == STIM_RDSSINE || st->type == STIM_CHECKER)
             {
-                if(st->type == STIM_RLS && !(optionflag & ANTIALIAS_BIT))
+                if(st->type == STIM_RLS && (!(optionflag & ANTIALIAS_BIT) || expt.stimmode == CONSTRAINED_SIZE))
                 {
                     fval = round(fval);
                 }

@@ -7403,7 +7403,10 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
              * DISP_P is represtented in radians. Save it in degrees to the file
              */
             val = StimulusProperty(st,code);
-            if(flag != TO_BW){
+            if (st->type == STIM_RLS){
+                sprintf(cbuf,"%s%s%.4f",scode,temp,val);                
+            }
+            else if(flag != TO_BW){
                 val = val * 180/M_PI;
                 sprintf(cbuf,"%s%s%.1f",scode,temp,val);
             }
@@ -7882,6 +7885,10 @@ void InitExpt()
     expt.stimvals[expt.type2] = GetProperty(&expt,expt.st,expt.type2);
     expt.stimvals[PLC_MAG] = expt.vals[PLC_MAG];
     expt.stflag = expt.st->flag;
+    if (expt.st->next != NULL)
+        expt.backtype = expt.st->next->type;
+
+    
     reset_afc_counters();
     if(mode & SERIAL_OK)
     {

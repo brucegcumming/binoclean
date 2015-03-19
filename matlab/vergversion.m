@@ -1,3 +1,3 @@
 function r = vergversion()
-r = 'verg.292.36bd79a';
+r = 'verg.293.9f5b8d7';
 
