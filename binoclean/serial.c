@@ -264,6 +264,7 @@ void SerialString(char *s, int tty)
         }
     }
 #endif
+// tty 0 send down serial line, to serial file, and net file
 // tty -1 sends stingot serial file and net file, but not serial line
 // tty -2 sends to just serial files
     if(seroutfile != NULL && tty != ttys[1])

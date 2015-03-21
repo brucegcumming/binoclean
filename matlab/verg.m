@@ -3525,7 +3525,7 @@ function CheckForUpdate(DATA)
         if strcmp(yn,'Yes')
             try  %This will produce and error becuase verg.m is in use. But the copy succeeds
                 if strncmp(chkmode,'backup',3)
-                    BackupFile(src);
+                    BackupFile(tgt);
                 end
 
                 [a,b,c] = copyfile(src,tgt);

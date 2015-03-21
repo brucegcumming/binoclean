@@ -9261,16 +9261,16 @@ int PrepareExptStim(int show, int caller)
     }
 #endif
     gettimeofday(&now,NULL);
+    expt.allstimid++;
     if(netoutfile){
-        fprintf(netoutfile,"#Prep%d %d %.3f\n",stimno, stimorder[stimno],ufftime(&now));
+        fprintf(netoutfile,"#Prep%d %d %.3f id%d\n",stimno, stimorder[stimno],ufftime(&now),expt.allstimid);
     }
     if(seroutfile){
-        fprintf(seroutfile,"#Prep%c %d %d %.3f %d\n",InExptChar,stimno, stimorder[stimno],ufftime(&now),caller);
+        fprintf(seroutfile,"#Prep%c %d %d %.3f %d id%d\n",InExptChar,stimno, stimorder[stimno],ufftime(&now),caller,expt.allstimid);
     }
 
     fakestim = 0;
     expt.laststimno = stimno;
-    expt.allstimid++;
 
     /*
      * Badfix/Prem trials during psychophyics Need the stimulus order to be changed * so that monkey does not see the same stimulus twice. During the staircase,
@@ -10860,8 +10860,14 @@ int ExpStimOver(int retval, int lastchar)
     else if((stimno+1) >= ntotal && retval != BAD_TRIAL)
         expt.st->mode |= EXPT_OVER;
     CheckFix(); /* if was a bad trial, set the timeout */
+    if (fixstate == BAD_FIXATION)
+        SerialString("BadFix\n",0);
+    else{
+        sprintf(buf,"EndStim id%d\n",expt.allstimid);
+        SerialString(buf,0);
+    }
     
-    if(!(optionflag & FIXATION_CHECK) && !(optionflag & WAIT_FOR_BW_BIT) && demomode == 0) 
+    if(!(optionflag & FIXATION_CHECK) && !(optionflag & WAIT_FOR_BW_BIT) && demomode == 0)
         fixstate = RESPONDED;
     /*
      * If this is a re-run of an expt file on disk, read in some more from
@@ -10872,7 +10878,6 @@ int ExpStimOver(int retval, int lastchar)
      if(replay_expt)
      ReplayExpt(NULL);
      */
-    SerialString("EndStim\n",0);
 
     return(retval);
 }
@@ -11645,7 +11650,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
         olddisp = st->disp;
     }
     else if(seroutfile){
-        fprintf(seroutfile,"#Velocity 0 before stim starts, was %.2f\n",oldvelocity);
+        fprintf(seroutfile,"#V0 (%.2f)\n",oldvelocity);
     }
     glDrawBuffer(GL_FRONT_AND_BACK);
     glstatusline(NULL, 1); // paint this now, then don't paint each frame - its slow
