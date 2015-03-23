@@ -9934,6 +9934,10 @@ int PrepareExptStim(int show, int caller)
             lastpi = expt.vals[PURSUIT_INCREMENT];
         }
         else if(extra != UNCORRELATE || expt.type2 != CORRELATION){
+            /*
+             * Here is where the expt 2 values are set for uncomplicated expts
+             */
+            
             stimres = SetProperty(&expt, expt.st, expt.type2, stp->vals[1]);
             stp->vals[1] = GetProperty(&expt,expt.st,expt.type2);
         }
@@ -10186,6 +10190,9 @@ int PrepareExptStim(int show, int caller)
         myrnd_init(expt.st->left->baseseed);
         srand48(expt.st->left->baseseed);
         currentstim.seqseed = expt.st->left->baseseed;
+    }
+    else if (expt.type2 == SET_SEED){
+        
     }
     else if (dorpt == 2)
     {
@@ -11895,9 +11902,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
                 if(rcstimvals[7][framesdone] < 0 || rcstimvals[8][framesdone] < 0)
                     fprintf(stderr,"Negative Contrast frame %d\n",framesdone);
             }
-            if(optionflags[RANDOM_CORRELATION]){
-                rcstimvals[9][framesdone] = st->correlation; 
-            }
+            rcstimvals[9][framesdone] = st->correlation;
             rcstimvals[10][framesdone] = st->phasedisp[0];
             if(finished)
                 lastframecount = rc;

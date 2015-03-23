@@ -1339,7 +1339,7 @@ for j = 1:length(strs{1})
             id = findstr(s,'=');
             if length(n)
                 DATA.exptstimlist{2}{n(1)+1} = s(id(1)+1:end);
-                fprintf(s);
+%                fprintf(s);
                 if isfield(DATA,'toplevel') && setlist
                     it = findobj(DATA.toplevel,'Tag','Expt2StimList','style','edit');
                     if length(it) == 1
@@ -3624,7 +3624,7 @@ function TextCallback(a,b)
     SendManualVals(a);
 
     
-function SendManualVals(a, b)
+function DATA = SendManualVals(a, b)
 % a can be a handel to the list, or
 % a is DATA and b is the tag
 

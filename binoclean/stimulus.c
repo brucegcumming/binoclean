@@ -93,6 +93,7 @@ int *RecordImage(int frame, Stimulus *st){
     }
 }
 
+//stimsave savestim stimrecord recordstim StimStringRecord()
 void StimStringRecord(FILE *fd, Expt *ex)
 {
     int j,*p,i;
@@ -121,9 +122,16 @@ void StimStringRecord(FILE *fd, Expt *ex)
             sprintf(s,"L%1xR%1x",*p++,*p++);
             strcat(buf,s);
             if(rcstimvals[10][j] != 0){
-                sprintf(s,"!dp%.2f",2*rcstimvals[10][j]/expt.st->left->dotsiz[1]);
+                sprintf(s,"!dp%.1f",2*rcstimvals[10][j]/expt.st->left->dotsiz[1]);
                 strcat(buf,s);
             }
+            if(rcstimvals[9][j] < 0){
+                strcat(buf,"*");
+            }
+            else if(rcstimvals[9][j] == 0){
+                strcat(buf,"U");
+            }
+                
             }
             strcat(buf,"\n");
         }

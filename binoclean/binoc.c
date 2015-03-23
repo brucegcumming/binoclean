@@ -3146,6 +3146,7 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
     
 	if(val == INTERLEAVE_EXPT_UNCORR){
         st->flag |= UNCORRELATE;
+        st->correlation = 0;
         setuc = 1;
         val = 0;
 	}
@@ -3154,6 +3155,7 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
         if(st->next)
             st->next->flag &= (~UNCORRELATE);
         setuc = 0;
+        st->correlation = 1;
 	}
 	else
         st->flag = st->flag; //just for debugging...

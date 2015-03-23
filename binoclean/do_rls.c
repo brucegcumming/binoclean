@@ -208,10 +208,11 @@ void calc_rls(Stimulus *st, Substim *sst)
     uint64_t *rp,rnd,*rq;
     int orthoguc = 0,orthogac = 0;
     int pblank = 0,*pi,maxconsec = 0;
-    int whitedot = 2, blackdot = 0;
+    int whitedot = 2, blackdot = 0,thisdot = 0;
     int painterr = 0,idot= 0,nextra = 0;
     float c2 = pos->contrast2;
     float lastpos,posfix,partw;
+    int nvert = 0; //N vertices painted since starting strip
  
     if(st->preload && st->preloaded){
         return;
@@ -423,6 +424,8 @@ void calc_rls(Stimulus *st, Substim *sst)
     for(i = 0; i < 10; i++){
         sst->bits[i] = 0;
     }
+    sst->iimb[0] = 1; //grey
+
     rq = rp;
     for(i = 0; i < sst->ndots; i++,rp++){
         if(sst->corrdots == 0 && sst->mode == RIGHTMODE && !seedcall)
@@ -477,7 +480,10 @@ void calc_rls(Stimulus *st, Substim *sst)
             nextra++;
             sst->npaint++;
             idot--;
+            nvert =0;
         }
+        else if (*y < lastpos)
+            nvert = 0;
         if (*y <-h/2){ // posfix is too bif=g
             posfix -= (h/2 - *y);
             *y += (h/2 - *y);
@@ -521,11 +527,11 @@ void calc_rls(Stimulus *st, Substim *sst)
             *p = *rp & 0xf;
         else if(*rp & (1<<1)){
             *p = WHITEMODE;
-            *pi = whitedot;
+            thisdot = whitedot;
         }
         else{
             *p = BLACKMODE;
-            *pi = blackdot;
+            thisdot = blackdot;
         }
         if (sst->mode == RIGHTMODE && orthoguc)
         {
@@ -552,12 +558,12 @@ void calc_rls(Stimulus *st, Substim *sst)
                 *p = 8;
             else
                 *p = 0;
-            *pi = 1;
+            thisdot = 1;
         }
 // The first vertex does not set a color. The first dot is the color of the
 // second vertex. This point should get set by the last vertext painted
-        if (i > 0)
-            sst->iimb[yi] = *pi;
+        if (nvert > 0)
+            sst->iimb[yi] = thisdot;
         else
             sst->iimb[yi] = 1; //grey
 
@@ -736,6 +742,7 @@ void calc_rls(Stimulus *st, Substim *sst)
         }
         i++,x++,y++,p++,rp++,q++,zx++,zy++,pi++,rq++;
         nx++;
+        nvert++;
         idot++;
         if (sst->npaint > sst->xpla){
             sst->npaint = sst->xpla-1;
