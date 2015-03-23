@@ -944,6 +944,9 @@ for j = 1:length(strs{1})
                 if length(it) == 1
                     set(it,'string',DATA.exptstimlist{1});
                 end
+                B = DATA.binoc{1};
+%                fprintf('EDONE at %s N %d,%d,%d\n',datestr(now),B.nt,B.n2,B.n3);
+                SetExptItems(DATA);
             end
             if isfield(DATA,'exptstimlist')
                 for j = 1:length(DATA.exptstimlist)
@@ -1336,6 +1339,7 @@ for j = 1:length(strs{1})
             id = findstr(s,'=');
             if length(n)
                 DATA.exptstimlist{2}{n(1)+1} = s(id(1)+1:end);
+                fprintf(s);
                 if isfield(DATA,'toplevel') && setlist
                     it = findobj(DATA.toplevel,'Tag','Expt2StimList','style','edit');
                     if length(it) == 1
@@ -3623,25 +3627,55 @@ function TextCallback(a,b)
 function SendManualVals(a, b)
 % a can be a handel to the list, or
 % a is DATA and b is the tag
-    if ishandle(a)
-        DATA = GetDataFromFig(get(a,'parent'));
+
+ DATA = GetDataFromFig(a);
+
+   if ishandle(a)
         tag = get(a,'Tag');
-    elseif nargin > 1
-        DATA = a;
-        tag = b;
+   elseif nargin > 1
+       tag = b;
+   else
+       tag = 'All'; %default is to check all
+   end
+   if sum(strcmp(tag,{'All' 'ManualValuesButton'}))
+       if DATA.listmodified(1)
+           SendManualVals(DATA,'Expt1StimList');
+       end
+       if DATA.listmodified(2)
+           SendManualVals(DATA,'Expt2StimList');
+       end
+       if DATA.listmodified(3)
+           SendManualVals(DATA,'Expt3StimList');
+       end
+       DATA.listmodified = [0 0 0];
+       SetData(DATA);
+       if strcmp(tag, 'ManualValuesButton');
+           delete(a);
+       end
+       return;
+   end
+   
+    if ~ishandle(a) &&  nargin > 1
         a = findobj(DATA.toplevel,'Tag',tag,'type','uicontrol');
     end
     str = get(a,'string');
     if strcmp(tag,'Expt2StimList')
         c = 'EB';
         o = 1+DATA.nextras(2);
+        if size(str,1) < DATA.binoc{1}.n2+DATA.nextras(2)
+            outprintf(DATA,'n2=%d\n',size(str,1)-DATA.nextras(2));
+        end
     elseif strcmp(tag,'Expt3StimList')
         c = 'EC';
         o = 1+DATA.nextras(3);
     else
         o = 1+DATA.nextras(1);
-        if size(str,2) > DATA.nt
+        checknr =0;
+        if size(str,1) > DATA.binoc{1}.nt+DATA.nextras(1) && checknr
             yn = questdlg('Nstim mismatch','That will Change N stims','OK','Cancel','OK');
+        end
+        if size(str,1) < DATA.binoc{1}.nt+DATA.nextras(1)
+            outprintf(DATA,'nt=%d\n',size(str,1)-DATA.nextras(1));
         end
         c = 'EA';
     end
@@ -3673,11 +3707,24 @@ function EditText(a,b)
     DATA = get(gcf,'UserData');  %this only called from main window
     tag = get(a,'tag');
     e = find(strcmp(tag,{'Expt1StimList' 'Expt2StimList' 'Expt3StimList'}));
-    DATA.listmodified(e) = 1;
+    if sum(strcmp(b.Key,{'uparrow' 'downarrow' 'leftarrow' 'rightarrow'})) == 0
+        DATA.listmodified(e) = 1;
+        h = getappdata(DATA.toplevel,'ApplyButton');
+        if isempty(h) || ~ishandle(h)
+            h = uicontrol(DATA.toplevel,'style','pushbutton','String','Apply (^G)','callback',@SendManualVals,'Tag','ManualValuesButton','units','normalized');
+            setappdata(DATA.toplevel,'ApplyButton',h);
+            x = get(h,'position');
+            y = get(a,'position');
+            x(1) = y(1);
+            x(2) = y(2)+y(4);
+            x(3) =1/5;
+            set(h,'position',x);
+        end
+    end
+     
      if double(b.Character) == 13
          str = get(a,'string');
      end
-     
      if strcmp(b.Modifier,'control')
          if b.Key == 'g'
             sendvals = 1;
@@ -3688,7 +3735,15 @@ function EditText(a,b)
      end
      
      if sendvals
+         delete(h);
+         rmappdata(DATA.toplevel,'ApplyButton');
+%%MAJOR KLUDGE.  value of 'string' is NOT up do date inside the callback
+% must force focus elsewere to update.  Poping up a window seems to work
+         h = waitbar(0,'Applying Changes');
+         close(h);
          SendManualVals(a);
+         DATA = DrainBinocPipe(DATA);
+%         SetExptItems(DATA); %should get done when receive 'EDONE' 
     end
      set(DATA.toplevel,'UserData',DATA);
     
@@ -3905,6 +3960,12 @@ function DATA = AddComment(DATA, str, src)
              
  function outprintf(DATA,varargin)
  %send to binoc.  ? reomve comments  like in expt read? 
+ show = 0;
+ if strcmp(varargin{1},'-show')
+     show = 1;
+     varargin = varargin(2:end);
+ end
+ 
  if DATA.network
      if DATA.binocisup
      str = sprintf(varargin{:});
@@ -3912,7 +3973,7 @@ function DATA = AddComment(DATA, str, src)
      for j = 1:length(strs)
          if ~isempty(strs{j})
              str = [DATA.ip strs{j}];
-             if DATA.verbose(1)
+             if DATA.verbose(1) || show
                  fprintf('%s\n',str);
              end
              if(DATA.tobinocfid > 0)
@@ -4125,7 +4186,21 @@ elseif isfield(DATA,'pausereading')
     end    
     current_state = 0;
 end
-        
+
+function SetExptItems(DATA, varargin)
+    SetTextItem(DATA.toplevel,'Expt1Nstim',DATA.binoc{1}.nt);
+    SetTextItem(DATA.toplevel,'Expt2Nstim',DATA.nstim(2));
+    SetTextItem(DATA.toplevel,'Expt3Nstim',DATA.nstim(3));
+    SetTextItem(DATA.toplevel,'Expt1Incr',DATA.binoc{1}.ei);
+    SetTextItem(DATA.toplevel,'Expt2Incr',DATA.binoc{1}.i2);
+    SetTextItem(DATA.toplevel,'Expt3Incr',DATA.binoc{1}.i3);
+    SetTextItem(DATA.toplevel,'Expt1Mean',DATA.mean(1));
+    SetTextItem(DATA.toplevel,'Expt2Mean',DATA.mean(2));
+    SetTextItem(DATA.toplevel,'Expt3Mean',DATA.mean(3));
+    SetTextItem(DATA.toplevel,'DataFileName',DATA.binoc{1}.uf);
+    SetTextItem(DATA.toplevel,'binoc.nr',DATA.binoc{1}.nr);
+
+
  function SetGui(DATA,varargin)
      if ~isfield(DATA,'toplevel')
          return;
@@ -4146,17 +4221,7 @@ end
         PauseRead(DATA,1);
      end
     DATA= CheckExptMenus(DATA);
-    SetTextItem(DATA.toplevel,'Expt1Nstim',DATA.binoc{1}.nt);
-    SetTextItem(DATA.toplevel,'Expt2Nstim',DATA.nstim(2));
-    SetTextItem(DATA.toplevel,'Expt3Nstim',DATA.nstim(3));
-    SetTextItem(DATA.toplevel,'Expt1Incr',DATA.binoc{1}.ei);
-    SetTextItem(DATA.toplevel,'Expt2Incr',DATA.binoc{1}.i2);
-    SetTextItem(DATA.toplevel,'Expt3Incr',DATA.binoc{1}.i3);
-    SetTextItem(DATA.toplevel,'Expt1Mean',DATA.mean(1));
-    SetTextItem(DATA.toplevel,'Expt2Mean',DATA.mean(2));
-    SetTextItem(DATA.toplevel,'Expt3Mean',DATA.mean(3));
-    SetTextItem(DATA.toplevel,'DataFileName',DATA.binoc{1}.uf);
-    SetTextItem(DATA.toplevel,'binoc.nr',DATA.binoc{1}.nr);
+    SetExptItems(DATA);
     SetTextItem(DATA.toplevel,'RptExpts',DATA.rptexpts);
     id = strmatch(DATA.exptype{1},DATA.expmenucodes{1},'exact');
     SetMenuItem(DATA.toplevel, 'Expt1List', id);
@@ -4745,16 +4810,7 @@ function DATA = RunButton(a,b, type)
                     end
                     SendManualExpt(DATA);
                 end
-                if DATA.listmodified(1)
-                    SendManualVals(DATA,'Expt1StimList');
-                end
-                if DATA.listmodified(2)
-                    SendManualVals(DATA,'Expt2StimList');
-                end
-                if DATA.listmodified(3)
-                    SendManualVals(DATA,'Expt3StimList');
-                end
-                DATA.listmodified = [0 0 0];
+                DATA = SendManualVals(DATA,'All')
                 outprintf(DATA,'\\expt\n');
                 DATA.nexpts = DATA.nexpts+1;
                 DATA.Expts{DATA.nexpts} = ExptSummary(DATA);

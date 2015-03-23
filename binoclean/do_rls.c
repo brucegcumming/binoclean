@@ -208,6 +208,7 @@ void calc_rls(Stimulus *st, Substim *sst)
     uint64_t *rp,rnd,*rq;
     int orthoguc = 0,orthogac = 0;
     int pblank = 0,*pi,maxconsec = 0;
+    int whitedot = 2, blackdot = 0;
     int painterr = 0,idot= 0,nextra = 0;
     float c2 = pos->contrast2;
     float lastpos,posfix,partw;
@@ -237,8 +238,13 @@ void calc_rls(Stimulus *st, Substim *sst)
         calc_rls_polys(st,  sst);
         return;
     }
-    if(st->flag & ANTICORRELATE && sst->mode == RIGHTMODE)
+    whitedot = 2;
+    blackdot = 0;
+    if(st->flag & ANTICORRELATE && sst->mode == RIGHTMODE){
         contrast = -pos->contrast;
+        blackdot = 2;
+        whitedot = 0;
+    }
     if(st->flag & CONTRAST_NEGATIVE)
         val[0] = (double)st->background * (1 - contrast);
     else if(contrast >= 1.0)
@@ -515,11 +521,11 @@ void calc_rls(Stimulus *st, Substim *sst)
             *p = *rp & 0xf;
         else if(*rp & (1<<1)){
             *p = WHITEMODE;
-            *pi = 2;
+            *pi = whitedot;
         }
         else{
             *p = BLACKMODE;
-            *pi = 0;
+            *pi = blackdot;
         }
         if (sst->mode == RIGHTMODE && orthoguc)
         {

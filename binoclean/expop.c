@@ -2247,9 +2247,9 @@ char *DescribeExpStims()
     
     
     if (optionflags[CUSTOM_EXPVAL])
-        sprintf(ebuf,"EACLEAR*\n");
+        sprintf(ebuf,"nt=%d\nEACLEAR*\n",expt.nstim[0]);
     else
-        sprintf(ebuf,"EACLEAR\n");
+        sprintf(ebuf,"nt=%d\nEACLEAR\n",expt.nstim[0]);
     
     for(i = 0; i < (expt.nstim[0]+expt.nstim[2]); i++)
     {
@@ -2257,7 +2257,8 @@ char *DescribeExpStims()
         sprintf(buf, "EA%d=%s\n",i-expt.nstim[2],cbuf);
         strcat(ebuf,buf);
     }
-    
+    sprintf(buf,"%s=%d\n",serial_strings[EXPT2_NSTIM],expt.nstim[1]);
+    strcat(ebuf,buf);
     if (optionflags[CUSTOM_EXPVALB])
         strcat(ebuf,"EBCLEAR*\n");
     else
@@ -2270,6 +2271,8 @@ char *DescribeExpStims()
         
     }
     
+    sprintf(buf,"%s=%d\n",serial_strings[EXPT3_NSTIM],expt.nstim[4]);
+    strcat(ebuf,buf);
     if (optionflags[CUSTOM_EXPVALC])
         strcat(ebuf,"ECCLEAR*\n");
     else
@@ -13693,6 +13696,9 @@ float readval(char *s, 	Stimulus *TheStim, int goteq)
     int ok,code;
     char *p;
     ok = 1;
+    
+    if (*s == '=')
+        s++;
     if(!isanumber(*s)){
 //to set a value by code, ie xo=rx, MUST use '=' to avoid random strings assigning
         if(goteq ==0)
@@ -14618,6 +14624,8 @@ int InterpretLine(char *line, Expt *ex, int frompc)
                 sscanf(&line[2],"%d",&i);
                 s = strchr(line,'=');
                 if((val = readval(s,TheStim,1)) > NOTSET){
+                    if (i >= expt.nstim[0])
+                        expt.nstim[0] = i+1;
                     expval[i+expt.nstim[2]] = val;
                     expt.customvals[i] = val;
                     optionflags[CUSTOM_EXPVAL] = 1;
@@ -14630,12 +14638,15 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             if (isdigit(line[2])){
                 sscanf(&line[2],"%d",&i);
                 s = strchr(line,'=');
-                if(i < expt.nstim[1] && s != NULL)
+                if(s != NULL)
                 {
                     s++;
-                    sscanf(s,"%lf",&expval[expt.nstim[0]+i+expt.nstim[2]]);
-                    expt.exp2vals[i] = expval[expt.nstim[0]+i+expt.nstim[2]];
-                    optionflags[CUSTOM_EXPVALB] = 1;
+                    if((val = readval(s,TheStim,1)) > NOTSET){
+                        if (i >= expt.nstim[1])
+                            expt.nstim[1] = i+1;
+                        expt.exp2vals[i] = expval[expt.nstim[0]+i+expt.nstim[2]] = val;
+                        optionflags[CUSTOM_EXPVALB] = 1;
+                    }
                 }
                 if (frompc < 2)
                     ListExpStims(NULL);
@@ -14645,11 +14656,15 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             if (isdigit(line[2])){
                 sscanf(&line[2],"%d",&i);
                 s = strchr(line,'=');
-                if(i < expt.nstim[4] && s != NULL)
+                if(s != NULL)
                 {
                     s++;
                     sscanf(s,"%lf",&dval);
-                    expt.exp3vals[i] = dval;
+                    if((val = readval(s,TheStim,1)) > NOTSET){
+                        if (i >= expt.nstim[4])
+                            expt.nstim[4] = i+1;
+                        expt.exp3vals[i] = val;
+                    }
                     optionflags[CUSTOM_EXPVALC] = 1;
                 }
                 if (frompc < 2)
