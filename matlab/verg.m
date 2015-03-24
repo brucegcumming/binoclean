@@ -459,6 +459,8 @@ while j <= length(varargin)
         elseif strcmp(src,'fromgetstate')
             srcchr = 'G';
             frombinoc = 3;
+        elseif strcmp(src,'fromgui')
+            sendtobinoc = 1;
         end
     elseif strncmpi(varargin{j},'tobinoc',4)
         sendtobinoc = 1;
@@ -600,6 +602,19 @@ for j = 1:length(strs{1})
         elseif strncmp(s, 'slider', 6)
             codetype = -1;
             sendtobinoc = 0;
+        elseif strncmp(s,'rw',2)
+                val = sscanf(value,'%f');
+                maxrw = GetValue(DATA,'maxrw');
+                if  maxrw > 0 && val > maxrw
+                    oldrw = DATA.binoc{1}.rw;
+                    yn = confirm(sprintf('That Reward (%.2f) is bigger than your limit (%.2f). Proceed?',val(1),maxrw));
+                    if yn == 0
+                        sendtobinoc = 0;
+                        codetype = -1;
+                    else 
+                        DATA.binoc{1}.rw = val;
+                    end
+                end            
         else
             donestr = 0;
         end
@@ -1294,17 +1309,17 @@ for j = 1:length(strs{1})
             else
                 vtype = DATA.comcodes(cid(1)).type;
             end
-            if  vtype == 'C'
-                DATA.binoc{DATA.currentstim}.(code) = s(id(1)+1:end);
-            else
-                val = sscanf(s(id(1)+1:end),'%f');
-                DATA.binoc{DATA.currentstim}.(code) = val;
-            end
             if strcmp(code,'rw')
                 val = sscanf(s(id(1)+1:end),'%f (%f)');
                 if length(val) > 1
                     DATA.currentrw = val(2);
                 end
+            end
+            if  vtype == 'C'
+                DATA.binoc{DATA.currentstim}.(code) = s(id(1)+1:end);
+            else
+                val = sscanf(s(id(1)+1:end),'%f');
+                DATA.binoc{DATA.currentstim}.(code) = val;
             end
             codetype = DATA.comcodes(cid(1)).group;
             DATA = SetCode(DATA,code);
@@ -7284,9 +7299,9 @@ end
     if DATA.currentstim > 1
         outprintf(DATA,'mo=%s\n',DATA.stimlabels{DATA.currentstim});
     end
-    outprintf(DATA,'%s\n',txt);
-DATA = LogCommand(DATA, txt);
 
+    DATA = LogCommand(DATA, txt);
+addline = 1;
 str = [];
 xstr = {};
 if id
@@ -7314,11 +7329,15 @@ showbinoc = 0; % display value binoc returns
 %So only expect something if input produces a response
 readargs = {};
 if txt(end) ~= '='
-    DATA = InterpretLine(DATA,txt,'fromgui');
+    [DATA, a, b] = InterpretLine(DATA,txt,'fromgui');
+    if a < 0
+        addline = 0;
+        showbinoc=2;
+    end
 elseif sum(strcmp(code,DATA.vergonlycodes))
     txt = [txt num2str(DATA.(code))];
 else
-    
+    outprintf(DATA,'%s\n',txt);    
     readargs = {readargs{:} 'expect'};
     showbinoc = 1;
 end
@@ -7381,30 +7400,34 @@ if showbinoc
         end                
     end
 end
-a =  get(DATA.txtrec,'string');
-n = size(a,1);
-if strcmp(code,'px')
-    pixdeg = atan(DATA.binoc{1}.px/DATA.binoc{1}.vd) * 180/pi;
-    txt = [txt sprintf(' (%.5f deg)',pixdeg)];
+
+
+if addline %show this instruction in the history window. Cancelled commands dont
+    a =  get(DATA.txtrec,'string');
+    n = size(a,1);
+    if strcmp(code,'px')
+        pixdeg = atan(DATA.binoc{1}.px/DATA.binoc{1}.vd) * 180/pi;
+        txt = [txt sprintf(' (%.5f deg)',pixdeg)];
+    end
+    if length(str)
+        txt = [txt '(' str ')  ' datestr(now,'HH:MM')];
+    end
+    if iscellstr(a)
+        a{n+1} = txt;
+    else
+        a(n+1,1:length(txt)) = txt;
+    end
+    for j = 1:length(xstr)
+        a(n+1+j,1:length(xstr{j})) = xstr{j};
+    end
+    set(DATA.txtrec,'string',a);
+    x = get(DATA.txtrec,'value');
+    if x > size(a,1)
+        set(DATA.txtrec,'value',size(a,1));
+    end
+    set(DATA.txtrec,'listboxtop',n+1);
+    DATA = LogCommand(DATA, txt, 'norec');
 end
-if length(str)
-    txt = [txt '(' str ')  ' datestr(now,'HH:MM')];
-end
-if iscellstr(a)
-    a{n+1} = txt;
-else
-a(n+1,1:length(txt)) = txt;
-end
-for j = 1:length(xstr)
-    a(n+1+j,1:length(xstr{j})) = xstr{j};
-end
-set(DATA.txtrec,'string',a);
-x = get(DATA.txtrec,'value');
-if x > size(a,1)
-    set(DATA.txtrec,'value',size(a,1));
-end
-set(DATA.txtrec,'listboxtop',n+1);
-DATA = LogCommand(DATA, txt, 'norec');
 set(DATA.toplevel,'UserData',DATA);
 SetGui(DATA);
 if paused == 0 %wasn't paused at start

@@ -115,9 +115,9 @@ void StimStringRecord(FILE *fd, Expt *ex)
             sprintf(s,"%x:",j);
             strcat(buf,s);
             for(; i < expt.st->left->ndots; i++){
-                if (*p > 31)//shouldn't happen'
+                if (*p > 31 || *p < -1)//shouldn't happen'
                     sprintf(s,"x");
-                if (*p == -1){ //a blank frame
+                else if (*p == -1){ //a blank frame
                     sprintf(s,"NaN");
                     i = expt.st->left->ndots;
                 }

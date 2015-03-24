@@ -8127,11 +8127,8 @@ void InitExpt()
         else{
             sprintf(buf,"status=save rls to %s\n",cbuf);
             notify(buf);
-        if (seroutfile){
-            fprintf(seroutfile,"#saverls %s\n",cbuf);
-            if (netoutfile)
-                fprintf(netoutfile,"#saverls %s\n",cbuf);
-        }
+            SetExptString(&expt,expt.st, RCFILENAME, cbuf);
+            SerialSend(RCFILENAME);
         }
     }
     else
@@ -12399,7 +12396,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
     if(stimstate == INSTIMULUS)
         stimstate = POSTSTIMULUS;
   
-    if ((expt.st->type == STIM_RLS || expt.st->type == STIM_CHECKER) && optionflags[SAVE_RLS] && rcfd){
+    if ((expt.st->type == STIM_RLS || expt.st->type == STIM_CHECKER || expt.stimtype == STIM_RLS) && optionflags[SAVE_RLS] && rcfd){
         gettimeofday(&timea, NULL);
         fprintf(rcfd,"id%dse%d:%dt%.3fst%d\n",expt.allstimid,expt.st->firstseed,expt.st->left->baseseed,ufftime(&firstframetime),stimorder[stimno]);
         StimStringRecord(rcfd, expt.st);

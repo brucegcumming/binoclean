@@ -447,6 +447,13 @@ void calc_rls(Stimulus *st, Substim *sst)
     posfix = 0;                             
     nextra = 0;
     idot = 0;
+    cval = NOTSET;
+// clear iimb first, in case any get missed.
+    pi = sst->iimb;
+    for (i = 0; i < sst->ndots; i++,pi++){
+        *pi = 32; //? could clear to 0?
+    }
+    
 // idot keeps track of which bar in the sequnce is currently being plotted
 // so gets adjusted when extra vertices are added for partial bars
 // idot get decremented after setting rp for the current dot. So if hte current do
@@ -457,6 +464,7 @@ void calc_rls(Stimulus *st, Substim *sst)
         *y = -h/2 + idot * sst->dotsiz[1] + xshift[1] - posfix;
         rp = &rndarray[idot];
         if (*y >= h/2){
+            cval = *y-h/2;
             if (nextra > 1){
                 *y = h/2;
             }
@@ -471,10 +479,10 @@ void calc_rls(Stimulus *st, Substim *sst)
                 sst->npaint++;
             }
         }
-        if (*y < lastpos && *y > -h/2){
+        if (*y < lastpos && *y > -h/2+0.5){
             // if a dot gets split at the edge need 1 extra pair of vertices
             // for second half of dot. And an extra pair to join the last dor
-            // to the first
+            // to the first. Only do this if there is at lest 0.5 pixels to paint
             partw = (*y + h/2)/sst->dotsiz[1];
             *y = -h/2;
             nextra++;
@@ -495,7 +503,9 @@ void calc_rls(Stimulus *st, Substim *sst)
         }
         if(lastpos == -h/2) // first dot of the image
             sst->firstw = (*y-lastpos)/sst->dotsiz[1];
-        yi = (int)floor((*y+h/2)/sst->dotsiz[0]);
+//dotsiz is in pixels.  If we are within half a pixel of hte
+//next boudnary, round up
+        yi = (int)floor((*y+h/2 + 0.5)/sst->dotsiz[0]);
         lastpos = *y;
         *zy = -h/2 + i * sst->dotsiz[1] + xshift[2];
         if(*zy > h/2)
@@ -564,9 +574,9 @@ void calc_rls(Stimulus *st, Substim *sst)
 // second vertex. This point should get set by the last vertext painted
         if (nvert > 0)
             sst->iimb[yi] = thisdot;
-        else
-            sst->iimb[yi] = 32; //vertex not paint becuase first of new strip
 
+        if (yi == 0 && nvert > 0)
+            sst->iimb[yi] = thisdot;
         
         if(sst->corrdots > 0 && sst->corrdots < sst->ndots && sst->mode == RIGHTMODE){
             rnd = (*rp>>3) % sst->ndots;
@@ -756,6 +766,11 @@ void calc_rls(Stimulus *st, Substim *sst)
     }
     else{ // record partial linew at en of iimb
         sst->iimb[sst->ndots+2]  = (int)floor(partw*16);
+        if (sst->iimb[0] == 32 || sst->iimb[sst->ndots-1] == 32)
+            sst->iimb[sst->ndots+2]  = (int)floor(partw*16);
+        else
+            sst->iimb[sst->ndots+2]  = (int)floor(partw*16);
+        
     }
     
     if (partw < 0.9)

@@ -458,8 +458,9 @@
 #define SET_SF_CONTRASTS MAXSERIALCODES+172
 #define NETWORK_PREFIX MAXSERIALCODES+173
 #define XY_FSD MAXSERIALCODES+174
+#define RCFILENAME MAXSERIALCODES+175
 
-#define MAXSAVECODES MAXSERIALCODES+175 //397
+#define MAXSAVECODES MAXSERIALCODES+176 //398
 //Add above here anything that needs to be saved to .stm files
 //Below here are temporary/convenience/state parameters that do not need saving
 
@@ -514,8 +515,9 @@
 #define EXPT2CUSTOMVAL (MAXSAVECODES+48)
 #define EXPT3CUSTOMVAL (MAXSAVECODES+49)
 #define DAYLOGFILE (MAXSAVECODES+50)
+#define MAXREWARD (MAXSAVECODES+51)
 
-#define MAXTOTALCODES (MAXSAVECODES+51)  //440
+#define MAXTOTALCODES (MAXSAVECODES+52)  //440
 
 
 /*
@@ -1340,6 +1342,8 @@ ValueCode valstrings[] = {
     {"xyfsd", "XY window width (degrees)", XY_FSD, 0, 'N', 1, SEND_EXPLICIT, SAVE_ALWAYS},
     {"netpref","Prefix for Network Data Record",  NETWORK_PREFIX, 16, 'C', 2, SEND_VERG_ONLY, SAVE_ALWAYS},
     {"magic","Magic Number",  MAGIC_ID, INTERNALCOMMAND, 'N', 0, SEND_EXPLICIT, SAVE_NEVER},
+    {"maxrw","Max reward ",MAXREWARD, 0, 'N', SEND_VERG_ONLY, SAVE_ALWAYS},
+    {"rcfile","File Name for stim desciptions",  RCFILENAME, INDIRECT, 'C', SEND_NEVER,  SAVE_NEVER},
     {  "EA", "Expt1 CustomVal", EXPT1CUSTOMVAL, 16|PARTIAL_CODE, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "EB", "Expt2 CustomVal", EXPT2CUSTOMVAL, 16|PARTIAL_CODE, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "EC", "Expt3 CustomVal", EXPT3CUSTOMVAL, 16|PARTIAL_CODE, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},

@@ -3,8 +3,17 @@ function result = ReadRLS(name, varargin)
 txt = scanlines(name);
 checkdisp = 1;
 explore = 0;
-maxframes = 500;
+maxframes = 0;
+showframes = [];
 
+j = 1;
+while j <= length(varargin)
+    if strncmpi(varargin{j},'show',4)
+        j = 1+1;
+        showframes = varargin{j};
+    end
+    j = j+1;
+end
 idid = find(strncmp('id',txt,2));
 mtid = find(strncmp('mtrS',txt,4));
 rlsid = setdiff(1:length(txt),union(idid,mtid));
@@ -13,6 +22,9 @@ if checkdisp
     disps = corrs;
 end
 
+if ~isempty(showframes)
+    rlsid = rlsid(showframes);
+end
 
 frame = 1;
 for j = 1:length(rlsid)
@@ -20,6 +32,7 @@ for j = 1:length(rlsid)
     id = strfind(s,':');
     a = id(1)+1;
     k = 1;
+    im = [];
     while a <= length(s)
         x = sscanf(s(a),'%1x');
         if isempty(x) 
@@ -31,6 +44,26 @@ for j = 1:length(rlsid)
         a = id(1)+k;
         end
     end
+    
+    id = strfind(s,'!dp');
+    if ~isempty(id)
+        x = sscanf(s(id(1):end),'!dp%f');
+        result.dps(j) = x;
+    else 
+        result.dps(j) = 0;
+    end
+    
+    id = strfind(s,':');
+    if strcmp(s(id(1):end),':NaN')
+        result.dps(j) = NaN;        
+    end
+    
+    
+    id = strfind(s,'U');
+    if ~isempty(id)
+        result.dps(j) = NaN;
+    end
+    if ~isempty(im)
     im(:,1) = bitshift(im(:,1),-2);
     if checkdisp
         lags = -11:11;
@@ -46,7 +79,7 @@ for j = 1:length(rlsid)
         [c,d] = min(xc);
         result.disps(j) = lags(b);
         result.corrs(j) = a;
-        if a < 0.95 && c > -0.95
+        if a < 0.95 && c > -0.95 && ~isnan(result.dps(j));
             imagesc(im');
             cim = im;
             if a > abs(c)
@@ -64,6 +97,7 @@ for j = 1:length(rlsid)
             result.disps(j) = lags(d);
             result.corrs(j) = c;
         end
+        result.size(j) = size(im,1);
     end
     if explore
         GetFigure('RLS');
@@ -71,7 +105,13 @@ for j = 1:length(rlsid)
         [xc, lags] = xcorr(im(1,:),im(2,:),'unbiased');
         [a,b] = max(xc);
     end
-    if j > maxframes
-        return;
+    end
+    if j > maxframes && maxframes > 0 
+        break;
     end
 end
+
+
+
+result.badcor =  find(result.disps == -result.dps & abs(result.corrs) < 0.99);
+result.baddisp =  find(result.disps ~= -result.dps & ~isnan(result.dps));
