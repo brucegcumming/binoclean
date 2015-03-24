@@ -424,7 +424,7 @@ void calc_rls(Stimulus *st, Substim *sst)
     for(i = 0; i < 10; i++){
         sst->bits[i] = 0;
     }
-    sst->iimb[0] = 1; //grey
+    sst->iimb[0] = 32; //vertex not painted
 
     rq = rp;
     for(i = 0; i < sst->ndots; i++,rp++){
@@ -565,7 +565,7 @@ void calc_rls(Stimulus *st, Substim *sst)
         if (nvert > 0)
             sst->iimb[yi] = thisdot;
         else
-            sst->iimb[yi] = 1; //grey
+            sst->iimb[yi] = 32; //vertex not paint becuase first of new strip
 
         
         if(sst->corrdots > 0 && sst->corrdots < sst->ndots && sst->mode == RIGHTMODE){
@@ -1610,7 +1610,7 @@ void paint_rls(Stimulus *st, int mode)
     float angle,cosa,sina,val,valsum = 0,cscale,partw = 0;
     vcoord rect[8],crect[8];
     int ypos;
-    int ytrack[BUFSIZ];
+    int ytrack[BUFSIZ],dotcolor;
     
     if (st->preload & st->preloaded){
         if (rdsstims[st->framectr] != NULL){
@@ -1772,12 +1772,18 @@ void paint_rls(Stimulus *st, int mode)
             glColor3f(val,val,val);
             *p |= dotmode;
         }
-        else if(*p & BLACKMODE)
-            mycolor(vcolor);      
-        else if(*p & WHITEMODE)
+        else if(*p & BLACKMODE){
+            mycolor(vcolor);
+            dotcolor = 1;
+        }
+        else if(*p & WHITEMODE){
             mycolor(bcolor);
-        else
+            dotcolor = 2;
+        }
+        else{
             mycolor(gcolor);
+            dotcolor = 0;
+        }
         if(*p & dotmode){
 //            printf("%.2f %.2f\n",*y,val);
             z[0] = *x;

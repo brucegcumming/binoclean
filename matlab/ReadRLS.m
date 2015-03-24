@@ -20,10 +20,10 @@ for j = 1:length(rlsid)
     id = strfind(s,':');
     a = id(1)+1;
     k = 1;
-    while a < length(s)
+    while a <= length(s)
         x = sscanf(s(a),'%1x');
         if isempty(x) 
-            a = length(s);
+            a = length(s)+1;
         else
         im(k,1) = bitand(x,8); %R eye
         im(k,2) = bitand(x,2);
@@ -49,7 +49,13 @@ for j = 1:length(rlsid)
         if a < 0.95 && c > -0.95
             imagesc(im');
             cim = im;
-            cim(:,1) = circshift(im(:,1),lags(b));
+            if a > abs(c)
+                cim(:,1) = circshift(im(:,1),lags(b));
+            else
+                result.corrs(j) = c;
+                cim(:,1) = circshift(im(:,1),lags(d));
+                result.disps(j) = lags(d);
+            end
             imagesc(cim');
         elseif a >= 0.95
             result.disps(j) = lags(b);
