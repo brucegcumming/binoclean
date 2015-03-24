@@ -1,0 +1,22 @@
+#!/bin/sh
+
+echo $#
+
+if test $# = 0
+then
+echo "Usage:  updaterepo home|office"
+exit
+fi
+
+if test $1 = "office"
+then
+git commit -a -m "Before merging with HomeNetwork"
+git checkout HomeNetwork
+git pull
+git checkout network
+elif test $1 = "home"
+then
+echo "Usage:  updaterepo home|office"
+else
+echo "Usage:  updaterepo home|office"
+fi
