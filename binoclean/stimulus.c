@@ -107,9 +107,16 @@ void StimStringRecord(FILE *fd, Expt *ex)
         sprintf(buf,"",j);
         p = imagerec[j];
         if (p != NULL){
+            i = 0;
+            if (*p > 31){ //first vertex not painted, skip printing
+                p++;
+                i++;
+            }
             sprintf(s,"%x:",j);
             strcat(buf,s);
-            for(i = 0; i < expt.st->left->ndots; i++){
+            for(; i < expt.st->left->ndots; i++){
+                if (*p > 31)//shouldn't happen'
+                    sprintf(s,"x");
                 if (*p == -1){ //a blank frame
                     sprintf(s,"NaN");
                     i = expt.st->left->ndots;
