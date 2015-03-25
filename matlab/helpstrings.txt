@@ -49,6 +49,7 @@ As (Kludge) Implements some special cases. Should be 0 unless you are sure you n
 #As9 Seed Changes with Contrast
 b2 number of correct trials before reward increases to r3
 bO Displace Background orthog to RF. N.B. needs op+bf
+bP Displace Background Parallel to RF. N.B. needs op+bf
 Ba Margin for background size. Ie. Bh = sz+Ba.
 backMov folder containing movie to play as background. 
 baddir axis for bad micorsaccades. amplitued > Sa and direction with 45 degrees of baddir = trial aborted. Usually set automatically by axis of choice targets, but can overridden manual with this. 

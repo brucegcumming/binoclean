@@ -14544,7 +14544,9 @@ int InterpretLine(char *line, Expt *ex, int frompc)
                             !strncmp(line,serial_strings[VIEWD_CODE],2)))
         return(code);
     
-    if (code == MAXTOTALCODES) { // a verg code
+    if (code == MAXTOTALCODES) { // a verg code o no code
+        if (frompc == 2 && (strlen(s) == 0 || strlen(s) == 1 && *s == '='))
+            notify("Not a Binoc Code");
         return(code);
     }
     else if (code >= USER_CODE) { // a verg code
