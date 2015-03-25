@@ -6860,7 +6860,7 @@ function val = GetValue(DATA,code)
 if isfield(DATA.binoc{1},code)
     val = DATA.binoc{1}.(code);
 else
-    id = strcmp(code,DATA.vergonlycodes)
+    id = find(strcmp(code,DATA.vergonlycodes))
     if isempty(id)
         val = NaN;
     else

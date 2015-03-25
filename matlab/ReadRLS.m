@@ -109,9 +109,8 @@ for j = 1:length(rlsid)
     if j > maxframes && maxframes > 0 
         break;
     end
-end
 
 
 
 result.badcor =  find(result.disps == -result.dps & abs(result.corrs) < 0.99);
-result.baddisp =  find(result.disps ~= -result.dps & ~isnan(result.dps));
+result.baddisp =  find(result.disps ~= -result.dps & ~isnan(result.dps));end
