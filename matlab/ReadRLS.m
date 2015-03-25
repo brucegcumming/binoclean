@@ -8,7 +8,10 @@ showframes = [];
 
 j = 1;
 while j <= length(varargin)
-    if strncmpi(varargin{j},'show',4)
+    if strncmpi(varargin{j},'max',3)
+        j = 1+1;
+        maxframes = varargin{j};
+    elseif strncmpi(varargin{j},'show',4)
         j = 1+1;
         showframes = varargin{j};
     end
@@ -26,6 +29,7 @@ if ~isempty(showframes)
     rlsid = rlsid(showframes);
 end
 
+result.lines = rlsid;
 frame = 1;
 for j = 1:length(rlsid)
     s = txt{rlsid(j)};
@@ -38,8 +42,8 @@ for j = 1:length(rlsid)
         if isempty(x) 
             a = length(s)+1;
         else
-        im(k,1) = bitand(x,8); %R eye
-        im(k,2) = bitand(x,2);
+        im(k,1) = bitand(x,12); %R eye
+        im(k,2) = bitand(x,3);
         k = k+1;
         a = id(1)+k;
         end

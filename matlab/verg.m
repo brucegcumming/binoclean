@@ -3415,21 +3415,27 @@ function DATA = LoadLastSettings(DATA, varargin)
         if now - d.datenum < 0.5/24 %less than an half an hour old - read in settings
             go = 1;
             if interactive 
-                yn = questdlg(sprintf('Looks like you are re-starting Mid expt. Do you want to reload id/se from %s',d.filename),'Binoc has been working','Yes','No','Yes');
-                if ~strcmp(yn,'Yes')
+                yn = questdlg(sprintf('Looks like you are re-starting Mid expt. Do you want to reload id/se from %s',d.filename),'Binoc has been working','Reload minimum','Reload all','No','Reload minimum');
+                if ~strncmp(yn,'Reload',5)
                     go = 0;
                 end
             end
         end
         if go
             txt = scanlines(d.name);
-            for s = {'id' 'se' 'ed' 'Rx' 'Ry' 'Ro' 'Rw' 'Rh' 'Xp' 'Yp' 'Pn' 'pe' 'Electrode' 'hemi'...
-                    'ui' 'ePr' 'eZ' 'monkey' 'coarsemm' 'adapter' 'Trw' 'Tg' 'nT' 'Tb' 'uf' 'fx' 'fy' 'so' 'oldrf'}
-            id = find(strncmp(s,txt,length(s{1})));
-            if ~isempty(id)
-                cprintf('blue','Setting %s from %s\n',txt{id(1)},d.name);
-                DATA = InterpretLine(DATA, txt{id(1)},'tobinoc');
-            end
+            if strcmp(yn,'Reload all')
+                for j = 1:length(txt)
+                    DATA = InterpretLine(DATA, txt{j},'tobinoc');
+                end
+            else
+                for s = {'id' 'se' 'ed' 'Rx' 'Ry' 'Ro' 'Rw' 'Rh' 'Xp' 'Yp' 'Pn' 'pe' 'Electrode' 'hemi'...
+                        'ui' 'ePr' 'eZ' 'monkey' 'coarsemm' 'adapter' 'Trw' 'Tg' 'nT' 'Tb' 'uf' 'fx' 'fy' 'so' 'oldrf'}
+                    id = find(strncmp(s,txt,length(s{1})));
+                if ~isempty(id)
+                    cprintf('blue','Setting %s from %s\n',txt{id(1)},d.name);
+                    DATA = InterpretLine(DATA, txt{id(1)},'tobinoc');
+                end
+                end
             end
             if GetValue(DATA,'Pn') > 0
                 outprintf(DATA,'!openpen\n');

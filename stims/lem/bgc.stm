@@ -339,6 +339,7 @@ qe="RDS"/local/lem/stims/rds6.4
 qe="RDS"/local/lem/stims/rls3.2
 qe="RDS"/local/lem/stims/rls4.3
 qe="RDS"/local/lem/stims/rdsrls
+qe="RDS"/local/c/binoclean/stims/lem/rdsac4
 qe="RLS"/local/c/binoclean/stims/lem/rlssave
 qe="RLS"/local/c/binoclean/stims/lem/ACRC1D30
 qe="Sine"/local/lem/stims/qsine

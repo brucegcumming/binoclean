@@ -10383,7 +10383,7 @@ void SaveExptFile(char *filename,int flag)
             for(i = 0; i < rfctr; i++)
                 fprintf(ofd,"oldrf %.2f %.2f %d %d %.2f\n",oldrfs[i].pos[0],oldrfs[i].pos[1],oldrfs[i].size[0],oldrfs[i].size[1],oldrfs[i].angle);
             s = DescribeStim(expt.st);
-            fprintf(ofd,"%s",s);
+            fprintf(ofd,"#%s",s);
 		}
 
 		if(expt.st->type == STIM_IMAGE){
