@@ -49,6 +49,7 @@ As (Kludge) Implements some special cases. Should be 0 unless you are sure you n
 #As9 Seed Changes with Contrast
 b2 number of correct trials before reward increases to r3
 bO Displace Background orthog to RF. N.B. needs op+bf
+bP Displace Background Parallel to RF. N.B. needs op+bf
 Ba Margin for background size. Ie. Bh = sz+Ba.
 backMov folder containing movie to play as background. 
 baddir axis for bad micorsaccades. amplitued > Sa and direction with 45 degrees of baddir = trial aborted. Usually set automatically by axis of choice targets, but can overridden manual with this. 
@@ -215,6 +216,7 @@ lw line with for drawing RF box, manually drawn lines, in ovelary of main displa
 m2 Expt 2 Mean
 lX Expt Type only. X pos with Log spacing..
 m3 Mean of values to set for Expt 3
+maxrw max size of rw. Requests for larger values will bring a popup
 mD For manipulations like Id, that only apply to near zero signals, "near zero x" means abz(x) < mD #psych cylinder
 me -1 = L, 0 = binoc 2 = R
 mixac if > 0, mixes correlated an anticorrelated dots. 0 = all corr, 1 = all Anticorr #binocular disparity ac

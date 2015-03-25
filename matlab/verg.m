@@ -681,6 +681,7 @@ for j = 1:length(strs{1})
         elseif strncmp(s,'EXPTOVER',8) %called at end or cancel
             if DATA.inexpt %in case reopen pipes mied expt
                 DATA.optionflags.do = 0;
+                outprintf(DATA,'op=-do\n');
             end
             exptover = 1;
             if strcmp(s,'EXPTOVERSTATE') %just reporting state, not an event
@@ -982,7 +983,7 @@ for j = 1:length(strs{1})
                 DATA.showxy = x(2:4);
             end
         end %end of 5 char codes
-    elseif sum(strncmp(s,{'CODE' 'cwd=' 'TRES' 'over'},4))
+    elseif sum(strncmp(s,{'CODE' 'cwd=' 'TRES' 'over' 'Not '},4))
         if strncmp(s,'CODE',4)
             id = strfind(s,' ');
             code = str2num(s(id(2)+1:id(3)-1))+1;
@@ -1016,6 +1017,8 @@ for j = 1:length(strs{1})
             DATA.cwd = value;
         elseif strncmp(s,'over',4)
             DATA.over = 1;
+        elseif strncmp(s,'Not ',4)
+            DATA.lastline = s;
         elseif strncmp(s,'TRES',4)
             if s(6) == 'G' || s(6) == 'W'
                 a = sscanf(s(7:end),'%f');
@@ -1464,7 +1467,7 @@ function DATA = AddStatusLine(DATA, str, type)
     ShowStatusStrings(DATA);
 
         
-
+function QueryBinoc(DATA,code, varargin);
 
 function DATA = SetCode(DATA,code)
 %DATA = SetCode(DATA,val)
@@ -3412,21 +3415,27 @@ function DATA = LoadLastSettings(DATA, varargin)
         if now - d.datenum < 0.5/24 %less than an half an hour old - read in settings
             go = 1;
             if interactive 
-                yn = questdlg(sprintf('Looks like you are re-starting Mid expt. Do you want to reload id/se from %s',d.filename),'Binoc has been working','Yes','No','Yes');
-                if ~strcmp(yn,'Yes')
+                yn = questdlg(sprintf('Looks like you are re-starting Mid expt. Do you want to reload id/se from %s',d.filename),'Binoc has been working','Reload minimum','Reload all','No','Reload minimum');
+                if ~strncmp(yn,'Reload',5)
                     go = 0;
                 end
             end
         end
         if go
             txt = scanlines(d.name);
-            for s = {'id' 'se' 'ed' 'Rx' 'Ry' 'Ro' 'Rw' 'Rh' 'Xp' 'Yp' 'Pn' 'pe' 'Electrode' 'hemi'...
-                    'ui' 'ePr' 'eZ' 'monkey' 'coarsemm' 'adapter' 'Trw' 'Tg' 'nT' 'Tb' 'uf' 'fx' 'fy' 'so' 'oldrf'}
-            id = find(strncmp(s,txt,length(s{1})));
-            if ~isempty(id)
-                cprintf('blue','Setting %s from %s\n',txt{id(1)},d.name);
-                DATA = InterpretLine(DATA, txt{id(1)},'tobinoc');
-            end
+            if strcmp(yn,'Reload all')
+                for j = 1:length(txt)
+                    DATA = InterpretLine(DATA, txt{j},'tobinoc');
+                end
+            else
+                for s = {'id' 'se' 'ed' 'Rx' 'Ry' 'Ro' 'Rw' 'Rh' 'Xp' 'Yp' 'Pn' 'pe' 'Electrode' 'hemi'...
+                        'ui' 'ePr' 'eZ' 'monkey' 'coarsemm' 'adapter' 'Trw' 'Tg' 'nT' 'Tb' 'uf' 'fx' 'fy' 'so' 'oldrf'}
+                    id = find(strncmp(s,txt,length(s{1})));
+                if ~isempty(id)
+                    cprintf('blue','Setting %s from %s\n',txt{id(1)},d.name);
+                    DATA = InterpretLine(DATA, txt{id(1)},'tobinoc');
+                end
+                end
             end
             if GetValue(DATA,'Pn') > 0
                 outprintf(DATA,'!openpen\n');
@@ -4066,12 +4075,14 @@ function DATA = AddComment(DATA, str, src)
         end
      elseif flag == 6
         stop(DATA.timerobj);
+         if DATA.inexpt
+             DATA.optionflags.do = 0;
+         end
          DATA = OpenPipes(DATA, 0);
          SendState(DATA,'all');
          if GetValue(DATA,'Pn') > 0
              outprintf(DATA,'!openpen\n');
          end
-
          DATA = GetState(DATA,'Reopen');
          SetGui(DATA);
          StartTimer(DATA);
@@ -7394,9 +7405,11 @@ if showbinoc
         id = find(strncmp(code,{DATA.comcodes.code},length(code))); %find possible matches
         if ~isempty(id)
             str = 'Poossible Completions';
-        end
-        for j = 1:length(id)
-            xstr{j} = sprintf('%s %s\n',DATA.comcodes(id(j)).code,DATA.comcodes(id(j)).label);
+            for j = 1:length(id)
+                xstr{j} = sprintf('%s %s\n',DATA.comcodes(id(j)).code,DATA.comcodes(id(j)).label);
+            end
+        else
+            txt = [txt ' ' DATA.lastline];
         end                
     end
 end

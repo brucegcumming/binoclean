@@ -6590,6 +6590,9 @@ void setstimuli(int flag)
     }
     if(optionflags[INTERLEAVE_UNCORR_ALL])
         ns -= 1;
+    
+    if (!optionflags[CUSTOM_EXPVAL]){
+    
     if(expt.flag & LOGINCR)
     {
         loginc = log10(expt.mean/(expt.mean-expt.incr));
@@ -6641,7 +6644,7 @@ void setstimuli(int flag)
             expval[expt.nstim[2] + expt.nstim[0] +expt.nstim[1]-1] = INTERLEAVE_EXPT_UNCORR;
         }
     }
-    
+    }
     for(i = 0; i < expt.nstim[2]; i++){
         if(extratypes[i] & STIMULUS_EXTRA_HIGH)
             expval[i] = expt.vals[HIGHX];
@@ -14544,7 +14547,9 @@ int InterpretLine(char *line, Expt *ex, int frompc)
                             !strncmp(line,serial_strings[VIEWD_CODE],2)))
         return(code);
     
-    if (code == MAXTOTALCODES) { // a verg code
+    if (code == MAXTOTALCODES) { // a verg code o no code
+        if (frompc == 2 && (strlen(s) == 0 || strlen(s) == 1 && *s == '='))
+            notify("Not a Binoc Code");
         return(code);
     }
     else if (code >= USER_CODE) { // a verg code
@@ -15650,14 +15655,14 @@ char *DescribeStim(Stimulus *st)
         strcat(dbuf,buf);
     }
     if(st->next != NULL && st->next->type == STIM_RDS){
-        sprintf(buf,"\nBack:%2s=%s,%s=%.2f,%s=%.0f,%s=%.2f",serial_strings[STIMULUS_TYPE_CODE],stimulus_names[st->next->type],
+        sprintf(buf,"\n#Back:%2s=%s,%s=%.2f,%s=%.0f,%s=%.2f",serial_strings[STIMULUS_TYPE_CODE],stimulus_names[st->next->type],
                 serial_strings[CORRELATION],StimulusProperty(st->next,CORRELATION),
                 serial_strings[SET_SEEDLOOP],StimulusProperty(st->next,SET_SEEDLOOP),
                 serial_strings[JVELOCITY],StimulusProperty(st->next,JVELOCITY));
         strcat(dbuf,buf);
     }
     if(st->next != NULL && (st->next->type == STIM_GABOR || st->next->type == STIM_GRATING)){
-        sprintf(buf,"\nBack:%2s=%s,%s=%.2f,%s=%.2f,%s=%.2f,%s=%.0f,%s=%.2f",serial_strings[STIMULUS_TYPE_CODE],stimulus_names[st->next->type],
+        sprintf(buf,"\n#Back:%2s=%s,%s=%.2f,%s=%.2f,%s=%.2f,%s=%.0f,%s=%.2f",serial_strings[STIMULUS_TYPE_CODE],stimulus_names[st->next->type],
                 serial_strings[ORIENTATION],StimulusProperty(st->next,ORIENTATION),
                 serial_strings[XPOS],StimulusProperty(st->next,XPOS),
                 serial_strings[YPOS],StimulusProperty(st->next,YPOS),
@@ -15677,7 +15682,7 @@ char *DescribeStim(Stimulus *st)
         b /=i; // period
         c /=i; // delay
         d /=i; // period in frames
-        sprintf(buf,"\nStep X=%.4f (T=%.0f, dt=%.0f) every %.1f ms = %.2f deg/sec\n",a,d,c,b,(a * 1000)/b);
+        sprintf(buf,"\n#Step X=%.4f (T=%.0f, dt=%.0f) every %.1f ms = %.2f deg/sec\n",a,d,c,b,(a * 1000)/b);
         strcat(dbuf,buf);
     }
     else if(expt.vals[ALTERNATE_STIM_MODE] > 0.5 ){
@@ -15685,7 +15690,7 @@ char *DescribeStim(Stimulus *st)
         d = 2 + rint(expt.postperiod * mon.framerate);
         c = expt.vals[DELAY];
         b = (d * 1000)/mon.framerate;
-        sprintf(buf,"\nStep X=%.4f (T=%.0f, dt=%.0f) every %.1f ms = %.2f deg/sec\n",a,d,c,b,(a * 1000)/b);
+        sprintf(buf,"\n#Step X=%.4f (T=%.0f, dt=%.0f) every %.1f ms = %.2f deg/sec\n",a,d,c,b,(a * 1000)/b);
         strcat(dbuf,buf);
     }
     i = strlen(dbuf);
