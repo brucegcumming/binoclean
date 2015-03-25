@@ -1560,7 +1560,6 @@ void StopGo(int go)
     {
         mode &= (~BW_ERROR);
         optionflag |= GO_BIT;
-        mode |= ANIMATE_BIT;
         monkeypress = 0;
         end_timeout();
         sprintf(buf,"%2s-\n",valstrings[valstringindex[STOP_BUTTON]].code);
@@ -6648,9 +6647,9 @@ int next_frame(Stimulus *st)
                 sprintf(buf,"status=Stopped at %s\n",binocTimeString());
                 notify(buf);
             }
-            if(TheStim->mode & EXPTPENDING && mode & ANIMATE_BIT)
+            if(TheStim->mode & EXPTPENDING && optionflag & GO_BIT)
                 stimstate = INTERTRIAL;
-            else if (mode & ANIMATE_BIT)
+            else if ( optionflag & GO_BIT)
                 stimstate = INTERTRIAL;
             if(timeout_type == SHAKE_TIMEOUT_PART2){
                 ShowTime();
@@ -6808,13 +6807,13 @@ int next_frame(Stimulus *st)
                     (t2 = timediff(&now, &goodfixtime)) > expt.vals[INTERTRIAL_MIN] &&
                     (demomode == 0 || (TheStim->mode & EXPTPENDING)))
             {
-                if (mode & ANIMATE_BIT)
+                if ( optionflag & GO_BIT)
                     stimstate=PREFIXATION;
                 else
                     stimstate=STIMSTOPPED;
                 break;
             }
-            if (demomode && mode & ANIMATE_BIT){
+            if (demomode &&  optionflag & GO_BIT){
                 stimstate=PREFIXATION;
                 break;
             }
@@ -6991,7 +6990,7 @@ int next_frame(Stimulus *st)
                     break;
                 }
                 //Ali CheckKeyboard(D, allframe);
-                if (ExptIsRunning() && (mode & ANIMATE_BIT) )
+                if (ExptIsRunning() && (optionflag & GO_BIT) )
                 {
                     if(optionflags[RUN_SEQUENCE] && expt.stimpertrial > 2){
                         framesdone = RunExptStimSeq(TheStim, TheStim->nframes, expt.stimpertrial,D);
@@ -7087,7 +7086,7 @@ int next_frame(Stimulus *st)
                         gettimeofday(&endtrialtime, NULL);
                     }
                 } // end ExptItsRunning
-                else if(mode & ANIMATE_BIT)
+                else if(optionflag & GO_BIT)
                 {
                     fprintf(stderr,"Not in Expt %d %d\n",TheStim->mode & EXPTPENDING,states[EXPT_PAUSED]);
                     drag = 0;
@@ -7677,6 +7676,7 @@ int next_frame(Stimulus *st)
     if (teststate > 0){
         TheStim->mode |= EXPTPENDING;
         mode |= ANIMATE_BIT;
+        optionflag |= (GO_BIT);
         t2 = timediff(&now,&nftime); //time since last calle
         if(t2 > 0.1){
             sprintf(buf,"status=Long delay %.3f at  %s\n",t2,binocTimeString());
@@ -8978,7 +8978,7 @@ void run_radial_test_loop(){
             paint_radial(st->left,st->right->mode,0);
             change_frame();
         }
-        if(!(mode & ANIMATE_BIT))
+        if(!(optionflag & GO_BIT))
             return;
     }
     printf("Radial test\n");
@@ -10553,7 +10553,7 @@ void WurtzTrial()
     
     stmode &= (~MOVED_STIMULUS);
 	TheStim->mode |= (NEW_FIXATION_BIT);
-	if((TheStim->mode & EXPTPENDING)|| mode & ANIMATE_BIT)
+	if((TheStim->mode & EXPTPENDING)|| optionflag & GO_BIT)
 		TheStim->mode |= TRIAL_PENDING;
     
 	TheStim->fix.state = FIX_IS_UP;

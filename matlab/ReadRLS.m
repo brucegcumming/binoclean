@@ -1,4 +1,4 @@
-function result = ReadRLS(name, varargin)
+function [result, Images] = ReadRLS(name, varargin)
 
 txt = scanlines(name);
 checkdisp = 1;
@@ -65,6 +65,10 @@ for j = 1:length(rlsid)
     end
     if ~isempty(im)
     im(:,1) = bitshift(im(:,1),-2);
+    if nargout > 1
+        Images(:,:,j) = im;
+    end
+
     if checkdisp
         lags = -11:11;
         for k = 1:length(lags)

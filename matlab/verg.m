@@ -681,6 +681,7 @@ for j = 1:length(strs{1})
         elseif strncmp(s,'EXPTOVER',8) %called at end or cancel
             if DATA.inexpt %in case reopen pipes mied expt
                 DATA.optionflags.do = 0;
+                outprintf(DATA,'op=-do\n');
             end
             exptover = 1;
             if strcmp(s,'EXPTOVERSTATE') %just reporting state, not an event
@@ -1464,7 +1465,7 @@ function DATA = AddStatusLine(DATA, str, type)
     ShowStatusStrings(DATA);
 
         
-
+function QueryBinoc(DATA,code, varargin);
 
 function DATA = SetCode(DATA,code)
 %DATA = SetCode(DATA,val)
@@ -4066,12 +4067,14 @@ function DATA = AddComment(DATA, str, src)
         end
      elseif flag == 6
         stop(DATA.timerobj);
+         if DATA.inexpt
+             DATA.optionflags.do = 0;
+         end
          DATA = OpenPipes(DATA, 0);
          SendState(DATA,'all');
          if GetValue(DATA,'Pn') > 0
              outprintf(DATA,'!openpen\n');
          end
-
          DATA = GetState(DATA,'Reopen');
          SetGui(DATA);
          StartTimer(DATA);
@@ -6860,7 +6863,7 @@ function val = GetValue(DATA,code)
 if isfield(DATA.binoc{1},code)
     val = DATA.binoc{1}.(code);
 else
-    id = strcmp(code,DATA.vergonlycodes)
+    id = find(strcmp(code,DATA.vergonlycodes));
     if isempty(id)
         val = NaN;
     else

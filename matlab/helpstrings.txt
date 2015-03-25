@@ -215,6 +215,7 @@ lw line with for drawing RF box, manually drawn lines, in ovelary of main displa
 m2 Expt 2 Mean
 lX Expt Type only. X pos with Log spacing..
 m3 Mean of values to set for Expt 3
+maxrw max size of rw. Requests for larger values will bring a popup
 mD For manipulations like Id, that only apply to near zero signals, "near zero x" means abz(x) < mD #psych cylinder
 me -1 = L, 0 = binoc 2 = R
 mixac if > 0, mixes correlated an anticorrelated dots. 0 = all corr, 1 = all Anticorr #binocular disparity ac
