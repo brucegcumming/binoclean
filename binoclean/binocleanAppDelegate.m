@@ -20,6 +20,7 @@ extern int useDIO;
 int freeToGo = 1;
 extern int inexptstim;
 extern int testloops;
+int lastseed = 0;
 
 static NSColor * textColor;
 static NSColor * textBGColor;
@@ -219,6 +220,7 @@ void notify(char *s){
 #pragma mark random
 void randinit(int seed) // that sets the seed
 {
+    lastseed = seed;
     randEngine = [[MTRandom64 alloc] initWithSeed:seed];
 }
 

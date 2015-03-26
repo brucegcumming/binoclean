@@ -10416,6 +10416,8 @@ int PrepareExptStim(int show, int caller)
                 //	    lrnd = rnd_ri((long)(nv + expt.fastextras));
 //                lrnd = myrnd_i();
 //                lrnd = mydrand() * (UINT64_MAX-1);
+//looks like seed set for rds pattern might control this. Dangerous if we ever wanted to
+//repeat seed but have diffeent sequences. 
                 lrnd = myrnd_i();
                 SetFrameStim(i, lrnd, inc, stp, nstim);
                 ivals[id] = frameiseq[i];

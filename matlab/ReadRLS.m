@@ -117,7 +117,7 @@ for j = 1:length(rlsid)
     if j > maxframes && maxframes > 0 
         break;
     end
-
+end
 
 
 result.badcor =  find(result.disps == -result.dps & abs(result.corrs) < 0.99);
