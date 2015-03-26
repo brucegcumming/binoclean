@@ -801,12 +801,14 @@ int SetTargets()
             afc_s.sacdir[0] = val * M_PI/180;
             afc_s.sacdir[1] = aval * M_PI/180;
         }
-        else{
+        else{ //expt 2 is orientation
             afc_s.newdirs = 0;
             val = expt.mean2-45;
             aval = expt.mean2+45;
             val = expval[expt.nstim[2]+expt.nstim[0]];
             aval = expval[expt.nstim[0]+expt.nstim[2]+expt.nstim[1]-1];
+            val = expt.exp2vals[0];
+            aval = expt.exp2vals[expt.nstim[1]-1];
         }
         if(optionflags[FLIP_FEEDBACK]){
             SetStimulus(ChoiceStima, val,  ORIENTATION, NULL);
@@ -6658,7 +6660,12 @@ void setstimuli(int flag)
     }
     
     
-    if(!optionflags[CUSTOM_EXPVALB]){
+    if(optionflags[CUSTOM_EXPVALB]){
+        for (i = 0; i < expt.nstim[1]; i++){
+            expval[i+offset] = expt.exp2vals[i];
+        }
+    }
+    else{
         if(expt.flag & LOGINCR2)
         {
             loginc = log10(expt.mean2/(expt.mean2-expt.incr2));
@@ -14603,6 +14610,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     }
     if (strcmp(line,"EDONE") == NULL){
 //send back current state once expt loaded
+        setstimuli(0);
         SendAllToGui();
         ListExpStims(NULL);
         ShowTrialsNeeded();
