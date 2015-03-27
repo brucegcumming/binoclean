@@ -927,7 +927,7 @@ for j = 1:length(strs{1})
             DATA = AddStatusLine(DATA,s,3);
             codetype = -2;
         end  %6 char codes
-    elseif sum(strncmp(s,{'Expts' 'xyfsd' 'EDONE'},5))
+    elseif sum(strncmp(s,{'Expts' 'xyfsd' 'EDONE' 'Error'},5))
         if strncmp(s,'Expts1',6)
             DATA.extypes{1} = sscanf(s(8:end),'%d');
             DATA.extypes{1} = DATA.extypes{1}+1;
@@ -976,6 +976,9 @@ for j = 1:length(strs{1})
                     
                 end
             end
+        elseif strncmp(s,'ErrorStartExpt',13)
+            DATA.inexpt = 0;
+
         elseif strncmp(s,'xyfsd',5)
             x = sscanf(value,'%f');
             DATA.binoc{1}.xyfsd = x(1);
@@ -4836,7 +4839,7 @@ function DATA = RunButton(a,b, type)
                     end
                     SendManualExpt(DATA);
                 end
-                DATA = SendManualVals(DATA,'All')
+                DATA = SendManualVals(DATA,'All');
                 outprintf(DATA,'\\expt\n');
                 DATA.nexpts = DATA.nexpts+1;
                 DATA.Expts{DATA.nexpts} = ExptSummary(DATA);
