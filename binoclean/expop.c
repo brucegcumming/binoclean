@@ -801,12 +801,14 @@ int SetTargets()
             afc_s.sacdir[0] = val * M_PI/180;
             afc_s.sacdir[1] = aval * M_PI/180;
         }
-        else{
+        else{ //expt 2 is orientation
             afc_s.newdirs = 0;
             val = expt.mean2-45;
             aval = expt.mean2+45;
             val = expval[expt.nstim[2]+expt.nstim[0]];
             aval = expval[expt.nstim[0]+expt.nstim[2]+expt.nstim[1]-1];
+            val = expt.exp2vals[0];
+            aval = expt.exp2vals[expt.nstim[1]-1];
         }
         if(optionflags[FLIP_FEEDBACK]){
             SetStimulus(ChoiceStima, val,  ORIENTATION, NULL);
@@ -2719,7 +2721,8 @@ int UpdateNetworkFile(Expt expt)
         
         sprintf(netname,"%s/%s.bnc",expt.strings[NETWORK_PREFIX],sfile);
         sprintf(name,"/local/%s.bnc",sfile);
-        sprintf(nbuf,"cp %s %s",bncfilename,netname);
+//do copy as a background job so that large files don't cause delay
+        sprintf(nbuf,"cp %s %s &",bncfilename,netname);
         i = system(nbuf);
         if (i == 0){
             sprintf(buf,"status=Copied %s to %s\n",bncfilename,netname);
@@ -6658,7 +6661,12 @@ void setstimuli(int flag)
     }
     
     
-    if(!optionflags[CUSTOM_EXPVALB]){
+    if(optionflags[CUSTOM_EXPVALB]){
+        for (i = 0; i < expt.nstim[1]; i++){
+            expval[i+offset] = expt.exp2vals[i];
+        }
+    }
+    else{
         if(expt.flag & LOGINCR2)
         {
             loginc = log10(expt.mean2/(expt.mean2-expt.incr2));
@@ -7774,6 +7782,7 @@ void InitExpt()
     int i,j,code;
     char cbuf[BUFSIZ*100],c,buf[BUFSIZ],rcnamebuf[BUFSIZ],*ts;
     float tval,val;
+    struct timeval then;
     time_t tstart;
     Thisstim *stp;
     
@@ -7823,8 +7832,19 @@ void InitExpt()
     mode &= (~BW_ERROR);
     HideCursor();
 
-    if(!(mode & SERIAL_OK))
-        MakeConnection(4);
+    if(!(mode & SERIAL_OK) && (optionflag  & WAIT_FOR_BW_BIT)){
+        gettimeofday(&then,NULL);
+        while(!(mode & SERIAL_OK) && tval < 20){
+            MakeConnection(4);
+            gettimeofday(&now,NULL);
+            tval = timediff(&now,&then);
+            sleep(2);
+        }
+        if(!(mode & SERIAL_OK)){
+            notify("ErrorStartExpt\n");
+            return;
+        }
+    }
     if (optionflags[MANUAL_EXPT] || netoutfile == NULL)
         OpenNetworkFile(expt);
     expt.cramp = expt.ramp;
@@ -9290,7 +9310,8 @@ int PrepareExptStim(int show, int caller)
     expt.st->framectr = 0;
     expt.st->next->framectr = 0;
     stimulus_is_reset = 0;
-    
+    SerialSend(STIMID);
+
     if (optionflags[MANUAL_EXPT]){
 
         if(expt.vals[ONETARGET_P] > 0){
@@ -10657,7 +10678,7 @@ int PrepareExptStim(int show, int caller)
     }
     else
         expt.targetcolor = 1;
-    
+
     if(seroutfile){
         fprintf(seroutfile,"#Ready\n",InExptChar);
     }
@@ -14605,6 +14626,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     }
     if (strcmp(line,"EDONE") == NULL){
 //send back current state once expt loaded
+        setstimuli(0);
         SendAllToGui();
         ListExpStims(NULL);
         ShowTrialsNeeded();

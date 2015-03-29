@@ -29,6 +29,8 @@ if ~isempty(showframes)
     rlsid = rlsid(showframes);
 end
 
+mindp = -6;
+maxdp = 6;
 result.lines = rlsid;
 frame = 1;
 for j = 1:length(rlsid)
@@ -53,6 +55,9 @@ for j = 1:length(rlsid)
     if ~isempty(id)
         x = sscanf(s(id(1):end),'!dp%f');
         result.dps(j) = x;
+        if abs(x) > maxdp
+            maxdp = ceil(abs(x));
+        end
     else 
         result.dps(j) = 0;
     end
@@ -74,7 +79,7 @@ for j = 1:length(rlsid)
     end
 
     if checkdisp
-        lags = -11:11;
+        lags = -maxdp:maxdp;
         for k = 1:length(lags)
             if lags(k) > 0
                 x = corrcoef(im(1:end-lags(k),1),im(1+lags(k):end,2));
