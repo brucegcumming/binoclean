@@ -976,9 +976,10 @@ for j = 1:length(strs{1})
                     
                 end
             end
-        elseif strncmp(s,'ErrorStartExpt',13)
+        elseif strncmp(s,'ErrorStartExpt',10)
             DATA.inexpt = 0;
-
+            AddStatusLine(DATA,s,'error');
+        elseif strncmp(s,'Error',5)
         elseif strncmp(s,'xyfsd',5)
             x = sscanf(value,'%f');
             DATA.binoc{1}.xyfsd = x(1);
@@ -1467,7 +1468,9 @@ function DATA = AddStatusLine(DATA, str, type)
         end
     end
     DATA.statustypes(length(DATA.Statuslines)) = type;
+    if isfield(DATA.showstatus,'update') && DATA.showstatus.update
     ShowStatusStrings(DATA);
+    end
 
         
 function QueryBinoc(DATA,code, varargin);
@@ -2186,6 +2189,7 @@ function DATA = SetDefaults(DATA)
 scrsz = get(0,'Screensize');
 DATA = SetField(DATA,'ip','http://localhost:1110/');
 DATA.lastreadtime = now;
+DATA.showstatus.update = 1;
 DATA.network = 2;
 DATA.lastmsg = '';
 DATA.errors(1) = 0; %keep track of  erros received, so only acknowlge first
@@ -5815,12 +5819,13 @@ function StatusPopup(a,b, type)
 'units','norm', 'Position',[0.01 0.01 0.99 0.99]);
 set(lst,'string',DATA.Statuslines,'fontsize',DATA.font.FontSize, 'FontName', DATA.font.FontName);
 DATA.statusitem = lst;
-if ~isfield(DATA,'showstatus')
+if ~isfield(DATA,'showstatus') || ~isfield(DATA.showstates,'trials')l
     DATA.showstatus.trials = 1;
     DATA.showstatus.status = 1;
     DATA.showstatus.errors = 1;    
     DATA.showstatus.expt = 1;
     DATA.showstatus.comment = 1;
+    DATA.showstatus.update = 1;
 end
 f = fields(DATA.showstatus)
 onoff = {'off' 'on'};

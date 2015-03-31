@@ -179,6 +179,7 @@ typedef struct ONESTIM{
     float front_intensity; 
     float back_intensity; 
     float deathchance; /* for each dot, range 0.0 - 1.0 */
+    float preversal;
     int lifeframes;
     ball_s trackball; /* ball used for fixation tracking */
     ball_s *balls; /* points to structures which hold random numbers */

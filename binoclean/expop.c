@@ -2687,7 +2687,7 @@ int CheckDirExists(char *name)
 int UpdateNetworkFile(Expt expt)
 {
     char *t,*r,buf[BUFSIZ],name[BUFSIZ],sfile[BUFSIZ],path[BUFSIZ],oldname[BUFSIZ];
-    char netname[BUFSIZ];
+    char netname[BUFSIZ],netrcname[BUFSIZ];
     char nbuf[BUFSIZ];
     static int lastresult = 1;  // start as if was success
     time_t tval,nowtime;
@@ -2719,6 +2719,7 @@ int UpdateNetworkFile(Expt expt)
         while((t = strchr(sfile,'\\')) != NULL)
             *t = '/';
         
+        
         sprintf(netname,"%s/%s.bnc",expt.strings[NETWORK_PREFIX],sfile);
         sprintf(name,"/local/%s.bnc",sfile);
 //do copy as a background job so that large files don't cause delay
@@ -2734,6 +2735,16 @@ int UpdateNetworkFile(Expt expt)
                 acknowledge(buf,NULL);
             }
         }
+        if (rcname != NULL){
+            r = strrchr(netname,'/');
+            *r = 0;
+            t = strrchr(rcname,'/');
+            sprintf(netrcname,"%s/stims%s",netname,t);
+            CheckDirExists(netrcname);
+            sprintf(nbuf,"cp %s %s &",rcname,netrcname);
+            i = system(nbuf);
+        }
+
     }
 }
 
@@ -3312,6 +3323,9 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
             if(expt.stimmode == DISRUPTED_CYLINDER){
                 expt.st->flag |= (REVERSING_DOTS);
                 expt.stimmode = 0;
+            }
+            else{
+                expt.st->flag &= (~REVERSING_DOTS);
             }
             break;
         case STIMID:
@@ -7832,19 +7846,6 @@ void InitExpt()
     mode &= (~BW_ERROR);
     HideCursor();
 
-    if(!(mode & SERIAL_OK) && (optionflag  & WAIT_FOR_BW_BIT)){
-        gettimeofday(&then,NULL);
-        while(!(mode & SERIAL_OK) && tval < 20){
-            MakeConnection(4);
-            gettimeofday(&now,NULL);
-            tval = timediff(&now,&then);
-            sleep(2);
-        }
-        if(!(mode & SERIAL_OK)){
-            notify("ErrorStartExpt\n");
-            return;
-        }
-    }
     if (optionflags[MANUAL_EXPT] || netoutfile == NULL)
         OpenNetworkFile(expt);
     expt.cramp = expt.ramp;
@@ -7916,6 +7917,28 @@ void InitExpt()
 
     
     reset_afc_counters();
+    SerialSignal(BW_IS_READY);
+    if((i = CheckBW(BW_IS_READY,"Start Expt")) == 0)
+       mode &= (~SERIAL_OK);
+    if(!(mode & SERIAL_OK) && (optionflag  & WAIT_FOR_BW_BIT)){
+        MakeConnection(4);
+        gettimeofday(&then,NULL);
+        while(!(mode & SERIAL_OK) && tval < 20){
+            MakeConnection(4);
+            gettimeofday(&now,NULL);
+            tval = timediff(&now,&then);
+            sleep(2);
+        }
+        if(!(mode & SERIAL_OK)){
+            notify("ErrorStartExpt\n");
+            return;
+        }
+        else if (tval > 0){
+            sprintf(cbuf,"ErrorStartExpt Took %.2f\n",tval);
+            notify(cbuf);
+        }
+    }
+
     if(mode & SERIAL_OK)
     {
         if(!(optionflag & FRAME_ONLY_BIT))

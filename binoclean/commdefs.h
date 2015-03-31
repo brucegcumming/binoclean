@@ -279,10 +279,11 @@
 #define TOTAL_REWARD (LAST_STIMULUS_CODE+176)
 #define ARB_LABEL  (LAST_STIMULUS_CODE+177)
 #define ARB_VALUE  (LAST_STIMULUS_CODE+178)
+#define REVERSAL_PROB (LAST_STIMULUS_CODE+179)
 //Add above here anything that needs to go to Spike2
 
 
-#define MAXSERIALCODES (LAST_STIMULUS_CODE+179)/* 222 */
+#define MAXSERIALCODES (LAST_STIMULUS_CODE+180)/* 223 */
 #define OPPOSITE_DELAY  MAXSERIALCODES
 #define FAST_SEQUENCE_RPT MAXSERIALCODES+1
 #define BRIGHTSHIFT_CODE MAXSERIALCODES+2
@@ -1327,6 +1328,7 @@ ValueCode valstrings[] = {
     {  "nco", "Component Contrasts", SET_SF_CONTRASTS, 0, 'N', 3, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "psychmon", "Psych Mon Vars", PSYCHMON_VARS, 0, 'C', 3, SEND_EXPLICIT, SAVE_NEVER},
     {  "subexp", "Expt Sub-block index", EXPT_SUBBLOCK, 16, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},
+    {  "prev", "p(Reversal)", REVERSAL_PROB, 16, 'N', 2, SEND_EXPLICIT, SAVE_ALWAYS},
     {"impref", "prefix for image files", IMAGELOAD_PREFIX, 0, 'C', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {"Electrode", "Electrode Decsription", ELECTRODE_TYPE, 0, 'C', 0, SEND_EXPLICIT, SAVE_STATE},
     {"onlineprefix", "Folder for online files on Mac", ONLINEPREFIX, 0, 'C', 0, SEND_VERG_ONLY, SAVE_ALWAYS},
