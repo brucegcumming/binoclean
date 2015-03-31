@@ -862,9 +862,9 @@ for j = 1:length(strs{1})
                 vergwarning(DATA.lastmsg);
             end
             DATA.errors(1) = DATA.errors(1)+1;
-            stype = 'error';
+            stype = 'errors';
         elseif sum(strncmp(s(8:end),{'No prefix'},7))
-            stype = 'error';            
+            stype = 'errors';            
         elseif sum(strncmp(s(8:end),{'Network Record'},10))
             DATA.lastmsg = s(8:end);
         elseif sum(strncmp(s(8:end),{'Expt Starting'},10))
@@ -977,9 +977,13 @@ for j = 1:length(strs{1})
                 end
             end
         elseif strncmp(s,'ErrorStartExpt',10)
-            DATA.inexpt = 0;
-            AddStatusLine(DATA,s,'error');
+            DATA = AddStatusLine(DATA,s,'errors');
+            if strcmp(s,'ErrorStartExpt')
+                         DATA.inexpt = 0;
+            end
+            
         elseif strncmp(s,'Error',5)
+            DATA = AddStatusLine(DATA,s,'errors');
         elseif strncmp(s,'xyfsd',5)
             x = sscanf(value,'%f');
             DATA.binoc{1}.xyfsd = x(1);
@@ -1462,7 +1466,7 @@ function DATA = AddStatusLine(DATA, str, type)
     %4 = Expt Control
     DATA.Statuslines{end+1} = str;
     if ischar(type)
-        type = find(strcmp(type,{'status' 'trial' 'error'  'expt' 'comment'}));
+        type = find(strcmp(type,{'status' 'trial' 'errors'  'expt' 'comment'}));
         if isempty(type)
             type = 1;
         end
@@ -5819,7 +5823,7 @@ function StatusPopup(a,b, type)
 'units','norm', 'Position',[0.01 0.01 0.99 0.99]);
 set(lst,'string',DATA.Statuslines,'fontsize',DATA.font.FontSize, 'FontName', DATA.font.FontName);
 DATA.statusitem = lst;
-if ~isfield(DATA,'showstatus') || ~isfield(DATA.showstates,'trials')l
+if ~isfield(DATA,'showstatus') || ~isfield(DATA.showstatus,'trials')
     DATA.showstatus.trials = 1;
     DATA.showstatus.status = 1;
     DATA.showstatus.errors = 1;    

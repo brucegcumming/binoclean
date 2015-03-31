@@ -2738,11 +2738,16 @@ int UpdateNetworkFile(Expt expt)
         if (rcname != NULL){
             r = strrchr(netname,'/');
             *r = 0;
-            t = strrchr(rcname,'/');
+            sprintf(oldname,"%s/%s",datprefix,rcname);
+            t = strrchr(oldname,'/');
             sprintf(netrcname,"%s/stims%s",netname,t);
             CheckDirExists(netrcname);
-            sprintf(nbuf,"cp %s %s &",rcname,netrcname);
+            sprintf(nbuf,"cp %s %s &",oldname,netrcname);
             i = system(nbuf);
+            if (i == 0){
+                sprintf(buf,"status=Copied %s to %s\n",oldname,netrcname);
+                notify(buf);
+            }
         }
 
     }
@@ -7917,13 +7922,16 @@ void InitExpt()
 
     
     reset_afc_counters();
+    gettimeofday(&then,NULL);
     SerialSignal(BW_IS_READY);
     if((i = CheckBW(BW_IS_READY,"Start Expt")) == 0)
        mode &= (~SERIAL_OK);
     if(!(mode & SERIAL_OK) && (optionflag  & WAIT_FOR_BW_BIT)){
+        gettimeofday(&now,NULL);
+        fprintf(seroutfile,"#BWReadErrror at %.3f\n",ufftime(&now));
         MakeConnection(4);
-        gettimeofday(&then,NULL);
         while(!(mode & SERIAL_OK) && tval < 20){
+            fprintf(seroutfile,"#BWReadErrror at %.3f\n",ufftime(&now));
             MakeConnection(4);
             gettimeofday(&now,NULL);
             tval = timediff(&now,&then);
