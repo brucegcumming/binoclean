@@ -1012,7 +1012,7 @@ void calc_cyl_motion(ball_s *balls, float vel, int ndots, int flag, int lifefram
 		    }
 		    else
                 if ((rnd = mydrand()) < preverse) {
-                        balls[i].left_right[xi]*=-1;		/* swaps LEFT and RIGHT */
+                        balls[i].left_right[xi]*=-1;		/* swaps LEFT and RIGHT  so will change disparity */
                     }
                         else if((rnd = mydrand()) < deathchance){
                             balls[i].pos[xi] = sinf(M_PI * (mydrand() - 0.5)); /* sin(-pi/2 -> pi/2 */

@@ -31,8 +31,6 @@ while j <= length(varargin)
         end
     elseif strcmp(varargin{j},'autoquit')
         autoquit = 1;
-    elseif strcmp(varargin{j},'demo') && j == 1
-        varargin{1} = '/local/c/binoclean/stims/demo/demo.stm';
     elseif strcmp(varargin{j},'host')
         j = j+1;
         DATA.ip = ['http://' varargin{j} ':1110/'];
@@ -87,8 +85,17 @@ if isempty(it)
 %.e. which parameters is this for. Could just send a short list...
         SendState(DATA); %params loaded from verg.setup, binoc.setup etc
         tt = TimeMark(tt, 'SendState');
-        DATA = ReadStimFile(DATA, '/local/verg.setup'); %make sure these go to binoc
+        DATA = ReadStimFile(DATA, '/local/verg.setup','fromverg'); %make sure these go to binoc
         tt = TimeMark(tt, 'VergSetup');
+        if strcmp(varargin{1},'demo') 
+            if isfield(DATA.verg,'demofile')
+                varargin{1} = DATA.verg.demofile;
+            else
+                varargin{1} = '/local/c/binoclean/stims/demo/demo.stm';
+            end
+        end
+                
+
         [DATA, details] = ReadStimFile(DATA,varargin{1}, 'init');
         DATA.state.stimfile = varargin{1};
         if details.badcodes > 1
@@ -461,6 +468,8 @@ while j <= length(varargin)
             frombinoc = 3;
         elseif strcmp(src,'fromgui')
             sendtobinoc = 1;
+        elseif strcmp(src,'fromverg')
+            srcchr = 'V';
         end
     elseif strncmpi(varargin{j},'tobinoc',4)
         sendtobinoc = 1;
@@ -581,10 +590,11 @@ for j = 1:length(strs{1})
                 DATA.winpos{3} = sscanf(value,'%d');
             elseif strncmp(s,'penlogwinpos=',10)
                 DATA.winpos{4} = sscanf(value,'%d');
-            else
+            else %unrecognized long codes from files are just kept in DATA.verg
                 sendtobinoc = oldsend;
                 donestr = 0;
                 codetype = 0;
+                DATA.verg.(code) = value;
             end
         elseif sum(strncmp(s, {'stepperxy' 'penwinxy' 'optionwinxy'}, 8))
             codetype = -1;
@@ -1430,7 +1440,7 @@ for j = 1:length(strs{1})
                             codematches = strncmp(code,{DATA.comcodes.code},length(DATA.comcodes(xid(k)).code));
                         end
                     end
-                    if codetype < 0
+                    if codetype < 0 && srcchr ~= 'V'
                         fprintf('%s:Code %s not in comcodes\n',datestr(now),code);
                     end
                 end
@@ -1728,6 +1738,7 @@ function [DATA, details] = ReadStimFile(DATA, name, varargin)
     inread = 0;
     src = 'unknown';
     details.badcodes = 0;
+    linesrc = 'fromstim';
     
     j = 1;
     while j <= length(varargin)
@@ -1735,6 +1746,8 @@ function [DATA, details] = ReadStimFile(DATA, name, varargin)
             inread = 1;
         elseif strncmpi(varargin{j},'init',4)
             setall = 1;
+        elseif strncmpi(varargin{j},'fromverg',7)
+            linesrc = 'fromverg';
         elseif strncmpi(varargin{j},'quickmenu',8)
             src = varargin{j};
         end
@@ -1777,7 +1790,7 @@ if fid > 0
         end
     end
     if isempty(sid) || sid > 1
-        [DATA, details] = ReadExptLines(DATA,DATA.exptlines,'fromstim');
+        [DATA, details] = ReadExptLines(DATA,DATA.exptlines,linesrc);
         if details.badcodes > 1
             fprintf('Choose Fix from the file menu, or run verg([],''checkstim'') to remove bad/old codes from %s\n',name);
         end
