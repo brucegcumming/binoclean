@@ -3216,6 +3216,10 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
     if (setblank == 0 && icode >= 0){
 	switch(code)
 	{
+        case REVERSAL_PROB:
+            st->left->ptr->preversal = val;
+            st->right->ptr->preversal = val;
+            break;
         case NPHASES:
             st->nphases = (int)(val);
             break;
@@ -9271,6 +9275,9 @@ float StimulusProperty(Stimulus *st, int code)
 	rds = st->left;
 	switch(code)
 	{
+        case REVERSAL_PROB:
+            value = st->left->ptr->preversal;
+            break;
         case NPHASES:
             value = st->nphases;
             break;

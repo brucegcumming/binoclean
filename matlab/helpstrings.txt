@@ -275,6 +275,7 @@ posinc Read only. Reports jv as position increment per frame
 Pp Position relative to RF in direction parallel to RF ori. See also Op,rPp
 pR Contrast ratio between two components of a plaid. 
 pr preperiod code (seconds). This much time must elapse after trial start (or last stimulus if pt > 1) before stimulus appears. When pt > 1 gap between stimuli is po+pr
+prev probability that a dot reverses direction in a cylinder.
 pS Not implemented yet. For adding extra signal frames.
 ps width of a single correlation pulse. Only active when et=sP and op=+fS
 psychfile path to a local file where results of each trial are written in format used by PsychMon

@@ -30,7 +30,7 @@ void plc_paint_cylinder(Stimulus *st);
 void rect_paint_cylinder(Stimulus *st, int mode);
 void rect_calc_cylinder(Stimulus *st);
 void draw_dot(float rotatefactor[XY], float hdotsize[XY], float xpos, float ypos, float offset, float standing_disp,  float dotwidth, int mode, Locator *pos, int flag, ball_s *ball);
-void calc_cyl_motion(ball_s *balls, float vel, int ndots, int flag, int lifeframes, float deathchance, int width, int mode);
+void calc_cyl_motion(ball_s *balls, float vel, int ndots, int flag, int lifeframes, float deathchance, int width, int mode, float preverse);
 void calc_subpix_disp(ball_s *balls, int numdots, int flag, float disparity, Locator *pos, float widthfactor, float heightfactor);
 
 /*
@@ -79,6 +79,7 @@ OneStim *NewCylinder(Stimulus *st, Substim *sst, Substim  *copy)
     /*pcyl->primitive[1]=NULL; was originally put in to do negative contrast dots*/
     pcyl->fixdots=80;  
     pcyl->standing_disp=0;
+    pcyl->preversal = 0;
     sst->ptr = pcyl;
     init_cylinder(st,sst);
     st->type = STIM_CYLINDER;
@@ -286,7 +287,7 @@ void calc_dots(Stimulus  *st, int mode)
     nreplaced = 0;
     /*j 3/2/97 motion calculation now in separate function
      does calculation for all balls i=0 i<cyl.numdots + plus tests whether dot should die or not*/
-    calc_cyl_motion(balls, cyl->velocity, cyl->numdots, flag, cyl->lifeframes, cyl->deathchance, pos->imsize[X], mode );
+    calc_cyl_motion(balls, cyl->velocity, cyl->numdots, flag, cyl->lifeframes, cyl->deathchance, pos->imsize[X], mode, cyl->preversal );
 
     if(verbose)
         printf("%d/%d dots replaced\n",nreplaced,cyl->numdots);
@@ -400,7 +401,7 @@ void calc_cylinder(Stimulus  *st)
     
     /*j 3/2/97 motion calculation now in separate function
      does calculation for all balls i=0 i<cyl.numdots + plus tests whether dot should die or not*/
-    calc_cyl_motion(balls, cyl->velocity, cyl->numdots, flag, cyl->lifeframes, cyl->deathchance, pos->imsize[X] , JONLEFT);
+    calc_cyl_motion(balls, cyl->velocity, cyl->numdots, flag, cyl->lifeframes, cyl->deathchance, pos->imsize[X] , JONLEFT,cyl->preversal);
     
     /*if(option2flag & JSUBPIX){
      calc_subpix_disp(balls, cyl->numdots, flag, st->disp, pos, widthfactor, heightfactor);
@@ -970,7 +971,7 @@ void draw_dot(float rotatefactor[XY], float hdotsize[XY], float xpos, float ypos
 }   
 /*******************************************************************************************/
 
-void calc_cyl_motion(ball_s *balls, float vel, int ndots, int flag, int lifeframes, float deathchance, int width, int mode)
+void calc_cyl_motion(ball_s *balls, float vel, int ndots, int flag, int lifeframes, float deathchance, int width, int mode, float preverse)
 {    
     float delta, fraction, sign, rnd;
     int i;
@@ -1010,18 +1011,15 @@ void calc_cyl_motion(ball_s *balls, float vel, int ndots, int flag, int lifefram
 			    }	    
 		    }
 		    else
-                if ((rnd = mydrand()) < deathchance) {
-                    if (flag & REVERSING_DOTS){
+                if ((rnd = mydrand()) < preverse) {
                         balls[i].left_right[xi]*=-1;		/* swaps LEFT and RIGHT */
                     }
-                        else{
+                        else if((rnd = mydrand()) < deathchance){
                             balls[i].pos[xi] = sinf(M_PI * (mydrand() - 0.5)); /* sin(-pi/2 -> pi/2 */
                             balls[i].pos[yi] = (2.0) * (mydrand() - 0.5);
+                            nreplaced++;
                         }
-                        
-                    nreplaced++;
-                }	
-            delta = fabsf(vel * balls[i].proportion[xi]);  	/* theta=asin(x)/r, dotvel=cos(theta)) */  
+                delta = fabsf(vel * balls[i].proportion[xi]);  	/* theta=asin(x)/r, dotvel=cos(theta)) */
         }
         balls[i].pos[xi] += (balls[i].left_right[xi] * delta)/width*1000; 		/* adds or subtracts delta */
         
