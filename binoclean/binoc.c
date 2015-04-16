@@ -7196,15 +7196,16 @@ int next_frame(Stimulus *st)
             swaptimes[framesdone] = swapwait;
 
             expt.framesdone++;
+            framesdone++;
             if(mode & NEWDRAG)
             {
                 CheckRect(TheStim);
                 mode &= (~NEWDRAG);
             }
-            framesdone++;
             if(optionflags[FIXNUM_PAINTED_FRAMES] && framesdone >= TheStim->nframes ||
                (!optionflags[FIXNUM_PAINTED_FRAMES] && (realframecount = getframecount()) >= TheStim->nframes))
             {
+                framesdone--; //frametimes[framesdone] is last frame
                 memcpy(&endstimtime, &now, sizeof(struct timeval));
                 stimstate = POSTSTIMULUS;
                 mode |= LAST_FRAME_BIT;
@@ -7305,7 +7306,7 @@ int next_frame(Stimulus *st)
             
             change_frame();
             SerialSignal(WURTZ_OK);
-            CheckStimDuration(stimstate);
+            CheckStimDuration(stimstate, optionflags[CHECK_FRAMECOUNTS]);
             glDrawBuffer(GL_BACK);
             glFinishRenderAPPLE();
             stimstate = WAIT_FOR_RESPONSE;
@@ -7580,7 +7581,7 @@ int next_frame(Stimulus *st)
              afc_s.sacval[1] =  afc_s.abssac[1];
              */
             if (fixstate == BADFIX_STATE)
-                CheckStimDuration(fixstate);
+                CheckStimDuration(fixstate, optionflags[CHECK_FRAMECOUNTS]);
 
             if(fixstate == BADFIX_STATE && TheStim->fix.timeout > 0)
                 stimstate = IN_TIMEOUT;

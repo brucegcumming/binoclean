@@ -591,10 +591,15 @@ for j = 1:length(strs{1})
             elseif strncmp(s,'penlogwinpos=',10)
                 DATA.winpos{4} = sscanf(value,'%d');
             else %unrecognized long codes from files are just kept in DATA.verg
-                sendtobinoc = oldsend;
-                donestr = 0;
                 codetype = 0;
-                DATA.verg.(code) = value;
+                if s(1) == '#'
+                    sendtobinoc = 0;
+                    donestr = 1;
+                else
+                    sendtobinoc = oldsend;
+                    donestr = 0;
+                    DATA.verg.(genvarname(code)) = value;
+                end
             end
         elseif sum(strncmp(s, {'stepperxy' 'penwinxy' 'optionwinxy'}, 8))
             codetype = -1;
@@ -3306,6 +3311,8 @@ function CopyLog(DATA,type)
     dfile = strrep(DATA.binoc{1}.uf,'\','/');
     dfile = regexprep(dfile,'^[A-Z]:','');
     [a,b] = fileparts(dfile);
+    fname=b;
+    [a, fdir] = fileparts(fname);
         
     if strcmp(type,'bnc')
         if strncmp('/local',DATA.binoc{1}.netpref,5) %only copy bnc file if its local
@@ -3333,14 +3340,14 @@ function CopyLog(DATA,type)
         d = dir(logfile);
         if length(d) == 1 && now - d.datenum < 1
             tgt = [DATA.binoc{1}.netpref '/' dfile '.online'];
-            ntgt = sprintf('/b/data/%s/%s/%s.online',DATA.binoc{1}.monkey, dfile)
+            ntgt = sprintf('/b/data/%s/%s/%s.online',DATA.binoc{1}.monkey, fdir, fname)
             if exist(tgt)
                 msg = sprintf('Overwrite %s with %s?',tgt,logfile);           %s/d     
             else
                 msg = sprintf('Copy %s to %s?(Network)\nor%s(PC)',logfile,ntgt,tgt);
             end
             
-            T = 'Copying Log to Newrok';
+            T = 'Copying Log to Nework';
             ok = 0;
             strs = {'To Network' 'To PC' 'I''ll copy manually'};
             yn = questdlg(['Copy ' dfile ' to?'] , T, strs{:}, strs{1});

@@ -4684,6 +4684,10 @@ int ReadCommand(char *s)
     sprintf(command_result,"");
     if(!strncasecmp(s,"quit",4))
         quit_binoc();
+    else if(!strncasecmp(s,"clearsoftoff",11)){
+        for(i = 0; i < 4; i++)
+            expt.softoff[i] = 0;
+    }
     else if(!strncasecmp(s,"getrow",4)){
         sscanf(s,"%*s %d %d %d",&line,&start,&stop);
     }
@@ -4773,6 +4777,9 @@ int ReadCommand(char *s)
     }
     else if(!strncasecmp(s,"clear",4)){
         //expbuttons(NULL, (XtPointer)(CLEAR_EXPT), NULL);
+    }
+    else if(!strncasecmp(s,"pauseexpt",8)){
+        //? just set states[EXPT_PAUSED];?  ? need this any more
     }
     else if(!strncasecmp(s,"panel",2)){
         //Ali framefront();
@@ -12523,7 +12530,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
 }
 
 
-int CheckStimDuration(int retval)
+int CheckStimDuration(int retval, int warning)
 {
     int i = 0,j =0, n = 0, rpt =0,nrpt = 0,nf=0,k=0;
     char buf[LONGBUF+10],tmp[LONGBUF+10],*s;
@@ -12552,6 +12559,8 @@ int CheckStimDuration(int retval)
             if (frametimes[framesdone]  > (framesdone-0.5)/expt.mon->framerate){
                 sprintf(buf,"%d frames took %.3f %s",framesdone,frametimes[framesdone],StimString(STIMID));
                 printString(buf,2);
+                if (frametimes[framesdone]  > (framesdone+2.5)/expt.mon->framerate && warning)
+                    acknowledge(buf,NULL);
             }
             sprintf(buf,"%sFi=",serial_strings[MANUAL_TDR]);
             for( i = 1; i < framesdone-1; i++){
@@ -12639,6 +12648,10 @@ int CheckStimDuration(int retval)
 
             if(frametimes[framesdone]  > (n+1.5)/expt.mon->framerate){
                 printf("V long %.3f",frametimes[framesdone]);
+                if (warning){
+                    sprintf(buf,"%d Frames took %.2f sec",n,frametimes[framesdone]);
+                    acknowledge(buf,NULL);
+                }
             }
             if(optionflags[FIXNUM_PAINTED_FRAMES] ==0){
                 for(i = 1; i < framesdone; i++){
