@@ -3312,7 +3312,7 @@ function CopyLog(DATA,type)
     dfile = regexprep(dfile,'^[A-Z]:','');
     [a,b] = fileparts(dfile);
     fname=b;
-    [a, fdir] = fileparts(fname);
+    [a, fdir] = fileparts(a);
         
     if strcmp(type,'bnc')
         if strncmp('/local',DATA.binoc{1}.netpref,5) %only copy bnc file if its local
@@ -3336,10 +3336,10 @@ function CopyLog(DATA,type)
             end
         end
     elseif strcmp(type,'online')
-        logfile = ['/local/' DATA.binoc{1}.monkey '/' b];
+        logfile = ['/local/' DATA.binoc{1}.monkey '/' fname];
         d = dir(logfile);
         if length(d) == 1 && now - d.datenum < 1
-            tgt = [DATA.binoc{1}.netpref '/' dfile '.online'];
+            tgt = [DATA.binoc{1}.netpref '/' fname '.online'];
             ntgt = sprintf('/b/data/%s/%s/%s.online',DATA.binoc{1}.monkey, fdir, fname)
             if exist(tgt)
                 msg = sprintf('Overwrite %s with %s?',tgt,logfile);           %s/d     
@@ -3350,7 +3350,7 @@ function CopyLog(DATA,type)
             T = 'Copying Log to Nework';
             ok = 0;
             strs = {'To Network' 'To PC' 'I''ll copy manually'};
-            yn = questdlg(['Copy ' dfile ' to?'] , T, strs{:}, strs{1});
+            yn = questdlg(['Copy ' logfile ' to?'] , T, strs{:}, strs{1});
             ok = find(strcmp(yn,strs));
             if ok == 1
                 tgt = ntgt;

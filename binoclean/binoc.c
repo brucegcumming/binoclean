@@ -3874,6 +3874,7 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
         case SET_SEED:
             st->left->seed = st->left->baseseed = (int)val;
             st->right->seed = st->right->baseseed = (int)val;
+            expt.vals[SET_SEED] = val;
             break;
         case SEED_SHIFT:
             if(st->type == STIM_RDS)

@@ -11725,6 +11725,13 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
     glstatusline(NULL, 1); // paint this now, then don't paint each frame - its slow
     glDrawBuffer(GL_BACK);
     SerialSend(STIMID);
+//if setting seed as an expt variable, make sure it hasn't been changed
+//in the intertrial interval since PrepareExptStim was called
+    if (expt.mode == SET_SEED || expt.type2 == SET_SEED || expt.type3 == SET_SEED){
+        st->left->seed = st->left->baseseed = (int)expt.vals[SET_SEED];
+        st->right->seed = st->right->baseseed = (int)expt.vals[SET_SEED];
+    }
+
     SerialSend(SET_SEED);
     if(st->type == STIM_RDS)
         rds = st->left;
