@@ -11682,7 +11682,6 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
     cbuf[0] = 0;
     
     currentstim.stimid = expt.stimid;
-    currentstim.seed = expt.st->firstseed = expt.st->left->baseseed;
     if(expt.vals[ALTERNATE_STIM_MODE] > 0.5){
         i = rint(expt.vals[ALTERNATE_STIM_MODE]);
         switch(i){
@@ -11731,8 +11730,9 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
         st->left->seed = st->left->baseseed = (int)expt.vals[SET_SEED];
         st->right->seed = st->right->baseseed = (int)expt.vals[SET_SEED];
     }
-
     SerialSend(SET_SEED);
+    currentstim.seed = expt.st->firstseed = expt.st->left->baseseed;
+
     if(st->type == STIM_RDS)
         rds = st->left;
     framecount = 0;
