@@ -1032,8 +1032,8 @@ void write_expvals(FILE *ofd, int flag)
         for(i = 0; i < expt.nstim[0]; i++)
             fprintf(ofd,"EA%d=%.3f\n",i,expval[i]);
     if(optionflags[CUSTOM_EXPVALB])
-        for(i = expt.nstim[0]; i < expt.nstim[0]+expt.nstim[1]; i++)
-            fprintf(ofd,"EB%d=%.3f\n",i-expt.nstim[0],expt.exp2vals[i-expt.nstim[0]]);
+        for(i = 0; i < expt.nstim[1]; i++)
+            fprintf(ofd,"EB%d=%.3f\n",i,expt.exp2vals[i]);
     if(flag == QUICK_SAVE)
         return;
     for(i = 1; i <= nquickexpts; i++){
