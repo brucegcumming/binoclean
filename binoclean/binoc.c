@@ -6381,7 +6381,10 @@ void paint_frame(int type, int showfix)
     }
     if (inexptstim == 0){
         gettimeofday(&btime, NULL);
-        glstatusline(NULL, 1);
+// on some machines this line causes a frame delay. Only do it if
+// needed by a modification in RF/stimulus location
+//        glstatusline(NULL, 1);
+        
     }
     gettimeofday(&paintfinishtime, NULL);
     tval= timediff(&paintfinishtime,&paintframetime) * mon.framerate;
