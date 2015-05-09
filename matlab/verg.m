@@ -31,8 +31,6 @@ while j <= length(varargin)
         end
     elseif strcmp(varargin{j},'autoquit')
         autoquit = 1;
-    elseif strcmp(varargin{j},'demo') && j == 1
-        varargin{1} = '/local/c/binoclean/stims/demo/demo.stm';
     elseif strcmp(varargin{j},'host')
         j = j+1;
         DATA.ip = ['http://' varargin{j} ':1110/'];
@@ -87,8 +85,17 @@ if isempty(it)
 %.e. which parameters is this for. Could just send a short list...
         SendState(DATA); %params loaded from verg.setup, binoc.setup etc
         tt = TimeMark(tt, 'SendState');
-        DATA = ReadStimFile(DATA, '/local/verg.setup'); %make sure these go to binoc
+        DATA = ReadStimFile(DATA, '/local/verg.setup','fromverg'); %make sure these go to binoc
         tt = TimeMark(tt, 'VergSetup');
+        if strcmp(varargin{1},'demo') 
+            if isfield(DATA.verg,'demofile')
+                varargin{1} = DATA.verg.demofile;
+            else
+                varargin{1} = '/local/c/binoclean/stims/demo/demo.stm';
+            end
+        end
+                
+
         [DATA, details] = ReadStimFile(DATA,varargin{1}, 'init');
         DATA.state.stimfile = varargin{1};
         if details.badcodes > 1
@@ -461,6 +468,8 @@ while j <= length(varargin)
             frombinoc = 3;
         elseif strcmp(src,'fromgui')
             sendtobinoc = 1;
+        elseif strcmp(src,'fromverg')
+            srcchr = 'V';
         end
     elseif strncmpi(varargin{j},'tobinoc',4)
         sendtobinoc = 1;
@@ -581,10 +590,16 @@ for j = 1:length(strs{1})
                 DATA.winpos{3} = sscanf(value,'%d');
             elseif strncmp(s,'penlogwinpos=',10)
                 DATA.winpos{4} = sscanf(value,'%d');
-            else
-                sendtobinoc = oldsend;
-                donestr = 0;
+            else %unrecognized long codes from files are just kept in DATA.verg
                 codetype = 0;
+                if s(1) == '#'
+                    sendtobinoc = 0;
+                    donestr = 1;
+                else
+                    sendtobinoc = oldsend;
+                    donestr = 0;
+                    DATA.verg.(genvarname(code)) = value;
+                end
             end
         elseif sum(strncmp(s, {'stepperxy' 'penwinxy' 'optionwinxy'}, 8))
             codetype = -1;
@@ -1430,7 +1445,7 @@ for j = 1:length(strs{1})
                             codematches = strncmp(code,{DATA.comcodes.code},length(DATA.comcodes(xid(k)).code));
                         end
                     end
-                    if codetype < 0
+                    if codetype < 0 && srcchr ~= 'V'
                         fprintf('%s:Code %s not in comcodes\n',datestr(now),code);
                     end
                 end
@@ -1728,6 +1743,7 @@ function [DATA, details] = ReadStimFile(DATA, name, varargin)
     inread = 0;
     src = 'unknown';
     details.badcodes = 0;
+    linesrc = 'fromstim';
     
     j = 1;
     while j <= length(varargin)
@@ -1735,6 +1751,8 @@ function [DATA, details] = ReadStimFile(DATA, name, varargin)
             inread = 1;
         elseif strncmpi(varargin{j},'init',4)
             setall = 1;
+        elseif strncmpi(varargin{j},'fromverg',7)
+            linesrc = 'fromverg';
         elseif strncmpi(varargin{j},'quickmenu',8)
             src = varargin{j};
         end
@@ -1777,7 +1795,7 @@ if fid > 0
         end
     end
     if isempty(sid) || sid > 1
-        [DATA, details] = ReadExptLines(DATA,DATA.exptlines,'fromstim');
+        [DATA, details] = ReadExptLines(DATA,DATA.exptlines,linesrc);
         if details.badcodes > 1
             fprintf('Choose Fix from the file menu, or run verg([],''checkstim'') to remove bad/old codes from %s\n',name);
         end
@@ -3293,6 +3311,8 @@ function CopyLog(DATA,type)
     dfile = strrep(DATA.binoc{1}.uf,'\','/');
     dfile = regexprep(dfile,'^[A-Z]:','');
     [a,b] = fileparts(dfile);
+    fname=b;
+    [a, fdir] = fileparts(a);
         
     if strcmp(type,'bnc')
         if strncmp('/local',DATA.binoc{1}.netpref,5) %only copy bnc file if its local
@@ -3316,21 +3336,21 @@ function CopyLog(DATA,type)
             end
         end
     elseif strcmp(type,'online')
-        logfile = ['/local/' DATA.binoc{1}.monkey '/' b];
+        logfile = ['/local/' DATA.binoc{1}.monkey '/' fname];
         d = dir(logfile);
         if length(d) == 1 && now - d.datenum < 1
-            tgt = [DATA.binoc{1}.netpref '/' dfile '.online'];
-            ntgt = sprintf('/b/data/%s/%s/%s.online',DATA.binoc{1}.monkey, dfile)
+            tgt = [DATA.binoc{1}.netpref '/' fname '.online'];
+            ntgt = sprintf('/b/data/%s/%s/%s.online',DATA.binoc{1}.monkey, fdir, fname)
             if exist(tgt)
                 msg = sprintf('Overwrite %s with %s?',tgt,logfile);           %s/d     
             else
                 msg = sprintf('Copy %s to %s?(Network)\nor%s(PC)',logfile,ntgt,tgt);
             end
             
-            T = 'Copying Log to Newrok';
+            T = 'Copying Log to Nework';
             ok = 0;
             strs = {'To Network' 'To PC' 'I''ll copy manually'};
-            yn = questdlg(['Copy ' dfile ' to?'] , T, strs{:}, strs{1});
+            yn = questdlg(['Copy ' logfile ' to?'] , T, strs{:}, strs{1});
             ok = find(strcmp(yn,strs));
             if ok == 1
                 tgt = ntgt;

@@ -1,6 +1,6 @@
 #ifndef STIMPROTOS
 #define STIMPROTOS 1
-int CheckStimDuration(int retval);
+int CheckStimDuration(int retval, int warning);
 OneStim *NewGrating(Stimulus *st, Substim *sst, Substim *copy);
 OneStim *NewGrating2(Stimulus *st, Substim *sst, Substim *copy);
 OneStim *NewGratingN(Stimulus *st, Substim *sst, Substim *copy);
