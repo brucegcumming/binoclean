@@ -4163,13 +4163,14 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
             SetStimulus(st,cval,YPOS,event);
             break;
         case ABS_ORTHOG_POS:
+//ABS_ORTHOG_POS is sitmulus, not RF
             fval = GetProperty(&expt, st,ABS_PARA_POS);
             cosa = cos(expt.rf->angle * M_PI/180.0);
             sina = sin(expt.rf->angle * M_PI/180.0);
             bval = -(val * sina - fval * cosa);
             cval = (fval * sina + val * cosa);
-            SetStimulus(st,bval,RF_X,event);
-            SetStimulus(st,cval,RF_Y,event);
+            SetStimulus(st,bval,XPOS,event);
+            SetStimulus(st,cval,YPOS,event);
             break;
         case ORTHOG_POS:
             fval = GetProperty(&expt, st, PARA_POS);
@@ -4229,8 +4230,8 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
             sina = sin(expt.rf->angle * M_PI/180.0);
             bval = -(fval * sina - val * cosa);
             cval = (val * sina + fval * cosa);
-            SetStimulus(st,bval,RF_X,event);
-            SetStimulus(st,cval,RF_Y,event);
+            SetStimulus(st,bval,XPOS,event);
+            SetStimulus(st,cval,XPOS,event);
             break;
         case DISP_X:
             if(val > INTERLEAVE_EXPT){
@@ -6567,6 +6568,7 @@ int next_frame(Stimulus *st)
     int nf,nerr;
     int crasher = 0;
     static int stimerr = 0;
+    int fix;
     
     gettimeofday(&now,NULL);
     t2 = timediff(&now,&lastcalltime);
@@ -7206,8 +7208,11 @@ int next_frame(Stimulus *st)
                 CheckRect(TheStim);
                 mode &= (~NEWDRAG);
             }
-            if(optionflags[FIXNUM_PAINTED_FRAMES] && framesdone >= TheStim->nframes ||
-               (!optionflags[FIXNUM_PAINTED_FRAMES] && (realframecount = getframecount()) >= TheStim->nframes))
+//in free running, never want FIXNUM frames, and its too easy for it to mess up
+            fix = optionflags[FIXNUM_PAINTED_FRAMES];
+            fix = 0;
+            if(fix && framesdone >= TheStim->nframes ||
+               (!fix && (realframecount = getframecount()) >= TheStim->nframes))
             {
                 framesdone--; //frametimes[framesdone] is last frame
                 memcpy(&endstimtime, &now, sizeof(struct timeval));
@@ -9355,8 +9360,8 @@ float StimulusProperty(Stimulus *st, int code)
         case ABS_ORTHOG_POS:
             cosa = cos(expt.rf->angle * M_PI/180.0);
             sina = sin(expt.rf->angle * M_PI/180.0);
-            x =  -StimulusProperty(st,RF_X);
-            y = StimulusProperty(st,RF_Y);
+            x =  -StimulusProperty(st,XPOS);
+            y = StimulusProperty(st,YPOS);
             value = x * sina +  y * cosa;
             break;
         case RF_ORTHO:
@@ -9396,8 +9401,8 @@ float StimulusProperty(Stimulus *st, int code)
         case ABS_PARA_POS:
             cosa = cos(expt.rf->angle * M_PI/180.0);
             sina = sin(expt.rf->angle * M_PI/180.0);
-            x =  -StimulusProperty(st,RF_X);
-            y = StimulusProperty(st,RF_Y);
+            x =  -StimulusProperty(st,XPOS);
+            y = StimulusProperty(st,YPOS);
             value = y * sina -  x * cosa;
             break;
         case RF_PARA:

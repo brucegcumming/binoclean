@@ -32,8 +32,8 @@ adapter Dedscription of any adapter on recording chamber
 ap Proportion of Donw/Left choices rewarded on random reward trials
 Al When > 0, binoc monitors mean eye position for good trials, and ajdusts software offset every Al trials to remove the mean difference of the last Al Trials.
 annTyp sets whether annulus is painted on top of background, before, or not at all
-aOp Position of RF relative to 0,0 but in direction orthogonal to RF ori
-aPp Position of RF relative to 0,0 but in direction parallel to RF ori
+aOp Position of Stimulus in units orthogonal to RF ori
+aPp Position of Stimulus in units parallel to RF ori
 ar Aspect ratio for long thin strips of rls/rds
 As (Kludge) Implements some special cases. Should be 0 unless you are sure you need somthing else
 #As1-7 Stroboscopic versions of interocular delay
@@ -46,6 +46,7 @@ As (Kludge) Implements some special cases. Should be 0 unless you are sure you n
 #As19 Calibration mode
 #As20 No delay for backround, regardless of foreground
 #As21 Move the stimulus only, not the background
+#As22 Make Timeout screens anticorrelated 
 #As9 Seed Changes with Contrast
 b2 number of correct trials before reward increases to r3
 bO Displace Background orthog to RF. N.B. needs op+bf
@@ -304,8 +305,8 @@ rl Number of trials use to compute recent performancs stats. NB changes only app
 Rh Height of RF marking box (also recorded as RF Height in datafile)
 Ri For expts using Distribution Concentration (Dc), this is the incmrement between stimuli in the distribution.  See Also Dc, Dm 
 Ro Orientation of Box on screen. Also sets rotation used for Op,Pp,dO etc
-RO Moves RF box in a direction orthogonal to its Ori. Useful to center RF when using data plotted relative to RF center. But this should now be rare.
-RP Moves RF box in a direction parallel to its Ori. Useful to center RF when using data plotted relative to RF center. But this should now be rare.
+RO Sets RF box location on axis orthogonal to its Ori. Use RO = RO+x to displace distance x from current lotation. #position location
+RP Sets RF box location, direction parallel to its Ori. Use RP=RP+x to displace distance x from current lotation. #position location
 rp Sets p2 to ph+rp (degrees)
 rr # of times to repeat each stimulus exactly (seed and all). 1 = twopass (.i.e. 1 repeat). > 1 is hazardous.
 rv Sets dy for foreground to rv/2 and background to -rv/2
