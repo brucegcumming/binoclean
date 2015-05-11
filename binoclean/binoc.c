@@ -1451,7 +1451,11 @@ void MakeConnection(int flag)
         SerialSend(PEN_START_DEPTH);
         SerialSend(TOTAL_REWARD); // only send to Spike2 when its new
         gettimeofday(&sessiontime,NULL);
-        SerialSignal(END_EXPT);
+//If newconnection made after binoc has started an expt, Don't send END_EXPT
+        if (ExptIsRunning())
+            fprintf(seroutfile,"#Expt Already Running when Connected\n");
+        else
+            SerialSignal(END_EXPT);
 	}
     fprintf(stderr,"Connected to PC flag %d OK %d\n",flag,mode & SERIAL_OK);
 }
@@ -10866,7 +10870,7 @@ int GotChar(char c)
         gettimeofday(&now,NULL);
         i = codectr%CODEHIST;
         if(seroutfile)
-            fprintf(seroutfile,"#StartExpt from Spike2 at %.4f last code %d\n",ufftime(&now),lastcodes[i]);
+            fprintf(seroutfile,"#StartExpt from Spike2 at %.4f last code %d Expt%d\n",ufftime(&now),lastcodes[i],ExptIsRunning());
         if (0){
             fprintf(stderr,"Codes (%d,%d) from Spike (%d) at %s before StartExpt:",codectr,charsread,spike2mode,binocTimeString());
             for (i = codectr; i > 0 && i > codectr-10; i-- ){
