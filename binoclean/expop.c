@@ -2253,6 +2253,13 @@ char *DescribeExpStims()
     else
         sprintf(ebuf,"nt=%d\nEACLEAR\n",expt.nstim[0]);
     
+    sprintf(cbuf,"%s=%*f\n",serial_strings[EXPT_INCR],nfplaces[expt.mode],expt.incr);
+    strcat(ebuf,cbuf);
+    sprintf(cbuf,"%s=%*f\n",serial_strings[EXPT2_INCR],nfplaces[expt.type2],expt.incr2);
+    strcat(ebuf,cbuf);
+    sprintf(cbuf,"%s=%*f\n",serial_strings[EXPT3_INCR],nfplaces[expt.type3],expt.incr3);
+    strcat(ebuf,cbuf);
+    
     for(i = 0; i < (expt.nstim[0]+expt.nstim[2]); i++)
     {
         MakePlotLabel(&expt, cbuf, i, 0);
