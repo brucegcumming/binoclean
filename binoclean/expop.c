@@ -5056,12 +5056,6 @@ void setexp(int w, int id, int val)
             break;
         case SETZXOFF:
             break;
-        case DISP_P:
-            expt.mean = 30;
-            expt.incr = 60;
-            expt.nstim[0] = 6;
-            //            set_fprange(meanslider,                        0.0, 60.0, expt.mean, 0);
-            break;
         case END_OFFSET:
             SetProperty(&expt,expt.st,ORIENTATION,(float)(expt.rf->angle/10));
             expt.mean = pix2deg(expt.rf->size[0]/2) + GetProperty(&expt, expt.st,STIM_HEIGHT)/2;
@@ -5734,13 +5728,6 @@ int setexp3stim()
                 expt.exp3vals[0] = 1;
                 expt.exp3vals[1] = -1;
                 expt.nstim[4] = 2;
-                break;
-            case DISP_P:
-                expt.stimvals[DISP_P] = StimulusProperty(expt.st,DISP_P);
-                expt.exp3vals[0] = rad_deg(expt.stimvals[DISP_P]);
-                expt.exp3vals[1] = rad_deg(expt.stimvals[DISP_P] + M_PI);
-                expt.nstim[4] = 2;
-                break;
                 break;
                 /*
                  * for these paramaters, take the current value, and interleave + and -
@@ -6559,7 +6546,6 @@ void setstimuli(int flag)
         case FAKESTIM_EXPT:
         case XPOS:
         case ORIENTATION:
-        case DISP_P:
         case RELDISP:
         case CORRELATION:
         case MONOCULARITY_EXPT:
@@ -14064,7 +14050,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     
     int i,n,len,ival,total,j,vals[MAXBINS],k,code,icode,oldmode,x,y;
     int bins,prebins,postbins,chan, iin[100];
-    char *s,*t,c,buf[BUFSIZ],nbuf[BUFSIZ],outbuf[BUFSIZ];
+    char *s,*t,c,buf[BUFSIZ],nbuf[BUFSIZ],outbuf[BUFSIZ],*value;
     float val,fval, addval = 0,in[10],aval,bval;
     Stimulus *TheStim = expt.st;
     static int lineflag = 0;
@@ -14106,11 +14092,18 @@ int InterpretLine(char *line, Expt *ex, int frompc)
         *line = '#';
     }
     
-    s = strchr(line, '=');
-    if(s)
-        goteq = 1;
-    else
+    if (line[0] == '#')
         goteq = 0;
+    
+    s = strchr(line, '=');
+    if(s){
+        goteq = 1;
+        value = s+1;
+    }
+    else{
+        goteq = 0;
+        value = &line[2]; //default
+    }
     
     if(!strncmp(line,"confirmpopup",10)){
         code = -1;
@@ -14130,7 +14123,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
         }
         *t = 0;
     }
-    else if(line[0] == '#'  && frompc ==2){
+    else if(line[0] == '#'  && frompc ==2){ //comment lines from verg passed into serial file
         if (strncmp(line,"#Nrpt is",6) == NULL) {
             sscanf(line,"#Nrpt is %d",&expt.rptexpt);
         }
@@ -14149,6 +14142,9 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     else if(!strcmp(line,"whatsup")){
         sendNotification();
         return(-1);
+    }
+    else if(!strncmp(line,"replayexpt",9) && goteq){
+        ReplayExpt(value);
     }
     else if(!strncmp(line,"demomode",8)){
         demomode = 2;
