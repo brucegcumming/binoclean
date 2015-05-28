@@ -25,6 +25,9 @@
 #define CONJUG_OUT (char)18
 #define FREE_REWARD (char)18
 #define CANCEL_EXPT 19
+// SPIKESOUT is only PC -> binoc
+//TRIGGEREXPT is onlyt binoc -> PC
+#define TRIGGEREXPT 14
 #define SPIKES_OUT 14
 #define WURTZ_OK_W 20
 #define WURTZ_LATE_SAC 21

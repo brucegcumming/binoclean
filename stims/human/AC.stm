@@ -35,6 +35,7 @@ netpref=NotSet
 qe="Subject"bgc
 qe="Subject"sid
 qe="ACexpts"160ms
+qe="ACexpts"verg
 qe="ACexpts"halfmatch
 qe="ACexpts"annulus
 qe="ACexpts"stepedge
