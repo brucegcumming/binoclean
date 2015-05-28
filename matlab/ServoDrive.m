@@ -1,7 +1,26 @@
 function DATA = ServoDrive(varargin)
+%DATA = ServoDrive(...
+%Matlab controller for Servo controlled microdrive, using serial port
+%ServoDrive('ttyname', device)
+%sets the name of the serial port connected to use.
+%This can also be set by creating a file '/local/servomotor.setup' with a line
+%    serialport=device
+%
+%
+%ServoDrive(...,'position',x) uses x for the figure position.
+%
+%ServoDrive(...,'callback',fcn) gives a callback handle. This will
+%be called at the end of each movement with the new position
+%
+%DATA = ServoDrive('readpos') returns a data structure with the state
+%   including  DATA.position (current depth in microns)
+%              DATA.alldepths
+%              DATA.alltimes    depths set since starting, and their times
+
 figpos = [1400 400 350 350];
+DATA.figpos = [];
 tag = 'Servo Controller';
-DATA.verbose = 1;
+DATA.verbose = 0;
 verbose = [];
 startdepth = NaN;
 
@@ -9,6 +28,11 @@ startdepth = NaN;
 %
 % Command SR1 -> SR20  changes period with which servo is polled (10KHz ->
 % 500Hz). But does not seem likely to help with noise
+%
+%Seems clear the encoder on the motor just measures displacement (its an OSE), and
+%the chip intergrates this. So disconnecting cable to motor, then moving
+%the drive and reconnecting proudces NO CHANGE in sensed position.
+%Conversely powering off the chip causes the position to be lost/reset. 
 
 j = 1;
 while j <= length(varargin)
@@ -25,7 +49,7 @@ while j <= length(varargin)
         end
     elseif strncmpi(varargin{j},'position',5)
         j = j+1;
-        figpos = varargin{j};
+        DATA.figpos = varargin{j};
     elseif strncmpi(varargin{j},'quiet',5)
         DATA.verbose = 0;
         verbose = 0;
@@ -47,9 +71,9 @@ end
 
 [F, isnew] = GetFigure(tag);
 if isnew
-    set(F,'position',figpos);
     DATA.toplevel = F;
     DATA = SetDefaults(DATA);
+    set(F,'position',DATA.figpos);
     DATA = BuildServoWindow(DATA);
     DATA = OpenServoPort(DATA);
     DATA = OpenDiskLog(DATA);
@@ -57,9 +81,9 @@ if isnew
     set(DATA.toplevel,'UserData',DATA);
 else 
     DATA = get(F,'UserData');
-    if ~isempty(verbose)
-        DATA.verbose = verbose;
-    end
+end
+if ~isempty(verbose) %forced on command line
+    DATA.verbose = verbose;
 end
 
 %Things to do after startup
@@ -159,7 +183,15 @@ nr = 7;
 nc=6;
 
 set(F,'menubar','none');
-im = load('/local/Images/icons/DownArrow.mat');
+if exist('/local/Images/icons/DownArrow.mat')
+    im = load('/local/Images/icons/DownArrow.mat');
+else
+    fprintf('Cant Read /local/Images/icons/DownArrow.mat. Using simple arrrow\n');
+    im.x = zeros(75,75);
+    [x ,y] = meshgrid([1:75]-37,1:75);
+    ii  = find(y/1.5 + abs(x) < 50 & y > 15);
+    im.x(ii) = 1;
+end
 im.x = im.x-min(im.x(:));
 im.x = im.x./max(im.x(:));
 [ii,ij] = ind2sub(size(im.x),find(im.x < 0.04));
@@ -261,6 +293,9 @@ uimenu(sm,'Label','Retracting (0.025 mm/s)','tag','VVSlow','callback',@SetMotorS
 uimenu(sm,'Label','Automatic','tag','Auto','callback',@SetMotorSpeed);
 uimenu(sm,'Label','Custom','tag','Custom','callback',@SetMotorSpeed);
 sm = uimenu(mn,'Label','Verbose','callback',@SetOption,'tag','verbose');
+if DATA.verbose
+    set(sm,'checked','on');
+end
 sm = uimenu(mn,'Label','Show Buttons','callback',{@MenuOptions,'showbuttons'});
 if DATA.verbose
     set(sm,'checked','on');
@@ -464,18 +499,32 @@ DATA = addfield(DATA,{'stepsize' 'customstep' 'position'},0);
 DATA = addfield(DATA,{'alldepths' 'alltimes' 'offidx'},[]);
 txt = scanlines(DATA.setupfile,'silent');
 
-if ~isfield(DATA,'ttyname')
-    if isempty(txt)
-        cprintf('red','No Serial device Named, and missing file %s',DATA.setupfile);
-    end
-    id = find(strncmp('serialport',txt,10));
-    if isempty(id)
-        DATA.ttyname = '/dev/tty.USA49Wfa1212P1.1';
-    else
+if ~isempty(txt)
+    if ~isfield(DATA,'ttyname')
+        id = find(strncmp('serialport',txt,10));
         a = split(txt{id},'=');
-        DATA.ttyname = a{2};
+        if isempty(id)
+            DATA.ttyname = '/dev/tty.USA49Wfa1212P1.1';
+        else
+            DATA.ttyname = a{2};
+        end
     end
+    id = find(strncmp('position',txt,10));
+    if ~isempty(id) && isempty(DATA.figpos) %if figpos set by command line, takes precedence
+        DATA.figpos = sscanf(a{2},'%d');
+    end
+    id = find(strncmp('verbose',txt,10));
+    if ~isempty(id)
+        DATA.verbose = sscanf(a{2},'%d');
+    end
+elseif  ~isfield(DATA,'ttyname')
+    cprintf('red','No Serial device Named, and missing file %s',DATA.setupfile);
 end
+
+if ~isfield(DATA,'figpos') || isempty(DATA.figpos)
+    DATA.figpos = [1400 400 350 350];
+end
+
 for j = 1:length(txt)
     a = split(txt{j},'=');
     if strncmp(txt{j},'minrpm',6)
@@ -632,6 +681,10 @@ if isempty(s)
     uiwait(warndlg(sprintf('MicroDrive Not Responding'),'Microdrive Error','modal'));
     return;
 end
+if strcmp(s,'OK') %has not been sent ANSW1
+    uiwait(warndlg(sprintf('MicroDrive Response not correct.\nTry "Reopen".'),'Microdrive Error','modal'));
+    return;
+end
 d = sscanf(s,'%d');
 startpos = d./DATA.stepscale;
 
@@ -752,17 +805,21 @@ while npost < 2
         fprintf(DATA.sport,'DI\n');
        npost = 2;
        F = gcf;
-       uiwait(warndlg(sprintf('Only Moved to %.3f (%.3f->%.3f)',[newd(end) startpos newpos]./(DATA.stepscale.*1000)),'Microdrive Error','modal'));
+       if length(unique(newd)) == 1 %% no movment at all 
+           uiwait(warndlg(sprintf('No movement reported at all.\n Check Cable to Microdrive',[newd(end) startpos newpos]./(DATA.stepscale.*1000)),'Movement incomplete Error','modal'));
+       else
+           uiwait(warndlg(sprintf('Failed to Complete Movement.\n Only Moved to %.3f (Requested %.3f->%.3f)',[newd(end) startpos newpos]./(DATA.stepscale.*1000)),'Movement incomplete Error','modal'));
+       end
        figure(F);
     elseif newd(j) < minpos
         fprintf(DATA.sport,'DI\n');
        F = gcf;
-       uiwait(warndlg(sprintf('Postion %.3f min allowd %.3f',[newd(end) minpos]./(DATA.stepscale.*1000)),'Microdrive Error','modal'));
+       uiwait(warndlg(sprintf('Postion %.3f min allowd %.3f',[newd(end) minpos]./(DATA.stepscale.*1000)),'Microdrive request Error','modal'));
        figure(F);
     elseif newd(j) > maxpos
         fprintf(DATA.sport,'DI\n');
        F = gcf;
-       uiwait(warndlg(sprintf('Postion %.3f Max allowed %.3',newd(end)./(DATA.stepscale.*1000),maxpos./(DATA.stepscale.*1000)),'Microdrive Error','modal'));
+       uiwait(warndlg(sprintf('Postion %.3f Max allowed %.3',newd(end)./(DATA.stepscale.*1000),maxpos./(DATA.stepscale.*1000)),'Microdrive request  Error','modal'));
        figure(F);
     else
         stop = get(stopui,'value');

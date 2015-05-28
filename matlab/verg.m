@@ -135,8 +135,7 @@ if isempty(it)
     
     DATA = InitInterface(DATA);
     if ~exist('comcodes','file')
-        X.comcodes = DATA.comcodes;
-        save('comcodes','-struct','X');
+        SaveComCodes(DATA);
     end
     tt = TimeMark(tt, 'Interface');
     CheckForUpdate(DATA);
@@ -217,6 +216,8 @@ while j <= length(varargin)
         DATA = UpdateLogFile(DATA);        
     elseif strcmp(varargin{j},'checkstart')
         DATA = CheckStateAtStart(DATA);
+    elseif strncmp(varargin{j},'savecom',7)
+        SaveComCodes(DATA);
     elseif isfield(varargin{j},'Trials')
         DATA.Trials = varargin{j}.Trials;
         if isfield(varargin{j},'Expts')
@@ -246,7 +247,22 @@ function CheckState(DATA, varargin)
         myprintf(DATA.tobinocfid,'-show','%s uf=%s bt=%.3f\n',datestr(now),DATA.binoc{1}.uf,GetValue(DATA,'bt'));
     end
     
-function ExitVerg(DATA)
+function SaveComCodes(DATA)
+    X.comcodes = DATA.comcodes;
+    f = fields(DATA.helpstrs);
+    for j = 1:length(X.comcodes)
+        
+        if isfield(DATA.helpstrs,X.comcodes(j).code)
+            X.comcodes(j).helpstr = DATA.helpstrs.(X.comcodes(j).code);
+        end
+    end
+    X.optionstrings = DATA.optionstrings;
+    save('comcodes','-struct','X');
+
+        
+        
+    
+    function ExitVerg(DATA)
     
     
     UpdateLogFile(DATA);
@@ -1766,7 +1782,7 @@ if DATA.newexptdef == 0 && isfield(DATA.binoc{1},'ereset') && ~strcmp('NotSet',D
     outprintf(DATA,'newexpt\n');
     DATA = ReadStimFile(DATA, DATA.binoc{1}.ereset);
 end
-outprintf(DATA,'#qe%s\n',name);
+outprintf(DATA,'//qe%s\n',name);
 
 fid = fopen(name,'r');
 if fid > 0
@@ -2225,6 +2241,9 @@ DATA.state.stimfileerrs = 0;
 DATA.state.stimfile = '';
 DATA.state.query = 0;
 DATA.currentrw = 0;
+DATA.Header.dailyvars = {'id' 'se' 'ed' 'Rx' 'Ry' 'Ro' 'Rw' 'Rh' 'Xp' 'Yp' 'Pn' 'pe' 'Electrode' 'hemi'...
+                        'ui' 'ePr' 'eZ' 'monkey' 'coarsemm' 'adapter' 'Trw' 'Tg' 'nT' 'Tb' 'uf' 'fx' 'fy' 'so' 'oldrf'};
+
 
 DATA.newbinoc = 2;
 DATA.ready = 0;
@@ -3413,6 +3432,21 @@ function CopyLog(DATA,type)
     set(DATA.toplevel,'UserData',DATA);
 
     
+function DATA = ReloadInitialSettings(DATA, name, varargin)
+%DATA = ReloadInitialSettings(DATA, varargin)
+% reads state variables from a stim file, except for 
+% things that are day/session specicic
+
+ xs = DATA.Header.dailyvars;
+
+  strs = scanlines(name);
+  
+  for j = 1:length(xs)
+      id = find(~strncmp(xs{j},strs,length(xs{j})));
+      strs = strs(id);
+  end
+  DATA = ReadExptLines(DATA,strs,'file');
+    
 function DATA = LoadLastSettings(DATA, varargin)
 %DATA = LoadLastSettings(DATA, varargin)
 % reads state variables from expt backup files to restosr
@@ -3459,8 +3493,7 @@ function DATA = LoadLastSettings(DATA, varargin)
                     DATA = InterpretLine(DATA, txt{j},'tobinoc');
                 end
             else
-                for s = {'id' 'se' 'ed' 'Rx' 'Ry' 'Ro' 'Rw' 'Rh' 'Xp' 'Yp' 'Pn' 'pe' 'Electrode' 'hemi'...
-                        'ui' 'ePr' 'eZ' 'monkey' 'coarsemm' 'adapter' 'Trw' 'Tg' 'nT' 'Tb' 'uf' 'fx' 'fy' 'so' 'oldrf'}
+                for s = DATA.Header.dailyvars
                     id = find(strncmp(s,txt,length(s{1})));
                 if ~isempty(id)
                     cprintf('blue','Setting %s from %s\n',txt{id(1)},d.name);
@@ -3498,12 +3531,19 @@ function RecoverFile(a, b, type)
         for j = 1:length(d)
             uimenu(hm,'Label',[d(j).name d(j).date(12:end)],'callback',{@RecoverFile, d(j).name(5:end)});
         end
+        if isfield(DATA.state,'stimfile')
+            uimenu(hm,'Label',['Restart and Reload from ' DATA.state.stimfile],'callback',{@RecoverFile, 'reloadstart'});
+        end
+        
     elseif strmatch(type,{'eo.stm' 'eb.stm' '0.stm' '1.stm' '2.stm' '3.stm' '4.stm' '5.stm'})
         rfile = ['/local/' DATA.binoc{1}.monkey '/lean' type];
         dfile = ['/local/' DATA.binoc{1}.monkey '/lean.today'];
         copyfile(rfile,dfile);
         DATA = ReadStimFile(DATA, dfile);
         set(DATA.toplevel,'UserData',DATA);
+    elseif strcmp(type,'reloadstart')
+        DATA = RestartBinoc(DATA);
+        DATA = ReloadInitialSettings(DATA, DATA.state.stimfile);
     elseif strcmp(type,'loadlast')
         DATA = LoadLastSettings(DATA,'noninteractive','force');
         set(DATA.toplevel,'UserData',DATA);
@@ -4027,6 +4067,11 @@ function DATA = AddComment(DATA, str, src)
      strs = split(str,'\n');
      for j = 1:length(strs)
          if ~isempty(strs{j})
+%replace leading# with '//' so that it gets past http             
+             if strs{j}(1) == '#' 
+                 strs{j} = ['//' strs{j}(2:end)];
+             end
+                 
              str = [DATA.ip strs{j}];
              if DATA.verbose(1) || show
                  fprintf('%s\n',str);
@@ -4815,9 +4860,9 @@ function Expt = ExptSummary(DATA)
     Expt.Stimvals.et = DATA.exptype{1};
     Expt.Stimvals.e2 = DATA.exptype{2};
     Expt.Stimvals.e3 = DATA.exptype{3};
-    Expt.Stimvals.ei = DATA.incr(1);
-    Expt.Stimvals.i2 = DATA.incr(2);
-    Expt.Stimvals.i3 = DATA.incr(3);
+    Expt.Stimvals.ei = DATA.binoc{1}.ei;
+    Expt.Stimvals.i2 = DATA.binoc{1}.i2;
+    Expt.Stimvals.i3 = DATA.binoc{1}.i3;
     Expt.Stimvals.st = DATA.stimulusnames{DATA.stimtype(1)};
     Expt.Stimvals.Bs = DATA.stimulusnames{DATA.stimtype(2)};
     Expt.Start = now;
