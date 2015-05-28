@@ -114,3 +114,4 @@ remove XMIN/MAX SAMPLERATIO
 WHat does sequence pause do that you can't do with the go checkbox?
 replace mode & ANIMATE_BIT with optionflag & GO_BIT so that GUI is really in control
 Changing N in expt 1 messes manual vals in expt2 because its all coded in expval.  Make separate expbval array, at least for encoding
+make dp behave same as RLS for RDS
