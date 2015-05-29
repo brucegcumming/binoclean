@@ -127,6 +127,7 @@ double fakestim =0;
 int usenewdirs=0;
 int saveframetimes = 0;
 float bwtimeoffset[2] = {0};
+float httpcalltime;
 
 extern int inexptstim;
 static int pcmode = SPIKE2;
@@ -11642,6 +11643,540 @@ int RunHarrisStim(Stimulus *st, int n, /*Ali Display */ int D, /*Ali Window */ i
 float frametimes[MAXFRAMES],fframecounts[MAXFRAMES];
 static int framecounts[MAXFRAMES];
 static float postframetimes[MAXFRAMES];
+extern struct timeval lastcalltime;
+
+int RunPsychStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win)
+{
+    int finished = 0,j,i = 0, nreps, ntotal, retval =0;
+    int framecount,rc,lastframecount;
+    Substim *rds;
+    char c,buf[BUFSIZ*100],tmp[BUFSIZ*20];
+    float val;
+    //    Expstim *stim;
+    struct plotdata *plot;
+    //    Expstim *es,*exs;
+    int lastframesdone;
+    float tval,aval;
+    float swapwaits[MAXFRAMES],calctimes[MAXFRAMES],painttimes[MAXFRAMES];
+    float forcewaits[MAXFRAMES],phase;
+    struct timeval lastframetime,pretime,forcetime,timea;
+    int nframes = n,rpt = 1;
+    int noverflow = expt.noverflow;
+    char cbuf[20560],rcbuf[20560];
+    int cctr = 0;
+    int framesperstim = 1;
+    WindowEvent e;
+    
+    
+    framecount = 0;
+    framesdone = 0;
+    
+
+    mode |= FIRST_FRAME_BIT;
+    stimstate = INSTIMULUS;
+    clearcnt = 0;
+    
+    if(!(optionflag & FIXATION_CHECK))
+        fixstate = GOOD_FIXATION;
+    sframetimes[0] = -10000;
+    for(i = 0; i < n; i++)
+        frameiseqp[i] = 0;
+    if(optionflags[RANDOM_PHASE] || optionflags[RANDOM_INITIAL_PHASE]){
+        phase = SetRandomPhase(expt.st, &(expt.st->pos));
+        expt.vals[START_PHASE] = phase;
+        SerialSend(SETPHASE);
+    }
+    
+    rc = 0;
+    rpt = (st->framerepeat < 1) ? 1 : st->framerepeat;
+    
+    if (expt.stimmode == BUTTSEXPT){
+        expt.backim = backims[(int)(expt.vals[BACKGROUND_IMAGE])];
+    }
+    if (optionflags[MANUAL_EXPT] && manualprop[0] >= 0){
+        SetManualStim(0);
+    }
+    
+    gettimeofday(&exptstimtime,NULL);
+    if (inexptstim < 1)
+        inexptstim = 1;
+    
+    /*
+     * Human Psych trials have different requirements - often have stimuli
+     * taking > 1 frame to calculate/pain. No need to send warning to brainwave
+     * on penultimate frame.
+     */
+        while((finished < 2))
+        {
+            lastframecount = rc;
+            if(optionflags[FAST_SEQUENCE]){
+                SetStimulus(expt.st,frameseq[framesdone],expt.fasttype,NOEVENT);
+            }
+            else
+                rcstimid[framesdone] = st->stimid;
+            if(framecount >1 && optionflags[CALCULATE_ONCE_ONLY]){
+                if(!(mode & FIXATION_OFF_BIT))
+                    draw_fix(fixpos[0],fixpos[1], expt.st->fix.size, expt.st->fixcolor);
+            }
+            else
+                paint_frame(WHOLESTIM, !(mode & FIXATION_OFF_BIT));
+            change_frame();
+            
+            if(optionflags[WATCH_TIMES]){
+                swapwaits[framesdone] = swapwait;
+                calctimes[framesdone] = calcdur;
+                painttimes[framesdone] = paintdur;
+            }
+            if(freezestimulus)
+                rc = 0;
+            else if(!optionflags[FIXNUM_PAINTED_FRAMES] || n > MAXFRAMES){
+                rc = getframecount(); /* real video frames */
+                while(rc < lastframecount + expt.st->framerepeat && rc > 0)
+                    rc = getframecount();
+                frametimes[framesdone] = timediff(&frametime,&zeroframetime);
+            }
+            else{
+                rc = framesdone;
+                frametimes[framesdone] = timediff(&frametime,&zeroframetime);
+            }
+            
+            if (freezestimulus == 0){
+                if((framesdone = ++framecount) >= MAXFRAMES)
+                    framesdone = MAXFRAMES-1;
+            }
+            
+            expt.framesdone = framesdone;
+            /*
+             * if testflags[SAVE_IMAGES] == 1, save images of each frame to disk
+             * if testflags[SAVE_IMAGES] == 2, save images of last frame of last
+             * stimulus in the the expt, then clear the flag;
+             * if testflags[SAVE_IMAGES] == 7, save images of last frame each stimulus
+             */
+            if(testflags[SAVE_IMAGES]){
+                if(testflags[SAVE_IMAGES] == 1){
+                    SaveImage(expt.st,1);
+                    rc = framesdone;
+                }
+                else if(testflags[SAVE_IMAGES] == 3 || testflags[SAVE_IMAGES] == 5 || testflags[SAVE_IMAGES] == 6){
+                    SaveImage(expt.st,2);
+                    rc = framesdone;
+                }
+                else if(testflags[SAVE_IMAGES] == 2 && stimno+1 >= expt.nstim[5] * expt.nreps){
+                    if(finished == 1){ // last frame
+                        SaveImage(expt.st,7); //save both types - max info
+                        testflags[SAVE_IMAGES] = 0;
+                    }
+                    rc = framesdone;
+                }
+                if(testflags[SAVE_IMAGES] == 7 && finished == 1){
+                    SaveImage(expt.st,3); //save both types - max info
+                    testflags[SAVE_IMAGES] = 0;
+                }
+            }
+            /*
+             * Increment the stimulus _AFTER_ saving any images, so that corrrect seed
+             * number etc is recorded with the image
+             */
+            
+            if(freezestimulus < 2)
+                increment_stimulus(expt.st, &expt.st->pos);
+            
+            
+            
+            if(rc/mon.framerate > expt.vals[FIXATION_OVERLAP])
+            {
+                expt.st->fixcolor = expt.st->gammaback;
+                mode |= FIXATION_OFF_BIT;
+            }
+            /*
+             * last frame coming..
+             */
+            
+            if(finished == 1){
+                finished = 2;
+            }
+            else if(rc >= (n-1) && n < MAXFRAMES)
+            {
+                mode |= LAST_FRAME_BIT;
+                finished = 1;
+            }
+            /* running human psychophysics, stimuili are terminated buy a button press
+             * But only buttons 1-3. Button 4 and 5 (mac) are the scroll button,which is often hit just after the middle button
+             */
+                frametimes[framesdone] = timediff(&frametime,&zeroframetime);
+                framecounts[framesdone] = rc;
+                if(rc >= n && n < MAXFRAMES)
+                    finished = 2;
+                // if FIXNUM PAINTED FRAMES, force paintg of all frames. ANd ignore button presses.
+                // Button presses during the stimulus will be ignored. If n >= MAXFRAMES will
+                // run forevever, so can't ignore buttonpresses then
+                if((e.mouseButton = processUIEvents()) > 0){
+                    if (e.mouseButton == 103){ //cntrl-F
+                        if (freezestimulus == 2)
+                        {
+                            freezestimulus = 1;
+                            increment_stimulus(expt.st, &expt.st->pos);
+                            freezestimulus = 2;
+                        }
+                        freezestimulus = 2;
+                    }
+                    if (e.mouseButton == 105){ //cntrl-G
+                        freezestimulus = 0;
+                    }
+                    if (!optionflags[FIXNUM_PAINTED_FRAMES] || n >= MAXFRAMES){
+                        e.eventType = ButtonPress;
+                        e.modifierKey = 0;
+                        HandleMouse(e);
+                        finished = 2;
+                    }
+                }
+            while((c = ReadSerial(0)) != MYEOF)
+                if((i = GotChar(c)) == BAD_FIXATION || i == WURTZ_STOPPED)
+                {
+                    retval = BAD_TRIAL;
+                    fixstate = BADFIX_STATE;
+                    finished = 2;
+                }
+        }/* end while !finished */
+        optionflags[CHECK_FRAMECOUNTS] = 0;
+        wipescreen(clearcolor);
+        if (rc/mon.framerate < expt.vals[FIXATION_OVERLAP]){
+            draw_fix(fixpos[0],fixpos[1], expt.st->fix.size, expt.st->fix.fixcolor);
+        }
+        change_frame();
+        wipescreen(clearcolor); //wipe for next swap too
+        if (rc/mon.framerate < expt.vals[FIXATION_OVERLAP]){
+            draw_fix(fixpos[0],fixpos[1], expt.st->fix.size, expt.st->fix.fixcolor);
+        }
+    
+#ifdef NIDAQ
+    DIOWriteBit(0,0); //clear stimchange pin
+#endif
+    httpcalltime = timediff(&endstimtime,&lastcalltime);
+    inexptstim = 0;
+    unlink("/tmp/binocstimisup");
+    system("touch /tmp/binocstimisdone");
+    
+    if (seroutfile)
+        fprintf(seroutfile,"se%d\n",expt.st->firstseed);
+    SerialSend(SET_SEED); // get this recorded at stim end also
+    if(cctr && 0) // Don't do this normally
+        printf("Serial %d: %s\n",cctr,cbuf);
+    framecounts[framesdone] = rc;
+    tval = frametimes[framesdone] = timediff(&endstimtime,&zeroframetime);
+    fframecounts[framesdone] = (tval * mon.framerate);
+    if(debug==4)
+        testcolor();
+    
+    
+    /*
+     * if replaying an expt, leave the final stimulus up
+     * if in a real expt and using back movies, go back to grey at end stim
+     */
+    if((expt.mode == BACKGROUND_MOVIE || expt.mode) == BACKGROUND_IMAGE && expt.stimmode != BUTTSEXPT){
+        expt.backim = backims[MAXBACKIM];
+    }
+    if(stimno+1 >= expt.nstim[5] * expt.nreps && testflags[PLAYING_EXPT]){
+        fsleep(2);
+    }
+    
+    if(option2flag & IFC){
+        //    if(expt.vals[TRIAL_START_BLANK] >0 && expt.vals[TRIAL_START_BLANK] >= expt.isi - 0.02)
+        if(expt.vals[TRIAL_START_BLANK] >0)
+            clearstim(expt.st,expt.st->gammaback, 0);
+        draw_fix(fixpos[0],fixpos[1], expt.st->fix.size, expt.st->fix.offcolor);
+    }
+    change_frame();
+    gettimeofday(&lastframetime, NULL);
+    if(framecount < MAXFRAMES-1)
+        frametimes[framecount+1] = timediff(&paintframetime,&zeroframetime);
+    
+    if((option2flag & PSYCHOPHYSICS_BIT)&& seroutfile){
+        fprintf(seroutfile,"#Frames:");
+        for(i = 0; i <= framecount+1; i++)
+            fprintf(seroutfile,"%.3f ",frametimes[i]);
+        fprintf(seroutfile,"(%.3f,%.3f,%.3f)\n",StimDuration(),timediff(&endstimtime,&frametime),timediff(&firstframetime,&zeroframetime));
+    }
+    
+    if(optionflags[RANDOM_PHASE] && expt.st->nphases > 0 && (st->type != STIM_RDS && st->type != STIM_RLS && st->type != STIM_CHECKER)){
+        sprintf(buf,"%srP=",serial_strings[MANUAL_TDR]);
+        for(i = 0; i < framesdone; i++){
+            if(frameiseqp[i] >= 0){
+                if (expt.st->nphases < 16)
+                    sprintf(tmp,"%x",frameiseqp[i]);
+                else
+                    sprintf(tmp,"%x ",frameiseqp[i]);
+                if(strlen(buf)+strlen(tmp) < BUFSIZ*2)
+                    strcat(buf,tmp);
+            }
+        }
+        strcat(buf,"\n");
+        SerialString(buf,0);
+    }
+    // If no network stim record, send sequence down serial line
+    
+    if (optionflags[MANUAL_EXPT] && manualprop[0] >= 0 && netoutfile == NULL ){
+        SendManualSequence();
+    }
+    
+    if(optionflags[FAST_SEQUENCE]){
+        sprintf(rcbuf,"%srS=",serial_strings[MANUAL_TDR]);
+        for(i = 0; i < framesdone; i++){
+            if(rcstimid[i] >= 0){
+                sprintf(tmp,"%d ",rcstimid[i]);
+                if(strlen(rcbuf)+strlen(tmp) < BUFSIZ*2)
+                    strcat(rcbuf,tmp);
+            }
+        }
+        strcat(rcbuf,"\n");
+        SerialString(rcbuf,0);
+        //    fputs(buf,stdout);
+        if(optionflags[RANDOM_PHASE]){
+            sprintf(buf,"%srP=",serial_strings[MANUAL_TDR]);
+            for(i = 0; i < framesdone; i++){
+                if(frameiseqp[i] >= 0){
+                    sprintf(tmp,"%d ",frameiseqp[i]);
+                    if(strlen(buf)+strlen(tmp) < BUFSIZ*2)
+                        strcat(buf,tmp);
+                }
+            }
+            strcat(buf,"\n");
+            SerialString(buf,0);
+        }
+        if(optionflags[TILE_XY]){
+            sprintf(buf,"%srX=",serial_strings[MANUAL_TDR]);
+            for(i = 0; i < framesdone; i++){
+                sprintf(tmp,"%d ",rcstimxy[0][i*framesperstim]);
+                strcat(buf,tmp);
+            }
+            strcat(buf,"\n");
+            SerialString(buf,0);
+            sprintf(buf,"%srY=",serial_strings[MANUAL_TDR]);
+            for(i = 0; i < framesdone; i++){
+                sprintf(tmp,"%d ",rcstimxy[1][i*framesperstim]);
+                strcat(buf,tmp);
+            }
+            strcat(buf,"\n");
+            SerialString(buf,0);
+        }
+        
+    }
+    if(optionflags[RANDOM_CONTRAST] || expt.type3 == RANDOM_CONTRAST_EXPT){
+        sprintf(buf,"%scR=",serial_strings[MANUAL_TDR]);
+        for(i = 0; i < framesdone; i++){
+            sprintf(tmp,"%x ",(int)(rcstimvals[7][i] * 256));
+            if(strlen(buf)+strlen(tmp) < BUFSIZ*2)
+                strcat(buf,tmp);
+        }
+        strcat(buf,"\n");
+        SerialString(buf,0);
+        sprintf(buf,"%scL=",serial_strings[MANUAL_TDR]);
+        for(i = 0; i < framesdone; i++){
+            sprintf(tmp,"%x ",(int)(rcstimvals[8][i] * 256));
+            if(strlen(buf)+strlen(tmp) < BUFSIZ*2)
+                strcat(buf,tmp);
+        }
+        strcat(buf,"\n");
+        SerialString(buf,0);
+    }
+    if(optionflags[RANDOM_CORRELATION]){
+        sprintf(buf,"%scI=",serial_strings[MANUAL_TDR]);
+        for(i = 0; i < framesdone; i++){
+            sprintf(tmp,"%x ",(int)(fabs(rcstimvals[9][i]) * 256));
+            if(strlen(buf)+strlen(tmp) < BUFSIZ*2)
+                strcat(buf,tmp);
+        }
+        strcat(buf,"\n");
+        SerialString(buf,0);
+        sprintf(buf,"%scL=",serial_strings[MANUAL_TDR]);
+        for(i = 0; i < framesdone; i++){
+            sprintf(tmp,"%x ",(int)(rcstimvals[8][i] * 256));
+            if(strlen(buf)+strlen(tmp) < BUFSIZ*2)
+                strcat(buf,tmp);
+        }
+        strcat(buf,"\n");
+        SerialString(buf,0);
+    }
+    if(expt.st->type == STIM_IMAGE){
+        sprintf(buf,"%sse=",serial_strings[MANUAL_TDR]);
+        for(i = 0; i < framesdone; i++){
+            if(imageseed[i] >= 0){
+                sprintf(tmp,"%d ",imageseed[i]);
+                if(strlen(buf)+strlen(tmp) < BUFSIZ*2)
+                    strcat(buf,tmp);
+            }
+        }
+        strcat(buf,"\n");
+        SerialString(buf,0);
+    }
+    
+    if(framesdone * rpt < n && retval != BAD_TRIAL){
+        /*
+         * Not all frames completed
+         * framecounts is number of real video frame elapsed, each
+         * time a new image is painted. So this gets ahead of expected
+         * framecounts if display slow.
+         */
+        sprintf(buf,"%sFn=",serial_strings[MANUAL_TDR]);
+        j = 1;
+        for(i = 0; i < framesdone && framecounts[i] < n * 2; i++,j++){
+            while(framecounts[i] > j * rpt){ //skipped frames
+                sprintf(tmp,"%d ",framecounts[i]);
+                if(strlen(buf)+strlen(tmp) < BUFSIZ*2)
+                    strcat(buf,tmp);
+                j++;
+            }
+        }
+        strcat(buf,"\n");
+        SerialString(buf,-1);
+        if(seroutfile){
+            fprintf(seroutfile,"%s",buf);
+            fprintf(seroutfile,"#Frames:");
+            for(i = 0; i < framesdone; i++)
+                fprintf(seroutfile," %d",framecounts[i]);
+            fprintf(seroutfile,"\n");
+        }
+        /*
+         * if optionflags[CHECK_FRAMECOUNTS] ==2, only check the first stimulus
+         */
+        if(optionflags[CHECK_FRAMECOUNTS] &&   framesdone * rpt < n * 0.9){
+            if (optionflags[CHECK_FRAMECOUNTS] ==2){
+                optionflags[CHECK_FRAMECOUNTS] =0;
+                sprintf(tmp,"Won't Check again");
+            }
+            else
+                sprintf(tmp," op-CN to stop Checking");
+            sprintf(buf,"Only completed %d/%d frames (stim %d at %s). %s",framesdone,n,stimno,binocTimeString(),tmp);
+            if (optionflags[CHECK_FRAMECOUNTS])
+                acknowledge(buf,NULL);
+            else{
+                sprintf(tmp,"ACK:%s",buf);
+                notify(tmp);
+            }
+            statusline(buf);
+        }
+    }
+    
+    //    CheckStimDuration(retval); //this is done from binoc.c now
+    /*
+     * also check if frames all done, but took too long (in case forcing all frames
+     */
+    if(optionflags[CHECK_FRAMECOUNTS] && retval != BAD_TRIAL &&
+       frametimes[framesdone-1] > (1.1 * n)/expt.mon->framerate){
+        
+        if (optionflags[CHECK_FRAMECOUNTS] ==2){
+            optionflags[CHECK_FRAMECOUNTS] =0;
+            sprintf(tmp,"Won't Check again");
+        }
+        else
+            sprintf(tmp," op-CN to stop Checking");
+        
+        sprintf(buf,"%d frames took %.3f (stim %d at %s). %s",framesdone,frametimes[framesdone-1],stimno,binocTimeString(),tmp);
+        acknowledge(buf,NULL);
+        statusline(buf);
+        printString(buf,2);
+    }
+    
+    if(rcfd && optionflags[WATCH_TIMES]){
+        fprintf(rcfd,"#%dFrames:",framesdone);
+        for(i = 0; i < framesdone+1; i++)
+            fprintf(rcfd," %d",framecounts[i]);
+        fprintf(rcfd,"\n");
+        fprintf(rcfd,"#Calc");
+        for(i = 0; i < framesdone; i++)
+            fprintf(rcfd," %.4f",calctimes[i]);
+        fprintf(rcfd,"\n");
+        fprintf(rcfd,"#Paint:");
+        for(i = 0; i < framesdone; i++)
+            fprintf(rcfd," %.4f",painttimes[i]);
+        fprintf(rcfd,"\n");
+        fprintf(rcfd,"#Swap:");
+        for(i = 0; i < framesdone; i++)
+            fprintf(rcfd," %.4f",swapwaits[i]);
+        fprintf(rcfd,"\n");
+        fprintf(rcfd,"#Wait:");
+        for(i = 0; i < framesdone; i++)
+            fprintf(rcfd," %.4f",forcewaits[i]);
+        fprintf(rcfd,"\n");
+    }
+    
+    stimdursum += StimDuration();
+    stimdurn++;
+    realframes = realframecount = getframecount();
+    if(stimstate == INSTIMULUS)
+        stimstate = POSTSTIMULUS;
+    
+    if ((expt.st->type == STIM_RLS || expt.st->type == STIM_CHECKER || expt.stimtype == STIM_RLS) && optionflags[SAVE_RLS] && rcfd){
+        gettimeofday(&timea, NULL);
+        fprintf(rcfd,"id%dse%d:%dt%.3fst%d\n",expt.allstimid,expt.st->firstseed,expt.st->left->baseseed,ufftime(&firstframetime),stimorder[stimno]);
+        StimStringRecord(rcfd, expt.st);
+        if(optionflags[FAST_SEQUENCE]){
+            fputs(rcbuf,rcfd);
+        }
+        gettimeofday(&now, NULL);
+        val = timediff(&now,&timea);
+        if (val > 0.02)
+            fprintf(seroutfile,"Id%d RLS save took %.3f\n",expt.allstimid,val);
+    }
+    else if (expt.st->type == STIM_RLS && seroutfile){
+    }
+    /* reset stimulus type in case it was set to blank */
+    if(retval == BAD_TRIAL || retval < 0)
+    {
+        afc_s.lasttrial = BAD_TRIAL;
+        stimulus_is_prepared = 0; // make sure PrepareExptStim is called.
+        /*    ShuffleStimulus();*/
+    }
+    
+    ExpStimOver(retval,i);
+    
+    /*
+     if(retval != BAD_TRIAL && afc_s.loopstate != CORRECTION_LOOP)
+     stimno++;
+     */
+    /*
+     * if IFC and stimno is even, this is the first of a pair. Prepare
+     * and show the second stimulus of the pair. If a response button
+     * is hit during the first stimulus, stimno is incremented to an odd
+     * number. In this case just increment stimno one more time - no need to
+     * show second stimulus.
+     */
+    if(finished == RESPONDED && option2flag & IFC && (stimno &1))
+        stimno++;
+    else if(option2flag & IFC && (!(stimno & 1)) && finished != RESPONDED)
+    {
+        stimno++;
+        ResetExpStim(0);
+        /* if subject responds during first stimulus, skip the second */
+        if(stimstate != RESPONDED){
+            if(expt.vals[TRIAL_START_BLANK] > 0){
+                gettimeofday(&now, NULL);
+                val = timediff(&now,&lastframetime);
+                fsleep(expt.vals[TRIAL_START_BLANK] - val);
+                clearstim(expt.st,expt.st->gammaback, 0);
+                draw_fix(fixpos[0],fixpos[1], expt.st->fix.size, expt.st->fix.offcolor);
+                change_frame();
+            }
+            PrepareExptStim(1,5);
+            gettimeofday(&now, NULL);
+            val = timediff(&now,&lastframetime);
+            fsleep(expt.isi-val);
+            RunExptStim(st, n, D, win);
+        }
+    }
+    totalframe = framecount;
+    if(expt.noverflow > noverflow && seroutfile)
+        fprintf(seroutfile,"#Overflow %d/%d\n",expt.noverflow,expt.ncalc);
+    if(expt.noverflow > 0.05 * expt.ncalc){
+        sprintf(buf,"%d/%d Contrast Overflow!!",expt.noverflow,expt.ncalc);
+        acknowledge(buf,"/bgc/bgc/c/binoc/help/overflow.1");
+    }
+    if (cancelflag)
+        expt_over(CANCEL_EXPT);
+    
+    return(framecount);
+    
+}
 
 int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win)
 {
@@ -11662,7 +12197,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
     int noverflow = expt.noverflow;
     char cbuf[20560],rcbuf[20560];
     int cctr = 0;
-        int framesperstim = 1;
+    int framesperstim = 1;
     WindowEvent e;
     
     
@@ -11740,6 +12275,11 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
     else
         expt.st->tenvelope = 1;
     /* record nframes */
+    if(option2flag & PSYCHOPHYSICS_BIT){
+        framecount = RunPsychStim(st, n, D,win);
+        return(framecount);
+    }
+
     mode |= FIRST_FRAME_BIT;
     stimstate = INSTIMULUS;
     clearcnt = 0;
@@ -11769,157 +12309,6 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
     if (inexptstim < 1)
         inexptstim = 1;
     
-    /*
-     * Human Psych trials have different requirements - often have stimuli 
-     * taking > 1 frame to calculate/pain. No need to send warning to brainwave
-     * on penultimate frame.
-     */
-    if(option2flag & PSYCHOPHYSICS_BIT){
-        while((finished < 2))
-        {
-            lastframecount = rc;
-            if(optionflags[FAST_SEQUENCE]){
-                SetStimulus(expt.st,frameseq[framesdone],expt.fasttype,NOEVENT);
-            }
-            else
-                rcstimid[framesdone] = st->stimid;
-            if(framecount >1 && optionflags[CALCULATE_ONCE_ONLY]){
-                if(!(mode & FIXATION_OFF_BIT))
-                    draw_fix(fixpos[0],fixpos[1], expt.st->fix.size, expt.st->fixcolor);
-            }
-            else
-                paint_frame(WHOLESTIM, !(mode & FIXATION_OFF_BIT));
-            change_frame();
-            
-            if(optionflags[WATCH_TIMES]){
-                swapwaits[framesdone] = swapwait;
-                calctimes[framesdone] = calcdur;
-                painttimes[framesdone] = paintdur;
-            }
-            if(freezestimulus)
-                rc = 0;
-            else if(!optionflags[FIXNUM_PAINTED_FRAMES] || n > MAXFRAMES){
-                rc = getframecount(); /* real video frames */
-                while(rc < lastframecount + expt.st->framerepeat && rc > 0)
-                    rc = getframecount();
-                frametimes[framesdone] = timediff(&frametime,&zeroframetime);
-            }
-            else{
-                rc = framesdone;
-                frametimes[framesdone] = timediff(&frametime,&zeroframetime);
-            }
-            
-            if (freezestimulus == 0){
-            if((framesdone = ++framecount) >= MAXFRAMES)
-                framesdone = MAXFRAMES-1;
-            }
-            
-            expt.framesdone = framesdone;
-            /*
-             * if testflags[SAVE_IMAGES] == 1, save images of each frame to disk
-             * if testflags[SAVE_IMAGES] == 2, save images of last frame of last 
-             * stimulus in the the expt, then clear the flag;
-             * if testflags[SAVE_IMAGES] == 7, save images of last frame each stimulus 
-             */
-            if(testflags[SAVE_IMAGES]){
-                if(testflags[SAVE_IMAGES] == 1){
-                    SaveImage(expt.st,1);
-                    rc = framesdone;
-                }
-                else if(testflags[SAVE_IMAGES] == 3 || testflags[SAVE_IMAGES] == 5 || testflags[SAVE_IMAGES] == 6){
-                    SaveImage(expt.st,2);
-                    rc = framesdone;
-                }
-                else if(testflags[SAVE_IMAGES] == 2 && stimno+1 >= expt.nstim[5] * expt.nreps){
-                    if(finished == 1){ // last frame
-                        SaveImage(expt.st,7); //save both types - max info
-                        testflags[SAVE_IMAGES] = 0;
-                    }
-                    rc = framesdone;
-                }
-                if(testflags[SAVE_IMAGES] == 7 && finished == 1){
-                    SaveImage(expt.st,3); //save both types - max info
-                    testflags[SAVE_IMAGES] = 0;
-                }
-            }
-            /*
-             * Increment the stimulus _AFTER_ saving any images, so that corrrect seed
-             * number etc is recorded with the image
-             */
-            
-            if(freezestimulus < 2)
-                increment_stimulus(expt.st, &expt.st->pos);
-            
-            
-            
-            if(rc/mon.framerate > expt.vals[FIXATION_OVERLAP])
-            {
-                expt.st->fixcolor = expt.st->gammaback;
-                mode |= FIXATION_OFF_BIT;
-            }
-            /*
-             * last frame coming.. 
-             */
-            
-            if(finished == 1){
-                finished = 2;
-            }
-            else if(rc >= (n-1) && n < MAXFRAMES) 
-            {
-                mode |= LAST_FRAME_BIT;
-                finished = 1;
-            }
-            /* running human psychophysics, stimuili are terminated buy a button press
-             * But only buttons 1-3. Button 4 and 5 (mac) are the scroll button,which is often hit just after the middle button
-             */
-            if(option2flag & PSYCHOPHYSICS_BIT || freezestimulus)
-            {
-                frametimes[framesdone] = timediff(&frametime,&zeroframetime);
-                framecounts[framesdone] = rc;
-                if(rc >= n && n < MAXFRAMES) 
-                    finished = 2;
-// if FIXNUM PAINTED FRAMES, force paintg of all frames. ANd ignore button presses.
-// Button presses during the stimulus will be ignored. If n >= MAXFRAMES will
-// run forevever, so can't ignore buttonpresses then
-                if((e.mouseButton = processUIEvents()) > 0){
-                    if (e.mouseButton == 103){ //cntrl-F
-                        if (freezestimulus == 2)
-                        {
-                            freezestimulus = 1;
-                            increment_stimulus(expt.st, &expt.st->pos);
-                            freezestimulus = 2;
-                        }
-                        freezestimulus = 2;
-                    }
-                    if (e.mouseButton == 105){ //cntrl-G
-                        freezestimulus = 0;
-                    }
-                    if (!optionflags[FIXNUM_PAINTED_FRAMES] || n >= MAXFRAMES){
-                    e.eventType = ButtonPress;
-                        e.modifierKey = 0;
-                    HandleMouse(e);
-                    finished = 2;
-                    }
-                }
-
-                //Ali	    if(XCheckTypedWindowEvent(D, 0 /* AliGLX myXWindow()*/, KeyPress, &e)){	    }
-                //	    if(XCheckTypedWindowEvent(D, 0 /* AliGLX myXWindow()*/, ButtonPress, &e))
-                //	      {
-                //		if(e.mouseButton == Button1 ||		   e.mouseButton == Button2 ||		   e.mouseButton == Button3){		realframes = getframecount();		finished=RESPONDED;}
-                //	      }
-            }
-            while((c = ReadSerial(0)) != MYEOF)
-                if((i = GotChar(c)) == BAD_FIXATION || i == WURTZ_STOPPED)
-                {
-                    retval = BAD_TRIAL;
-                    fixstate = BADFIX_STATE;
-                    finished = 2;
-                }
-        }/* end while !finished */
-        optionflags[CHECK_FRAMECOUNTS] = 0;
-    } /* end if PSYCHOPHYSCIS */
-    else{
-        
         gettimeofday(&pretime,NULL);
         rc = 1; /* one frame will be done by the first time this is checked */
         lastframecount = 0;
@@ -12126,6 +12515,12 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
             
             if(freezestimulus < 2)
                 increment_stimulus(expt.st, &expt.st->pos);
+            if(finished == 0 && rc >= (n-1) && n < MAXFRAMES)
+            {
+                if(stimno+1 >= expt.nstim[6]){
+                    fprintf(seroutfile,"#laststim\n");
+                }
+            }
             
             
             if(rc/mon.framerate > expt.vals[FIXATION_OVERLAP])
@@ -12144,9 +12539,9 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
             {
                 mode |= LAST_FRAME_BIT;
                 finished = 1;
+                fprintf(seroutfile,"#nf%d %d,%d\n",rc,n,framesdone);
             }
-            /* running human psychophysics, stimuili are terminated buy a button press */
-            if(option2flag & PSYCHOPHYSICS_BIT || freezestimulus)
+            if(freezestimulus) // need to check for events
             {
                 frametimes[framesdone] = timediff(&frametime,&zeroframetime);
                 framecounts[framesdone] = rc;
@@ -12195,16 +12590,16 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
             //	else if (j != 0 || i != 0)
             //	  c = i;
         }/* end while !finished */
-    }/* end Not PSCYHOPHISCS */
-    if((optionflag & STIM_IN_WURTZ_BIT)){
-        wipescreen(clearcolor);
-        draw_fix(fixpos[0],fixpos[1], expt.st->fix.size, expt.st->fix.fixcolor);
-        change_frame();
-        wipescreen(clearcolor); //wipe for next swap too
-    }
+        if((optionflag & STIM_IN_WURTZ_BIT)){
+            wipescreen(clearcolor);
+            draw_fix(fixpos[0],fixpos[1], expt.st->fix.size, expt.st->fix.fixcolor);
+            change_frame();
+            wipescreen(clearcolor); //wipe for next swap too
+        }
 #ifdef NIDAQ
     DIOWriteBit(0,0); //clear stimchange pin
 #endif
+    httpcalltime = timediff(&endstimtime,&lastcalltime);
     inexptstim = 0;
     unlink("/tmp/binocstimisup");
     system("touch /tmp/binocstimisdone");
@@ -12544,7 +12939,7 @@ int CheckStimDuration(int retval, int warning)
     rpt = (expt.st->framerepeat < 1) ? 1 : expt.st->framerepeat;
     n = framesdone;
     
-    sprintf(buf,"#du%.3f(%d:%.3f)\n",frametimes[framesdone],framesdone,(framesdone-0.5)/expt.mon->framerate);
+    sprintf(buf,"#du%.3f(%d:%.3f) http%.3f\n",frametimes[framesdone],framesdone,(framesdone-0.5)/expt.mon->framerate,httpcalltime);
     SerialString(buf,0);
     if (optionflags[FIXNUM_PAINTED_FRAMES]){
         if(frametimes[framesdone]  > (1+framesdone)/expt.mon->framerate && retval != BADFIX_STATE){

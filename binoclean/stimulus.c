@@ -619,7 +619,11 @@ void draw_fix(vcoord px, vcoord py, vcoord fixw, float color)
         if((linw = deg2pix(expt.vals[FIX_LINW])) < 1.0)
             linw = 2.0;
         glLineWidth(linw);
+        px = deg2pix(expt.vals[FIXPT_DISPARITY]);
+
         setmask(LEFTMODE);
+        glTranslatef(-px/2,-py/2,0);
+
         glBegin(GL_LINES);
         x[1] = fixw;
         x[0] = 0;
@@ -628,6 +632,7 @@ void draw_fix(vcoord px, vcoord py, vcoord fixw, float color)
         myvx(x);
         glEnd();
         setmask(RIGHTMODE);
+        glTranslatef(px,py,0);
         glBegin(GL_LINES);
         x[1] = -fixw;
         x[0] = 0;
@@ -635,6 +640,7 @@ void draw_fix(vcoord px, vcoord py, vcoord fixw, float color)
         x[1] = -2 * fixw;
         myvx(x);
         glEnd();
+        glTranslatef(-px/2,-py/2,0);
     }
     
     if(optionflags[VVNONIUS_LINES]){

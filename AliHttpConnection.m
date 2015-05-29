@@ -23,6 +23,7 @@ extern FILE *seroutfile;
 int AddingToInputPipe = 0,AddingToOutputPipe = 0;;
 static int notifyclash = 0;
 extern struct timeval firstframetime,zeroframetime,exptstimtime;
+struct timeval lastcalltime; //keep track of when this is called, to check that its not interupting expts
 int checkinexpt = 0;
 // Log levels : off, error, warn, info, verbose
 // Other flags: trace
@@ -69,6 +70,7 @@ static const int httpLogLevel = HTTP_LOG_LEVEL_WARN; // | HTTP_LOG_FLAG_TRACE;
                     if (expt.verbose[4] > 0){
                         NSLog(@"Input Pipe: %@", command);
                     }
+                    gettimeofday(&lastcalltime,NULL);
                     if (inexptstim && checkinexpt){
                         gettimeofday(&now,NULL);
                         zt = timediff(&firstframetime,&exptstimtime);

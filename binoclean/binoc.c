@@ -369,6 +369,7 @@ void TriggerExpt()
 
 
 #ifdef NIDAQ
+    SerialSignal(TRIGGEREXPT);
     // trigger data collection for Spike2
     DIOWriteBit(0,1);
     DIOWriteBit(2,1);
@@ -1443,7 +1444,7 @@ void MakeConnection(int flag)
 	}
 	if(mode & SERIAL_OK)
 	{
-        sprintf(buf,"NewConnection%d\n",flag);
+        sprintf(buf,"NewConnection%d %s\n",flag,binocDateString(1));
         SerialString(buf,0);
         SendAll();
         SendPenInfo();

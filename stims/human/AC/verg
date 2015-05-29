@@ -1,0 +1,11 @@
+#Correlation +-1 200ms, with change in fixpt dispaicey
+nf=20
+e2=ce
+i2=2
+m2=0
+n2=2
+op=-bp
+e3=zf
+m3=0
+i3=0.2
+n3=2
