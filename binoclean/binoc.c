@@ -6572,7 +6572,7 @@ int next_frame(Stimulus *st)
     int nf,nerr;
     int crasher = 0;
     static int stimerr = 0;
-    int fix;
+    int paintall = 0;
     
     gettimeofday(&now,NULL);
     t2 = timediff(&now,&lastcalltime);
@@ -7212,11 +7212,12 @@ int next_frame(Stimulus *st)
                 CheckRect(TheStim);
                 mode &= (~NEWDRAG);
             }
-//in free running, never want FIXNUM frames, and its too easy for it to mess up
-            fix = optionflags[FIXNUM_PAINTED_FRAMES];
-            fix = 0;
-            if(fix && framesdone >= TheStim->nframes ||
-               (!fix && (realframecount = getframecount()) >= TheStim->nframes))
+//on some machines, always gets behind painting in this mode. And really do not need to paint all frames
+//when free running, just use elapsed time here.
+// if need to override this ? use another flag
+            paintall = 0;
+            if(paintall && framesdone >= TheStim->nframes ||
+               (paintall == 0 && (realframecount = getframecount()) >= TheStim->nframes))
             {
                 framesdone--; //frametimes[framesdone] is last frame
                 memcpy(&endstimtime, &now, sizeof(struct timeval));
