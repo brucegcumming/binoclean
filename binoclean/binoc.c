@@ -184,7 +184,7 @@ struct timeval endtrialtime, starttimeout, goodfixtime,fixontime,cjtime,starttri
 struct timeval lastconnecttime;
 struct timeval zeroframetime, prevframetime, frametime, cleartime;
 struct timeval lastcleartime,lastsertime;
-struct timeval progstarttime,calctime,paintframetime,paintfinishtime;
+struct timeval progstarttime,calctime,paintframetime,paintfinishtime,lastpainttime;
 struct timeval endexptime, changeframetime,lastcalltime,lastmonkeycheck,nftime,endcalltime;
 struct timeval testtime;
 int wurtzctr = 0, wurtzbufferlen = 512,lasteyecheck;
@@ -427,16 +427,21 @@ void ShowTime()
 
 int getframecount()
 {
-    float tval;
+    float tval,stimt;
     int frames;
     static int gotzerr = 0;
     char buf[BUFSIZ];
     
     gettimeofday(&frametime, NULL);
     tval = timediff(&frametime, &zeroframetime);
+    stimt = tval;
     frames = (int)((tval * mon.framerate) +0.1);
     if(frames == realframecount && frames != 0)
         tval = timediff(&frametime, &prevframetime);
+// can be called severl times in a frame, so frametime not a good indicator
+    if (tval < 0.005){
+//        fprintf(stderr,"Short Frame gap %.6f at %.3f\n", tval ,stimt);
+    }
     if(frames > 0){
         gotzerr = 0;
         memcpy(&prevframetime, &frametime, sizeof(struct timeval));
@@ -2073,7 +2078,7 @@ int HandleMouse(WindowEvent e)
             eventstate = 0;
             break;
         case ScrollNotify:
-            if (optionflag & PSYCHOPHYSICS_BIT){
+            if (option2flag & PSYCHOPHYSICS_BIT){
             if(e.mouseButton == Button2){
                 eventstate |= MBUTTON;
                 ButtonDown(start, endpt, e);
@@ -3924,8 +3929,10 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
 
         case DISP_P:
             expt.vals[DISP_P] = st->phasedisp[0] = deg_rad(val)/2;
-            if(st->type == STIM_RDS)
+            if(st->type == STIM_RDS){
+                st->phasedisp[0] = deg2pix(val/2);
                 st->phaseangle = 0;
+            }
             else if(st->type == STIM_RLS){
                 st->phasedisp[0] = deg2pix(val/2);
                 if (expt.stimmode == CONSTRAINED_SIZE){

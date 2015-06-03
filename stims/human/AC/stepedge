@@ -15,4 +15,4 @@ ce=1
 mixac=0 #correlated
 mo=fore
 et=Pd
-
+fd=0.05

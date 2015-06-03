@@ -116,3 +116,4 @@ replace mode & ANIMATE_BIT with optionflag & GO_BIT so that GUI is really in con
 Changing N in expt 1 messes manual vals in expt2 because its all coded in expval.  Make separate expbval array, at least for encoding
 sequence for FastSeq in PrepareExptStim seesm to be determined by the stimulus seed. Dangerous.....
 make dp behave same as RLS for RDS
+Should frametimes use changeframetime for expt stimuli like psych?

@@ -3202,7 +3202,9 @@ function ReBuildQuickMenu(DATA)
         order(j) = id(1);
     end
     [a,b] = sort(order);
-    subs = subs(b(2:end)); %1st element is blank
+    if isempty(subs(b(1)))
+        subs = subs(b(2:end)); %1st element is blank
+    end
     for j = 1:length(subs)
         sm(j) = uimenu(hm,'Label',subs{j});
     end
@@ -3275,9 +3277,13 @@ function MenuHit(a,b, arg)
         RestartBinoc(DATA);
     elseif strcmp(arg,'copylogs')
         ok = CheckDayEnd(DATA);
-        CopyLog(DATA, 'online');
-        CopyLog(DATA, 'penlog');
-        CopyLog(DATA, 'bnc');
+        if DATA.optionflags.py
+            CopyLog(DATA, 'psych');
+        else
+            CopyLog(DATA, 'online');
+            CopyLog(DATA, 'penlog');
+            CopyLog(DATA, 'bnc');
+        end
     elseif strcmp(arg,'checkdur')
         CheckTrialDurations(DATA,'hist');
     elseif strcmp(arg,'choosefont')
@@ -3353,6 +3359,21 @@ function CopyLog(DATA,type)
                     end
                 end
             end
+        end
+    elseif strcmp(type,'psych')
+        src = DATA.binoc{1}.psychfile;
+        [a,b] = fileparts(src);
+        tgt = [DATA.binoc{1}.netpref '/' DATA.binoc{1}.monkey];
+        if exist(tgt)
+            tgt = [tgt '/' b];
+            BackupFile(tgt,'print');
+            fprintf('Copying %s to %s\n',src,tgt);
+                try
+                    copyfile(src,tgt);
+                end
+        else
+            msg = sprintf('No Directory %s',tgt);
+            acknowledge(msg);
         end
     elseif strcmp(type,'online')
         logfile = ['/local/' DATA.binoc{1}.monkey '/' fname];
@@ -3702,7 +3723,7 @@ function CheckTrialDurations(DATA, varargin)
         nf = [T.nf];
         durs = [T.dur];
         id = find(Nf == nf+1); %completed.
-        err = 1+ durs(id).*DATA.binoc{1}.fz - Nf(id);
+        err = 1+ durs(id).*DATA.binoc{1}.fz - Nf(id); %number of extra video frames
         if strcmp(plottype,'hist')
             GetFigure(DATA.tag.plotwin);
             hist(err,[-10:0.5:10]);
@@ -3711,6 +3732,11 @@ function CheckTrialDurations(DATA, varargin)
         end
         if sum(err > 1) > length(err)/10 %10% trials are bad
             vergwarning(sprintf('%d/%d trials were too long',sum(err > 1),length(err)));
+            eid = find(err > 1)
+            for j = 1:length(eid)
+                iT = T(id(eid(j)));
+                fprintf('%s id %d:nf%d %.3f\n',datestr(iT.Start),iT.id,iT.nf,iT.dur);
+            end
         end
         fprintf('%d/%d trials were too long\n',sum(err > 1),length(err));
     end

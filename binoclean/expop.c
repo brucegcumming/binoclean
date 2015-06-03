@@ -305,7 +305,7 @@ extern Log thelog;
 extern struct BWSTRUCT thebwstruct;
 extern FILE *testfd;
 extern struct timeval signaltime,now,endstimtime,firstframetime,zeroframetime,frametime,alarmstart;
-extern struct timeval calctime,paintframetime,changeframetime,paintfinishtime,sessiontime,progstarttime;
+extern struct timeval calctime,paintframetime,changeframetime,paintfinishtime,sessiontime,progstarttime,lastpainttime;
 struct timeval exptstimtime;
 extern vcoord conjpos[],fixpos[];
 static time_t lastcmdread;
@@ -2842,7 +2842,8 @@ int OpenNetworkFile(Expt expt)
         if (seroutfile != NULL)
             fprintf(seroutfile,"%s\n",buf);
         lastresult = -1;
-        acknowledge(buf,0);
+        if (!(option2flag & PSYCHOPHYSICS_BIT))
+            acknowledge(buf,0);
     }
 }
 
@@ -11733,11 +11734,11 @@ int RunPsychStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int wi
                 rc = getframecount(); /* real video frames */
                 while(rc < lastframecount + expt.st->framerepeat && rc > 0)
                     rc = getframecount();
-                frametimes[framesdone] = timediff(&frametime,&zeroframetime);
+                frametimes[framesdone] = timediff(&changeframetime,&zeroframetime);
             }
             else{
                 rc = framesdone;
-                frametimes[framesdone] = timediff(&frametime,&zeroframetime);
+                frametimes[framesdone] = timediff(&changeframetime,&zeroframetime);
             }
             
             if (freezestimulus == 0){
@@ -11803,7 +11804,7 @@ int RunPsychStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int wi
             /* running human psychophysics, stimuili are terminated buy a button press
              * But only buttons 1-3. Button 4 and 5 (mac) are the scroll button,which is often hit just after the middle button
              */
-                frametimes[framesdone] = timediff(&frametime,&zeroframetime);
+                frametimes[framesdone] = timediff(&changeframetime,&zeroframetime);
                 framecounts[framesdone] = rc;
                 if(rc >= n && n < MAXFRAMES)
                     finished = 2;
@@ -11840,7 +11841,9 @@ int RunPsychStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int wi
         }/* end while !finished */
         optionflags[CHECK_FRAMECOUNTS] = 0;
         wipescreen(clearcolor);
-        if (rc/mon.framerate < expt.vals[FIXATION_OVERLAP]){
+// if overlap <= trial duration, means turn off fixation point at trial end, even if early end caused by
+    // button press
+        if (rc/mon.framerate < expt.vals[FIXATION_OVERLAP] && expt.vals[FIXATION_OVERLAP] >= n * mon.framerate){
             draw_fix(fixpos[0],fixpos[1], expt.st->fix.size, expt.st->fix.fixcolor);
         }
         change_frame();
@@ -11888,7 +11891,7 @@ int RunPsychStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int wi
     }
     change_frame();
     gettimeofday(&lastframetime, NULL);
-    if(framecount < MAXFRAMES-1)
+    if(framecount < MAXFRAMES-1) // this is time that painting of last frame started
         frametimes[framecount+1] = timediff(&paintframetime,&zeroframetime);
     
     if((option2flag & PSYCHOPHYSICS_BIT)&& seroutfile){
@@ -12387,6 +12390,15 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
             
             change_frame();
             frametimes[framesdone] = timediff(&paintframetime,&zeroframetime);
+            if (framesdone > 0 && frametimes[framesdone] - frametimes[framesdone-1] > 2./mon.framerate){
+                tval = timediff(&calctime,&lastpainttime); // prev frame to start of Paint frame
+                fprintf(seroutfile,"#Skip%d %.4f ",framesdone,tval);
+                tval = timediff(&paintframetime,&calctime);
+                fprintf(seroutfile,"%.4f ",tval);
+                tval = timediff(&paintfinishtime,&paintframetime);
+                fprintf(seroutfile,"%.4f\n",tval);
+            }
+            memcpy(&lastpainttime,&paintframetime,sizeof(struct timeval));
             if (optionflags[FIXNUM_PAINTED_FRAMES]){
                 framecounts[framesdone] = getframecount();
                 tval = timediff(&changeframetime, &zeroframetime);
@@ -12471,16 +12483,6 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
             if(framesdone ==2)
                 val = timediff(&zeroframetime,&pretime);
             
-            if((framesdone = ++framecount) > MAXFRAMES){
-                framesdone = MAXFRAMES;
-                if((e.mouseButton = processUIEvents()) > 0){
-                        e.eventType = ButtonPress;
-                        e.modifierKey = 0;
-                        finished = 2;
-                }
-            }
-            
-            expt.framesdone = framesdone;
             
             /*
              * if testflags[SAVE_IMAGES] == 1, save images of each frame to disk
@@ -12508,6 +12510,19 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
                     rc = framesdone;
                 }
             }
+
+//increment framesdone after setting rc = framesdone.
+            if((framesdone = ++framecount) > MAXFRAMES){
+                framesdone = MAXFRAMES;
+                if((e.mouseButton = processUIEvents()) > 0){
+                    e.eventType = ButtonPress;
+                    e.modifierKey = 0;
+                    finished = 2;
+                }
+            }
+            
+            expt.framesdone = framesdone;
+
             /*
              * Increment the stimulus _AFTER_ saving any images, so that corrrect seed
              * number etc is recorded with the image
@@ -15827,8 +15842,11 @@ int InterpretLine(char *line, Expt *ex, int frompc)
                 if (todaylog != NULL){
                     fprintf(todaylog,"R7 bt=%.2f time=%s %s\n",timediff(&now,&sessiontime),binocTimeString(),line);
                 }
-                    if (psychlog != NULL){
+                if (psychlog != NULL){
                     fprintf(psychlog,"R7 bt=%.2f time=%s %s\n",timediff(&now,&sessiontime),binocTimeString(),line);
+                }
+                if (psychfile != NULL){
+                    fprintf(psychfile,"R7 bt=%.2f time=%s %s\n",timediff(&now,&sessiontime),binocTimeString(),line);
                 }
             }
             break;

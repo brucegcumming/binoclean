@@ -596,9 +596,13 @@ int calc_rds(Stimulus *st, Substim *sst)
    * pos->phase is needed in this calulation even though it is not used
    * to drift the dots any more. It is used to apply "phase disparity"
    * (a wrap around rather than displacement
+   * Jun 2015 this changed sp that phase is in pixels, not connected to SF
+   *sign is same as dx ir or=90
+   * kludge because phase needs to be negative because of wraparound
+   * means changing dp with sl=1 puts all motion in one eyewhell
    */
   phase = -(pos->radius[1]*2 - sst->dotsiz[1]) * pos->phase/( 2 * M_PI);
-  phase = -(deg2pix(1/st->f) * pos->phase/(2 * M_PI)+pos->locn[0]);
+  phase = -pos->phase+pos->locn[0];
     
     
     
