@@ -554,7 +554,7 @@ for j = 1:length(strs{1})
                     end
                 else
                     fprintf('Calling %s from %s\n',value,src);
-                    DATA.matexpres = eval(value);
+                    DATA.matexpres = binoceval(DATA, value);
                     DATA.matlabwasrun = 1;
                 end
                 SendCode(DATA, 'exp');
@@ -1575,6 +1575,18 @@ function str =  ShowFlagString(DATA)
             str = [str '+' f];
         end
     end
+    
+    
+function res = binoceval(DATA, str)
+    id = strfind(str,'$');
+    while ~isempty(id)
+        sid = regexp(str(id(1)+1:end),'[\s\,\)]')+id(1);
+        f = str(id(1)+1:sid(1)-1);
+        str = [str(1:id(1)-1) num2str(DATA.binoc{1}.(f)) str(sid(1):end)]
+        id = strfind(str,'$');
+    end
+    res = eval(str);
+    
     
 function DATA = CheckToggleCodes(DATA)    
     f = fields(DATA.showflags);
@@ -3202,7 +3214,7 @@ function ReBuildQuickMenu(DATA)
         order(j) = id(1);
     end
     [a,b] = sort(order);
-    if isempty(subs(b(1)))
+    if isempty(subs{b(1)})
         subs = subs(b(2:end)); %1st element is blank
     end
     for j = 1:length(subs)
@@ -4930,7 +4942,7 @@ function DATA = RunButton(a,b, type)
         end
                 if DATA.optionflags.exm && ~isempty(DATA.matexpt)
                     fprintf('Running %s\n',DATA.matexpt);
-                    DATA.matexpres = eval(DATA.matexpt);
+                    DATA.matexpres = binoceval(DATA, DATA.matexpt);
                     if isfield(DATA.matexpres,'abort') && DATA.matexpres.abort > 0 %matlab script finds a problem
                         vergwarning(sprintf('%s Says abort',DATA.matexpt));
                         PauseRead(DATA,0);
@@ -6028,7 +6040,7 @@ for j = line:length(str)
         if DATA.optionflags.exm && ~isempty(DATA.matexpt) && DATA.matlabwasrun == 0
             fprintf('Running %s\n',DATA.matexpt);
             DATA.matexpres = [];
-            DATA.matexpres = eval(DATA.matexpt);            
+            DATA.matexpres = binoceval(DATA, DATA.matexpt);            
             DATA.matlabwasrun = 1;
             if isfield(DATA.matexpres,'abort') && DATA.matexpres.abort > 0
                 vergwarning(sprintf('%s Says abort',DATA.matexpt));

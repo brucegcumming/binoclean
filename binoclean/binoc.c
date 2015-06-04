@@ -6178,8 +6178,10 @@ void increment_stimulus(Stimulus *st, Locator *pos)
         }
         if(pursuedir > 0)
             pursued += fabsf(expt.vals[PURSUIT_INCREMENT]);
-        TheStim->pos.xy[0] += (deg2pix(dx));
-        TheStim->pos.xy[1] += (deg2pix(dy));
+        if(altstimmode != MOVE_FP_ONLY){
+            TheStim->pos.xy[0] += (deg2pix(dx));
+            TheStim->pos.xy[1] += (deg2pix(dy));
+        }
         
     }
     if (expt.vals[PURSUIT_AMPLITUDE] > 0.1){
@@ -7546,8 +7548,10 @@ int next_frame(Stimulus *st)
                 dx = (expt.vals[PURSUIT_INCREMENT]) * (expt.st->nframes-1) * sin(expt.vals[FP_MOVE_DIR]);
                 dy = cos(expt.vals[FP_MOVE_DIR]) * (expt.vals[PURSUIT_INCREMENT]) * (expt.st->nframes-1);
                 
-                
-                if(pursued > 0.1 || stimno & 1){
+                if (optionflags[MANUAL_EXPT]){ // don't adjust stim pos
+                    pursuedir = 1;
+                }
+                else if(pursued > 0.1 || stimno & 1){
                     pursuedir = -1;
                     if(altstimmode != MOVE_STIM_ONLY){
                         expt.vals[FIXPOS_X] = expt.fixpos[0] + dx;

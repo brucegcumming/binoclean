@@ -47,6 +47,7 @@ As (Kludge) Implements some special cases. Should be 0 unless you are sure you n
 #As20 No delay for backround, regardless of foreground
 #As21 Move the stimulus only, not the background
 #As22 Make Timeout screens anticorrelated 
+#As23 When using smooth pursuit, do NOT move stimulus with fixation point.
 #As9 Seed Changes with Contrast
 b2 number of correct trials before reward increases to r3
 bO Displace Background orthog to RF. N.B. needs op+bf
