@@ -1,0 +1,21 @@
+mo=fore
+nf=400
+rw=0.2
+fh=0.5
+fw=1.3
+st=rls
+op=-aa+bp+bf-fS
+wi=30
+hi=30
+or=ro
+xo=Rx
+yo=Ry
+dd=12
+seof=0
+exp=/local/expts/smoothPursuit
+op=+exm+sq+srls
+!mat=Smooth_Pursuit_RLS('ori',$Ro ,'nf',300,'fx',$fx ,'fy',$fy)
+expname=smoothPursuit
+As=23
+over
+op=-exm
