@@ -774,11 +774,12 @@ for j = 1:length(strs{1})
                 if DATA.restartbinoc && wasexpt  %if inexpt ==0, may be anew restart
                     DATA = RestartBinoc(DATA);
                 end
-                myprintf(DATA.frombinocfid,'-show','Running Next of %d expts\n',DATA.rptexpts);
+                myprintf(DATA.frombinocfid,'-show','%s Running Next of %d expts\n',datestr(now),DATA.rptexpts);
                 outprintf(DATA,'//Nrpt is %d\n',DATA.rptexpts);
                 DATA.rptexpts = DATA.rptexpts-1;
                 it = findobj(DATA.toplevel,'Tag','RptExpts');
                 set(it,'string',num2str(DATA.rptexpts));
+                DATA = GetState(DATA,'ExptRpt');
                 DATA = uipause(now, DATA.binoc{1}.seqpause, 'Fixed Delay for repeats', DATA);
                 PauseRead(DATA, 0);
                 DATA = RunButton(DATA,[],1);
@@ -1585,6 +1586,7 @@ function res = binoceval(DATA, str)
         str = [str(1:id(1)-1) num2str(DATA.binoc{1}.(f)) str(sid(1):end)]
         id = strfind(str,'$');
     end
+    myprintf(DATA.tobinocfid,'%s %s\n',datestr(now),str);
     res = eval(str);
     
     
@@ -2164,6 +2166,7 @@ function DATA = GetState(DATA, caller, verbose)
          if verbose
              fprintf('Read/Interpret took %.3f,%.3f\n',a,mytoc(ts));
          end
+         myprintf(DATA.frombinocfid,'Getstate took %.3f,%.3f\n,',a,mytoc(ts))
     else
         outprintf(DATA,'QueryState\n');
         tic; DATA = ReadFromBinoc(DATA);toc
@@ -4138,6 +4141,11 @@ function DATA = AddComment(DATA, str, src)
          if strncmpi(varargin{j},'-show',5)
              varargin = varargin(j+1:end);
              show = 1;
+         elseif strncmpi(varargin{j},'-date',5)
+             varargin = varargin(j+1:end);
+             if fid > 0
+                 fprintf(fid,'%s ',datestr(now));
+             end
          end
          j = j+1;
      end
