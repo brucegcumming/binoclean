@@ -6162,8 +6162,9 @@ void increment_stimulus(Stimulus *st, Locator *pos)
     /*
      * only play with the fixation point if this call is for the foreground
      * stimulus, otherwise this gets done twice
+     * and only if INSTIMULUS. So if optionflag =-sw, doesn't move duting intertrail
      */
-    if(fabs(expt.vals[PURSUIT_INCREMENT]) > 0.001 && st->prev == NULL){
+    if(fabs(expt.vals[PURSUIT_INCREMENT]) > 0.001 && st->prev == NULL && stimstate == INSTIMULUS){
         dx = sin(expt.vals[FP_MOVE_DIR]) * expt.vals[PURSUIT_INCREMENT] * pursuedir;
         dy = cos(expt.vals[FP_MOVE_DIR]) * expt.vals[PURSUIT_INCREMENT] * pursuedir;
         dx = sin(expt.vals[FP_MOVE_DIR]) * expt.vals[PURSUIT_INCREMENT];

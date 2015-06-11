@@ -2866,6 +2866,28 @@ char *datestr()
     return(buf);
 }
 
+
+char *ReplaceDATE(char *s)
+{
+    time_t tval,nowtime;
+    char *t,*r,buf[BUFSIZ],name[BUFSIZ],sfile[BUFSIZ],path[BUFSIZ],outbuf[BUFSIZ];
+    char *outname = NULL;
+    
+    if((t = strstr(s,"DATE")) != NULL){
+    *t = 0;
+    time(&nowtime);
+    t= ctime(&nowtime);
+    t[10] = 0;
+    t[24] = 0;
+    t[7] = 0;
+    if(t[8]==' ')
+        t[8] = '0';
+        sprintf(buf,"%s%s%s%s",s,&t[8],&t[4],&t[20]);
+        s = myscopy(s,buf);
+    }
+    return(s);
+}
+
 int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
 {
     int chan,pen,i,duplicate = 0,ok = 1;
@@ -2992,10 +3014,10 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
             break;
         case UFF_PREFIX:
             expt.bwptr->prefix = (char *)myscopy(expt.bwptr->prefix,nonewline(s));
-            expname = (char *)myscopy(expname,nonewline(s));
             
             t = getfilename(expt.bwptr->prefix);
             expname = (char *)myscopy(expname,t);
+            expname = ReplaceDATE(expname); //does myscopy as well
             sprintf(buf,"%s/%s",datprefix,expname);
             expt.strings[ONLINEPREFIX] = myscopy(expt.strings[ONLINEPREFIX],buf);
 
@@ -3065,7 +3087,7 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
             SerialSend(RF_DIMENSIONS);
             expt.vals[VWHERE] = 0;
             rcctr = 0;
-            printf("DataFile %s at %s\n", expt.bwptr->prefix,ctime(&tval));
+            printf("DataFile %s at %s\n", expname,ctime(&tval));
             break;
         case USERID:
             i = 0;
@@ -6806,6 +6828,19 @@ void LoadBackgrounds()
 }
 
 
+int SetFastVals()
+{
+    int i;
+    double minval, a;
+    
+    if(expt.mode == DISTRIBUTION_CONC || expt.type2 == DISTRIBUTION_CONC) {
+        minval = expt.vals[DISTRIBUTION_MEAN] - ((expt.vals[DISTRIBUTION_WIDTH]-1) * expt.vals[RC1INC])/2;
+        for (i = 0; i < expt.vals[DISTRIBUTION_WIDTH]; i++){
+            fastvals[i+1] = minval + i * expt.vals[RC1INC];
+        }
+    }
+}
+
 
 int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
 {
@@ -7147,7 +7182,12 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
                 if(expt.mode == DISTRIBUTION_CONC ||
                    (expt.vals[DISTRIBUTION_CONC] > 0 && (expt.mode == PLAID_RATIO || expt.mode == CONTRAST_DIFF))){
                     fastvals[0] = INTERLEAVE_SIGNAL_FRAME;
+                    SetFastVals();
                     // +1 to make room for fastvals[0]
+                    nstim = 1+expt.vals[DISTRIBUTION_WIDTH];
+                }
+                else if(expt.type2 == DISTRIBUTION_CONC){
+                    SetFastVals();
                     nstim = 1+expt.vals[DISTRIBUTION_WIDTH];
                 }
                 else

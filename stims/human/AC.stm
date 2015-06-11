@@ -34,6 +34,8 @@ stimdir=/b/binoclean/stims/human/AC
 netpref=/b/data/psych
 qe="Subject"bgc
 qe="Subject"sid
+qe="Subject"dew
+qe="Subject"dew.latest
 qe="ACexpts"160ms
 qe="ACexpts"verg
 qe="ACexpts"vergac
@@ -47,6 +49,7 @@ qe="ACexpts"stepedge
 qe="ACexpts"sidlatest
 qe="ACexpts"halfmatch_vertoffset
 qe="Adapt"stepadapt
+qe="Training"halfmatch_training
 Rh=0
 Rw=0
 
