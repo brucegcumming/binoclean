@@ -11761,6 +11761,21 @@ int RunPsychStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int wi
             }
             else
                 paint_frame(WHOLESTIM, !(mode & FIXATION_OFF_BIT));
+            
+            
+            if(!optionflags[FIXNUM_PAINTED_FRAMES]){
+                if(framesdone){
+                    rc = getframecount()+2; /* real video frames since FIRST*/
+                    memcpy(&forcetime,&frametime,sizeof(struct timeval));
+                    while(rc < lastframecount + expt.st->framerepeat){
+                        rc = getframecount()+2;
+                        forcewaits[framesdone] = timediff(&frametime,&forcetime);
+                    }
+                }
+            }
+            else
+                 rc = framesdone;
+                
             change_frame();
             
             if(optionflags[WATCH_TIMES]){
@@ -11796,18 +11811,15 @@ int RunPsychStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int wi
             if(testflags[SAVE_IMAGES]){
                 if(testflags[SAVE_IMAGES] == 1){
                     SaveImage(expt.st,1);
-                    rc = framesdone;
                 }
                 else if(testflags[SAVE_IMAGES] == 3 || testflags[SAVE_IMAGES] == 5 || testflags[SAVE_IMAGES] == 6){
                     SaveImage(expt.st,2);
-                    rc = framesdone;
                 }
                 else if(testflags[SAVE_IMAGES] == 2 && stimno+1 >= expt.nstim[5] * expt.nreps){
                     if(finished == 1){ // last frame
                         SaveImage(expt.st,7); //save both types - max info
                         testflags[SAVE_IMAGES] = 0;
                     }
-                    rc = framesdone;
                 }
                 if(testflags[SAVE_IMAGES] == 7 && finished == 1){
                     SaveImage(expt.st,3); //save both types - max info
@@ -11838,6 +11850,7 @@ int RunPsychStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int wi
             }
             else if(rc >= (n-1) && n < MAXFRAMES)
             {
+                fprintf(seroutfile,"#nf%d %d,%d\n",rc,n,framesdone);
                 mode |= LAST_FRAME_BIT;
                 finished = 1;
             }
@@ -12439,6 +12452,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
                 fprintf(seroutfile,"%.4f\n",tval);
             }
             memcpy(&lastpainttime,&paintframetime,sizeof(struct timeval));
+            
             if (optionflags[FIXNUM_PAINTED_FRAMES]){
                 framecounts[framesdone] = getframecount();
                 tval = timediff(&changeframetime, &zeroframetime);
