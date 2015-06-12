@@ -8233,13 +8233,13 @@ void InitExpt()
 
     /*
      * force saving of an image of the last frame in the last stim of the 
-     * experiment, for cross checking.
+     * experiment, for cross checking. Do this in the .stm file now - Jun 2015
      */
-    if(expt.mode == DISTRIBUTION_CONC || expt.type2 == DISTRIBUTION_CONC
-       || (expt.mode == DISP_X && expt.nstim[0] == 1) && expt.st->type != STIM_IMAGE){
-        if(testflags[SAVE_IMAGES] == 0)
-            testflags[SAVE_IMAGES] = 2;
-    }
+//    if(expt.mode == DISTRIBUTION_CONC || expt.type2 == DISTRIBUTION_CONC
+//       || (expt.mode == DISP_X && expt.nstim[0] == 1) && expt.st->type != STIM_IMAGE){
+//        if(testflags[SAVE_IMAGES] == 0)
+//            testflags[SAVE_IMAGES] = 2;
+//    }
     if(psychlog){
         tstart = time(NULL);
         fprintf(psychlog,"\nExpt Start at %s",ctime(&tstart));
