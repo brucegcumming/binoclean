@@ -2866,6 +2866,28 @@ char *datestr()
     return(buf);
 }
 
+
+char *ReplaceDATE(char *s)
+{
+    time_t tval,nowtime;
+    char *t,*r,buf[BUFSIZ],name[BUFSIZ],sfile[BUFSIZ],path[BUFSIZ],outbuf[BUFSIZ];
+    char *outname = NULL;
+    
+    if((t = strstr(s,"DATE")) != NULL){
+    *t = 0;
+    time(&nowtime);
+    t= ctime(&nowtime);
+    t[10] = 0;
+    t[24] = 0;
+    t[7] = 0;
+    if(t[8]==' ')
+        t[8] = '0';
+        sprintf(buf,"%s%s%s%s",s,&t[8],&t[4],&t[20]);
+        s = myscopy(s,buf);
+    }
+    return(s);
+}
+
 int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
 {
     int chan,pen,i,duplicate = 0,ok = 1;
@@ -2992,10 +3014,10 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
             break;
         case UFF_PREFIX:
             expt.bwptr->prefix = (char *)myscopy(expt.bwptr->prefix,nonewline(s));
-            expname = (char *)myscopy(expname,nonewline(s));
             
             t = getfilename(expt.bwptr->prefix);
             expname = (char *)myscopy(expname,t);
+            expname = ReplaceDATE(expname); //does myscopy as well
             sprintf(buf,"%s/%s",datprefix,expname);
             expt.strings[ONLINEPREFIX] = myscopy(expt.strings[ONLINEPREFIX],buf);
 
@@ -3065,7 +3087,7 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
             SerialSend(RF_DIMENSIONS);
             expt.vals[VWHERE] = 0;
             rcctr = 0;
-            printf("DataFile %s at %s\n", expt.bwptr->prefix,ctime(&tval));
+            printf("DataFile %s at %s\n", expname,ctime(&tval));
             break;
         case USERID:
             i = 0;
@@ -6806,6 +6828,19 @@ void LoadBackgrounds()
 }
 
 
+int SetFastVals()
+{
+    int i;
+    double minval, a;
+    
+    if(expt.mode == DISTRIBUTION_CONC || expt.type2 == DISTRIBUTION_CONC) {
+        minval = expt.vals[DISTRIBUTION_MEAN] - ((expt.vals[DISTRIBUTION_WIDTH]-1) * expt.vals[RC1INC])/2;
+        for (i = 0; i < expt.vals[DISTRIBUTION_WIDTH]; i++){
+            fastvals[i+1] = minval + i * expt.vals[RC1INC];
+        }
+    }
+}
+
 
 int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
 {
@@ -7147,7 +7182,12 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
                 if(expt.mode == DISTRIBUTION_CONC ||
                    (expt.vals[DISTRIBUTION_CONC] > 0 && (expt.mode == PLAID_RATIO || expt.mode == CONTRAST_DIFF))){
                     fastvals[0] = INTERLEAVE_SIGNAL_FRAME;
+                    SetFastVals();
                     // +1 to make room for fastvals[0]
+                    nstim = 1+expt.vals[DISTRIBUTION_WIDTH];
+                }
+                else if(expt.type2 == DISTRIBUTION_CONC){
+                    SetFastVals();
                     nstim = 1+expt.vals[DISTRIBUTION_WIDTH];
                 }
                 else
@@ -8193,13 +8233,13 @@ void InitExpt()
 
     /*
      * force saving of an image of the last frame in the last stim of the 
-     * experiment, for cross checking.
+     * experiment, for cross checking. Do this in the .stm file now - Jun 2015
      */
-    if(expt.mode == DISTRIBUTION_CONC || expt.type2 == DISTRIBUTION_CONC
-       || (expt.mode == DISP_X && expt.nstim[0] == 1) && expt.st->type != STIM_IMAGE){
-        if(testflags[SAVE_IMAGES] == 0)
-            testflags[SAVE_IMAGES] = 2;
-    }
+//    if(expt.mode == DISTRIBUTION_CONC || expt.type2 == DISTRIBUTION_CONC
+//       || (expt.mode == DISP_X && expt.nstim[0] == 1) && expt.st->type != STIM_IMAGE){
+//        if(testflags[SAVE_IMAGES] == 0)
+//            testflags[SAVE_IMAGES] = 2;
+//    }
     if(psychlog){
         tstart = time(NULL);
         fprintf(psychlog,"\nExpt Start at %s",ctime(&tstart));
@@ -11721,6 +11761,21 @@ int RunPsychStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int wi
             }
             else
                 paint_frame(WHOLESTIM, !(mode & FIXATION_OFF_BIT));
+            
+            
+            if(!optionflags[FIXNUM_PAINTED_FRAMES]){
+                if(framesdone){
+                    rc = getframecount()+2; /* real video frames since FIRST*/
+                    memcpy(&forcetime,&frametime,sizeof(struct timeval));
+                    while(rc < lastframecount + expt.st->framerepeat){
+                        rc = getframecount()+2;
+                        forcewaits[framesdone] = timediff(&frametime,&forcetime);
+                    }
+                }
+            }
+            else
+                 rc = framesdone;
+                
             change_frame();
             
             if(optionflags[WATCH_TIMES]){
@@ -11756,18 +11811,15 @@ int RunPsychStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int wi
             if(testflags[SAVE_IMAGES]){
                 if(testflags[SAVE_IMAGES] == 1){
                     SaveImage(expt.st,1);
-                    rc = framesdone;
                 }
                 else if(testflags[SAVE_IMAGES] == 3 || testflags[SAVE_IMAGES] == 5 || testflags[SAVE_IMAGES] == 6){
                     SaveImage(expt.st,2);
-                    rc = framesdone;
                 }
                 else if(testflags[SAVE_IMAGES] == 2 && stimno+1 >= expt.nstim[5] * expt.nreps){
                     if(finished == 1){ // last frame
                         SaveImage(expt.st,7); //save both types - max info
                         testflags[SAVE_IMAGES] = 0;
                     }
-                    rc = framesdone;
                 }
                 if(testflags[SAVE_IMAGES] == 7 && finished == 1){
                     SaveImage(expt.st,3); //save both types - max info
@@ -11798,6 +11850,7 @@ int RunPsychStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int wi
             }
             else if(rc >= (n-1) && n < MAXFRAMES)
             {
+                fprintf(seroutfile,"#nf%d %d,%d\n",rc,n,framesdone);
                 mode |= LAST_FRAME_BIT;
                 finished = 1;
             }
@@ -12399,6 +12452,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
                 fprintf(seroutfile,"%.4f\n",tval);
             }
             memcpy(&lastpainttime,&paintframetime,sizeof(struct timeval));
+            
             if (optionflags[FIXNUM_PAINTED_FRAMES]){
                 framecounts[framesdone] = getframecount();
                 tval = timediff(&changeframetime, &zeroframetime);

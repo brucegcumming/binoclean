@@ -1154,10 +1154,15 @@ for j = 1:length(strs{1})
             end
         end
         id = [];
+        xid = [];
         if isfield(DATA.quickexpts,'filename') %check we don't alreayd have this
-        id = find(strcmp(s,{DATA.quickexpts.filename}));
+            id = find(strcmp(s,{DATA.quickexpts.filename}));
+            xid = find(strcmp(b,{DATA.quickexpts.name}));
         end
-        if isempty(id)
+%when binoc echose back the qe list, stimdir instrutions from the stim file are
+% lost. So only add menus if name is unique.  Might mean missing some
+% qexpts when verg gets settig from binoc.
+        if isempty(id) && (~sum(strcmp(src,{'frombinoc' 'fromgetstate'})) || isempty(xid))
             n = length(DATA.quickexpts)+1;
             DATA.quickexpts(n).name = b;
             DATA.quickexpts(n).filename = s;
