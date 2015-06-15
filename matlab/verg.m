@@ -5106,6 +5106,12 @@ if strcmp(pos,'close') %Servo Contoller Closing
 else
     outprintf(DATA,'!seted=%.3f\n',pos./1000);
     DATA.binoc{1}.ed = pos./1000;
+    S = DATA.binoc{1};
+    if isfield(S,'Pn') && S.Pn >0
+        ServoDrive('label', sprintf('Penetration %d at %.1f,%.1f',S.Pn,S.Px,S.Py))
+    else
+        ServoDrive('label', sprintf('Penetration Not Set',S.Pn,S.Px,S.Py))
+    end
 end
 set(DATA.toplevel,'UserData',DATA);
 
