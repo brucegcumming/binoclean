@@ -206,6 +206,7 @@ FILE *psychfilelog = NULL;
 extern float framehold;
 extern int testmode;
 FILE *cmdhistory;
+FILE *binoclog;
 int onlineversion = 10000; // always > any version #
 int psychlogparams[10] = {0};
 
@@ -1737,6 +1738,7 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
         if((cmdhistory = fopen("./binoc.history","a")) != NULL)
             fprintf(cmdhistory,"\nReopened %s",ctime(&tval));
     }
+    binoclog = fopen("/local/binoc.log","a");
     for (i = 0; i < 100; i++)
         manualstimvals[i] = NULL;
     for (i = 0; i < 10; i++)
@@ -2960,6 +2962,7 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
             if (chdir(expt.cwd)!=0)
             {
                 sprintf(buf,"Can't chdir to %s",expt.cwd);
+                fprintf(binoclog,"%s Could not chdir to %s\n",binocDateString(1),expt.cwd);
                 acknowledge(buf);
                 sprintf(expt.cwd,"/local");
                 if (chdir(expt.cwd)) {
@@ -3064,11 +3067,13 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
                 
                 if((seroutfile = fopen(sfile,"a")) != NULL){
                     sprintf(buf,"Serial Out to %s/%s",expt.cwd,sfile);
+                    fprintf(binoclog,"%s Serial Out to %s/%s\n",binocDateString(1),expt.cwd,sfile);
                     statusline(buf);
                     fprintf(stderr,"%s\n",buf);
                     fprintf(seroutfile,"Reopened %s by binoc Version %s",ctime(&tval),VERSION_STRING);
                     sprintf(buf,"Reopened %s",ctime(&tval));
                     SerialString(buf,NULL);
+                    fflush(binoclog);
                 }
                 else
                 {

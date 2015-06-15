@@ -95,6 +95,8 @@ while j <= length(varargin)
         DATA.alltimes = [DATA.alltimes now];
         DATA.position = d;
         set(DATA.toplevel,'UserData',DATA);
+    elseif strncmpi(varargin{j},'label',5)
+        set(DATA.toplevel,'Name',varargin{j+1});
     elseif strncmpi(varargin{j},'close',5)
         CloseServoPort(DATA);
 
@@ -182,7 +184,7 @@ F = DATA.toplevel;
 nr = 7;
 nc=6;
 
-set(F,'menubar','none');
+set(F,'menubar','none','numbertitle','off');
 if exist('/local/Images/icons/DownArrow.mat')
     im = load('/local/Images/icons/DownArrow.mat');
 else

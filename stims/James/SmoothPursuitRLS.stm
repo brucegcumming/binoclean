@@ -1,5 +1,5 @@
 mo=fore
-nf=400
+nf=200
 rw=0.2
 fh=0.5
 fw=1.3
@@ -14,7 +14,7 @@ dd=12
 seof=0
 exp=/local/expts/smoothPursuit
 op=+exm+sq+srls
-!mat=Smooth_Pursuit_RLS('ori',$Ro ,'nf',300,'fx',$fx ,'fy',$fy)
+!mat=Smooth_Pursuit_RLS('ori',$Ro ,'nf',100,'fx',$fx ,'fy',$fy)
 expname=smoothPursuit
 As=23
 over
