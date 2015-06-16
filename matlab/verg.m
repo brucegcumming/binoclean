@@ -2260,6 +2260,7 @@ DATA.Comments = [];
 DATA.state.stimfileerrs = 0;
 DATA.state.stimfile = '';
 DATA.state.query = 0;
+DATA.state.penwarned = 0;
 DATA.currentrw = 0;
 DATA.Header.dailyvars = {'id' 'se' 'ed' 'Rx' 'Ry' 'Ro' 'Rw' 'Rh' 'Xp' 'Yp' 'Pn' 'pe' 'Electrode' 'hemi'...
                         'ui' 'ePr' 'eZ' 'monkey' 'coarsemm' 'adapter' 'Trw' 'Tg' 'nT' 'Tb' 'uf' 'fx' 'fy' 'so' 'oldrf'};
@@ -4949,10 +4950,11 @@ function DATA = RunButton(a,b, type)
         inexpt = 0;
         if type == 1
             if DATA.inexpt == 0 %sarting a new one. Increment counter
-        pauseread = getappdata(DATA.toplevel, 'PauseReading');
-        if pauseread ==0
-            myprintf(DATA.frombinocfid,'PAUSE ERROR pause %d\n',pauseread);
-        end
+                DATA = CheckPenLog(DATA);
+                pauseread = getappdata(DATA.toplevel, 'PauseReading');
+                if pauseread ==0
+                    myprintf(DATA.frombinocfid,'PAUSE ERROR pause %d\n',pauseread);
+                end
                 if DATA.optionflags.exm && ~isempty(DATA.matexpt)
                     fprintf('Running %s\n',DATA.matexpt);
                     DATA.matexpres = binoceval(DATA, DATA.matexpt);
@@ -5104,13 +5106,24 @@ if strcmp(pos,'close') %Servo Contoller Closing
         stop(DATA.servotimer);
     end
 else
+    if ~isempty(varargin) && isfield(varargin{1},'alldepths')
+        X = varargin{1};
+        if isempty(DATA.servodata.alltimes)
+            DATA.servodata.alltimes = X.alltimes;
+            DATA.servodata.alldepths = X.alldepths;
+        else
+            id = find(X.alltimes > max(DATA.servodata.alltimes));
+            DATA.servodata.alldepths = cat(2,DATA.servodata.alldepths,X.alldepths(id));
+            DATA.servodata.alltimes = cat(2,DATA.servodata.alltimes,X.alltimes(id));        
+        end
+    end
     outprintf(DATA,'!seted=%.3f\n',pos./1000);
     DATA.binoc{1}.ed = pos./1000;
     S = DATA.binoc{1};
     if isfield(S,'Pn') && S.Pn >0
-        ServoDrive('label', sprintf('Penetration %d at %.1f,%.1f',S.Pn,S.Px,S.Py))
+        ServoDrive('label', sprintf('Penetration %d at %.1f,%.1f',S.Pn,S.Xp,S.Yp));
     else
-        ServoDrive('label', sprintf('Penetration Not Set',S.Pn,S.Px,S.Py))
+        ServoDrive('label', sprintf('Penetration Not Set',S.Pn,S.Xp,S.Yp));
     end
 end
 set(DATA.toplevel,'UserData',DATA);
@@ -5150,7 +5163,26 @@ function ElectrodePopup(a,b, fcn, varargin)
 
 function CheckExptIsGood(DATA)
         
- 
+function DATA = CheckPenLog(DATA)
+%if saving DATA, and servodrive has been moved, Then check penlog is open    
+    S = DATA.binoc{1};
+    if DATA.optionflags.ts && length(DATA.servodata.alldepths) > 1 %check pen log is open
+        if ~isfield(S,'Pn') || S.Pn <= 0
+            if DATA.state.penwarned < 2
+                vergwarning('Penetration log is not open.');
+            else
+                cprintf('red','WARNING!!       Penetration log not opened\n');
+            end
+            DATA.state.penwarned = DATA.state.penwarned+1;
+            set(DATA.toplevel,'UserData',DATA);
+        else %log is ok. enable warning if this stops being true
+            DATA.state.penwarned = 0;
+        end
+    end
+    
+    
+    
+    
 function PenLogPopup(a,b)
   DATA = GetDataFromFig(a);
   cntrl_box = findobj('Tag',DATA.windownames{9},'type','figure');
@@ -6880,6 +6912,8 @@ function OpenPenLog(a,b, varargin)
     DATA = GetDataFromFig(a);
     F = get(a,'parent');
     btn = get(a,'tag');
+    
+    
     if strcmp(btn,'Penset')
         DATA.binoc{1}.Xp = Text2Val(findobj(F,'Tag','Xp'));
         DATA.binoc{1}.Yp = Text2Val(findobj(F,'Tag','Yp'));
@@ -6899,17 +6933,12 @@ function OpenPenLog(a,b, varargin)
         hold off;
         PlotOnePen(name,'allcomments');
     end
-    %writing to pen log fone in binoc
-    if 0 
-    if DATA.penid > 0
-        fclose(DATA.penid);
+    PenLogPopup(DATA,'show');    
+    S = DATA.binoc{1};
+    if isfield(S,'Pn') && S.Pn > 0
+        str = sprintf('Penetration %d at %.1f,%.1f',S.Pn,S.Xp,S.Yp);
+        set(F,'Name',str);
     end
-    name = sprintf('/local/%s/pen%d.log',DATA.binoc{1}.monkey,DATA.binoc{1}.Pn);
-    DATA.penid = fopen(name,'a');
-    fprintf(DATA.penid,'Penetration %d at %.1f,%.1f Opened %s\n',DATA.binoc{1}.Pn,DATA.binoc{1}.px,DATA.binoc{1}.py,datestr(now));
-    fprintf(DATA.penid,'Electrode %s\n',DATA.binoc{1}.Electrode);
-    end
-    PenLogPopup(DATA,'show');
     set(DATA.toplevel,'UserData',DATA);
     
     

@@ -862,7 +862,7 @@ if ~isempty(it)
 end
 
 if ~isempty(DATA.callback)
-    feval(DATA.callback{:}, newd(end)./DATA.stepscale);
+    feval(DATA.callback{:}, newd(end)./DATA.stepscale, DATA);
 end
 
 

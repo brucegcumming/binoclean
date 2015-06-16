@@ -500,7 +500,12 @@ void calc_rls(Stimulus *st, Substim *sst)
         if(lastpos < sst->ypos[0] && *y > sst->ypos[0]){
             *y=sst->ypos[0];
             nextra = sst->ndots-i;
+            sst->npaint = 1+ (y - sst->ypos);
         }
+        if(*y > 1+h/2){
+            phase = 0;
+        }
+
         if(lastpos == -h/2) // first dot of the image
             sst->firstw = (*y-lastpos)/sst->dotsiz[1];
 //dotsiz is in pixels.  If we are within half a pixel of hte

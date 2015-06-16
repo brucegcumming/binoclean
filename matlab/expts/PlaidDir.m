@@ -3,6 +3,7 @@ function AllS = PlaidDir(varargin)
 
 name = 'PlaidDir';
 basedir = ['/local/expts/' name];
+type = 'unikinetic';
 nr = 0;
 pt = 4;
 nrpt = 0;
@@ -14,28 +15,43 @@ while j <= length(varargin)
     elseif strncmp(varargin{j},'nrpt',4)
         j = j+1;
         nr = varargin{j};
+    elseif strncmp(varargin{j},'type',4)
+        j = j+1;
+        type = varargin{j};
     end
     j = j+1;
 end
 
 
 %size(values,1) must match length stimvars
-values{1} = [0:30:330];
-values{2} = [0 1 1];
-stimvars = {'or' 'c2'};
-
+if strcmp(type,'unikinetic')
+    values{1} = [0:30:330];
+    values{2} = [0 1  1 1];
+    values{3} = [90 90 45 -45];
+    stimvars = {'or' 'c2' 'a2'};
+else
+    values{1} = [0:30:330];
+    values{2} = [0 1];
+    stimvars = {'or' 'c2'};
+end
 ns = 0;
 for j = 1:length(values{1})
-    for k = 1:length(values{2})-1
+    for k = 1:length(values{2})
         ns = ns+1;
         AllS(ns).or = values{1}(j);
         AllS(ns).c2 = values{2}(k);
+        for c = 3:length(values)
+            AllS(ns).(stimvars{c}) = values{c}(k);
+        end
         AllS(ns).sM = 0;
     end
     ns = ns+1;
     AllS(ns).or = values{1}(j);
     AllS(ns).c2 = 1;
     AllS(ns).sM = 33;
+    for c = 3:length(values)
+        AllS(ns).(stimvars{c}) = values{c}(1);
+    end
     exvals(ns,1) = values{1}(j);
     exvals(ns,2) = values{2}(k);
 end
@@ -53,7 +69,7 @@ stimorder = stimorder(randperm(length(stimorder)));
 f = fields(AllS);
 
 fid = fopen([basedir '/stimorder'],'w');
-fprintf(fid,'expvars %s',f{1});
+fprintf(fid,'expvars=%s',f{1});
 for j = 2:length(f)
     fprintf(fid,',%s',f{j});
 end

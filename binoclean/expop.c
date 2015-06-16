@@ -711,6 +711,7 @@ char *GetExptString(Expt *exp, int code);
 /*
  * FindCode(*s)  return the numerical index of the code matching string *s
  * this is the index to serial_strings, not valstrings (whose order can be changed)
+ * for lines with '=' looks for an exact match
  */
 int FindCode(char *s)
 {
@@ -5874,7 +5875,7 @@ int ReadStimOrder(char *file)
             else{ // send all other lines to serial file or InterpretLine
 //Dont send all to Interpretline in case of accidental code.
                 ival = FindCode(s);
-                if(s[0] != '#' && (ival = FindCode(s)) >= 0)
+                if(s[0] != '#' && ival >= 0 && ival < MAXTOTALCODES)
                     InterpretLine(s, &expt, 2);
                 else
                     SerialString(s,0);

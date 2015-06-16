@@ -11208,7 +11208,7 @@ int GotChar(char c)
                     if(c == WURTZ_OK || c == WURTZ_OK_W){
                     }
                     if(expt.flag & TIMES_EXPT2)
-                        fprintf(seroutfile,"R%c %s=%.5f %s=%.5f",
+                        i = fprintf(seroutfile,"R%c %s=%.5f %s=%.5f",
                                 result,serial_strings[expt.mode],expt.currentval[0],
                                 serial_strings[expt.type2],expt.currentval[1]);
                     else if(abs(afc_s.ccvar) > 0.01)
