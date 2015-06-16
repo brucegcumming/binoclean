@@ -1,0 +1,4 @@
+!mat=BuildACadapt('dxvals',[-0.6:0.1:0.6],'preframes',150,'ntrials',24,'nrpts',1,'nf',300,'clear','dir','/local/expts/ACadaptpsych','acdisp',0,'adaptcorr',0,'ilac',0,'uncor',0,'blank',0);
+!expt
+!mat=BuildACadapt('dxvals',[-0.6:0.1:0.6],'disps',[-0.1 0.1],'signals',[0 0.07 0.14 0.21],'preframes',150,'ntrials',3,'nrpts',1,'nf',300,'clear','dir','/local/expts/ACadaptpsych','psych','acdisp',-0.1,'adaptcorr',1,'ilac',0,'uncor',0,'blank',0);
+!expt

@@ -11757,7 +11757,21 @@ int RunPsychStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int wi
         {
             lastframecount = rc;
             if(optionflags[FAST_SEQUENCE]){
+                if(expt.fastctype != EXPTYPE_NONE)
+                    SetStimulus(expt.st,frameseqc[framesdone],expt.fastctype,NOEVENT);
+                if(expt.fastbtype != EXPTYPE_NONE && dframeseq[framesdone])
+                    SetStimulus(expt.st,frameseqb[framesdone],expt.fastbtype,NOEVENT);
+                if(expt.type3 == RANDOM_CONTRAST_EXPT && dframeseq[framesdone])
+                    SetRandomContrast(expt.st);
+                if(optionflags[RANDOM_CORRELATION] && dframeseq[framesdone])
+                    SetRandomCorrelation(expt.st);
                 SetStimulus(expt.st,frameseq[framesdone],expt.fasttype,NOEVENT);
+                if(frameseed[0]){
+                    expt.st->next->left->seed = frameseed[framesdone];
+                    expt.st->next->right->seed = frameseed[framesdone];
+                    expt.st->next->left->baseseed = frameseed[framesdone];
+                    expt.st->next->right->baseseed = frameseed[framesdone];
+                }
             }
             else
                 rcstimid[framesdone] = st->stimid;
