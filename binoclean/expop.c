@@ -119,6 +119,7 @@ extern int DIOval;
 extern int rewardall;
 extern int freeToGo;
 extern int lastbutton;
+extern int shuffle_is_done;
 extern float monkeyhour;
 extern FILE *todaylog;
 
@@ -703,7 +704,7 @@ static int unrepeated[MAXSTIM][RPTLISTLEN] = {0};
 static int unrepeatn[MAXSTIM] = {0};
 
 #define NEXPTS 3
-int *stimorder,*seedorder;
+int *stimorder,*seedorder,*stimordertype;
 static int *isset, nstimorder, nisset,*stim3order,*stim2order;
 
 char *GetExptString(Expt *exp, int code);
@@ -1907,6 +1908,7 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
     nstimorder = MAXSTIM * MAXREPS;
     seedorder = (int *)malloc(sizeof(int) * nstimorder);
     stimorder = (int *)malloc(sizeof(int) * nstimorder);
+    stimordertype = (int *)malloc(sizeof(int) * nstimorder);
     stim2order = (int *)malloc(sizeof(int) * nstimorder);
     stim3order = (int *)malloc(sizeof(int) * nstimorder);
     psychclear(ex->plot,1);
@@ -5863,7 +5865,8 @@ int ReadStimOrder(char *file)
                 while(s){
                     ok = sscanf(s,"%d",&ival);
                     if (ok > 0){ // beware trailing whitespace
-                    stimorder[nt++] = ival;
+                        stimordertype[nt] = 0;
+                        stimorder[nt++] = ival;
                     if (ival > imax)
                         imax = ival;
                     }
@@ -5871,6 +5874,19 @@ int ReadStimOrder(char *file)
                     if((s = strchr(t,' ')) != NULL)
                         s++;
                }
+            }
+            else if (strncmp(s,"group",5) == NULL){
+                nt = 0;
+                s = &s[5];
+                while(s){
+                    ok = sscanf(s,"%d",&ival);
+                    if (ok > 0){ // beware trailing whitespace
+                        stimordertype[nt++] = ival;
+                    }
+                    t = s;
+                    if((s = strchr(t,' ')) != NULL)
+                        s++;
+                }
             }
             else{ // send all other lines to serial file or InterpretLine
 //Dont send all to Interpretline in case of accidental code.
@@ -6005,6 +6021,7 @@ void setstimulusorder(int warnings, int force)
         isset[i] = 0;
         uncompleted[i] = nreps/2;
         completed[i] = 0;
+        stimordertype[i] = 0;
     }
     
     
@@ -8596,10 +8613,15 @@ void acklog(char *s, int flag)
 
 void ShuffleStimulus(int state)
 {
-    int i, temp, trialsleft,itmp;
+    int i, temp, trialsleft,itmp,type,j=0,cx[10];
     int blklen = expt.nstim[3] * expt.blksize;
     char buf[BUFSIZ],*s;
+    int shuffle[MAXSTIM * MAXREPS], order[MAXSTIM * MAXREPS];
     
+    if (shuffle_is_done){
+        fprintf(seroutfile,"#Shuf stimno %d Done(fix %d state %d,%d)\n",stimno, fixstate,state,afc_s.loopstate);
+        return;
+    }
     
     if(seroutfile)
     {
@@ -8613,16 +8635,42 @@ void ShuffleStimulus(int state)
         return;
     if(afc_s.loopstate == CORRECTION_LOOP || !(SACCREQD(afc_s)))
         return;
-    if((trialsleft = expt.nstim[6] - stimno) > blklen && blklen > 0)
+    
+    type = stimordertype[stimno];
+    j = 0;
+    for (i = stimno+1; i < expt.nstim[6]; i++){
+        order[i] = stimordertype[i];
+        if (stimordertype[i] == type)
+            shuffle[j++] = i-stimno;
+        else
+            cx[0] = stimordertype[i];
+    }
+    if((trialsleft = expt.nstim[6] - stimno) > blklen && blklen > 0 && !optionflags[MANUAL_EXPT]){
         i = random() % blklen;
-    else if(trialsleft > 0)
-        i = random() % trialsleft;
+        j = blklen;
+    }
+    else if(trialsleft > 0 && j > 0){
+        temp = random() % j;
+        i = shuffle[temp];
+        if (i ==0)
+            cx[0] = stimorder[stimno];
+    }
     else
         i = 0;
     
+    shuffle_is_done = 1;
+    
     if(seroutfile){
-        fprintf(seroutfile,"#Swapping %d(%d) with %d(%d) stimno %d+%d\n",
-                stimno,stimorder[stimno],stimno+i,stimorder[stimno+i],stimno,i);
+        fprintf(seroutfile,"#Swapping %d(%d,%d) with %d(%d,%d) stimno %d+%d(of%d)\n",
+                stimno,stimorder[stimno],stimordertype[stimno],stimno+i,stimorder[stimno+i],stimordertype[stimno+i],stimno,i,j);
+        if (stimordertype[stimno] != stimordertype[stimno+i]){
+            fflush(seroutfile);
+            cx[0] = stimorder[stimno];
+            cx[1] = stimorder[stimno+i];
+            cx[2] = stimordertype[stimno];
+            cx[3] = stimordertype[stimno+i];
+            fprintf(stderr,"Swap Group Mismatch");
+        }
     }
     if (stimno == 0 && expt.nstim[5] == 0){
         acklog("#Expt Ended - no swap\n",NULL);
@@ -8641,6 +8689,10 @@ void ShuffleStimulus(int state)
         sprintf(buf,"Swapto Stim %d larger that nstim (%d)",itmp,expt.nstim[5]);
         acklog(buf, NULL);
     }
+    temp = stimordertype[stimno];
+    stimordertype[stimno] = stimordertype[stimno+i];
+    stimordertype[stimno+1] = temp;
+    
     stimseq[trialctr].a = stimorder[stimno];
     stimseq[trialctr].b = stimorder[stimno+i];  
     temp = seedorder[stimno];
@@ -12286,6 +12338,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
             acknowledge(buf,0);
     }
     cbuf[0] = 0;
+    shuffle_is_done = 0;
     
     currentstim.stimid = expt.stimid;
     if(expt.vals[ALTERNATE_STIM_MODE] > 0.5){

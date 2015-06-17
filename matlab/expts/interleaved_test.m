@@ -43,9 +43,13 @@ for i=1:length(id)
     file = []; svfile = [];
 end
 
+groups(1:len1) = 1;
+groups(1+len1:len1+len2) = 2;
 %make stimorder file
 t = [0:len1+len2-1];
-order = t(randperm(length(t)));
+neworder = randperm(length(t));
+order = t(neworder);
+groups = groups(neworder);
 %write order file to disk
 
 sname = [SVDIR 'stimorder'];
@@ -53,6 +57,11 @@ fid = fopen(sname,'w');
 for i=1:length(order)
     fprintf(fid,'%i ',order(i));
 end 
+fprintf(fid,'\ngroup ');
+for i=1:length(order)
+    fprintf(fid,'%i ',groups(i));
+end 
+fprintf(fid,'\n');
 fclose(fid);
 
 

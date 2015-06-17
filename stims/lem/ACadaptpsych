@@ -99,6 +99,7 @@ ec=100
 fr=0.5
 mlab1=adaptdx
 mlab2=adaptce
+!mat=interleaved_test('lem')
 
 
 over

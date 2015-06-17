@@ -425,6 +425,7 @@ qe="RF"/local/lem/stims/pposrc
 qe="RF"/local/lem/stims/fflash
 qe="RF"/local/lem/stims/fflashb
 qe="RF"/local/lem/stims/fflashc
+qe="Psych"/local/lem/stims/ACadaptpsych
 qe="Psych"/local/lem/stims/corr_task
 qe="Psych"/local/lem/stims/orivh_task
 qe="Psych"/local/lem/stims/ortask_im

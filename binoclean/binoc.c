@@ -64,6 +64,7 @@ static int rndbonus = 10;
 static int forcestart = 0;
 static float painttimes[MAXFRAMES],calctimes[MAXFRAMES],processtimes[MAXFRAMES],swaptimes[MAXFRAMES],waittimes[MAXFRAMES];
 static int makingserialconnection = 0;
+int shuffle_is_done = 0;
 
 int teststate = 0;
 static int nostore = 0;

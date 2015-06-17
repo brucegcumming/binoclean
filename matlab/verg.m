@@ -1584,6 +1584,7 @@ function str =  ShowFlagString(DATA)
     
     
 function res = binoceval(DATA, str)
+    h = waitbar(0.5,sprintf('Running %s',strrep(str,'_',' ')));
     id = strfind(str,'$');
     while ~isempty(id)
         sid = regexp(str(id(1)+1:end),'[\s\,\)]')+id(1);
@@ -1593,6 +1594,7 @@ function res = binoceval(DATA, str)
     end
     myprintf(DATA.tobinocfid,'%s %s\n',datestr(now),str);
     res = eval(str);
+    delete(h);
     
     
 function DATA = CheckToggleCodes(DATA)    
@@ -3300,6 +3302,7 @@ function MenuHit(a,b, arg)
         ok = CheckDayEnd(DATA);
         if DATA.optionflags.py
             CopyLog(DATA, 'psych');
+            CopyLog(DATA, 'serialpsych');
         else
             CopyLog(DATA, 'online');
             CopyLog(DATA, 'penlog');
@@ -3395,6 +3398,12 @@ function CopyLog(DATA,type)
         else
             msg = sprintf('No Directory %s',tgt);
             acknowledge(msg);
+        end
+    elseif strcmp(type,'serialpsych')
+        logfile = [DATA.cwd '/' DATA.binoc{1}.uf];
+        tgt = ['/b/data/psych/' DATA.binoc{1}.monkey '/serial/' DATA.binoc{1}.uf];
+        try
+            copyfile(logfile,tgt);
         end
     elseif strcmp(type,'online')
         logfile = ['/local/' DATA.binoc{1}.monkey '/' fname];
