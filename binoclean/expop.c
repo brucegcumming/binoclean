@@ -5849,7 +5849,7 @@ int ReadStimOrder(char *file)
 
     FILE *fd;
     char buf[BUFSIZ*10],*s,*t;
-    int ival,nt=0,imax = 0,ok,i,pad = 10;
+    int ival,nt=0,imax = 0,ok,i,pad = 10,nseq = 0;
  
     if (expt.strings[EXPT_PREFIX] != NULL){
         sprintf(buf,"%s/stimorder",expt.strings[EXPT_PREFIX]);
@@ -5867,13 +5867,14 @@ int ReadStimOrder(char *file)
                     if (ok > 0){ // beware trailing whitespace
                         stimordertype[nt] = 0;
                         stimorder[nt++] = ival;
-                    if (ival > imax)
-                        imax = ival;
+                        if (ival > imax)
+                            imax = ival;
                     }
                     t = s;
                     if((s = strchr(t,' ')) != NULL)
                         s++;
                }
+                nseq= nt;
             }
             else if (strncmp(s,"group",5) == NULL){
                 nt = 0;
@@ -5900,6 +5901,7 @@ int ReadStimOrder(char *file)
         fclose(fd);
     }
 // add a few extra at the end in case 4per presents more stimuli than requested
+
     if (nt < 10)
         pad = nt;
     for(i = 0; i < pad; i++){
@@ -5908,7 +5910,7 @@ int ReadStimOrder(char *file)
     expt.nstim[5] = imax;
     sprintf(buf,"Manual Stimorder %d stim over %d trials\n",imax+1,nt);
     statusline(buf);
-    return(nt); // this is # of trials, not index of last trial.  But nt gets increment
+    return(nseq); // this is # of trials, not index of last trial.  But nt gets increment
 }
 
 /*
@@ -6465,17 +6467,10 @@ void setstimulusorder(int warnings, int force)
                 fprintf(stderr,"Stim %d has %d reps (%d)\n",i,stimcount[i],nset);
         }
     }
+
     if(seroutfile){
-        fprintf(seroutfile,"#Seq");
-        for(i = 0; i < ntoset; i++){
-            fprintf(seroutfile," %d",stimorder[i] & (~ORDER_BITS));
-            if (i%100 == 99){ //try to avoid v long lines. 
-                fprintf(seroutfile,"\n#SeqC");
-            }
-        }
-        fprintf(seroutfile,"\n#nset %d = %d * %d \n",ntoset,nstimtotal,nreps);
+        fprintf(seroutfile,"#nset %d = %d * %d \n",ntoset,nstimtotal,nreps);
     }
-    
     /*
      * for human psychophysics staircases are two interleaved staircases
      * one starting from each end. rnd&1 is 0 or 1, so this randomizes which
@@ -7925,6 +7920,18 @@ void InitExpt()
     for(i = 0; i< expt.nstim[5]; i++)
         isset[i] = 0;
     setstimulusorder(1,1);
+    
+    if(seroutfile){
+        fprintf(seroutfile,"#Seq");
+        for(i = 0; i < expt.nstim[6]; i++){
+            fprintf(seroutfile," %d",stimorder[i] & (~ORDER_BITS));
+            if (i%100 == 99){ //try to avoid v long lines.
+                fprintf(seroutfile,"\n#SeqC");
+            }
+        }
+        fprintf(seroutfile,"\n#nset %d = %d * %d \n",expt.nstim[6]);
+    }
+    
     stimdurn = 0;
     stimdursum = 0;
     cancelflag = 0;
@@ -8670,6 +8677,7 @@ void ShuffleStimulus(int state)
             cx[2] = stimordertype[stimno];
             cx[3] = stimordertype[stimno+i];
             fprintf(stderr,"Swap Group Mismatch");
+            fprintf(seroutfile,"#Swap Group Mismatch\n");
         }
     }
     if (stimno == 0 && expt.nstim[5] == 0){

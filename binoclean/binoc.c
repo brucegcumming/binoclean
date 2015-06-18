@@ -11166,7 +11166,8 @@ int GotChar(char c)
                     presult = 2;
                     latetrials++;
                     trialdursum = 0;
-                    
+//Don't allow expt to finish on a WURTZ_LATE.  Need to repeat trial
+                    expt.st->mode &= (~EXPT_OVER);
                 }
                 else if(c== WURTZ_OK_W){
                     result = 'W';
