@@ -1,3 +1,4 @@
+monkey=bgc
 st=rds
 dw=0.12
 dd=24
@@ -26,11 +27,6 @@ i2=0.125
 Dm=0
 Dw=11
 Ri=0.05
-op=+FN+fS-sq+exm
+op=+FN+fS-sq
 fd=0.01
-nf=300
-uf=/local/data/psych/dew/ACLogDATE
-exp=/local/dew/expts/ACadaptpsych
-psychfile=/local/data/psych/dew/ACadaptDATE
-!mat=interleaved_test('dew')
-
+psychfile=/local/data/psych/$MNK/DispKernelDATE

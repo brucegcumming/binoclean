@@ -3402,6 +3402,7 @@ function CopyLog(DATA,type)
     elseif strcmp(type,'serialpsych')
         logfile = [DATA.cwd '/' DATA.binoc{1}.uf];
         tgt = ['/b/data/psych/' DATA.binoc{1}.monkey '/serial/' DATA.binoc{1}.uf];
+        fprintf('Copying %s to %s\n',logfile,tgt);
         try
             copyfile(logfile,tgt);
         end

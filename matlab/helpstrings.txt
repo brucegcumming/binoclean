@@ -331,16 +331,16 @@ sl 0 = dynamic RDS/RLS. 1 = drifting RDS/RLS. If >1, then image changes every nt
 SL Size in L eye.  Sets sz (wi and hi) and and Sd #binocular disparity size
 sm During a staircase, minimum increment allowed #psychophysics
 sM Implements some special cases. Should be 0 unless you are sure you need somthing else.
-#sM=2 uses random picks from dispairty distribution when 
-#sM=3-12 Control construction of Nsines Stimuli
-#   3 No normalization of contrast
-#   4 apply random variation to contrast of components
-#   6 50% of components, randomly choses are off. 
-#   7 like 6, but with log spacing of frequencies
-#   8 Each freqency is set on/off with independent p = 0.5
-#   9 like 8, but with log spacing of frequencies.
-#   10 like 9, but done independently for each eye
-#   11 like 10, but log frequency spacing
+#sM=2 uses random picks from dispairty distribution when #sM
+#sM=3-12 Control construction of Nsines Stimuli	    #sM
+#   3 No normalization of contrast #sM
+#   4 apply random variation to contrast of components #sM
+#   6 50% of components, randomly choses are off. #sM
+#   7 like 6, but with log spacing of frequencies #sM
+#   8 Each freqency is set on/off with independent p = 0.5 #sM
+#   9 like 8, but with log spacing of frequencies. #sM
+#   10 like 9, but done independently for each eye #sM
+#   11 like 10, but log frequency spacing #sM
 #   12 like 8, but contrast randomlly assinged to 0,0.5 or 1
 #sM=13-14 are for grating subspace experiemnts, but now use set nph instead
 #   13 use 4 phases
