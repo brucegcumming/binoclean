@@ -7116,7 +7116,7 @@ int next_frame(Stimulus *st)
                 else if(optionflag & GO_BIT)
                 {
                     fprintf(stderr,"Not in Expt %d %d\n",TheStim->mode & EXPTPENDING,states[EXPT_PAUSED]);
-                    fprintf(binoclog,"Not in Expt %d %d\n",TheStim->mode & EXPTPENDING,states[EXPT_PAUSED]);
+//                    fprintf(binoclog,"Not in Expt %d %d\n",TheStim->mode & EXPTPENDING,states[EXPT_PAUSED]);
                     drag = 0;
                     mode |= NEED_REPAINT; /* make sure background done */
                     expt.st->framectr = 0;

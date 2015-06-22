@@ -3059,6 +3059,8 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
                 seroutfile = fopen(expname,"a");
                 tval = time(NULL);
                 fprintf(seroutfile,"Reopened %s",ctime(&tval));
+                fprintf(binoclog,"%s Serial Out to %s/%s\n",binocDateString(1),expt.cwd,sfile);
+                fflush(binoclog);
             }
             else
             {
