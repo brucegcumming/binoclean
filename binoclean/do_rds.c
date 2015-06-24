@@ -585,8 +585,9 @@ int calc_rds(Stimulus *st, Substim *sst)
        * to be matched to a sinewave
        */
       phase = -(pos->radius[1]*2 - sst->dotsiz[1]) * pos->phase/( 2 * M_PI);
-      phase = -(deg2pix(1/st->f) * pos->phase/(2 * M_PI)+pos->locn[0]);
-        
+//July 2015 pos->locn[0] taken outside bracket so that it matches direction for Sines again
+//was at odds with this earlier.
+      phase = -(deg2pix(1/st->f) * pos->phase/(2 * M_PI))+pos->locn[0];       
         
     }
   else
@@ -600,9 +601,10 @@ int calc_rds(Stimulus *st, Substim *sst)
    *sign is same as dx ir or=90
    * kludge because phase needs to be negative because of wraparound
    * means changing dp with sl=1 puts all motion in one eyewhell
+July 2015 put pos->locn[0] inside bracket so that direction matches gratings   
    */
   phase = -(pos->radius[1]*2 - sst->dotsiz[1]) * pos->phase/( 2 * M_PI);
-  phase = -pos->phase+pos->locn[0];
+  phase = -(pos->phase+pos->locn[0]);
     
     
     

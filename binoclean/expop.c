@@ -2972,6 +2972,9 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
                     acknowledge("Can't chdir to /local either");
                 }
             }
+            else{
+                fprintf(binoclog,"%s cwd is %s\n",binocDateString(1),expt.cwd);
+            }
             sprintf(buf,"%s/logs/%s%s",expt.cwd,expt.monkey,datestr());
             if (todaylog != NULL)
                 fclose(todaylog);
@@ -3059,7 +3062,7 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
                 seroutfile = fopen(expname,"a");
                 tval = time(NULL);
                 fprintf(seroutfile,"Reopened %s",ctime(&tval));
-                fprintf(binoclog,"%s Serial Out to %s/%s\n",binocDateString(1),expt.cwd,sfile);
+                fprintf(binoclog,"%s Serial Out to %s/%s\n",binocDateString(1),expt.cwd,expname);
                 fflush(binoclog);
             }
             else
@@ -8166,8 +8169,10 @@ void InitExpt()
                 optionflag & STORE_WURTZ_BIT ? "Save": "NoSave",
                 serial_strings[expt.mode],serial_strings[expt.type2]);
     }
+    fprintf(binoclog,"%s Expt Start. CWD %s Log %s\n",binocDateString(1),expt.cwd,expt.bwptr->prefix);
+
     
-    if(expt.st->type == STIM_IMAGE && 
+    if(expt.st->type == STIM_IMAGE &&
        (expt.mode == ORI_BANDWIDTH || expt.type2 == ORI_BANDWIDTH))
         expt.st->immode = IMAGEMODE_ORBW;
     clearcolor = dogamma(expt.vals[SETCLEARCOLOR]);

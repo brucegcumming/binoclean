@@ -313,7 +313,6 @@ void calc_rls(Stimulus *st, Substim *sst)
         phase = 0;
  
     // for RLS, phase is only used for disp phase, so its in pixels already
-    
     phase = -(pos->phase+pos->locn[0]);
     
     if(optionflag & ANTIALIAS_BIT)

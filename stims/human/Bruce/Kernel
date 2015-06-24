@@ -30,3 +30,4 @@ Ri=0.05
 op=+FN+fS-sq
 fd=0.01
 psychfile=/local/data/psych/$MNK/DispKernelDATE
+uf=/local/bgc/DispKernelLogDATE

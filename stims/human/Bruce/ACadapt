@@ -1,3 +1,4 @@
+monkey=bgc
 st=rds
 dw=0.12
 dd=24
@@ -29,8 +30,8 @@ Ri=0.05
 op=+FN+fS-sq+exm
 fd=0.01
 nf=300
-uf=/local/data/psych/dew/ACLogDATE
-exp=/local/dew/expts/ACadaptpsych
-psychfile=/local/data/psych/dew/ACadaptDATE
-!mat=interleaved_test('dew')
+uf=/local/data/psych/bgc/ACLogDATE
+exp=/local/bgc/expts/ACadaptpsych
+psychfile=/local/data/psych/bgc/ACadaptDATE
+!mat=interleaved_test('bgc')
 
