@@ -6983,7 +6983,10 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
             break;
         case VERSION_NUMBER:
             sscanf(VERSION_STRING,"binoclean.%f.%f",&version,&subversion);
-            subversion = subversion/pow(10,ceil(log10f(subversion)));
+            if (subversion > 1)
+                subversion = subversion/pow(10,ceil(log10f(subversion)));
+            else
+                subversion = subversion/10;
             sprintf(cbuf,"%s%s%.4f",serial_strings[VERSION_CODE],temp, version+subversion/10);
             break;
         case VERSION_CODE:

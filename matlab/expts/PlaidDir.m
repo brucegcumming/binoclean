@@ -47,6 +47,7 @@ ns = 0;
 for j = 1:length(values{1})
     for k = 1:length(values{2})
         ns = ns+1;
+        AllS(ns).sM = 0;
         AllS(ns).or = values{1}(j);
         AllS(ns).c2 = values{2}(k);
         for c = 3:length(values)
@@ -56,7 +57,6 @@ for j = 1:length(values{1})
                 AllS(ns).(stimvars{c}) = values{c}(k);
             end
         end
-        AllS(ns).sM = 0;
     end
     if ~strcmp(type,'fullunikinetic')
         ns = ns+1;
