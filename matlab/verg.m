@@ -738,8 +738,8 @@ for j = 1:length(strs{1})
             if exptover
                 CheckTrialDurations(DATA,'EXPTOVER');
                 if DATA.optionflags.py && DATA.optionflags.da
-                    DATA = CopyLog('psych');
-                    DATA = CopyLog('serialpsych');
+                    CopyLog(DATA,'psych');
+                    CopyLog(DATA,'serialpsych');
                 end
             end
 

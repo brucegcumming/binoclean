@@ -1,0 +1,14 @@
+uf=Cylmovie
+yo=0
+sz=8
+op=+pe
+exp=/local/expts/Cylinder
+fl=-nc+pc
+jv=15
+po=0
+pr=0
+videocapture=768 416 1024 768
+!savemovie=/local/Images/Movies
+pause
+!savemovie+
+!onetrial
