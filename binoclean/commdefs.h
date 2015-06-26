@@ -854,7 +854,7 @@ ToggleCode togglestrings[] = {
     
     {"Special Options","lbl4",0,0, 0},
     {"Spike Clear when Move",    "sp",  0, STEP_CLEAR_SPIKES, 3},
-   {"Check Frames",    "cF",  0, FRAMESWARN, 3},
+//   {"Check Frames",    "cF",  0, FRAMESWARN, 3},
    {"Always Backgr",    "ab",  0, BACKGROUND_ALWAYS, 3},
     {"Rnd FPdir",    "rd",  0, RAND_FP_DIR, 3},
 //   {"Store LFP",    "lf",  0, STORE_LFP, 3},

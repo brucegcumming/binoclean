@@ -710,7 +710,7 @@ for j = 1:length(strs{1})
         elseif strncmp(s,'EXPTRUNNING',8) %from GetState
             DATA.inexpt = 1;
         elseif strncmp(s,'EXPTOVER',8) %called at end or cancel
-            if DATA.inexpt %in case reopen pipes mied expt
+            if DATA.inexpt %in case reopen pipes missed expt
                 DATA.optionflags.do = 0;
                 outprintf(DATA,'op=-do\n');
             end
@@ -737,6 +737,10 @@ for j = 1:length(strs{1})
             end
             if exptover
                 CheckTrialDurations(DATA,'EXPTOVER');
+                if DATA.optionflags.py && DATA.optionflags.da
+                    DATA = CopyLog('psych');
+                    DATA = CopyLog('serialpsych');
+                end
             end
 
     %        tic; DATA = GetState(DATA); toc  %binoc sends state at end expt,
@@ -1691,14 +1695,26 @@ function vergwarning(s, varargin)
 
     persistent lastmsg;
     persistent lastcalltime;
+    persistent showpopup;
 newwindow = 0;
 toconsole = 1;
+    if isempty(showpopup)
+        showpopup = 1;
+    end
+    
     j = 1;
     while j <= length(varargin)
         if strncmpi(varargin{j},'newwin',3)
             newwindow = 1;
         end
         j = j+1;
+    end
+    if strcmp(s,'-nopopup')
+        showpopup = 0;
+        return;
+    elseif strcmp(s,'-popup')
+        showpopup = 1;
+        return;
     end
    OldPos = [];
    ts = now;
@@ -1712,7 +1728,7 @@ toconsole = 1;
            lastcalltime = ts;
            return;
        end
-   end
+   end  
    beep;
    CreateStruct.Interpreter = 'tex';
    if newwindow == 0
@@ -1725,11 +1741,13 @@ toconsole = 1;
         CreateStruct.WindowStyle='non-modal';
    end
    try
-       h = msgbox(split(s,'\\n'),'Binoc Warning','warn',CreateStruct);
-       ScaleWindow(h,2);
-
-       if ~isempty(OldPos)
-           set(h,'Position', OldPos);
+       if showpopup
+           h = msgbox(split(s,'\\n'),'Binoc Warning','warn',CreateStruct);
+           ScaleWindow(h,2);
+           
+           if ~isempty(OldPos)
+               set(h,'Position', OldPos);
+           end
        end
        if toconsole
         fprintf('WARNING: %s at %s\n',s,datestr(now));
@@ -2357,6 +2375,7 @@ DATA = SetField(DATA,'autoreopen', 0);
 DATA = SetField(DATA,'autorestart', 0);
 DATA = SetField(DATA,'draintimeout', 4);
 DATA = SetField(DATA,'pausetimeout', 30);
+DATA = SetField(DATA,'nowarning',0);
 
 DATA.commands = {};
 DATA.commandctr = 1;
@@ -3083,8 +3102,10 @@ function DATA = InitInterface(DATA)
     SetMenuCheck(xm, DATA.verbose(5));
     xm = uimenu(sm,'Label','Trial Results', 'Callback',{@SetVerbose, 6});
     SetMenuCheck(xm, DATA.verbose(6));
+    xm = uimenu(sm,'Label', 'Suppress All Popups', 'Callback', {@SetVerbose, 'nopopup'});
+    SetMenuCheck(xm, DATA.nowarning);
     xm = uimenu(sm,'Label', 'All Off', 'Callback', {@SetVerbose, 0});
-
+  
     sm = uimenu(subm,'Label','Try Pipes','Callback',{@ReadIO, 8},'foregroundcolor','r');
     sm = uimenu(subm,'Label','Restart Binoc between Expts','Callback',{@SetMenuToggle, 'restartbinoc'});
     sm = uimenu(subm,'Label','Send Expt Trigger to Spike2','Callback',{@SendStr, '!expttrigger'});
@@ -3407,7 +3428,7 @@ function CopyLog(DATA,type)
         end
     elseif strcmp(type,'serialpsych')
         logfile = [DATA.cwd '/' DATA.binoc{1}.uf];
-        tgt = ['/b/data/psych/' DATA.binoc{1}.monkey '/serial/' DATA.binoc{1}.uf];
+        tgt = [DATA.binoc{1}.netpref '/' DATA.binoc{1}.monkey '/serial/' DATA.binoc{1}.uf];
         fprintf('Copying %s to %s\n',logfile,tgt);
         try
             copyfile(logfile,tgt);
@@ -4274,6 +4295,15 @@ function SetVerbose(a,b, flag)
      if flag == 0
          DATA.verbose = zeros(size(DATA.verbose));
          SetMenuCheck(a,'exclusive', 1);
+     elseif strcmp(flag,'nopopup')
+         DATA.nowarning = ~DATA.nowarning;
+         if DATA.nowarning
+             vergwarning('-nopopup');
+         else
+             vergwarning('-popup');
+         end
+           
+         SetMenuCheck(a, DATA.nowarning);
      else
          DATA.verbose(flag) = ~DATA.verbose(flag);
          if DATA.verbose(flag)
@@ -4934,7 +4964,7 @@ function Expt = ExptSummary(DATA)
     Expt.Stimvals.st = DATA.stimulusnames{DATA.stimtype(1)};
     Expt.Stimvals.Bs = DATA.stimulusnames{DATA.stimtype(2)};
     Expt.Start = now;
-    Expt.Header.Name = GetName(DATA.binoc{1}.uf);
+    Expt.Header.Name = GetName(DATA.binoc{1}.uf,'-silent');
     
 
         

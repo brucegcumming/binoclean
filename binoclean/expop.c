@@ -16186,7 +16186,7 @@ int ButtonResponse(int button, int revise, vcoord *locn)
             fprintf(psychlog,"%.4f %c%s%s %.3f %.3f %d%s\n",stp->vals[0],c,rbuf,sbuf,StimTime(&now),StimDuration(),res,buf);
             fflush(psychlog);
         }
-        if(framesdone < 0.9 * realframes && expt.vals[ALTERNATE_STIM_MODE] < 0.5 && optionflags[FRAMESWARN]){
+        if(framesdone < 0.9 * realframes && expt.vals[ALTERNATE_STIM_MODE] < 0.5 && optionflags[CHECK_FRAMECOUNTS]){
             sprintf(buf,"Only completed %d of %d frames",framesdone,realframes);
             acknowledge(buf,NULL);
         }
