@@ -1970,6 +1970,7 @@ char *ReadManualStim(char *file, int stimid){
     sprintf(cbuf,"%d:",stimid);
     for(i = 0; i < MAXFRAMES; i++)
         imx[i] = imy[i] = 0;
+    fprintf(seroutfile,"ManStim %s fid %d\n",file,fin->_file);
     while((s = fgets(inbuf, BUFSIZ *10, fin)) != NULL){
         if (seroutfile) // everything from stim file goes to seroutfile
             fputs(inbuf,seroutfile);
@@ -2710,8 +2711,10 @@ int UpdateNetworkFile(Expt expt)
     if (netoutfile == NULL)
         return(0);
     
-    if (netoutfile != NULL)
+    if (netoutfile != NULL){
+        fprintf(seroutfile,"Closing Network out fid %d\n",netoutfile->_file);
         fclose(netoutfile);
+    }
     netoutfile= NULL;
     
     
@@ -2720,7 +2723,7 @@ int UpdateNetworkFile(Expt expt)
         sprintf(buf,"No prefix Name for network parameter file");
         fprintf(stderr,"%s\n",buf);
         statusline(buf);
-        if (optionflags[MANUAL_EXPT]){
+        if (optionflags[MANUAL_EXPT] && (optionflag &STORE_WURTZ_BIT)){
             acknowledge(buf,NULL);
         }
         return(-1);
@@ -2783,7 +2786,7 @@ int OpenNetworkFile(Expt expt)
         sprintf(buf,"No prefix Name for network parameter file");
         fprintf(stderr,"%s\n",buf);
         statusline(buf);
-        if (optionflags[MANUAL_EXPT]){
+        if (optionflags[MANUAL_EXPT] && (optionflag & STORE_WURTZ_BIT)){
             acknowledge(buf,NULL);
         }
 // Don't return here. GO on to open the local copy
@@ -2838,7 +2841,7 @@ int OpenNetworkFile(Expt expt)
     if (netoutfile != NULL){
         fprintf(netoutfile,"Reopened %s by binoc Version %s",ctime(&tval),VERSION_STRING);
         if (seroutfile != NULL)
-            fprintf(seroutfile,"Network Record to %s\n",bncfilename);
+            fprintf(seroutfile,"Network Record to %s fid %d\n",bncfilename,netoutfile->_file);
         sprintf(buf,"status=Network Record to %s (last %d)\n",bncfilename,lastresult);
         notify(buf);
     }
@@ -3124,11 +3127,17 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
                     sprintf(outbuf,"Psych Log: %s\n",buf);
                     statusline(outbuf);
                     strcpy(nbuf,buf);
+                    if (psychfile != NULL)
+                        fclose(psychfile);
                     psychfile = fopen(buf,"a");
                     sprintf(buf,"%s.log",s);
+                    if (psychfilelog != NULL)
+                        fclose(psychfilelog);
                     psychfilelog = fopen(buf,"a");
                 }
                 else{
+                    if (psychfile != NULL)
+                        fclose(psychfile);
                     psychfile = fopen(nonewline(s),"a");
                     sprintf(nbuf,"%s",nonewline(s));
                 }
@@ -5864,6 +5873,7 @@ int ReadStimOrder(char *file)
     }
     fd = fopen(buf,"r");
     if (fd != NULL){
+        fprintf(seroutfile,"#Stimorder from %s fid%d\n",buf,fd->_file);
         while(fgets(buf, BUFSIZ, fd) != NULL){
             s = buf;
             if (isdigit(s[0])){

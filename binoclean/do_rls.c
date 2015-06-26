@@ -1752,13 +1752,13 @@ void paint_rls(Stimulus *st, int mode)
     glDisable(GL_LINE_SMOOTH);
     glLineWidth(1.0);
     
-    if(optionflag & ANTIALIAS_BIT)
+    if(optionflag & ANTIALIAS_BIT && expt.polygonsmooth)
 	{
 		glEnable(GL_BLEND);
 		glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 		glEnable(GL_LINE_SMOOTH);
 		if(expt.polygonsmooth)
-//            glEnable(GL_POLYGON_SMOOTH);
+            glEnable(GL_POLYGON_SMOOTH);
 		glLineWidth(1.0);
 	}
     else
@@ -1818,7 +1818,7 @@ void paint_rls(Stimulus *st, int mode)
     }
     glEnd();
  
-    if(optionflag & ANTIALIAS_BIT)
+    if(optionflag & ANTIALIAS_BIT && 0)
 	{
         p = sst->iim;
         x = sst->xpos;

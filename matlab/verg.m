@@ -1703,9 +1703,15 @@ toconsole = 1;
    OldPos = [];
    ts = now;
    
-   if strncmp(s,lastmsg,10) && ts - lastcalltime < 1./(24 * 60 * 60)
-       lastcalltime = ts; 
-       return;
+   if strncmp(s,lastmsg,10) %repeated message
+       secdiff = (ts - lastcalltime) * (24 * 60 * 60);
+       if secdiff < 1
+           lastcalltime = ts;
+           return;
+       elseif strncmp(s,' Trial 0 Initial Serial Line Not Responding',30) && secdiff < 20
+           lastcalltime = ts;
+           return;
+       end
    end
    beep;
    CreateStruct.Interpreter = 'tex';
@@ -1730,7 +1736,7 @@ toconsole = 1;
        end
    end
    
-   lastmsg = 2;
+   lastmsg = s;
    lastcalltime = ts;
    
 function line = CheckLineForBinoc(tline)

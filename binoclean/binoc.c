@@ -7414,7 +7414,7 @@ int next_frame(Stimulus *st)
                 }
                 expt.st->framectr++;
             }
-            else if(val > TheStim->fix.rt)
+            else if(val > TheStim->fix.rt && TheStim->fix.rt > 0)
             {
                 if(seroutfile)
                     fprintf(seroutfile,"#LATE (%.3f) stimno %d%c\n",okdelay,stimno,exptchr);
