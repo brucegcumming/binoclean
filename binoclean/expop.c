@@ -12407,6 +12407,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
     else if(seroutfile){
         fprintf(seroutfile,"#V0 (%.2f)\n",oldvelocity);
     }
+    st->left->ptr->rotatepos = -0.99965;
     glDrawBuffer(GL_FRONT_AND_BACK);
     glstatusline(NULL, 1); // paint this now, then don't paint each frame - its slow
     glDrawBuffer(GL_BACK);

@@ -484,6 +484,10 @@ while j <= length(varargin)
             frombinoc = 3;
         elseif strcmp(src,'fromgui')
             sendtobinoc = 1;
+            srcchr = 'G';
+        elseif strcmp(src,'fromstim')
+            sendtobinoc = 1;
+            srcchr = 'S';
         elseif strcmp(src,'fromverg')
             srcchr = 'V';
         end

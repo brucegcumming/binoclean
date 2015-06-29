@@ -6489,6 +6489,7 @@ int StartStimulus(Stimulus *st)
         SetStimulus(st,90.0,SETPHASE,NOEVENT);
     else
         SetStimulus(st,st->vals[START_PHASE],SETPHASE,NOEVENT);
+    st->left->ptr->rotatepos = 0;
     if(st->type == STIM_RADIAL){
         if(expt.vals[CHANGE_SEED] > 0)
             st->right->show_increment = st->left->show_increment = 0;
@@ -7230,6 +7231,8 @@ int next_frame(Stimulus *st)
 //when free running, just use elapsed time here.
 // if need to override this ? use another flag
             paintall = 0;
+            if(optionflags[FIXNUM_PAINTED_FRAMES] && testflags[SAVE_IMAGES] ==10)
+                paintall = 1;
             if(paintall && framesdone >= TheStim->nframes ||
                (paintall == 0 && (realframecount = getframecount()) >= TheStim->nframes))
             {
@@ -7265,8 +7268,10 @@ int next_frame(Stimulus *st)
             {
                 if(!(TheStim->mode & EXPTPENDING && !states[EXPT_PAUSED]) && ++stimctr < expt.stimpertrial)
                     stimstate = PRESTIMULUS;
-                else if (states[ONE_TRIAL] && TheStim->fix.rt == 0 && expt.vals[POSTPERIOD_CODE] <=0)
+                else if (states[ONE_TRIAL] && TheStim->fix.rt == 0 && expt.vals[POSTPERIOD_CODE] <=0){
                     stimstate = STIMSTOPPED;
+                    optionflag &= (~ GO_BIT);
+                }
                 else{
                     stimstate = POSTPOSTSTIMULUS;
                     if (!(option2flag &AFC)) // don't mess with color before response

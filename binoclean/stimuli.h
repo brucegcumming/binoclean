@@ -186,6 +186,7 @@ typedef struct ONESTIM{
     unsigned long **primitive; /* pointer to array of primitives holding rectvalues */
     float standing_disp;
     float pixelsy;
+    float rotatepos;  /* current rotation position of cylinder */
 }OneStim;
 
 

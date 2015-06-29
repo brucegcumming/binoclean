@@ -2,12 +2,19 @@ uf=Cylmovie
 yo=0
 sz=8
 op=+pe
+Rh=0
 exp=/local/expts/Cylinder
+dx=0
 fl=-nc+pc
-jv=15
+op=+pe
+xo=0
+fs=0
+#on laptop 8 deg = 427 pixels.  So jv * 2.24 is real rate of rotat
+jv=38 #one rotation in 4 sec
+nf=250
 po=0
 pr=0
-videocapture=768 416 1024 768
+videocapture=320 156 640 600
 !savemovie=/local/Images/Movies
 pause
 !savemovie+

@@ -245,7 +245,7 @@ void calc_dots(Stimulus  *st, int mode)
     float disparity, deathchance;
     int countdown,nac,nuc,ncorr,usexi = X;
     float widthfactor, heightfactor;
-    float dx,dy;
+    float dx,dy,x;
     float rotatefactor[2];
     
     
@@ -270,7 +270,14 @@ void calc_dots(Stimulus  *st, int mode)
     }
     rotatefactor[X]=cosf(pos->angle-(M_PI/2));
     rotatefactor[Y]=sinf(pos->angle-(M_PI/2));
+//velocity should be radians per frame
+    x = cos(asin(cyl->rotatepos));
+    cyl->rotatepos += x * cyl->velocity;
+    if (cyl->rotatepos > 1)
+        cyl->rotatepos = -0.999;
     
+    st->pos.phase += cyl->velocity;
+
     disparity= st->disp*2;
     dx = (disparity * rotatefactor[X])/2;
     dy = (disparity * rotatefactor[Y])/2;
@@ -981,6 +988,13 @@ void calc_cyl_motion(ball_s *balls, float vel, int ndots, int flag, int lifefram
         xi = RX;
         yi = RY;
     }
+// delta is increment per frame added to dot pos.  dot pos -1->+1 covers on face of cylinder
+// so a complete rotation is 4.
+//  but delta is calculated separately for each dot.
+// each frame pos += vel * cos(asin(pos))
+// vel = jv * pi/180 * framerate so = degrees of rotatoin * 2pi/4
+// so jv = 229 should be one rotation per second
+// empirically jv = 22.9 needs just under 4 sec to complete one rotation. 
     for (i = 0; i < ndots; i++) {
         balls[i].proportion[xi] = cos(asin(balls[i].pos[xi])); /* sinusoidal variation from -1 -> 1 */
         if (flag & FLAT_SURFACES) {
@@ -1021,6 +1035,10 @@ void calc_cyl_motion(ball_s *balls, float vel, int ndots, int flag, int lifefram
                         }
                 delta = fabsf(vel * balls[i].proportion[xi]);  	/* theta=asin(x)/r, dotvel=cos(theta)) */
         }
+// why width * 1000. THis is in pixels too!!  So if with is 1000 pixels, then jv does equal rotation speed
+// means that peak speed does not change with stimulus size.  Might be important for size tuning curves. But
+// should still really fix this in angular terms - here meaning of jv changes with display pixels!!
+//? fix this?
         balls[i].pos[xi] += (balls[i].left_right[xi] * delta)/width*1000; 		/* adds or subtracts delta */
         
         if ((balls[i].pos[xi] >= 1.0) || (balls[i].pos[xi] <= -1.0)) {
