@@ -7983,6 +7983,7 @@ void InitExpt()
             case MODULATION_F:
             case CHANGE_SEED:
             case JVELOCITY:
+            case VELOCITY2:
             case NCOMPONENTS:
             case ORI_BANDWIDTH:
             case PLAID_RATIO:
@@ -8303,7 +8304,7 @@ void InitExpt()
         stimflag = expt.st->flag;
     }
     else if(expt.st->left->ptr->velocity > 0.00001 && expt.st->type == STIM_RDS){
-        oldvelocity = expt.st->posinc;
+        oldvelocity = expt.st->posinc[0];
         olddisp = expt.st->disp;
         stimflag = expt.st->flag;
     }
@@ -9470,7 +9471,11 @@ int PrepareExptStim(int show, int caller)
     expt.st->next->framectr = 0;
     stimulus_is_reset = 0;
     SerialSend(STIMID);
-
+//Set initial phase here. Can be changed by maual stim, but means that manual stim does
+// not have to set all the time
+    SetStimulus(expt.st,expt.st->vals[START_PHASE],SETPHASE,NULL);
+    if (isinf(expt.st->pos.locn[1]))
+        expt.st->pos.locn[1] = 0;
     if (optionflags[MANUAL_EXPT]){
 
         if(expt.vals[ONETARGET_P] > 0){
@@ -9520,7 +9525,7 @@ int PrepareExptStim(int show, int caller)
     if(expt.st->type == STIM_RDS)
     {
         rds = expt.st->left;
-        if(rds->seedloop == 1 && rds->baseseed > 1000)
+        if(rds->seedloop == 1)
         {
             expt.st->left->baseseed += 2;
             expt.st->right->baseseed = ++(expt.st->left->baseseed);
@@ -9535,7 +9540,7 @@ int PrepareExptStim(int show, int caller)
     }
     else if(expt.st->next && expt.st->next->type == STIM_RDS){
         rds = expt.st->next->left;
-        if(rds->seedloop == 1 && rds->baseseed > 1000)
+        if(rds->seedloop == 1)
         {
             rds->baseseed++;
             expt.st->right->baseseed = ++(rds->baseseed);
@@ -10975,7 +10980,7 @@ void ResetExpStim(int offset)
             expt.st->flag = stimflag;
         }
         if(expt.st->type == STIM_RDS)
-            expt.st->posinc = oldvelocity;
+            expt.st->posinc[0] = oldvelocity;
         expt.st->disp = olddisp;
     }
     
@@ -11574,7 +11579,7 @@ int RunStrobedStim(Stimulus *st, int n, /*Ali Display */ int D)
     if(expt.st->type == STIM_BAR)
         step = pix2deg(expt.st->pos.radius[1] * expt.st->incr/(M_PI));
     else
-        step = pix2deg(expt.st->posinc * mon.framerate)/mon.framerate;
+        step = pix2deg(expt.st->posinc[0] * mon.framerate)/mon.framerate;
     printf("Step %.3f every %.1f (%d,%d) ms = %.2f deg/sec dur %.3f frames %d,%d\n",step,period,preframes,postframes,(step * 1000)/period,val,rc,i);
     stimseq[trialctr].vals[2] = step;
     stimseq[trialctr].vals[3] = period;
@@ -11662,7 +11667,7 @@ int RunHarrisStim(Stimulus *st, int n, /*Ali Display */ int D, /*Ali Window */ i
         lastframecount = rc;
         paint_frame(WHOLESTIM, !(mode & FIXATION_OFF_BIT));
         change_frame();
-        expt.st->pos.xy[0] += st->posinc;
+        expt.st->pos.xy[0] += st->posinc[0];
         expt.st->disp += st->dispincr;
         if((framesdone = ++framecount) > MAXFRAMES)
             framesdone = MAXFRAMES;
@@ -12401,7 +12406,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
         stimflag = st->flag;
         oldvelocity = st->left->ptr->velocity;
         if (st->type == STIM_RDS)
-            oldvelocity = st->posinc;
+            oldvelocity = st->posinc[0];
         olddisp = st->disp;
     }
     else if(seroutfile){
@@ -12451,6 +12456,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
         expt.vals[START_PHASE] = phase;
         SerialSend(SETPHASE);
     }
+    
     
     rc = 0;
     rpt = (st->framerepeat < 1) ? 1 : st->framerepeat;
@@ -13793,9 +13799,6 @@ int ReadExptFile(char *name, int new, int show, int reset)
             else{
                 mode &= (~AUTO_NEXT_EXPT);
             }
-            
-            if(!setseed && expt.st->left->baseseed < 1001)
-                NewSeed(expt.st);
             if(new == 2){
                 stillreading = 0;
                 fclose(exfd);
@@ -13832,9 +13835,7 @@ int ReadExptFile(char *name, int new, int show, int reset)
     }
     fclose(exfd);
     exfd = NULL;
-    
-    if(!setseed && expt.st->left->baseseed < 1001)
-        NewSeed(expt.st);
+   
     stillreading = 0;
     if(savedstate)
         SerialSend(UFF_PREFIX);
@@ -16332,7 +16333,7 @@ char *DescribeStim(Stimulus *st)
         strcat(dbuf,buf);
     }
     else if(expt.vals[ALTERNATE_STIM_MODE] > 0.5 ){
-        a = pix2deg(expt.st->posinc * mon.framerate)/mon.framerate;
+        a = pix2deg(expt.st->posinc[0] * mon.framerate)/mon.framerate;
         d = 2 + rint(expt.postperiod * mon.framerate);
         c = expt.vals[DELAY];
         b = (d * 1000)/mon.framerate;

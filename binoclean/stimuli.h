@@ -255,7 +255,7 @@ struct STIMULUS{
     float background,fixcolor, gammaback;
     int colormode;
     float disp,origdisp,phasedisp[2],f,incr,angleinc,vdisp,length,width;
-    float posinc, locn;
+    float posinc[2], locn;
     float contrast_disp, sf_disp, ori_disp,meandisp,dispincr;
     float correlation;
     int screenw,screenh,nframes;

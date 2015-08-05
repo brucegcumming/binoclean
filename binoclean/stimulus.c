@@ -126,8 +126,9 @@ void StimStringRecord(FILE *fd, Expt *ex)
                 strcat(buf,s);
             }
             if(*p >= 0){
-            sprintf(s,"L%1xR%1x",*p++,*p++);
-            strcat(buf,s);
+                sprintf(s,"L%1xR%1x",*p++,*p++);
+                strcat(buf,s);
+            }
             if(rcstimvals[10][j] != 0){
                 sprintf(s,"!dp%.1f",2*rcstimvals[10][j]/expt.st->left->dotsiz[1]);
                 strcat(buf,s);
@@ -137,8 +138,6 @@ void StimStringRecord(FILE *fd, Expt *ex)
             }
             else if(rcstimvals[9][j] == 0){
                 strcat(buf,"U");
-            }
-                
             }
             strcat(buf,"\n");
         }

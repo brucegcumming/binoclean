@@ -217,6 +217,7 @@ int init_rds(Stimulus *st,  Substim *sst, float density)
   if(!optionflags[RANDOM_DEPTH_PHASE] || expt.vals[DISTRIBUTION_WIDTH] < 2)
     st->ndisps = 0;
   st->pos.locn[0] = 0;
+  st->pos.locn[1] = 0;
     
   pos->phase = 0;
     

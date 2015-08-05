@@ -7,6 +7,9 @@ type = 'unikinetic';
 nr = 0;
 pt = 4;
 nrpt = 0;
+speed = 10;
+npass = 2;
+
 j = 1;
 while j <= length(varargin)
     if strncmp(varargin{j},'basedir',6)
@@ -15,6 +18,9 @@ while j <= length(varargin)
     elseif strncmp(varargin{j},'nrpt',4)
         j = j+1;
         nr = varargin{j};
+    elseif strncmp(varargin{j},'speed',4)
+        j = j+1;
+        speed = varargin{j};
     elseif strncmp(varargin{j},'type',4)
         j = j+1;
         type = varargin{j};
@@ -23,26 +29,37 @@ while j <= length(varargin)
 end
 
 
-%size(values,1) must match length stimvars
+%size(values,1) must match length stimvarver
 if strcmp(type,'unikinetic')
     values{1} = [0:30:330];
     values{2} = [0 1  1 1];
     values{3} = [90 90 45 -45];
     stimvars = {'or' 'c2' 'a2'};
 elseif strcmp(type, 'fullunikinetic') %include RDS, dynamic unikinetic, and dynamic rls
+%1 SG
+%2 UP90
+%3 UP45
+%4 UP-45
+%5 FP45
+%6 FP-45
+%7 Dynamic SG
+%8 FP90
+%9 RDS
+%9 TypeI Plaid 120
     values{1} = [0:30:330];
-    values{2} = [0 1    1  1   1   1 0 1  0];
-    values{3} = [90 90 45 -45 45 -45 90 90 0];
-    values{5} = [0   0  0  0  33  33 0 33 0];
-    values{6} = [1   1  1  1   1   1 0 1  1];
-    values{4} = {'rls' 'rls' 'rls' 'rls' 'rls' 'rls' 'rls' 'rls' 'rds'}'
-    stimvars = {'or' 'c2' 'a2' 'st' 'sM' 'sl'};
+    values{2} = [0 1    1  1   1   1 0 1  0 1];
+    values{3} = [90 90 45 -45 45 -45 90 90 0 120];
+    values{5} = [0   0  0  0  Inf  Inf 0 Inf 0 speed];
+    values{6} = [1   1  1  1   1   1 0 1  1 1];
+    values{4} = {'rls' 'rls' 'rls' 'rls' 'rls' 'rls' 'rls' 'rls' 'rds' 'rls'}'
+    stimvars = {'or' 'c2' 'a2' 'st' 'v2' 'sl'};
 
 else
     values{1} = [0:30:330];
     values{2} = [0 1];
     stimvars = {'or' 'c2'};
 end
+
 ns = 0;
 for j = 1:length(values{1})
     for k = 1:length(values{2})
@@ -71,6 +88,15 @@ for j = 1:length(values{1})
     exvals(ns,2) = values{2}(k);
 end
 
+ses = 1000+ round(rand(1,length(AllS)).*10000);
+for j = 1:length(AllS)
+    AllS(j).se = ses(j);
+end
+for j = 1:npass
+    AllS(1 + ns*(j-1):ns*j) = AllS(1:ns);
+    exvals(1 + ns*(j-1):ns*j,:) = exvals(1:ns,:);    
+end
+ns = length(AllS);
 for j = 1:ns
     WriteStim(basedir, j-1, AllS(j),exvals(j,:));
 end
@@ -81,14 +107,20 @@ end
 
 stimorder = repmat([1:ns]-1,1,nr);
 stimorder = stimorder(randperm(length(stimorder)));
-
+teststim = 109;
+if ~isempty(teststim)
+    stimorder(1:end) = teststim;
+end
 
 f = fields(AllS);
+if strcmp(type,'fullunikinetic')
+    f = setdiff(f,'sM'); %now
+end
 
 fid = fopen([basedir '/stimorder'],'w');
 fprintf(fid,'expvars=%s',f{1});
 for j = 2:length(f)
-    fprintf(fid,',%s',f{j});
+    fprintf(fid,',%s',f{j});    
 end
 fprintf(fid,'\n');
 fprintf(fid,'expname=%s\n',name);    

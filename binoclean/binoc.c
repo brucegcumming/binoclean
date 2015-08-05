@@ -1546,7 +1546,7 @@ int TrialOver()
             fprintf(seroutfile,"resetting velocity to %.2f\n",oldvelocity);
         st->disp = olddisp;
         st->left->ptr->velocity = oldvelocity;
-        st->posinc = oldvelocity;
+        st->posinc[0] = oldvelocity;
         st->flag = stimflag;
         if(st->left->ptr->velocity < 0.0001 && seroutfile)
             fprintf(seroutfile,"#Cyl velocity %.6f (%.f)\n",st->left->ptr->velocity,oldvelocity);
@@ -1580,7 +1580,7 @@ void StopGo(int go)
             oldvelocity = expt.st->left->ptr->velocity;
             stimflag = expt.st->flag;
             if(expt.st->type == STIM_RDS)
-                oldvelocity = expt.st->posinc;
+                oldvelocity = expt.st->posinc[0];
             olddisp = expt.st->disp;
         }
     }
@@ -3391,6 +3391,13 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
         case BVELOCITY:
             st->left->boundaryV = deg2pix(val)/mon.framerate;
             break;
+        case VELOCITY2:
+            if isinf(val)
+                st->posinc[1] = val;
+                else
+            st->posinc[1] = deg2pix(val)/mon.framerate;
+            
+            break;
         case JVELOCITY:
             /*  Cylinder velocity is in degrees of rotation
              per second, converted to radians per frame*/
@@ -3406,13 +3413,13 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
             if(st->type == STIM_RDS || st->type == STIM_RLS){
                 tf = val * st->pos.sf;
 //                st->incr = (val *M_PI *2)/(mon.framerate);
-                st->posinc = deg2pix(val)/mon.framerate;
+                st->posinc[0] = deg2pix(val)/mon.framerate;
                 if(rdspair(st))
-                    st->next->posinc = st->posinc;
+                    st->next->posinc[0] = st->posinc[0];
                 //	    SetStimulus(st,tf,TF,event);
             }
             if(st->type == STIM_BAR){
-                st->posinc = deg2pix(val)/mon.framerate;
+                st->posinc[0] = deg2pix(val)/mon.framerate;
             }
             if(st->type == STIM_GRATING){
                 tf = pos->sf * val;
@@ -4418,8 +4425,11 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
             else
                 pos->contrast_phase = 0;
 //only force phase if moving
-            if(fabsf(val) < 10 && st->posinc != 0)
+            if(fabsf(val) < 10 && st->posinc[0] != 0){
                 pos->locn[0] = 0;
+            }
+            if (st->posinc[1] > 0 || isinf(pos->locn[1]))
+                pos->locn[1] = 0;
             if(st->type == STIM_BAR){
                 st->right->pos.phase = pos->phase;
                 st->left->pos.phase = pos->phase;
@@ -5623,7 +5633,7 @@ float SetRandomPhase( Stimulus *st, Locator *pos)
                 iphase = 2*(myrnd_i() %2)-1;
                 st->phasesign = iphase;
                 pos->phase += (st->incr * iphase);
-                pos->locn[0] += (st->posinc * iphase);
+                pos->locn[0] += (st->posinc[0] * iphase);
             }
             iphase = (3+iphase)/2; //1,2 for recording dir changes, 0 = not called or first frame
         }
@@ -5824,7 +5834,7 @@ void increment_stimulus(Stimulus *st, Locator *pos)
             
             }
             if(expt.framesdone%rds->seedloop == 0)
-                pos->locn[0] += (st->posinc * rds->seedloop);
+                pos->locn[0] += (st->posinc[0] * rds->seedloop);
         }
     }
     if(st->type == STIM_CYLINDER || st->type == STIM_RDS && st->left->seedloop == 1){
@@ -5843,7 +5853,7 @@ void increment_stimulus(Stimulus *st, Locator *pos)
                 else{
                     st->nchanges = 0;
                     if(st->left->ptr->deathchance == 0){
-                        st->posinc = 0;
+                        st->posinc[0] = 0;
                         st->left->ptr->velocity = 0;
                     }
                     idisp = st->disp;
@@ -5880,7 +5890,7 @@ void increment_stimulus(Stimulus *st, Locator *pos)
                         st->next->disp = deg2pix(expt.vals[DISP_BACK])/2;
                     }
                     st->left->ptr->velocity = oldvelocity;
-                    st->posinc = oldvelocity;
+                    st->posinc[0] = oldvelocity;
                 }
                 if(expt.stimmode == REMOVE_BACKSURFACE && st->flag & FLAT_DISPARITY && st->flag & FLAT_SURFACES)
                     st->flag |= FRONT_ONLY;
@@ -6053,8 +6063,10 @@ void increment_stimulus(Stimulus *st, Locator *pos)
                pos->phase += st->incr;
             else if (st->framectr % (int)st->left->seedloop == 0)
                 pos->phase += (st->incr * st->left->seedloop);
-            if (st->left->seedloop == 1)
-                pos->locn[0] += st->posinc;
+            if (st->left->seedloop == 1){
+                pos->locn[0] += st->posinc[0];
+                pos->locn[1] += st->posinc[1];
+            }
         }
 		if((st->type == STIM_BAR || st->type == STIM_TWOBAR) && !(st->mode & EXPTPENDING) &&
 		   (option2flag & EXPT_INTERACTIVE))
@@ -6084,7 +6096,7 @@ void increment_stimulus(Stimulus *st, Locator *pos)
         {
 		    rds = st->left;
 		    rdsb = st->next->left;
-		    st->next->pos.locn[0] += st->next->posinc;
+		    st->next->pos.locn[0] += st->next->posinc[0];
         }
 	}
 	if(st->angleinc != 0)
@@ -9506,7 +9518,7 @@ float StimulusProperty(Stimulus *st, int code)
             value = st->left->ptr->deathchance;
             break;
         case FRAME_DISPLACEMENT:
-            value = pix2deg(st->posinc);
+            value = pix2deg(st->posinc[0]);
             break;
         case BPOSITION:
             value = pix2deg(st->left->boundarypos);
@@ -9514,17 +9526,20 @@ float StimulusProperty(Stimulus *st, int code)
         case BVELOCITY:
             value = pix2deg(st->left->boundaryV) * mon.framerate;
             break;
+        case VELOCITY2:
+            value = pix2deg(st->posinc[1] * mon.framerate);
+            break;
         case JVELOCITY:
             if(st->type == STIM_CYLINDER)
                 value = (st->left->ptr->velocity * mon.framerate * 180/M_PI);
             else if(st->type == STIM_RDS || st->type == STIM_RLS){
-                value = pix2deg(st->posinc * mon.framerate);
+                value = pix2deg(st->posinc[0] * mon.framerate);
             }
             else if(st->type == STIM_GRATING){
                 value = StimulusProperty(st,TF)/pos->sf;
             }
             else if(st->type == STIM_BAR){
-                value = pix2deg(st->posinc * mon.framerate);
+                value = pix2deg(st->posinc[0] * mon.framerate);
             }
             else
                 value = (st->left->ptr->velocity * mon.framerate);

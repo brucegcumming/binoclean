@@ -312,7 +312,7 @@ void calc_rls(Stimulus *st, Substim *sst)
     else
         phase = 0;
  
-    // for RLS, phase is only used for disp phase, so its in pixels already
+    // for RLS, pos->phase is only used for disp phase, so its in pixels already
     phase = -(pos->phase+pos->locn[0]);
     
     if(optionflag & ANTIALIAS_BIT)
@@ -354,6 +354,10 @@ void calc_rls(Stimulus *st, Substim *sst)
             xshift[1] += h;
         }
         xshift[2] = pos->phase2 * pixmul;
+        if isinf(pos->locn[1])
+            xshift[2] = -(pos->phase2);
+        else
+            xshift[2] = -(pos->phase2+pos->locn[1]);
         while(xshift[2] > h){
             xshift[2] -= h;
         }
@@ -431,7 +435,7 @@ void calc_rls(Stimulus *st, Substim *sst)
             myrnd_init(sst->seed+200),seedcall++;
         *rp = myrnd_i();
     }
-    if (expt.stimmode == ORTHOG_DYNAMIC){
+    if (expt.stimmode == ORTHOG_DYNAMIC || isinf(st->posinc[1])){
         rq = rp;
         myrnd_init(sst->seed+st->framectr);
         for(i = 0; i < sst->ndots; i++,rp++){
@@ -826,7 +830,7 @@ void calc_rls_polys(Stimulus *st, Substim *sst)
     float asq,bsq = 0,csq,dsq,xsq,ysq,pixdisp[2],offset[2],ysqb,xstarta,xa,nextxa;
     int *p,*q,*cend,yi,lastp,lastq;
     vcoord *x,*y,w,h,lastx,eh=0,lasty;
-    int xshift[2],iw,ih;
+    int xshift[4],iw,ih;
     Locator *pos = &sst->pos;
     float phase,contrast = pos->contrast;
     int pixmul = 1,seedcall = 0,nrects;
@@ -2071,7 +2075,7 @@ void paint_rls_plaid(Stimulus *st, int mode)
         glLineWidth(1.0);
 	}
     p = sst->imb;
-        end = (sst->imb+sst->npainta);
+    end = (sst->imb+sst->npainta);
     x = sst->xposa;
     y = sst->yposa;
     glBegin(GL_QUAD_STRIP);

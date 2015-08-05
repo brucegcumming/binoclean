@@ -353,7 +353,7 @@
 		41BF8E0813A174FE00C8B6BA /* xprotos.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = xprotos.h; sourceTree = "<group>"; };
 		41BF8E0913A174FE00C8B6BA /* stimdefs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stimdefs.h; sourceTree = "<group>"; };
 		41BF8E0A13A174FE00C8B6BA /* fpslider.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fpslider.h; sourceTree = "<group>"; };
-		41BF8E0B13A174FE00C8B6BA /* commdefs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = commdefs.h; sourceTree = "<group>"; };
+		41BF8E0B13A174FE00C8B6BA /* commdefs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = commdefs.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
 		41BF8E0E13A174FE00C8B6BA /* myscopy.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = myscopy.c; sourceTree = "<group>"; };
 		41BF8E0F13A174FE00C8B6BA /* serial.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = serial.c; sourceTree = "<group>"; };
 		41BF8E1013A174FE00C8B6BA /* WinDefs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WinDefs.h; sourceTree = "<group>"; };
@@ -362,7 +362,7 @@
 		41BF8E1413A174FE00C8B6BA /* cyber.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = cyber.h; sourceTree = "<group>"; };
 		41BF8E1513A174FE00C8B6BA /* protos.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = protos.h; sourceTree = "<group>"; };
 		41BF8E1613A174FE00C8B6BA /* jonfront.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = jonfront.h; sourceTree = "<group>"; };
-		41BF8E1713A174FE00C8B6BA /* stimuli.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = stimuli.h; sourceTree = "<group>"; };
+		41BF8E1713A174FE00C8B6BA /* stimuli.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = stimuli.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
 		41BF8E1813A174FE00C8B6BA /* jondefs.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = jondefs.h; sourceTree = "<group>"; };
 		41BF8E1913A174FE00C8B6BA /* stair.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = stair.c; sourceTree = "<group>"; };
 		41BF8E1A13A174FE00C8B6BA /* mymath.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = mymath.h; sourceTree = "<group>"; };
@@ -472,7 +472,7 @@
 		C969F88A150D233B00D7A5A7 /* rdssine */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = rdssine; sourceTree = "<group>"; };
 		C98E0B3318D9C1010027D45A /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
 		C9AA959F177385D0003E9841 /* servostepper.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = servostepper.c; sourceTree = "<group>"; };
-		C9D6FA2018ECD2C900031646 /* helpstrings.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = helpstrings.txt; path = matlab/helpstrings.txt; sourceTree = SOURCE_ROOT; };
+		C9D6FA2018ECD2C900031646 /* helpstrings.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; lineEnding = 0; name = helpstrings.txt; path = matlab/helpstrings.txt; sourceTree = SOURCE_ROOT; };
 		C9FE34861799BFFC0088ED4C /* MTRandom64.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MTRandom64.h; sourceTree = "<group>"; };
 		C9FE34871799BFFC0088ED4C /* MTRandom64.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MTRandom64.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
