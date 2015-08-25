@@ -9,7 +9,7 @@ pt = 4;
 nrpt = 0;
 speed = 10;
 npass = 2;
-
+teststim = [];
 j = 1;
 while j <= length(varargin)
     if strncmp(varargin{j},'basedir',6)
@@ -21,6 +21,9 @@ while j <= length(varargin)
     elseif strncmp(varargin{j},'speed',4)
         j = j+1;
         speed = varargin{j};
+    elseif strncmp(varargin{j},'test',4)
+        j = j+1;
+        teststim = varargin{j};
     elseif strncmp(varargin{j},'type',4)
         j = j+1;
         type = varargin{j};
@@ -107,7 +110,6 @@ end
 
 stimorder = repmat([1:ns]-1,1,nr);
 stimorder = stimorder(randperm(length(stimorder)));
-teststim = 109;
 if ~isempty(teststim)
     stimorder(1:end) = teststim;
 end

@@ -9527,7 +9527,10 @@ float StimulusProperty(Stimulus *st, int code)
             value = pix2deg(st->left->boundaryV) * mon.framerate;
             break;
         case VELOCITY2:
-            value = pix2deg(st->posinc[1] * mon.framerate);
+            if isinf(st->posinc[1])
+                value = st->posinc[1];
+            else
+                value = pix2deg(st->posinc[1] * mon.framerate);
             break;
         case JVELOCITY:
             if(st->type == STIM_CYLINDER)

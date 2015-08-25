@@ -1,3 +1,4 @@
+monkey=dew
 st=rds
 dw=0.12
 dd=24
@@ -26,7 +27,7 @@ i2=0.125
 Dm=0
 Dw=11
 Ri=0.05
-op=+FN-fS-sq+exm-bf
+op=+FN-fS-sq+exm-bf+da
 fd=0.01
 nf=300
 uf=/local/dew/ACLogDATE
