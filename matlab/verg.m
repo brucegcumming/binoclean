@@ -66,6 +66,7 @@ if isempty(it)
     ts = now; 
     DATA.starttime = now;
     DATA = SetDefaults(DATA);
+    vpath = mfilename('fullpath');
     DATA.name = strrep(DATA.vergversion,'verg.','Verg Ver ');
 %open pipes to binoc 
 % if a file is named in teh command line, then take all setting from there.
@@ -133,6 +134,11 @@ if isempty(it)
         DATA.Expts{1} = ExptSummary(DATA);
     end
     
+    
+    if sum(strncmp(vpath,{'/b/bgc/matlab','/Volumes/bgc'},12)) || ~strcmp(fileparts(vpath),DATA.localmatdir)
+        cprintf('red','CAREFUL!!!!!!!!!!\nVerg code is from %s not %s\n',vpath,DATA.localmatdir);
+    end
+
     DATA = InitInterface(DATA);
     if ~exist('comcodes','file')
         SaveComCodes(DATA);
@@ -3448,7 +3454,7 @@ function CopyLog(DATA,type)
             T = 'Copying Log to Nework';
             ok = 0;
             strs = {'To Network' 'To PC' 'I''ll copy manually'};
-            yn = questdlg(['Copy ' logfile ' to?'] , T, strs{:}, strs{1});
+            yn = questdlg(['Copy ' logfile ' to?'] , T, strs{:}, strs{1},DATA.font);
             ok = find(strcmp(yn,strs));
             if ok == 1
                 tgt = ntgt;
@@ -3466,9 +3472,9 @@ function CopyLog(DATA,type)
         if length(d) == 1 && now - d.datenum < 1
             tgt = sprintf('/b/bgc/anal/%s/pen%d.log', DATA.binoc{1}.monkey, DATA.binoc{1}.Pn(1));
             if exist(tgt)
-                go = confirm(sprintf('%s Already Exists. Overwrite with  %s?',tgt,logfile));
+                go = confirm(sprintf('%s Already Exists. Overwrite with  %s?',tgt,logfile),DATA.font);
             else
-                go = confirm(sprintf('Copy %s to %s?',logfile,tgt));
+                go = confirm(sprintf('Copy %s to %s?',logfile,tgt),DATA.font);
             end
             if go
                 fprintf('Copying %s to %s\n',logfile,tgt);
@@ -3671,15 +3677,26 @@ function AddTodayMenu(DATA, id,label)
     end
     
 function CheckForUpdate(DATA)
-    CheckFileUpdate([DATA.netmatdir '/verg.m'],[DATA.localmatdir '/verg.m'],'backup');
-    CheckFileUpdate([DATA.netmatdir '/helpstrings.txt'],[DATA.localmatdir '/helpstrings.txt']);
-    CheckFileUpdate([DATA.netmatdir '/DownArrow.mat'],[DATA.localmatdir '/DownArrow.mat'],'new');
-    CheckFileUpdate([DATA.netmatdir '/vergversion.m'],[DATA.localmatdir '/vergversion.m']);
-    CheckFileUpdate([DATA.netmatdir '/ServoDrive.m'],[DATA.localmatdir '/ServoDrive.m'],'backup');
     
- function CheckFileUpdate(src, tgt, chkmode)
+    vpath = mfilename('fullpath');
+    tgt = DATA.localmatdir;
+    if ~strncmp(vpath,DATA.localmatdir,length(DATA.localmatdir)) && ~strncmp(vpath,'/local/c/binoclean/matlab',25)
+        str = sprintf('verg source is in %s, not local source directory (%s) Update to Current source directory?\n',fileparts(vpath),DATA.localmatdir);
+        yn = myquestdlg(str,'Update Check','Yes','No','','Yes',DATA.font);
+        if strcmp(yn,'Yes')
+            tgt = fileparts(vpath);
+        end
+    end
+    CheckFileUpdate([DATA.netmatdir '/verg.m'],[tgt '/verg.m'],'backup',DATA);
+    CheckFileUpdate([DATA.netmatdir '/helpstrings.txt'],[tgt '/helpstrings.txt'],'change',DATA);
+    CheckFileUpdate([DATA.netmatdir '/DownArrow.mat'],[tgt '/DownArrow.mat'],'new',DATA);
+    CheckFileUpdate([DATA.netmatdir '/vergversion.m'],[tgt '/vergversion.m'],'change',DATA);
+    CheckFileUpdate([DATA.netmatdir '/ServoDrive.m'],[tgt '/ServoDrive.m'],'backup',DATA);
+    
+ function CheckFileUpdate(src, tgt, chkmode,DATA)    
      if nargin < 3
         chkmode = 'change';
+        DATA.font = [];
      end
     a = dir(src);
     b = dir(tgt);
@@ -3699,7 +3716,7 @@ function CheckForUpdate(DATA)
         return;
     end
     if ~isempty(a) && ~isempty(b) && a.datenum > b.datenum
-        yn = questdlg(sprintf('%s is newer. Copy to %s?',src,tgt),'Update Check','Yes','No','Yes');
+        yn = myquestdlg(sprintf('%s is newer. Copy to %s?',src,tgt),'Update Check','Yes','No','','Yes',DATA.font);
         if strcmp(yn,'Yes')
             try  %This will produce and error becuase verg.m is in use. But the copy succeeds
                 if strncmp(chkmode,'backup',3)
@@ -5563,7 +5580,11 @@ function ShowPenLog(a,b,type)
           
           strs = {};
           for j = 1:length(txt)
-              go = 1;
+              if length(txt{j}) > 0
+                  go = 1;
+              else
+                  go = 0;
+              end
               if strncmp(txt{j},'ed',2) && DATA.show.penlog.depth == 0
                   go = 0;
               elseif strncmp(txt{j},'Rewards',6) && DATA.show.penlog.rewards == 0
@@ -5572,6 +5593,15 @@ function ShowPenLog(a,b,type)
                   go = 0;
               elseif strfind(txt{j},'bwticks') 
                   go = 0;
+              elseif ~isempty(strfind(txt{j},' File ')) && DATA.show.penlog.otherlines == 0
+                  go = 0;
+              elseif strncmp(txt{j},'cm=rf',5) && DATA.show.penlog.autocomments == 0
+                  go = 0;
+              elseif strncmp(txt{j},'cm=rf',5) && DATA.show.penlog.autocomments == 0
+                  go = 0;
+              elseif sum(strncmp(txt{j},{'Experimenter' 'Hemisphere' 'VisualArea' 'Electrode'},8)) ...
+                 && DATA.show.penlog.otherlines == 0
+             go = 0;
               end
               if go
                   strs{end+1} = txt{j};
@@ -5597,10 +5627,21 @@ function ShowPenLog(a,b,type)
     set(cntrl_box,'DefaultUIControlFontSize',DATA.font.FontSize);
     set(cntrl_box,'DefaultUIControlFontName',DATA.font.FontName);
 
+    if ~isfield(DATA,'show') || ~isfield(DATA.show,'penlog')
+        DATA.show.penlog.depth= 1;
+        DATA.show.penlog.rewards = 1;
+        DATA.show.penlog.expts= 1;
+        DATA.show.penlog.autocomments= 0;
+        DATA.show.penlog.otherlines= 1;
+        SetData(DATA);
+    end
+    onoff = {'off' 'on'};
     hm = uimenu(cntrl_box,'Label','Show');
-    sm = uimenu(hm,'Label','Electrode Depth','callback',{@ShowPenLog, 'showdepth'},'checked','on');
-    sm = uimenu(hm,'Label','Rewards','callback',{@ShowPenLog, 'showrewards'},'checked','on');
-    sm = uimenu(hm,'Label','Expts','callback',{@ShowPenLog, 'showexpts'},'checked','on');
+    sm = uimenu(hm,'Label','Electrode Depth','callback',{@ShowPenLog, 'showdepth'},'checked',onoff{DATA.show.penlog.depth+1});
+    sm = uimenu(hm,'Label','Rewards','callback',{@ShowPenLog, 'showrewards'},'checked',onoff{DATA.show.penlog.rewards+1});
+    sm = uimenu(hm,'Label','Expts','callback',{@ShowPenLog, 'showexpts'},'checked',onoff{DATA.show.penlog.expts+1});
+    sm = uimenu(hm,'Label','Auto Comments','callback',{@ShowPenLog, 'showautocomments'},'checked',onoff{DATA.show.penlog.autocomments+1});
+    sm = uimenu(hm,'Label','Other Lines','callback',{@ShowPenLog, 'showotherlines'},'checked',onoff{DATA.show.penlog.otherlines+1});
 
     lst = uicontrol(gcf, 'Style','list','String', 'Penetration Log',...
         'HorizontalAlignment','left',...
@@ -5609,12 +5650,6 @@ function ShowPenLog(a,b,type)
         'callback',{@ShowPenLog, 'help'},...
         'units','norm', 'Position',[0.01 0.085 0.99 0.91]);
     
-if ~isfield(DATA,'show') || ~isfield(DATA.show,'penlog')    
-    DATA.show.penlog.depth= 1;
-    DATA.show.penlog.rewards = 1;
-    DATA.show.penlog.expts= 1;
-    SetData(DATA);
-end
 
 ShowPenLog(lst, [], 'update')
 

@@ -2649,7 +2649,7 @@ char *GetExptString(Expt *exp, int code)
 {
     char *s = NULL;
     char buf[LONGBUF];
-    int icode = valstringindex[code];
+    int icode = valstringindex[code],i;
     
     switch(code){
         case IMAGELOAD_PREFIX:
@@ -2673,6 +2673,10 @@ char *GetExptString(Expt *exp, int code)
         default:
             if (icode >= 0 && valstrings[icode].ctype == 'C'){
                 s = expt.strings[code];
+                if (code == VERGVERSION_CODE)
+                {
+                    i = icode;
+                }
             }
             break;
     }
