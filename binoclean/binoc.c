@@ -565,6 +565,7 @@ void initial_setup()
     TheStim->aamode = AALINE;  //Default AntiAliasing mode
 #endif
     
+    expt.st = TheStim;
     new = TheStim;
 
 	StimulusType(TheStim, STIM_GRATING);

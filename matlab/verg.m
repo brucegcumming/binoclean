@@ -3253,13 +3253,15 @@ function ReBuildQuickMenu(DATA)
         
 %add submenus in the order they were created in the file        
     subs = unique(sms);
-    for j= 2:length(subs)
-        id = find(strcmp(subs{j},sms));
-        order(j) = id(1);
-    end
-    [a,b] = sort(order);
-    if isempty(subs{b(1)})
-        subs = subs(b(2:end)); %1st element is blank
+    if length(subs) > 1
+        for j= 2:length(subs)
+            id = find(strcmp(subs{j},sms));
+            order(j) = id(1);
+        end
+        [a,b] = sort(order);
+        if isempty(subs{b(1)})
+            subs = subs(b(2:end)); %1st element is blank
+        end
     end
     for j = 1:length(subs)
         sm(j) = uimenu(hm,'Label',subs{j});

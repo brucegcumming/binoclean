@@ -373,6 +373,11 @@ Stimulus *NewStimulus(Stimulus *st)
     }
     for(i = 0; i < MAXFREQS; i++)
         new->componentjumps[i] = 1; //default is for jump to apply to all
+    
+    if (expt.st != NULL)
+    {
+        new->aamode = expt.st->aamode;
+    }
     return(new);
 }
 

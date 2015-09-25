@@ -439,6 +439,7 @@ qe="Psych"/local/lem/stims/plaidortask
 qe="Psych"/local/lem/stims/plaidor45
 qe="Psych"/local/lem/stims/AddBWtrain
 qe="Psych"/local/lem/stims/GridTest
+qe="Psych"/local/lem/stims/dxicon
 qe="Start"/local/c/binoclean/stims/ManualExpt
 qe="RDS"./test.qs
 qe="RDS"./q1exp
