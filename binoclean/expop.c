@@ -5867,7 +5867,7 @@ int ReadStimOrder(char *file)
 
     FILE *fd;
     char buf[BUFSIZ*10],*s,*t;
-    int ival,nt=0,imax = 0,ok,i,pad = 10,nseq = 0;
+    int ival,nt=0,imax = 0,ok,i,pad = 10,nseq = 0,buflen = 0;
  
     if (expt.strings[EXPT_PREFIX] != NULL){
         sprintf(buf,"%s/stimorder",expt.strings[EXPT_PREFIX]);
@@ -5878,9 +5878,10 @@ int ReadStimOrder(char *file)
     fd = fopen(buf,"r");
     if (fd != NULL){
         fprintf(seroutfile,"#Stimorder from %s fid%d\n",buf,fd->_file);
-        while(fgets(buf, BUFSIZ, fd) != NULL){
+        while(fgets(buf, BUFSIZ * 2, fd) != NULL){
             s = buf;
-            if (isdigit(s[0])){
+//If sequence gets split over lines by fgets, can start with space
+            if (isdigit(s[0]) || (s[0] == ' ' && isdigit(s[1]))){
                 while(s){
                     ok = sscanf(s,"%d",&ival);
                     if (ok > 0){ // beware trailing whitespace
@@ -5892,6 +5893,7 @@ int ReadStimOrder(char *file)
                     t = s;
                     if((s = strchr(t,' ')) != NULL)
                         s++;
+                    buflen = strlen(buf);
                }
                 nseq= nt;
             }
@@ -5927,7 +5929,8 @@ int ReadStimOrder(char *file)
         stimorder[nt+i] = stimorder[i];
     }
     expt.nstim[5] = imax;
-    sprintf(buf,"Manual Stimorder %d stim over %d trials\n",imax+1,nt);
+    sprintf(buf,"Manual Stimorder %d stim, %d trials (%d chars)\n",imax+1,nt,buflen);
+    fprintf(seroutfile,"#%s",buf);
     statusline(buf);
     return(nseq); // this is # of trials, not index of last trial.  But nt gets increment
 }
@@ -14815,6 +14818,9 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     }
     else if(!strncmp(line,"freerwd",7)){
         SerialSignal(FREE_REWARD);
+        return(0);
+    }
+    else if(!strncmp(line,"manexpvals",9)){
         return(0);
     }
     else if(!strncmp(line,"newexpt",7)){

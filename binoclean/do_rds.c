@@ -646,6 +646,9 @@ July 2015 put pos->locn[0] inside bracket so that direction matches gratings
   h = (vcoord)(2 * pos->radius[1] - sst->dotsiz[1]/2);
   dw = sst->dotsiz[0]/2;
   xshift[0] -= w/2;
+    
+//when deathchance > 0, need to change the seed once
+// all dots have been refreshed, otherwise pattern repeats
     jumpdots = 2 * sst->ndots;
     jumpsize = 1;
     if (sst->seedloop > 0 && sst->ptr->deathchance > 0.001){

@@ -54,7 +54,7 @@ elseif strcmp(type, 'fullunikinetic') %include RDS, dynamic unikinetic, and dyna
     values{3} = [90 90 45 -45 45 -45 90 90 0 120];
     values{5} = [0   0  0  0  Inf  Inf 0 Inf 0 speed];
     values{6} = [1   1  1  1   1   1 0 1  1 1];
-    values{4} = {'rls' 'rls' 'rls' 'rls' 'rls' 'rls' 'rls' 'rls' 'rds' 'rls'}'
+    values{4} = {'rls' 'rls' 'rls' 'rls' 'rls' 'rls' 'rls' 'rls' 'rds' 'rls'};
     stimvars = {'or' 'c2' 'a2' 'st' 'v2' 'sl'};
 
 else
@@ -128,7 +128,7 @@ fprintf(fid,'\n');
 fprintf(fid,'expname=%s\n',name);    
 fprintf(fid,'%s\n',sprintf('%d ',stimorder));
 fclose(fid);
-fprintf('%d stim * %d repeats = %d trials\n',ns,nr,ceil(ns * nr/pt));
+fprintf('%d stim * %d repeats = %d trials (%d stim)\n',ns,nr,ceil(ns * nr/pt),length(stimorder));
 
 
 function WriteStim(basedir, stimno, S, exvals)
