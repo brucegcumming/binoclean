@@ -351,18 +351,19 @@ Stimulus *NewStimulus(Stimulus *st)
         else
             sst = new->right;
         sst->imlen = ndots;
-    sst->iimlen = ndots;
-    sst->im = (float *)malloc(sst->imlen * sizeof(float));
-    sst->iim = (int *)malloc(sst->iimlen * sizeof(int));
-    sst->iimb = (int *)malloc(sst->iimlen * sizeof(int));
-    sst->imblen = ndots;
-    sst->imb = (float *)malloc(sst->imblen * sizeof(float));
-    sst->xpl = ndots;
-    sst->xpos = (vcoord *)malloc(sst->xpl * sizeof(vcoord));
-    sst->ypl = ndots;
-    sst->ypos = (vcoord *)malloc(sst->ypl * sizeof(vcoord));
-    sst->xpla = ndots;;
-    sst->xposa = (vcoord *)malloc(sst->xpla * sizeof(vcoord));
+        sst->iimlen = ndots;
+        sst->im = (float *)malloc(sst->imlen * sizeof(float));
+        sst->iim = (int *)malloc(sst->iimlen * sizeof(int));
+        sst->iimb = (int *)malloc(sst->iimlen * sizeof(int));
+        sst->imblen = ndots;
+        sst->imb = (float *)malloc(sst->imblen * sizeof(float));
+        sst->xpl = ndots;
+        sst->xpos = (vcoord *)malloc(sst->xpl * sizeof(vcoord));
+        sst->ypl = ndots;
+        sst->ypos = (vcoord *)malloc(sst->ypl * sizeof(vcoord));
+        sst->xpla = ndots;;
+        sst->xposa = (vcoord *)malloc(sst->xpla * sizeof(vcoord));
+        sst->nfreqs = 0;
     }
     
     if(new->prev == NULL){

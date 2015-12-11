@@ -464,8 +464,9 @@
 #define NETWORK_PREFIX MAXSERIALCODES+173
 #define XY_FSD MAXSERIALCODES+174
 #define RCFILENAME MAXSERIALCODES+175
+#define SHAKE_TIMEOUT_DURATION2 MAXSERIALCODES+176
 
-#define MAXSAVECODES MAXSERIALCODES+176 //398
+#define MAXSAVECODES MAXSERIALCODES+177 //398
 //Add above here anything that needs to be saved to .stm files
 //Below here are temporary/convenience/state parameters that do not need saving
 

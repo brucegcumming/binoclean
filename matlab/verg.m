@@ -14,7 +14,7 @@ if length(varargin) & ishandle(varargin{1})
 else
     checkforrestart = 1;
     TOPTAG = 'vergwindow';
-    it = findobj('Tag',TOPTAG,'type','figure');
+    it = findobj(allchild(0),'flat','Tag',TOPTAG,'type','figure');
     setdata = 0;
 %just parse arguments here that need to be set before reading DATA from figure    
 j = 1;
@@ -59,7 +59,7 @@ if setdata
 end
 
 
-it = findobj('Tag',TOPTAG,'type','figure');
+it = findobj(allchild(0),'flat','Tag',TOPTAG,'type','figure');
 if isempty(it)
     tt = TimeMark([], 'Start');
     DATA.tag.top = 'vergwindow';
@@ -191,6 +191,10 @@ while j <= length(varargin)
         CheckCodeHelp(DATA, 'update');
     elseif strncmpi(varargin{j},'checkstim',8)
         CheckStimFile(DATA, 'update');
+    elseif strncmpi(varargin{j},'setgui',5)
+        ts = now;
+        SetGui(DATA);
+        mytoc(ts);
     elseif strncmpi(varargin{j},'getstate',5)
         ts = now;
         DATA = GetState(DATA,'commandline');
@@ -529,7 +533,7 @@ for j = 1:length(strs{1})
         value = s(eid(1)+1:end);
         codelen = eid(1);
     else
-        value = [];
+        value = '';
         code = s;
     end
     if frombinoc && (DATA.verbose(7) || DATA.frombinocfid > 0)
@@ -787,7 +791,7 @@ for j = 1:length(strs{1})
                 myprintf(DATA.frombinocfid,'-show','%s Running Next of %d expts\n',datestr(now),DATA.rptexpts);
                 outprintf(DATA,'//Nrpt is %d\n',DATA.rptexpts);
                 DATA.rptexpts = DATA.rptexpts-1;
-                it = findobj(DATA.toplevel,'Tag','RptExpts');
+                it = findobj(allchild(DATA.toplevel),'flat','Tag','RptExpts');
                 set(it,'string',num2str(DATA.rptexpts));
                 DATA = GetState(DATA,'ExptRpt');
                 DATA = uipause(now, DATA.binoc{1}.seqpause, 'Fixed Delay for repeats', DATA);
@@ -866,7 +870,9 @@ for j = 1:length(strs{1})
             DATA.optionstrings.(cc) = s(id(2)+1:end);
             DATA.togglecodesreceived = DATA.togglecodesreceived+1;
         elseif strncmp(s,'rptexpts',6)
-            DATA.rptexpts = sscanf(value,'%d');
+            if ~isempty(value)
+                DATA.rptexpts = sscanf(value,'%d');
+            end
         elseif strncmp(s,'STIMTYPE',6)
             id = strfind(s,' ');
             code = str2num(s(id(1)+1:id(2)-1))+1;
@@ -984,11 +990,11 @@ for j = 1:length(strs{1})
             DATA = SetExptMenus(DATA);
         elseif strncmp(s, 'EDONE', 5) %finished listing expt stims
             if isfield(DATA,'toplevel')
-                it = findobj(DATA.toplevel,'Tag','Expt3StimList','style','edit');
+                it = findobj(allchild(DATA.toplevel),'flat','Tag','Expt3StimList','style','edit');
                 if length(it) == 1
                     set(it,'string',DATA.exptstimlist{3});
                 end
-                it = findobj(DATA.toplevel,'Tag','Expt2StimList','style','edit');
+                it = findobj(allchild(DATA.toplevel),'flat','Tag','Expt2StimList','style','edit');
                 if length(it) == 1
                     ival = get(it,'value');
                     ival = min([size(DATA.exptstimlist{2},2) ival]);
@@ -998,7 +1004,7 @@ for j = 1:length(strs{1})
                     set(it,'string',DATA.exptstimlist{2},'value',ival);
                 end
                 
-                it = findobj(DATA.toplevel,'Tag','Expt1StimList','style','edit');
+                it = findobj(allchild(DATA.toplevel),'flat','Tag','Expt1StimList','style','edit');
                 if length(it) == 1
                     set(it,'string',DATA.exptstimlist{1});
                 end
@@ -1401,7 +1407,7 @@ for j = 1:length(strs{1})
             if length(n)
                 DATA.exptstimlist{3}{n(1)+1} = s(id(1)+1:end);
                 if isfield(DATA,'toplevel')  && setlist
-                    it = findobj(DATA.toplevel,'Tag','Expt3StimList');
+                    it = findobj(allchild(DATA.toplevel),'flat','Tag','Expt3StimList');
                     if length(it) == 1
                         set(it,'string',DATA.exptstimlist{3});
                     end
@@ -1414,7 +1420,7 @@ for j = 1:length(strs{1})
                 DATA.exptstimlist{2}{n(1)+1} = s(id(1)+1:end);
 %                fprintf(s);
                 if isfield(DATA,'toplevel') && setlist
-                    it = findobj(DATA.toplevel,'Tag','Expt2StimList','style','edit');
+                    it = findobj(allchild(DATA.toplevel),'flat','Tag','Expt2StimList','style','edit');
                     if length(it) == 1
                         ival = get(it,'value');
                         ival = min([size(DATA.exptstimlist{2},2) ival]);
@@ -1431,7 +1437,7 @@ for j = 1:length(strs{1})
             if length(n)
                 DATA.exptstimlist{1}{n(1)+1+DATA.nextras(1)} = s(id(1)+1:end);
                 if isfield(DATA,'toplevel') && setlist
-                    it = findobj(DATA.toplevel,'Tag','Expt1StimList');
+                    it = findobj(allchild(DATA.toplevel),'flat','Tag','Expt1StimList');
                     if length(it) == 1
                         set(it,'string',DATA.exptstimlist{1});
                     end
@@ -1738,7 +1744,7 @@ toconsole = 1;
    beep;
    CreateStruct.Interpreter = 'tex';
    if newwindow == 0
-        OldFig=findobj(0,'Type','figure','Tag','Msgbox_Binoc Warning','Name','Binoc Warning');
+        OldFig = findobj(allchild(0),'flat','tag','Msgbox_Binoc Warning','Name','Binoc Warning');
         if ~isempty(OldFig)
            OldPos = get(OldFig(1),'position');
         end
@@ -1749,10 +1755,10 @@ toconsole = 1;
    try
        if showpopup
            h = msgbox(split(s,'\\n'),'Binoc Warning','warn',CreateStruct);
-           ScaleWindow(h,2);
-           
+           p = ScaleWindow(h,2);
            if ~isempty(OldPos)
-               set(h,'Position', OldPos);
+               set(h,'Position', [OldPos(1:2) p(3:4)]);
+               drawnow;
            end
        end
        if toconsole
@@ -1986,10 +1992,14 @@ function SendState(DATA, varargin)
             if DATA.verbose(4)
                 fprintf('Not sending %s\n',f{j});
             end
+        elseif isempty(DATA.binoc{1}.(f{j}))
+            if DATA.verbose(4)
+                fprintf('Not sending Empty value %s\n',f{j});
+            end
         elseif ischar(DATA.binoc{1}.(f{j}))
-        outprintf(DATA,'%s=%s\n',f{j},DATA.binoc{1}.(f{j}));
+            outprintf(DATA,'%s=%s\n',f{j},DATA.binoc{1}.(f{j}));
         else
-        outprintf(DATA,'%s=%s\n',f{j},sprintf('%.6f ',DATA.binoc{1}.(f{j})));
+            outprintf(DATA,'%s=%s\n',f{j},sprintf('%.6f ',DATA.binoc{1}.(f{j})));
         end
     end
     outprintf(DATA,'clearquick\n');
@@ -2641,11 +2651,11 @@ end
 
    
 if isfield(DATA,'toplevel') %GUI is up
-it = findobj(DATA.toplevel,'Tag','Expt1List');
+it = findobj(allchild(DATA.toplevel),'flat','Tag','Expt1List');
 set(it,'string',DATA.expstrs{1});
-it = findobj(DATA.toplevel,'Tag','Expt2List');
+it = findobj(allchild(DATA.toplevel),'flat','Tag','Expt2List');
 set(it,'string',DATA.expstrs{2});
-it = findobj(DATA.toplevel,'Tag','Expt3List');
+it = findobj(allchild(DATA.toplevel),'flat','Tag','Expt3List');
 e2 = get(it,'value');
 if e2 > length(DATA.expstrs{3})
     set(it,'value',1);
@@ -3456,7 +3466,7 @@ function CopyLog(DATA,type)
             T = 'Copying Log to Nework';
             ok = 0;
             strs = {'To Network' 'To PC' 'I''ll copy manually'};
-            yn = questdlg(['Copy ' logfile ' to?'] , T, strs{:}, strs{1},DATA.font);
+            yn = myquestdlg(['Copy ' logfile ' to?'] , T, strs{:}, strs{1},DATA.font);
             ok = find(strcmp(yn,strs));
             if ok == 1
                 tgt = ntgt;
@@ -3472,7 +3482,11 @@ function CopyLog(DATA,type)
         logfile = sprintf('/local/%s/pen%d.log', DATA.binoc{1}.monkey, DATA.binoc{1}.Pn(1));
         d = dir(logfile);
         if length(d) == 1 && now - d.datenum < 1
-            tgt = sprintf('/b/bgc/anal/%s/pen%d.log', DATA.binoc{1}.monkey, DATA.binoc{1}.Pn(1));
+            tgtdir = sprintf('/b/data/%s/pens',DATA.binoc{1}.monkey);
+            if ~exist(tgtdir)
+                tgtdir = sprintf('/b/bgc/anal/%s',DATA.binoc{1}.monkey);
+            end
+            tgt = sprintf('%s/pen%d.log', tgtdir, DATA.binoc{1}.Pn(1));
             if exist(tgt)
                 go = confirm(sprintf('%s Already Exists. Overwrite with  %s?',tgt,logfile),DATA.font);
             else
@@ -3854,7 +3868,7 @@ function DATA = SendManualVals(a, b)
    end
    
     if ~ishandle(a) &&  nargin > 1
-        a = findobj(DATA.toplevel,'Tag',tag,'type','uicontrol');
+        a = findobj(allchild(DATA.toplevel),'flat','Tag',tag,'type','uicontrol');
     end
     str = get(a,'string');
     if strcmp(tag,'Expt2StimList')
@@ -4340,7 +4354,7 @@ function SetVerbose(a,b, flag)
  function DATA = CheckExptMenus(DATA)
      new = 0;
      for j = 1:3
-         it = findobj(DATA.toplevel,'Tag',['Expt' num2str(j) 'List']);
+         it = findobj(allchild(DATA.toplevel),'flat','Tag',['Expt' num2str(j) 'List']);
          id = strmatch(DATA.exptype{j},DATA.expmenucodes{j},'exact');
          if isempty(id)
              DATA.expmenucodes{j} = {DATA.expmenucodes{j}{:} DATA.exptype{j}};
@@ -4453,14 +4467,14 @@ function SetExptItems(DATA, varargin)
     SetToggleItem(DATA.toplevel, 'XYR', DATA.showxy(1));
     SetToggleItem(DATA.toplevel, 'XYL', DATA.showxy(2));
     SetToggleItem(DATA.toplevel, 'XYB', DATA.showxy(3));
-    it= findobj(DATA.toplevel,'Tag','CurrentStimLabel');
+    it= findobj(allchild(DATA.toplevel),'flat','Tag','CurrentStimLabel');
     set(it,'string',DATA.stimlabels{DATA.currentstim});
     if DATA.currentstim > 1
         set(it,'backgroundcolor','r');
     else
         set(it,'backgroundcolor', DATA.windowcolor);
     end
-    it = findobj(DATA.toplevel,'Tag','RunButton');
+    it = findobj(allchild(DATA.toplevel),'flat','Tag','RunButton');
     if DATA.inexpt
         set(it,'string','Cancel');
     elseif DATA.optionflags.ts
@@ -4472,32 +4486,35 @@ function SetExptItems(DATA, varargin)
         end
     end
     
-    ot = findobj('tag',DATA.windownames{2},'type','figure'); %options window
+    ot = findobj(allchild(0),'flat','tag',DATA.windownames{2},'type','figure'); %options window
        f = fields(DATA.optionflags);
+       otchild = allchild(ot);
+       topchild = allchild(DATA.toplevel);
        for j = 1:length(f)
            if length(ot) == 1 %set value in options window
-               it = findobj(ot,'Tag',f{j});
+               it = findobj(otchild,'flat','Tag',f{j});
                set(it,'value',DATA.optionflags.(f{j}));
            end
-           it = findobj(DATA.toplevel,'Tag',f{j},'type','uicontrol');
+           it = findobj(topchild,'flat','Tag',f{j},'type','uicontrol');
            if length(it) == 1
                set(it,'value',DATA.optionflags.(f{j}));
            end
        end
-    ot = findobj('tag',DATA.windownames{3},'type','figure'); %software Offset
+    ot = findobj(allchild(0),'flat','tag',DATA.windownames{3},'type','figure'); %software Offset
     SetSoftOffWindow(DATA,ot);
     
     
-    ot = findobj('tag',DATA.windownames{9},'type','figure');
+    ot = findobj(allchild(0),'flat','tag',DATA.windownames{9},'type','figure');
     if ~isempty(ot)
+        otchild = allchild(ot);
         f = {'Pn' 'ePr' 'coarsemm'};
         for j = 1:length(f)
-            it = findobj(ot, 'tag',f{j},'type','uicontrol','style','edit');
+            it = findobj(otchild,'flat', 'tag',f{j},'type','uicontrol','style','edit');
             if length(it) ==1
                 set(it,'string',sprintf('%d',GetValue(DATA,f{j})));
             end
         end
-        it = findobj(ot, 'tag','ElectrodeType','type','uicontrol');
+        it = findobj(otchild, 'flat','tag','ElectrodeType','type','uicontrol');
         if length(it) ==1
             estr = GetValue(DATA,'Electrode');
             strs = get(it,'string');
@@ -4506,7 +4523,7 @@ function SetExptItems(DATA, varargin)
                 set(it,'value',sval);
             end
         end
-        it = findobj(ot, 'tag','hemisphere','type','uicontrol');
+        it = findobj(otchild,'flat', 'tag','hemisphere','type','uicontrol');
         if length(it) ==1
             estr = GetValue(DATA,'hemi');
             strs = cellstr(get(it,'string'));
@@ -4517,10 +4534,10 @@ function SetExptItems(DATA, varargin)
         end
     end
     [a,j] = min(abs(DATA.binoc{1}.xyfsd - DATA.xyfsdvals));
-    ot = findobj(DATA.toplevel,'tag','FSD','type','uicontrol');
+    ot = findobj(allchild(DATA.toplevel),'flat','tag','FSD','type','uicontrol');
     set(ot,'value',j);
 
-    ot = findobj(DATA.toplevel,'tag','OptionContextMenu');
+    ot = findobj(allchild(DATA.toplevel),'flat','tag','OptionContextMenu');
     if ~isempty(ot);
         m = get(ot,'children');
         for k = 1:length(m)
@@ -4548,7 +4565,8 @@ function SetExptItems(DATA, varargin)
     
 
  function SetTextItem(top, tag, value, varargin)
- it = findobj(top,'Tag',tag);
+ 
+     it = findobj(allchild(top),'flat','Tag',tag);
  if ~isempty(it)
      if ischar(value)
      set(it,'string',value);
@@ -4558,14 +4576,14 @@ function SetExptItems(DATA, varargin)
  end
 
  function SetToggleItem(top, tag, value, varargin)
- it = findobj(top,'Tag',tag);
+ it = findobj(allchild(top),'flat','Tag',tag);
  if ~isempty(it)
      set(it,'value',value);
  end
  
 function SetMenuItem(top, tag, value, varargin)
 if length(value) == 1
-     it = findobj(top,'Tag',tag);
+     it = findobj(allchild(top),'flat','Tag',tag);
      if ~isempty(it)
          str = get(it,'string');
          if value > size(str,1)
@@ -4575,7 +4593,7 @@ if length(value) == 1
          end
      end
 elseif length(value) > 1
-     it = findobj(top,'Tag',tag);
+     it = findobj(allchild(top),'flat','Tag',tag);
      if ~isempty(it)
          set(it,'value',value(1));
      end
@@ -7106,7 +7124,7 @@ function SendCode(DATA, code)
         end
     else
         [s, ~, valid] = CodeText(DATA, code);
-        if length(s) && valid >= 0
+        if length(s) && valid >= 0 && s(end) ~= '='
             outprintf(DATA,'%s\n',s);
         end
     end

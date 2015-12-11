@@ -23,6 +23,9 @@
 #import "protos.h"
 
 
+
+
+
 #define MAXREPS 500
 #define MAXTRIALS 300
 #define ZEROBLOCKING 10
@@ -6959,7 +6962,7 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
                 sprintf(temp,"%.0f ",expt.st->componentjumps[i]);
                 strcat(cbuf,temp);
             }
-            strcat(cbuf,"\n\0");
+            strcat(cbuf,"\0");
             break;
         case USENEWDIRS:
             sprintf(cbuf,"%s=%d",serial_strings[code],usenewdirs);
@@ -7012,6 +7015,9 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
             break;
         case EARLY_RWTIME:
             sprintf(cbuf,"%s=%.2f %.2f", scode,expt.vals[EARLY_RWTIME],expt.vals[EARLY_RWSIZE]);
+            break;
+        case SHAKE_TIMEOUT_DURATION:
+            sprintf(cbuf,"%s=%.2f %.2f", scode,expt.vals[SHAKE_TIMEOUT_DURATION],expt.vals[SHAKE_TIMEOUT_DURATION2]);
             break;
         case USERID:
             sprintf(cbuf,"%s=%s", scode,expt.username);
@@ -7887,6 +7893,7 @@ void InitExpt()
     char cbuf[BUFSIZ*100],c,buf[BUFSIZ],rcnamebuf[BUFSIZ],*ts;
     float tval,val;
     struct timeval then;
+    int oldoptionflag;
     time_t tstart;
     Thisstim *stp;
     
@@ -8126,10 +8133,13 @@ void InitExpt()
     lastbutton = -1000;
     if(option2flag & INTERLEAVE_ONE_MONOCULAR)
     {
+        oldoptionflag = optionflag;
         optionflag &= (~MONOCULAR_MODE);
         setoption();
-        clear_display(1);
         SerialSend(OPTION_CODE);
+        mode |= STIMCHANGE_FRAME;
+        clear_display(1);
+        WriteSignal();
     }
     cbuf[0] = 0;
     MakeString(OPTION_CODE,cbuf, &expt, expt.st, TO_FILE);
@@ -9436,6 +9446,7 @@ int PrepareExptStim(int show, int caller)
     int isig,pw,sigframes[MAXFRAMES],laps=0;
     int code;
     int imid = 0;
+    int oldoptionflag = optionflag;
     
     
     if(mode & BW_ERROR)
@@ -9919,6 +9930,7 @@ int PrepareExptStim(int show, int caller)
     }
     if(option2flag & INTERLEAVE_ONE_MONOCULAR)
     {
+        oldoptionflag = optionflag;
         optionflag &= (~MONOCULAR_MODE);
         if(stimorder[stimno]  & STIMULUS_EXTRA_LEFT)
             optionflag |= LEFT_FIXATION_CHECK;
@@ -9927,8 +9939,12 @@ int PrepareExptStim(int show, int caller)
         // allow a bigger fixation window for monoc trials, if the fixation point is monocular
         ResetFixWin();
         setoption();
-        clear_display(1);
         SerialSend(OPTION_CODE);
+        clear_display(1);
+        if (oldoptionflag != optionflag){
+            mode |= STIMCHANGE_FRAME;
+            WriteSignal();
+        }
     }
     
     /* work out stimulus values in case its a double experiment */
@@ -13114,14 +13130,23 @@ int CheckStimDuration(int retval, int warning)
 {
     int i = 0,j =0, n = 0, rpt =0,nrpt = 0,nf=0,k=0;
     char buf[LONGBUF+10],tmp[LONGBUF+10],*s;
-    float val;
+    float val,crittime;
     time_t tt;
     
     float framevals[MAXFRAMES], diffmax, diffmin;
     
+    
+    
     rpt = (expt.st->framerepeat < 1) ? 1 : expt.st->framerepeat;
     n = framesdone;
-    
+
+
+    if (expt.st->mode & EXPTPENDING){
+        crittime = (framesdone+2.5)/expt.mon->framerate;
+    }
+    else{
+        crittime = (framesdone+5.5)/expt.mon->framerate;
+    }
     sprintf(buf,"#du%.3f(%d:%.3f) http%.3f\n",frametimes[framesdone],framesdone,(framesdone-0.5)/expt.mon->framerate,httpcalltime);
     SerialString(buf,0);
     if (optionflags[FIXNUM_PAINTED_FRAMES]){
@@ -13139,7 +13164,7 @@ int CheckStimDuration(int retval, int warning)
             if (frametimes[framesdone]  > (framesdone-0.5)/expt.mon->framerate){
                 sprintf(buf,"%d frames took %.3f %s",framesdone,frametimes[framesdone],StimString(STIMID));
                 printString(buf,2);
-                if (frametimes[framesdone]  > (framesdone+2.5)/expt.mon->framerate && warning)
+                if (frametimes[framesdone]  > crittime && warning)
                     acknowledge(buf,NULL);
             }
             sprintf(buf,"%sFi=",serial_strings[MANUAL_TDR]);
@@ -14923,7 +14948,9 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     else if(!strncmp(line,"monkeyshake",10)){
         if(expt.vals[SHAKE_TIMEOUT_DURATION] > 0){
             if(seroutfile)
-                fprintf(seroutfile,"monkeshake %.2f\n",ufftime(&now));
+                fprintf(seroutfile,"monkeshake %.2f state%d\n",ufftime(&now),stimstate);
+// Setting timeout type means that shake is not punished until end of trial.
+// i.e. allowed to shake if maintain fixataion.
             if(timeout_type == 0)
                 timeout_type = SHAKE_TIMEOUT;
             else if(timeout_type == SHAKE_TIMEOUT_PART2){
@@ -15201,7 +15228,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
         return(code);
     
     if (code == MAXTOTALCODES) { // a verg code o no code
-        if (frompc == 2 && (strlen(s) == 0 || strlen(s) == 1 && *s == '='))
+        if (frompc == 2 && (s == NULL || strlen(s) == 0 || (strlen(s) == 1 && *s == '=')))
             notify("Not a Binoc Code");
         return(code);
     }
@@ -16021,6 +16048,12 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             SetProperty(ex, TheStim,code, val);
             if (i > 1 && fval > 0)
                 expt.vals[EARLY_RWSIZE] = fval;
+            break;
+        case SHAKE_TIMEOUT_DURATION:
+            i = sscanf(s,"%f %f",&val,&fval);
+            SetProperty(ex, TheStim,code, val);
+            if (i > 1 && fval > 0)
+                expt.vals[SHAKE_TIMEOUT_DURATION2] = fval;
             break;
         case TOTAL_REWARD:
             sscanf(s,"%f",&val);

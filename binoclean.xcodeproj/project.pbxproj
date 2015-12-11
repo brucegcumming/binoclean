@@ -30,7 +30,6 @@
 		419DCE1913A133B3004E8464 /* Credits.rtf in Resources */ = {isa = PBXBuildFile; fileRef = 419DCE1713A133B3004E8464 /* Credits.rtf */; };
 		419DCE1C13A133B3004E8464 /* binocleanAppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 419DCE1B13A133B3004E8464 /* binocleanAppDelegate.m */; };
 		419DCE1F13A133B3004E8464 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 419DCE1D13A133B3004E8464 /* MainMenu.xib */; };
-		419DCE2713A133B3004E8464 /* SenTestingKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 419DCE2613A133B3004E8464 /* SenTestingKit.framework */; };
 		419DCE2813A133B3004E8464 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 419DCE0813A133B3004E8464 /* Cocoa.framework */; };
 		419DCE3013A133B3004E8464 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 419DCE2E13A133B3004E8464 /* InfoPlist.strings */; };
 		419DCE3213A133B3004E8464 /* binocleanTests.h in Resources */ = {isa = PBXBuildFile; fileRef = 419DCE3113A133B3004E8464 /* binocleanTests.h */; };
@@ -252,8 +251,7 @@
 		419DCE1A13A133B3004E8464 /* binocleanAppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = binocleanAppDelegate.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
 		419DCE1B13A133B3004E8464 /* binocleanAppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; lineEnding = 0; path = binocleanAppDelegate.m; sourceTree = "<group>"; };
 		419DCE1E13A133B3004E8464 /* en */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = en; path = en.lproj/MainMenu.xib; sourceTree = "<group>"; };
-		419DCE2513A133B3004E8464 /* binocleanTests.octest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = binocleanTests.octest; sourceTree = BUILT_PRODUCTS_DIR; };
-		419DCE2613A133B3004E8464 /* SenTestingKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SenTestingKit.framework; path = Library/Frameworks/SenTestingKit.framework; sourceTree = DEVELOPER_DIR; };
+		419DCE2513A133B3004E8464 /* binocleanTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = binocleanTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		419DCE2D13A133B3004E8464 /* binocleanTests-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "binocleanTests-Info.plist"; sourceTree = "<group>"; };
 		419DCE2F13A133B3004E8464 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		419DCE3113A133B3004E8464 /* binocleanTests.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = binocleanTests.h; sourceTree = "<group>"; };
@@ -494,7 +492,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				419DCE2713A133B3004E8464 /* SenTestingKit.framework in Frameworks */,
 				419DCE2813A133B3004E8464 /* Cocoa.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -652,7 +649,7 @@
 			isa = PBXGroup;
 			children = (
 				419DCE0413A133B3004E8464 /* binoclean.app */,
-				419DCE2513A133B3004E8464 /* binocleanTests.octest */,
+				419DCE2513A133B3004E8464 /* binocleanTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -663,7 +660,6 @@
 				C98E0B3318D9C1010027D45A /* Security.framework */,
 				41DB130A14F7F06100418C95 /* OpenGL.framework */,
 				419DCE0813A133B3004E8464 /* Cocoa.framework */,
-				419DCE2613A133B3004E8464 /* SenTestingKit.framework */,
 				419DCE0A13A133B3004E8464 /* Other Frameworks */,
 			);
 			name = Frameworks;
@@ -1024,8 +1020,8 @@
 			);
 			name = binocleanTests;
 			productName = binocleanTests;
-			productReference = 419DCE2513A133B3004E8464 /* binocleanTests.octest */;
-			productType = "com.apple.product-type.bundle";
+			productReference = 419DCE2513A133B3004E8464 /* binocleanTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -1033,7 +1029,7 @@
 		419DCDFB13A133B2004E8464 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastTestingUpgradeCheck = 0510;
+				LastTestingUpgradeCheck = 0710;
 				LastUpgradeCheck = 0450;
 				ORGANIZATIONNAME = "LSR-NEI";
 			};
@@ -1373,7 +1369,7 @@
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = "";
+				MACOSX_DEPLOYMENT_TARGET = 10.10;
 				ONLY_ACTIVE_ARCH = YES;
 				"OTHER_LDFLAGS[arch=*]" = (
 					"-L/usr/local/lib",
@@ -1407,7 +1403,8 @@
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = "";
+				MACOSX_DEPLOYMENT_TARGET = 10.10;
+				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = (
 					"-L/usr/local/lib",
 					"-llabjackusb",
@@ -1445,10 +1442,10 @@
 				);
 				"INFOPLIST_PREPROCESSOR_DEFINITIONS[sdk=*]" = "";
 				LIBRARY_SEARCH_PATHS = "";
-				MACOSX_DEPLOYMENT_TARGET = "";
+				MACOSX_DEPLOYMENT_TARGET = 10.10;
 				PRECOMPS_INCLUDE_HEADERS_FROM_BUILT_PRODUCTS_DIR = NO;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = "";
+				SDKROOT = macosx10.11;
 				SYMROOT = /local/bin;
 				WARNING_CFLAGS = "";
 				WRAPPER_EXTENSION = app;
@@ -1478,10 +1475,10 @@
 				INFOPLIST_FILE = "binoclean/binoclean-Info.plist";
 				INFOPLIST_PREPROCESSOR_DEFINITIONS = "";
 				LIBRARY_SEARCH_PATHS = "";
-				MACOSX_DEPLOYMENT_TARGET = "";
+				MACOSX_DEPLOYMENT_TARGET = 10.10;
 				PRECOMPS_INCLUDE_HEADERS_FROM_BUILT_PRODUCTS_DIR = NO;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = "";
+				SDKROOT = macosx10.11;
 				SYMROOT = /local/bin;
 				WARNING_CFLAGS = "";
 				WRAPPER_EXTENSION = app;
@@ -1493,13 +1490,12 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(BUILT_PRODUCTS_DIR)/binoclean.app/Contents/MacOS/binoclean";
 				COMBINE_HIDPI_IMAGES = YES;
-				FRAMEWORK_SEARCH_PATHS = "$(DEVELOPER_LIBRARY_DIR)/Frameworks";
+				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "binoclean/binoclean-Prefix.pch";
 				INFOPLIST_FILE = "binocleanTests/binocleanTests-Info.plist";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TEST_HOST = "$(BUNDLE_LOADER)";
-				WRAPPER_EXTENSION = octest;
 			};
 			name = Debug;
 		};
@@ -1508,13 +1504,12 @@
 			buildSettings = {
 				BUNDLE_LOADER = "$(BUILT_PRODUCTS_DIR)/binoclean.app/Contents/MacOS/binoclean";
 				COMBINE_HIDPI_IMAGES = YES;
-				FRAMEWORK_SEARCH_PATHS = "$(DEVELOPER_LIBRARY_DIR)/Frameworks";
+				FRAMEWORK_SEARCH_PATHS = "$(inherited)";
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "binoclean/binoclean-Prefix.pch";
 				INFOPLIST_FILE = "binocleanTests/binocleanTests-Info.plist";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				TEST_HOST = "$(BUNDLE_LOADER)";
-				WRAPPER_EXTENSION = octest;
 			};
 			name = Release;
 		};

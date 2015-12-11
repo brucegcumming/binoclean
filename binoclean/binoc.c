@@ -3020,6 +3020,9 @@ void clear_display(int flag)
     glDrawBuffer(GL_BACK);
     glFlushRenderAPPLE();
     glFinishRenderAPPLE();
+    if (mode & STIMCHANGE_FRAME){
+        
+    }
 }
 
 
@@ -6692,19 +6695,24 @@ int next_frame(Stimulus *st)
             else if ( optionflag & GO_BIT)
                 stimstate = INTERTRIAL;
             if(timeout_type == SHAKE_TIMEOUT_PART2){
+                glDrawBuffer(GL_FRONT_AND_BACK);
+                SetStimulus(expt.st,0.5, SETBACKCOLOR,NULL);
+                SetStimulus(expt.st,1.0, BLANKCOLOR_CODE,NULL);
+                glDrawBuffer(GL_FRONT_AND_BACK);
+                setmask(ALLMODE);
+                search_background();
+                val = timediff(&now, &starttimeout);
                 ShowTime();
-                if((val = timediff(&now, &starttimeout)) > expt.vals[SHAKE_TIMEOUT_DURATION]){
-                    SetStimulus(expt.st,0.5, SETBACKCOLOR,NULL);
-                    SetStimulus(expt.st,1.0, BLANKCOLOR_CODE,NULL);
-                    glDrawBuffer(GL_FRONT_AND_BACK);
-                    setmask(ALLMODE);
-                    search_background();
+                glDrawBuffer(GL_BACK);
+                if(val  > expt.vals[SHAKE_TIMEOUT_DURATION2]){
                     end_timeout();
-                       glDrawBuffer(GL_BACK);
                 }
             }
-            if(timeout_type == SHAKE_TIMEOUT_PART1)
-                timeout_type = SHAKE_TIMEOUT_PART2;
+            if(timeout_type == SHAKE_TIMEOUT_PART1){
+                if ((val = timediff(&now,&starttimeout)) > expt.vals[SHAKE_TIMEOUT_DURATION]){
+                    timeout_type = SHAKE_TIMEOUT_PART2;
+                }
+            }
             if(expt.vals[GRIDSIZE] > 100){ //specify in pixels, not degrees
                 setmask(ALLMODE);
                 chessboard((int)(expt.vals[GRIDSIZE]), (int)(expt.vals[GRIDSIZE]));
@@ -6784,9 +6792,11 @@ int next_frame(Stimulus *st)
             else
                 search_background();
             setmask(ALLMODE);
-            draw_conjpos(cmarker_size,PLOT_COLOR);
-            ShowBox(expt.rf,RF_COLOR);
-            DrawUserLines(expt.plot);
+            if (timeout_type < SHAKE_TIMEOUT){
+                draw_conjpos(cmarker_size,PLOT_COLOR);
+                ShowBox(expt.rf,RF_COLOR);
+                DrawUserLines(expt.plot);
+            }
 
             glSwapAPPLE();
             gettimeofday(&now,NULL);
@@ -7347,6 +7357,9 @@ int next_frame(Stimulus *st)
             
             change_frame();
             SerialSignal(WURTZ_OK);
+
+//Cant seem to get this right. When expt not running why do we want a popup?
+//
             CheckStimDuration(stimstate, optionflags[CHECK_FRAMECOUNTS]);
             glDrawBuffer(GL_BACK);
             glFinishRenderAPPLE();
@@ -7602,8 +7615,11 @@ int next_frame(Stimulus *st)
             }
             pursued = 0;
             fixpos[1] = deg2pix(expt.vals[FIXPOS_Y]);
+// This line sends fx,xy,xo and yo, to track any changes in trial.
+// But might also make Spike2 think fix point has moved. Consider using FIXPOS_X and FIXPOS_Y? 
             SerialSend(FIXPOS_XY);
-            draw_fix(fixpos[0],fixpos[1], TheStim->fix.size, TheStim->fixcolor);
+            if (timeout_type < SHAKE_TIMEOUT)
+                draw_fix(fixpos[0],fixpos[1], TheStim->fix.size, TheStim->fixcolor);
             
             /* stimseq[].result is used in human psychophysics for staircases */
             if(!(option2flag & PSYCHOPHYSICS_BIT))
@@ -7657,9 +7673,12 @@ int next_frame(Stimulus *st)
             else if (timeout_type == SHAKE_TIMEOUT_PART1)
                 duration = expt.vals[SHAKE_TIMEOUT_DURATION]; 
             else if (timeout_type == SHAKE_TIMEOUT_PART2)
-                duration = 1;
+                duration = expt.vals[SHAKE_TIMEOUT_DURATION2];
             markercolor = 0;
-            if(monkeypress == WURTZ_OK_W)
+            if (timeout_type == SHAKE_TIMEOUT_PART1){
+                expt.st->fixcolor = 0;
+            }
+            else if(monkeypress == WURTZ_OK_W)
             {
                 markercolor = 0;
                 //	  mySwapBuffers();

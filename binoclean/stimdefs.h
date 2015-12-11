@@ -546,6 +546,8 @@ float pix2degy(float val);
 #define POSTTRIAL 12
 #define POSTSTIMINTRIAL 13
 #define IN_TIMEOUT_W 14
+// TIMEOUT values >= SHAKE TIMEOUT do not paint
+// RF box, lines or fixation during STIMSTOPPED
 #define SHAKE_TIMEOUT 15
 #define SHAKE_TIMEOUT_PART2 16
 #define SHAKE_TIMEOUT_PART1 17

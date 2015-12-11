@@ -156,7 +156,7 @@ void ReadInputPipe()
                     freeToGo = 1;
                 }
                 else  {
-                    //                printf("Interpret:%s",inputLineChars);
+//                                    printf("Interpret%d:%s",i,inputLineChars);
                     InterpretLine(inputLineChars, &expt, 2);
                 }
             }
