@@ -3868,7 +3868,7 @@ function CheckTrialDurations(DATA, varargin)
         end
         if sum(err > 1) > length(err)/10 %10% trials are bad
             vergwarning(sprintf('%d/%d trials were too long',sum(err > 1),length(err)),'tellbinoc');
-            eid = find(err > 1)
+            eid = find(err > 1);
             for j = 1:length(eid)
                 iT = T(id(eid(j)));
                 fprintf('%s id %d:nf%d %.3f\n',datestr(iT.Start),iT.id,iT.nf,iT.dur);
