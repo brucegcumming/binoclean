@@ -410,7 +410,9 @@ ti Duration of timeout for fixation breaks, in  seconds
 #tgtdur > 0 op=+iit  icons show for first tgtdur seconds of stimulus presentation
 to duration of checkerboard following incorrect psych choices.
 tr ratio of luminances for choice targets. 1 = same, 0 = only correct choice visibles. See also pT. 
-ts When shake detector activated, timeout in sec
+ts When shake detector activated, timeout in sec. ts=A B sets two-part timeout
+#the screen is black for time A, and then normal timeout screen until time B
+#so the second part has a duration of B-A
 Tt If > 0, Spike2 plays a tone after this many seconds.
 Tw vaires range of oris mixed frame by frame
 Ty displaces choice targets in Y directon (useful if horizontal targets get close to RF).

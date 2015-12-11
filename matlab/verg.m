@@ -3845,26 +3845,27 @@ function CheckTrialDurations(DATA, varargin)
         else 
             maxerr = 10;
         end
+        if ~strcmp(plottype,'none')
+            GetFigure(DATA.tag.plotwin,'parent',DATA.toplevels);
+            hold off;
+        end
         if strcmp(plottype,'expt')
-            GetFigure(DATA.tag.plotwin);
             hist(err,[-10:0.5:maxerr]);
             title(sprintf('Real-Expected Duration at %.1fHz since %s',DATA.binoc{1}.fz,datestr(DATA.Expt.Start)));
             xlabel('frames');
         elseif strcmp(plottype,'hist')
-            GetFigure(DATA.tag.plotwin);
             hist(err,[-10:0.5:10]);
             title(sprintf('Real-Expected Duration at %.1fHz',DATA.binoc{1}.fz));
             xlabel('frames');
         elseif strcmp(plottype,'seq')
            nomdur = Nf(id)./DATA.binoc{1}.fz;
-           GetFigure(DATA.tag.plotwin);
-           hold off;
            plot([T(id).Start],nomdur,'-');
            hold on;
            plot([T(id).Start],durs(id),'ro');
            datetick('x','HH:MM');
            xlabel('Time');                    
            ylabel('Duration (Sec)');
+           title(sprintf('%d completed stim',length(id)));
         end
         if sum(err > 1) > length(err)/10 %10% trials are bad
             vergwarning(sprintf('%d/%d trials were too long',sum(err > 1),length(err)),'tellbinoc');
