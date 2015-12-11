@@ -3863,7 +3863,7 @@ function CheckTrialDurations(DATA, varargin)
            hold on;
            plot([T(id).Start],durs(id),'ro');
            datetick('x','HH:MM');
-           xlabel('Time');           
+           xlabel('Time');                    
            ylabel('Duration (Sec)');
         end
         if sum(err > 1) > length(err)/10 %10% trials are bad
