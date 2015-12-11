@@ -1710,6 +1710,7 @@ function vergwarning(s, varargin)
     persistent showpopup;
 newwindow = 0;
 toconsole = 1;
+tellbinoc = 0;
     if isempty(showpopup)
         showpopup = 1;
     end
@@ -1718,6 +1719,8 @@ toconsole = 1;
     while j <= length(varargin)
         if strncmpi(varargin{j},'newwin',3)
             newwindow = 1;
+        elseif strncmpi(varargin{j},'tellbinoc',6)
+            tellbinoc = 1;
         end
         j = j+1;
     end
@@ -1753,6 +1756,10 @@ toconsole = 1;
         CreateStruct.WindowStyle='non-modal';
    end
    try
+       
+       if tellbinoc
+           myprintf(DATA.tobinocfid,'#%s\n',s)
+       end
        if showpopup
            h = msgbox(split(s,'\\n'),'Binoc Warning','warn',CreateStruct);
            p = ScaleWindow(h,2);
@@ -2247,6 +2254,12 @@ function DATA = SetTrial(DATA, T)
         if isfield(DATA.binoc{1},f{j})
             DATA.Trials(nt).(f{j}) = DATA.binoc{1}.(f{j});
         end
+    end
+    if ~isfield(DATA.Trials,'Nf') || isempty(DATA.Trials(nt).Nf)
+        DATA.Trials(nt).Nf = NaN;
+    end
+    if ~isfield(DATA.Trials,'nf') || isempty(DATA.Trials(nt).nf)
+        DATA.Trials(nt).nf = NaN;
     end
     
     
@@ -3094,7 +3107,11 @@ function DATA = InitInterface(DATA)
     uimenu(subm,'Label','Psych Window','Callback',{@MenuHit, 'showpsych'});
     uimenu(subm,'Label','Status Lines','Callback',{@StatusPopup, 'popup'});
     uimenu(subm,'Label','Software Offset','Callback',{@SoftoffPopup, 'popup'});
-    uimenu(subm,'Label','Check Trial Durations','Callback',{@MenuHit, 'checkdur'});
+    sm = uimenu(subm,'Label','Plots');
+    uimenu(sm,'Label','Trial Durations Histogram (Day)','Callback',{@MenuHit, 'checkdurhist'});
+    uimenu(sm,'Label','Trial Durations Histogram (Expt)','Callback',{@MenuHit, 'checkdurexpt'});
+    uimenu(sm,'Label','Trial Duration sequence','Callback',{@MenuHit, 'checkdurseq'});
+
 
     subm = uimenu(cntrl_box,'Label','Pipes');
     uimenu(subm,'Label','Reopen Pipes','Callback',{@ReadIO, 6});
@@ -3353,8 +3370,8 @@ function MenuHit(a,b, arg)
             CopyLog(DATA, 'penlog');
             CopyLog(DATA, 'bnc');
         end
-    elseif strcmp(arg,'checkdur')
-        CheckTrialDurations(DATA,'hist');
+    elseif strncmp(arg,'checkdur',8)
+        CheckTrialDurations(DATA,arg(9:end));
     elseif strcmp(arg,'choosefont')
         fn = uisetfont;
         DATA.font = fn;
@@ -3803,7 +3820,7 @@ function CheckTrialDurations(DATA, varargin)
         if strcmp(varargin{j},'EXPTOVER') && ~isempty(DATA.Expts)
             tid = DATA.Expts{end}.first:DATA.Expts{end}.last;
             T = DATA.Trials(tid);
-        elseif strcmp(varargin{j},'hist')
+        elseif sum(strcmp(varargin{j},{'hist' 'seq' 'expt'}))
             plottype = varargin{j};
         end
         j = j+1;
@@ -3815,14 +3832,42 @@ function CheckTrialDurations(DATA, varargin)
         durs = [T.dur];
         id = find(Nf == nf+1); %completed.
         err = 1+ durs(id).*DATA.binoc{1}.fz - Nf(id); %number of extra video frames
-        if strcmp(plottype,'hist')
+        if strcmp(plottype,'expt')
+            xid = find([T(id).Start] > DATA.Expt.Start);
+            err = err(xid);
+        end
+        if length(err) > 10
+            x = sort(err);
+            maxerr = round(x(end-3)); %allow a few wild ones
+            if maxerr < 10
+                maxerr = 10;
+            end
+        else 
+            maxerr = 10;
+        end
+        if strcmp(plottype,'expt')
+            GetFigure(DATA.tag.plotwin);
+            hist(err,[-10:0.5:maxerr]);
+            title(sprintf('Real-Expected Duration at %.1fHz since %s',DATA.binoc{1}.fz,datestr(DATA.Expt.Start)));
+            xlabel('frames');
+        elseif strcmp(plottype,'hist')
             GetFigure(DATA.tag.plotwin);
             hist(err,[-10:0.5:10]);
             title(sprintf('Real-Expected Duration at %.1fHz',DATA.binoc{1}.fz));
             xlabel('frames');
+        elseif strcmp(plottype,'seq')
+           nomdur = Nf(id)./DATA.binoc{1}.fz;
+           GetFigure(DATA.tag.plotwin);
+           hold off;
+           plot([T(id).Start],nomdur,'-');
+           hold on;
+           plot([T(id).Start],durs(id),'ro');
+           datetick('x','HH:MM');
+           xlabel('Time');
+           ylabel('Duration(sec)');
         end
         if sum(err > 1) > length(err)/10 %10% trials are bad
-            vergwarning(sprintf('%d/%d trials were too long',sum(err > 1),length(err)));
+            vergwarning(sprintf('%d/%d trials were too long',sum(err > 1),length(err)),'tellbinoc');
             eid = find(err > 1)
             for j = 1:length(eid)
                 iT = T(id(eid(j)));
