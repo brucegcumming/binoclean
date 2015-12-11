@@ -3863,8 +3863,8 @@ function CheckTrialDurations(DATA, varargin)
            hold on;
            plot([T(id).Start],durs(id),'ro');
            datetick('x','HH:MM');
-           xlabel('Time');
-           ylabel('Duration (sec)');
+           xlabel('Time');           
+           ylabel('Duration (Sec)');
         end
         if sum(err > 1) > length(err)/10 %10% trials are bad
             vergwarning(sprintf('%d/%d trials were too long',sum(err > 1),length(err)),'tellbinoc');
