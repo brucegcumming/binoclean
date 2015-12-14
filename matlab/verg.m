@@ -2261,6 +2261,9 @@ function DATA = SetTrial(DATA, T)
     if ~isfield(DATA.Trials,'nf') || isempty(DATA.Trials(nt).nf)
         DATA.Trials(nt).nf = NaN;
     end
+    if ~isfield(DATA.Trials,'dur') || isempty(DATA.Trials(nt).dur)
+        DATA.Trials(nt).dur = NaN;
+    end
     
     
 function val = ReadVal(s, DATA)

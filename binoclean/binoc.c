@@ -6695,10 +6695,9 @@ int next_frame(Stimulus *st)
             else if ( optionflag & GO_BIT)
                 stimstate = INTERTRIAL;
             if(timeout_type == SHAKE_TIMEOUT_PART2){
-                glDrawBuffer(GL_FRONT_AND_BACK);
-                SetStimulus(expt.st,0.5, SETBACKCOLOR,NULL);
-                SetStimulus(expt.st,1.0, BLANKCOLOR_CODE,NULL);
-                glDrawBuffer(GL_FRONT_AND_BACK);
+                glDrawBuffer(GL_BACK);
+                SetStimulus(expt.st,0.5, SETBACKCOLOR,-1);
+                SetStimulus(expt.st,1.0, BLANKCOLOR_CODE,-1);
                 setmask(ALLMODE);
                 search_background();
                 val = timediff(&now, &starttimeout);
