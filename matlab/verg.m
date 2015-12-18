@@ -3816,6 +3816,8 @@ function SaveLayout(DATA, name)
     fclose(fid);
 
 function CheckTrialDurations(DATA, varargin)
+%Never Essential - don't let this kill timer
+    try
     T = DATA.Trials;
     plottype = 'none';
     j = 1;
@@ -3880,6 +3882,9 @@ function CheckTrialDurations(DATA, varargin)
         end
         fprintf('%d/%d trials were too long\n',sum(err > 1),length(err));
     end
+catch ME
+CheckExceptions(ME);
+end
     
 function TextCallback(a,b)
     SendManualVals(a);
