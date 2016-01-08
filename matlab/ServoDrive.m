@@ -39,14 +39,15 @@ while j <= length(varargin)
     if strncmpi(varargin{j},'callback',5)
         j = j+1;
         DATA.callback = varargin{j};
+        if length(DATA.callback) > 1 && isfigure(DATA.callback{2})
+            DATA.callingfigure = DATA.callback{2};
+        end
     elseif strncmpi(varargin{j},'depths',5)
         j = j+1;
         DATA.alldepths = varargin{j};
         j = j+1;
         DATA.alltimes = varargin{j};
-        if length(DATA.alltimes) > length(DATA.alldepths)
-            DATA.alltimes = DATA.alltimes(1:length(DATA.alldepths));
-        end
+        DATA = CheckDepthData(DATA);
     elseif strncmpi(varargin{j},'position',5)
         j = j+1;
         DATA.figpos = varargin{j};
@@ -146,6 +147,11 @@ end
 EnableMoveButtons(DATA,'on');
 set(DATA.toplevel,'UserData',DATA);
 
+
+function DATA = CheckDepthData(DATA)
+if length(DATA.alltimes) > length(DATA.alldepths)
+    DATA.alltimes = DATA.alltimes(1:length(DATA.alldepths));
+end
 
 function DATA = SetStartDepth(DATA, startdepth)
 
@@ -352,6 +358,7 @@ if exist(DATA.logfile,'file')
         X = load(DATA.logfile);
         DATA.alldepths = X.alldepths;
         DATA.alltimes = X.alltimes;
+        DATA = CheckDepthData(DATA);
     end
 end
 
@@ -868,93 +875,97 @@ end
 
 function DATA = PlotDepths(DATA, ts, newd)
 
-if nargin == 1
-    ts = DATA.newtimes;
-    newd = DATA.newdepths;
-elseif nargin == 3
-    DATA.newtimes = ts;
-    DATA.newdepths = newd./DATA.stepscale;
-    DATA.alltimes = [DATA.alltimes ts];
-    DATA.alldepths = [DATA.alldepths DATA.newdepths];    
-    DATA.offidx(end+1) = length(DATA.alldepths);
-end
-
-if ~strcmp(DATA.plottype,'None')
-    if strcmp(DATA.plottype,'LastMove')
-        if DATA.firstsample > 0
-            ts = DATA.alltimes(1+DATA.firstsample:end);
-            y = DATA.alldepths(1+DATA.firstsample:end);
-        else
-            ts = ts-ts(1);
-            y =newd./DATA.stepscale;
-        end
-        h = plot(ts, y);
-        set(h,'ButtonDownFcn',@ServoPlotHit);
-
-        set(gca,'xtick',[],'ytick',[],'ydir','reverse');
-        xl = [min(ts) max(ts)];
-        yl = [min(y) max(y)];
-    elseif strcmp(DATA.plottype,'MoveSpeed')
-        ts = ts-ts(1);
-        k = 24 * 60 * 60 ./DATA.stepscale;
-        dt = diff(ts) .* 24 * 60 * 60;
-        y = diff(newd)./(dt .*DATA.stepscale);
-        h = plot(ts(2:end), y);
-        set(h,'ButtonDownFcn',@ServoPlotHit);
-
-        set(gca,'xtick',[],'ytick',[],'ydir','normal');
-        xl = [min(ts) max(ts)];
-        yl = minmax(y);
-        if length(y) > 3
-            ms = prctile(y,50);
-            line(xl,[ms ms],'color','r');            
-            text(mean(xl),ms,sprintf('%.1fuM/sec',ms),'verticalalignment','bottom');
-        end
-    else
-        if DATA.timerange > 0
-            ti = find(DATA.alltimes(end)-DATA.alltimes < DATA.timerange./(24 * 60));
-            t = DATA.alltimes(ti);
-            d = DATA.alldepths(ti);
-        else
-            t = DATA.alltimes;
-            d = DATA.alldepths;
-        end
-        h = plot(t, d);
-        set(h,'ButtonDownFcn',@ServoPlotHit);
-        set(gca,'xtick',[],'ytick',[],'ydir','reverse');
-        xl = minmax(t);
-        yl = minmax(d);
-    end
+try
     
-    if diff(yl) <= 0
-        return;
+    if nargin == 1
+        ts = DATA.newtimes;
+        newd = DATA.newdepths;
+    elseif nargin == 3
+        DATA.newtimes = ts;
+        DATA.newdepths = newd./DATA.stepscale;
+        DATA.alltimes = [DATA.alltimes ts];
+        DATA.alldepths = [DATA.alldepths DATA.newdepths];
+        DATA.offidx(end+1) = length(DATA.alldepths);
     end
-    tdur = diff(xl).*24; %hours
-    tlabel = 'hr';
-    if tdur < 1
-        tdur = tdur .* 60;
-        tlabel = 'min';
-    end
-    if tdur < 1
-        tdur = tdur .* 60;
-        tlabel = 'sec';
-    end
-    %N.B. ydir is reversed (deep == down)
-    axis([xl yl]);
-    text(xl(2),yl(1),sprintf('%.1f%s',tdur,tlabel),'horizontalalignment','right','verticalalignment','top');
-    if strcmp(DATA.plottype,'MoveSpeed')
-        text(xl(1),yl(2),sprintf('%.1fuM/sec',max(yl)),'horizontalalignment','left','verticalalignment','bottom');
-        text(xl(1),yl(1),sprintf('%.1fuM/sec',min(yl)),'horizontalalignment','left','verticalalignment','top');
+    DATA = CheckDepthData(DATA);
+    if ~strcmp(DATA.plottype,'None')
+        if strcmp(DATA.plottype,'LastMove')
+            if DATA.firstsample > 0
+                ts = DATA.alltimes(1+DATA.firstsample:end);
+                y = DATA.alldepths(1+DATA.firstsample:end);
+            else
+                ts = ts-ts(1);
+                y =newd./DATA.stepscale;
+            end
+            h = plot(ts, y);
+            set(h,'ButtonDownFcn',@ServoPlotHit);
+            
+            set(gca,'xtick',[],'ytick',[],'ydir','reverse');
+            xl = [min(ts) max(ts)];
+            yl = [min(y) max(y)];
+        elseif strcmp(DATA.plottype,'MoveSpeed')
+            ts = ts-ts(1);
+            k = 24 * 60 * 60 ./DATA.stepscale;
+            dt = diff(ts) .* 24 * 60 * 60;
+            y = diff(newd)./(dt .*DATA.stepscale);
+            h = plot(ts(2:end), y);
+            set(h,'ButtonDownFcn',@ServoPlotHit);
+            
+            set(gca,'xtick',[],'ytick',[],'ydir','normal');
+            xl = [min(ts) max(ts)];
+            yl = minmax(y);
+            if length(y) > 3
+                ms = prctile(y,50);
+                line(xl,[ms ms],'color','r');
+                text(mean(xl),ms,sprintf('%.1fuM/sec',ms),'verticalalignment','bottom');
+            end
+        else
+            if DATA.timerange > 0
+                ti = find(DATA.alltimes(end)-DATA.alltimes < DATA.timerange./(24 * 60));
+                t = DATA.alltimes(ti);
+                d = DATA.alldepths(ti);
+            else
+                t = DATA.alltimes;
+                d = DATA.alldepths;
+            end
+            h = plot(t, d);
+            set(h,'ButtonDownFcn',@ServoPlotHit);
+            set(gca,'xtick',[],'ytick',[],'ydir','reverse');
+            xl = minmax(t);
+            yl = minmax(d);
+        end
+        
+        if diff(yl) <= 0
+            return;
+        end
+        tdur = diff(xl).*24; %hours
+        tlabel = 'hr';
+        if tdur < 1
+            tdur = tdur .* 60;
+            tlabel = 'min';
+        end
+        if tdur < 1
+            tdur = tdur .* 60;
+            tlabel = 'sec';
+        end
+        %N.B. ydir is reversed (deep == down)
+        axis([xl yl]);
+        text(xl(2),yl(1),sprintf('%.1f%s',tdur,tlabel),'horizontalalignment','right','verticalalignment','top');
+        if strcmp(DATA.plottype,'MoveSpeed')
+            text(xl(1),yl(2),sprintf('%.1fuM/sec',max(yl)),'horizontalalignment','left','verticalalignment','bottom');
+            text(xl(1),yl(1),sprintf('%.1fuM/sec',min(yl)),'horizontalalignment','left','verticalalignment','top');
+        else
+            text(xl(1),yl(2),sprintf('%.1fuM',diff(yl)),'horizontalalignment','left','verticalalignment','bottom');
+        end
+        set(gca,'ButtonDownFcn',@ServoPlotHit);
     else
-        text(xl(1),yl(2),sprintf('%.1fuM',diff(yl)),'horizontalalignment','left','verticalalignment','bottom');
+        delete(get(gca,'children'));
+        bc = get(gcf,'color');
+        set(gca,'color',bc,'box','off','xcolor',bc,'ycolor',bc);
     end
-    set(gca,'ButtonDownFcn',@ServoPlotHit);
-else
-    delete(get(gca,'children'));
-    bc = get(gcf,'color');
-    set(gca,'color',bc,'box','off','xcolor',bc,'ycolor',bc);
+catch ME
+    CheckExceptions(ME);
 end
-
 
 function ServoPlotHit(a,b)
 

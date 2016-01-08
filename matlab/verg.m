@@ -4656,7 +4656,7 @@ end
 
 function CheckServo(a,b, fig, varargin);
     DATA = get(fig,'UserData');
-    if DATA.servofig
+    if isfigure(DATA.servofig)
         ServoDrive('readposition','quiet');
     end
 
@@ -5229,7 +5229,7 @@ DATA = get(F, 'UserData');
 if strcmp(pos,'close') %Servo Contoller Closing
     DATA.servofig = 0;
     if isfield(varargin{1},'alldepths')
-        X = varargin{1};
+        X = CheckDepthData(varargin{1});
         if isfield(X,'newtimes') && X.newtimes(1) > max(X.alltimes)
             DATA.servodata.alldepths = cat(2,DATA.servodata.alldepths,X.alldepths,X.newdepths);
             DATA.servodata.alltimes = cat(2,DATA.servodata.alltimes,X.alltimes,X.newtimes);
@@ -5237,14 +5237,16 @@ if strcmp(pos,'close') %Servo Contoller Closing
             DATA.servodata.alldepths = cat(2,DATA.servodata.alldepths,X.alldepths);
             DATA.servodata.alltimes = cat(2,DATA.servodata.alltimes,X.alltimes);
         end
+        DATA.servodata = CheckDepthData(DATA.servodata);
         DATA.servodata.stepsize = X.stepsize;
     end
     if isfield(DATA,'servotimer')
         stop(DATA.servotimer);
     end
 else
+    try
     if ~isempty(varargin) && isfield(varargin{1},'alldepths')
-        X = varargin{1};
+        X = CheckDepthData(varargin{1});
         if isempty(DATA.servodata.alltimes)
             DATA.servodata.alltimes = X.alltimes;
             DATA.servodata.alldepths = X.alldepths;
@@ -5262,8 +5264,19 @@ else
     else
         ServoDrive('label', sprintf('Penetration Not Set',S.Pn,S.Xp,S.Yp));
     end
+    catch ME
+        CheckExceptions(ME);
+    end
 end
 set(DATA.toplevel,'UserData',DATA);
+
+
+
+function DATA = CheckDepthData(DATA)
+if length(DATA.alltimes) > length(DATA.alldepths)
+    DATA.alltimes = DATA.alltimes(1:length(DATA.alldepths));
+end
+
 
 function ElectrodePopup(a,b, fcn, varargin)
   DATA = GetDataFromFig(a);
@@ -5499,6 +5512,9 @@ set(gcf,'CloseRequestFcn',{@CloseWindow, 9});
 
 function MarkComment(a,b,txt);
   DATA = GetDataFromFig(a);
+  if isfield(DATA,'callingfigure')
+      DATA = get(DATA.callingfigure,'UserData');
+  end
   AddComment(DATA,txt, 'penmenu');
   outprintf(DATA,'cm=%s\n',txt);
         

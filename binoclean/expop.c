@@ -1749,6 +1749,7 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
     for (i = 0; i < 10; i++)
         manualstimvals[i] = (float *)malloc(sizeof(float)*MAXFRAMES);
     gettimeofday(&bwtime,NULL);
+    gettimeofday(&zeroframetime, NULL); // make sure this is initialized so that all time test are positive
     stimseq = (Thisstim *)malloc((TRIALBUFFERLEN+1) * sizeof(Thisstim));
 
     pgimage.ptr = NULL;
@@ -13164,8 +13165,14 @@ int CheckStimDuration(int retval, int warning)
             if (frametimes[framesdone]  > (framesdone-0.5)/expt.mon->framerate){
                 sprintf(buf,"%d frames took %.3f %s",framesdone,frametimes[framesdone],StimString(STIMID));
                 printString(buf,2);
-                if (frametimes[framesdone]  > crittime && warning)
-                    acknowledge(buf,NULL);
+                if (frametimes[framesdone]  > crittime){
+                    if (warning)
+                        acknowledge(buf,NULL);
+                    else{
+                        sprintf(tmp,"status=!!!%s\n",buf);
+                        notify(tmp);
+                    }
+                }
             }
             sprintf(buf,"%sFi=",serial_strings[MANUAL_TDR]);
             for( i = 1; i < framesdone-1; i++){
@@ -13256,6 +13263,10 @@ int CheckStimDuration(int retval, int warning)
                 if (warning){
                     sprintf(buf,"%d Frames took %.2f sec",n,frametimes[framesdone]);
                     acknowledge(buf,NULL);
+                }
+                else {
+                    sprintf(buf,"status=!!!%d Frames took %.2f sec\n",n,frametimes[framesdone]);
+                    notify(buf);
                 }
             }
             if(optionflags[FIXNUM_PAINTED_FRAMES] ==0){
@@ -14805,8 +14816,10 @@ int InterpretLine(char *line, Expt *ex, int frompc)
         return(0);
     }
     else if(!strncmp(line,"centerstim",8)){
-        SetProperty(&expt,expt.st,SETZXOFF,GetProperty(&expt,expt.st,RF_X));
-        SetProperty(&expt,expt.st,SETZYOFF,GetProperty(&expt,expt.st,RF_Y));
+        SetProperty(&expt,expt.st,XPOS,GetProperty(&expt,expt.st,RF_X));
+        SetProperty(&expt,expt.st,YPOS,GetProperty(&expt,expt.st,RF_Y));
+        sprintf(buf,"status=Simulus put at %.2f,%,2f\n",GetProperty(&expt,expt.st,XPOS),GetProperty(&expt,expt.st,YPOS));
+        notify(buf);
        return(0);
     }
     else if(!strncmp(line,"centerxy",8) || !strncmp(line,"sonull",6)){

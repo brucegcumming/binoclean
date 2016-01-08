@@ -4256,7 +4256,7 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
             bval = -(fval * sina - val * cosa);
             cval = (val * sina + fval * cosa);
             SetStimulus(st,bval,XPOS,event);
-            SetStimulus(st,cval,XPOS,event);
+            SetStimulus(st,cval,YPOS,event);
             break;
         case DISP_X:
             if(val > INTERLEAVE_EXPT){
@@ -7358,8 +7358,12 @@ int next_frame(Stimulus *st)
             SerialSignal(WURTZ_OK);
 
 //Cant seem to get this right. When expt not running why do we want a popup?
-//
-            CheckStimDuration(stimstate, optionflags[CHECK_FRAMECOUNTS]);
+//? Call it with srg2 = 0 so that check is made, but no popup?
+//            CheckStimDuration(stimstate, optionflags[CHECK_FRAMECOUNTS]);
+            if (ExptIsRunning())
+                CheckStimDuration(stimstate, optionflags[CHECK_FRAMECOUNTS]);
+            else
+                CheckStimDuration(stimstate, 0);
             glDrawBuffer(GL_BACK);
             glFinishRenderAPPLE();
             stimstate = WAIT_FOR_RESPONSE;
