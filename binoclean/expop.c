@@ -2971,7 +2971,7 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
             
         case MONKEYNAME:
             if (strcmp(s,"NotSet")){
-                if (strncasecmp(s,"Shake",5)){
+                if (!strncasecmp(s,"Shake",5)){
                     sprintf(buf,"Tried to set monkeyname to Shake");
                     acknowledge(buf);
                     return(0);
@@ -14963,10 +14963,10 @@ int InterpretLine(char *line, Expt *ex, int frompc)
         }
         return(0);
     }
-    else if(!strncmp(line,"monkeyshake",10)){
+    else if(!strncmp(line,"monkeyshake",10) || !strncmp(line,"monkshake",9)){
         if(expt.vals[SHAKE_TIMEOUT_DURATION] > 0){
             if(seroutfile)
-                fprintf(seroutfile,"monkeshake %.2f state%d\n",ufftime(&now),stimstate);
+                fprintf(seroutfile,"monkshake %.2f state%d\n",ufftime(&now),stimstate);
 // Setting timeout type means that shake is not punished until end of trial.
 // i.e. allowed to shake if maintain fixataion.
             if(timeout_type == 0)
