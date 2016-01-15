@@ -3062,6 +3062,9 @@ void redraw_overlay(struct plotdata  *plot)
             glClearColor(clearcolor,TheStim->gammaback,clearcolor,clearcolor);
         glClear(GL_COLOR_BUFFER_BIT);
     }
+    if (timeout_type == SHAKE_TIMEOUT_PART1)
+        return;
+    
     if(stimstate == STIMSTOPPED)
         ShowTime();
 
