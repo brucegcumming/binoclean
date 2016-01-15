@@ -2971,7 +2971,12 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
             
         case MONKEYNAME:
             if (strcmp(s,"NotSet")){
-                expt.monkey = myscopy(expt.monkey,s);
+                if (strncasecmp(s,"Shake",5)){
+                    sprintf(buf,"Tried to set monkeyname to Shake");
+                    acknowledge(buf);
+                    return(0);
+                }
+                    expt.monkey = myscopy(expt.monkey,s);
             sprintf(expt.cwd,"/local/%s",expt.monkey);
             if (chdir(expt.cwd)!=0)
             {
