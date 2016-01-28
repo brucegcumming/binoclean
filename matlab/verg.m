@@ -286,7 +286,7 @@ function SaveComCodes(DATA)
         CloseTag(DATA.windownames{j});
     end
     CloseTag(DATA.windownames{1});
-    if DATA.servofig
+    if isfigure(DATA.servofig);
         if isfield(DATA,'servotimer') & isvalid(DATA.servotimer)
             stop(DATA.servotimer);
         end
@@ -2017,9 +2017,12 @@ function SendState(DATA, varargin)
             outprintf(DATA,'qe=%s\n',DATA.quickexpts(j).filename);
         end
     end
+%some special codes are sent to binoc differently.  
+%Codes that go wrong during ReopenPipes probably need to be added here.
     SendCode(DATA,'vve');
     SendCode(DATA,'optionflag');
     SendCode(DATA,'expts');
+    SendCode(DATA,'ed'); %need to tell binoc !seted=
     if DATA.electrodeid > 0
         outprintf(DATA,'Electrode=%s\n',DATA.electrodestrings{DATA.electrodeid});
     end
@@ -4296,7 +4299,10 @@ function DATA = AddComment(DATA, str, src)
      DATA = GetDataFromFig(a);
      CheckTimer(DATA);
      PauseRead(DATA,0); 
-    
+ 
+ function DATA = ReopenPipes(a,b)
+     DATA = ReadIO(a,b, 6);
+     
  function DATA = ReadIO(a,b, flag)
      DATA = GetDataFromFig(a);
 
@@ -4325,9 +4331,9 @@ function DATA = AddComment(DATA, str, src)
         if ~strcmp(get(DATA.timerobj,'Running'),'on')
         start(DATA.timerobj);
         end
-     elseif flag == 6
+     elseif flag == 6  % Reopen pipes
         stop(DATA.timerobj);
-         if DATA.inexpt
+        if DATA.inexpt
              DATA.optionflags.do = 0;
          end
          DATA = OpenPipes(DATA, 0);
@@ -7188,6 +7194,8 @@ function SendCode(DATA, code)
         elseif DATA.electrodeid > 0
             outprintf(DATA,'Electrode=%s\n',DATA.electrodestrings{DATA.electrodeid});
         end
+    elseif strcmp(code,'ed')
+        outprintf(DATA,'!seted=%.3f\n',DATA.binoc{1}.ed);
     elseif strcmp(code,'exp')
         if isfield(DATA.matexpres,'stimdir')
             outprintf(DATA,'exp=%s\n',DATA.matexpres.stimdir);
