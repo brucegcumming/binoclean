@@ -5497,7 +5497,7 @@ int change_frame()
 
 	framesswapped++;
 #ifdef NIDAQ
-    if (stimchanged){
+    if (stimchanged){ //put DIO back down after change
         i = DIOWriteBit(0, 0);
         stimchanged = 0;
     }
@@ -6649,8 +6649,11 @@ int next_frame(Stimulus *st)
         }
         
     }
-    if(timeout_type == SHAKE_TIMEOUT)
+// if we get here, means not in an expt stim, so can set timeout
+    if(timeout_type == SHAKE_TIMEOUT){
+        stimstate = IN_TIMEOUT;
         start_timeout(SHAKE_TIMEOUT);
+    }
     if (stimno > 1 && !ExptIsRunning()){
         fprintf(seroutfile,"#Not in Expt S%d,%d\n",stimstate,states[EXPT_PAUSED]);
         i = TheStim->mode & EXPTPENDING;
@@ -6950,7 +6953,10 @@ int next_frame(Stimulus *st)
                     fixstate = 0;
                 mode |= WURTZ_FRAME_BIT;
             }
-            
+            else if (laststate != PREFIXATION){
+                fprintf(seroutfile,"#!!PREFIX after %d at %.3f!!\n",laststate,ufftime(&now));
+            }
+                
             if(!(optionflag & FIXATION_CHECK) || fixstate == GOOD_FIXATION || demomode)
             {
                 expstate = 0;
@@ -7076,7 +7082,7 @@ int next_frame(Stimulus *st)
                              * need to get spikes back from BW before preparing next expt stim
                              */
                             if(seroutfile){
-                                fprintf(seroutfile,"#Pre %d%c\n",stimno,exptchr);
+                                fprintf(seroutfile,"#Pre %d%c %d\n",stimno,exptchr,laststate);
 #ifdef MONITOR_CLOSE
                                 fprintf(seroutfile,"#Spikes %d\n",gotspikes);
                                 fflush(seroutfile);
@@ -7549,7 +7555,7 @@ int next_frame(Stimulus *st)
             if(rdspair(expt.st))
                 i = 0;
             if(seroutfile){
-                fprintf(seroutfile,"#PostTrial, last %d stimno%d%c\n",laststate,stimno,exptchr);
+                fprintf(seroutfile,"#PostTrial, last %d stimno%d%c T%d F%d\n",laststate,stimno,exptchr,timeout_type,fixstate);
                 fflush(seroutfile);
             }
             if (netoutfile)
@@ -7650,6 +7656,8 @@ int next_frame(Stimulus *st)
 
             if(fixstate == BADFIX_STATE && TheStim->fix.timeout > 0)
                 stimstate = IN_TIMEOUT;
+            else if(timeout_type > 0)
+                stimstate = IN_TIMEOUT;
             else if(monkeypress == WURTZ_OK_W)
                 stimstate = IN_TIMEOUT_W;
             else{
@@ -7674,6 +7682,8 @@ int next_frame(Stimulus *st)
                 i = 0;
             if(debug) glstatusline("Timeout",3);
             duration = TheStim->fix.timeout+timeoutadjust;
+            gettimeofday(&now, NULL);
+
             if(stimstate == IN_TIMEOUT_W)
                 duration = afc_s.wrongtimeout; 
             else if (timeout_type == SHAKE_TIMEOUT_PART1)
@@ -7683,6 +7693,8 @@ int next_frame(Stimulus *st)
             markercolor = 0;
             if (timeout_type == SHAKE_TIMEOUT_PART1){
                 expt.st->fixcolor = 0;
+                if (laststate != IN_TIMEOUT)
+                    fprintf(seroutfile,"#Shake Timeout Start at %.3f\n",ufftime(&now));
             }
             else if(monkeypress == WURTZ_OK_W)
             {
@@ -7700,6 +7712,9 @@ int next_frame(Stimulus *st)
                     start_timeout(SHAKE_TIMEOUT_PART2);
                 }
                 else{
+                    if (timeout_type == SHAKE_TIMEOUT_PART2){
+                        fprintf(seroutfile,"#Shake Timeout (%.2f) Over at %.3f\n",duration,ufftime(&now));
+                    }
                     if (duration > 0)
                         end_timeout();
                     stimstate = INTERTRIAL;
@@ -12138,6 +12153,7 @@ void ReopenSerial(void)
     
 #ifdef NIDAQ
     printf("Writing to DIO\n");
+    SerialSignal(TRIGGEREXPT);
     DIOWriteBit(2,  1);
     DIOWriteBit(1,  1);
     DIOWriteBit(0,  1);

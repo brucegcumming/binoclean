@@ -50,12 +50,14 @@ elseif strcmp(type, 'fullunikinetic') %include RDS, dynamic unikinetic, and dyna
 %9 RDS
 %9 TypeI Plaid 120
     values{1} = [0:30:330];
-    values{2} = [0 1    1  1   1   1 0 1  0 1];
-    values{3} = [90 90 45 -45 45 -45 90 90 0 120];
-    values{5} = [0   0  0  0  Inf  Inf 0 Inf 0 speed];
-    values{6} = [1   1  1  1   1   1 0 1  1 1];
-    values{4} = {'rls' 'rls' 'rls' 'rls' 'rls' 'rls' 'rls' 'rls' 'rds' 'rls'};
-    stimvars = {'or' 'c2' 'a2' 'st' 'v2' 'sl'};
+    values{2} = [0 1    1  1   1   1 0 1  0 1 0];
+    values{3} = [90 90 45 -45 45 -45 90 90 0 120 0];
+    values{5} = [0   0  0  0  Inf  Inf 0 Inf 0 speed 0];
+    values{6} = [1   1  1  1   1   1 0 1  1 1 1];
+    values{7}(1:10) = speed;
+    values{7}(11) = 0;
+    values{4} = {'rls' 'rls' 'rls' 'rls' 'rls' 'rls' 'rls' 'rls' 'rds' 'rls' 'rls'};
+    stimvars = {'or' 'c2' 'a2' 'st' 'v2' 'sl' 'jv'};
 
 else
     values{1} = [0:30:330];
@@ -128,7 +130,7 @@ fprintf(fid,'\n');
 fprintf(fid,'expname=%s\n',name);    
 fprintf(fid,'%s\n',sprintf('%d ',stimorder));
 fclose(fid);
-fprintf('%d stim * %d repeats = %d trials (%d stim)\n',ns,nr,ceil(ns * nr/pt),length(stimorder));
+fprintf('%d stim * %d repeats = %d trials (%d)\n',ns,nr,ceil(ns * nr/pt),length(stimorder));
 
 
 function WriteStim(basedir, stimno, S, exvals)

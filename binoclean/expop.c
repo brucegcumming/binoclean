@@ -14658,7 +14658,16 @@ int ReadConjPos(Expt*ex, char *line)
     return(0);
 }
 
-
+char *deblank(char *s)
+{
+    char *t = &s[strlen(s)-1];
+    
+    while(isspace(*t) && t > s){
+        *t = 0;
+        t--;
+    }
+    return(s);
+}
 
 /*
  * Interpretline pases text strings from files, the serial line, and the GUI input pipe;
@@ -14966,7 +14975,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     else if(!strncmp(line,"monkeyshake",10) || !strncmp(line,"monkshake",9)){
         if(expt.vals[SHAKE_TIMEOUT_DURATION] > 0){
             if(seroutfile)
-                fprintf(seroutfile,"monkshake %.2f state%d\n",ufftime(&now),stimstate);
+                fprintf(seroutfile,"monkshake %.2f state%d (%d)\n",ufftime(&now),stimstate);
 // Setting timeout type means that shake is not punished until end of trial.
 // i.e. allowed to shake if maintain fixataion.
             if(timeout_type == 0)
@@ -15215,9 +15224,8 @@ int InterpretLine(char *line, Expt *ex, int frompc)
      */
     if((t = strchr(line,'#')) != NULL){
         *t-- = 0;
-        while(isspace(*t) && t >= line)
-            *t-- = 0;
     }
+    line = deblank(line);
     
     /* skip over non-printing codes and leading whitespace */
     while((isserialcode(*line) || *line == ' ') && *line != 0)

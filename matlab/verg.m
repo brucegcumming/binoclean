@@ -314,21 +314,21 @@ function DATA = OpenBinocLog(DATA, type)
     end
     
 if sum(strcmp(type,{'frombinoc','both'}))    
-if DATA.frombinocfid <= 0
-    DATA.frombinocfid = fopen('/local/frombinoc.txt','a');
-    myprintf(DATA.frombinocfid,'Log openened %s\n',datestr(now));
-else
-    fprintf('FromBinoc log already open\n');
-end
+    if DATA.frombinocfid <= 0
+        DATA.frombinocfid = fopen('/local/frombinoc.txt','a');
+        myprintf(DATA.frombinocfid,'Log openened %s\n',datestr(now));
+    else
+        fprintf('FromBinoc log already open\n');
+    end
 end
 
-if sum(strcmp(type,{'tobinoc','both'}))    
-if DATA.tobinocfid <= 0
-    DATA.tobinocfid = fopen('/local/tobinoc.txt','a');
-    myprintf(DATA.tobinocfid,'Log openened %s\n',datestr(now));
-else
-    fprintf('ToBinoc log already open\n');
-end
+if sum(strcmp(type,{'tobinoc','both'}))
+    if DATA.tobinocfid <= 0
+        DATA.tobinocfid = fopen('/local/tobinoc.txt','a');
+        myprintf(DATA.tobinocfid,'Log openened %s\n',datestr(now));
+    else
+        fprintf('ToBinoc log already open\n');
+    end
 end
 
 function [ok, reason] = CheckDayEnd(DATA)
@@ -1708,7 +1708,7 @@ function vergwarning(s, varargin)
     persistent lastmsg;
     persistent lastcalltime;
     persistent showpopup;
-newwindow = 0;
+    newwindow = 0;
 toconsole = 1;
 tellbinoc = 0;
     if isempty(showpopup)
@@ -3143,6 +3143,14 @@ function DATA = InitInterface(DATA)
     SetMenuCheck(xm, DATA.verbose(6));
     xm = uimenu(sm,'Label', 'Suppress All Popups', 'Callback', {@SetVerbose, 'nopopup'});
     SetMenuCheck(xm, DATA.nowarning);
+    xm = uimenu(sm,'Label', 'Open Disk Log ToBinoc', 'Callback', {@SetVerbose, 'openlogto'});
+    if DATA.tobinocfid > 0
+        set(xm,'checked','on');
+    end
+    xm = uimenu(sm,'Label', 'Open Disk Log FromBinoc', 'Callback', {@SetVerbose, 'openlogfrom'});
+    if DATA.frombinocfid > 0
+        set(xm,'checked','on');
+    end
     xm = uimenu(sm,'Label', 'All Off', 'Callback', {@SetVerbose, 0});
   
     sm = uimenu(subm,'Label','Try Pipes','Callback',{@ReadIO, 8},'foregroundcolor','r');
@@ -4388,6 +4396,12 @@ function SetVerbose(a,b, flag)
      if flag == 0
          DATA.verbose = zeros(size(DATA.verbose));
          SetMenuCheck(a,'exclusive', 1);
+     elseif strcmp(flag,'openlogto')
+         DATA= OpenBinocLog(DATA,'tobinoc')
+         set(a,'checked','on');
+     elseif strcmp(flag,'openlogfrom')
+         DATA= OpenBinocLog(DATA,'frombinoc')
+         set(a,'checked','on');
      elseif strcmp(flag,'nopopup')
          DATA.nowarning = ~DATA.nowarning;
          if DATA.nowarning
@@ -7195,7 +7209,7 @@ function SendCode(DATA, code)
             outprintf(DATA,'Electrode=%s\n',DATA.electrodestrings{DATA.electrodeid});
         end
     elseif strcmp(code,'ed')
-        outprintf(DATA,'!seted=%.3f\n',DATA.binoc{1}.ed);
+        outprintf(DATA,'!seted=%.3f\n',GetValue(DATA,'ed'));
     elseif strcmp(code,'exp')
         if isfield(DATA.matexpres,'stimdir')
             outprintf(DATA,'exp=%s\n',DATA.matexpres.stimdir);
