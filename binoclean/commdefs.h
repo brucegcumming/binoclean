@@ -883,6 +883,7 @@ ToggleCode togglestrings[] = {
     {"Manual Expt",    "exm",  0, MANUAL_EXPT, 3},
     {"Reverse Back Contrast",    "bac",  0, REVERSE_BACKGROUND_CONTRAST, 3},
     {"Custom Values Expt 1",    "cex1",  0, CUSTOM_EXPVAL, 4},
+    {"Paint Test Square to track frames",    "testframe", 0, TESTING_FRAMES, 3},
     //   {"Auto Plot",    "ap", 0, AUTO_PLOT, 1},
     //   {"PreBack",    "pb", 0, BACKGROUND_IN_PREPERIOD, 1},
     //   {"Show Val",    "pw", 0, PLOT_WURTZ_BIT, 1},

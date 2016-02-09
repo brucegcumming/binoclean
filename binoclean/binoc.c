@@ -5430,7 +5430,7 @@ int change_frame()
     int blockallframes = 0;
     float tval;
     struct timeval atime,btime;
-	vcoord x[2];
+	vcoord x[2],pt[4],boxw = 50;
     
     
 #if defined(WIN32NOT)
@@ -5466,6 +5466,17 @@ int change_frame()
         lastwurtzcount = wurtzcount;
         framesswapped = 0;
 	}
+    if (optionflags[TESTING_FRAMES]){
+        pt[0] = expt.mon->pixels[0]/2 - boxw;
+        pt[1] = boxw-expt.mon->pixels[1]/2;
+        pt[2] = expt.mon->pixels[0]/2;
+        pt[3] = -expt.mon->pixels[1]/2;
+        if (framesswapped & 1)
+                glColor3f(0.5,0.5,0.5);
+        else
+            glColor3f(1,1,1);
+        myrect(pt[0],pt[1],pt[2],pt[3]);
+    }
 	/*
 	 * N.B. Need all three of these calls to make it work smoothly.
 	 * otherwise things seem to get piled up in the pipeline blocking
