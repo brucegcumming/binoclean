@@ -1504,8 +1504,11 @@ for j = 1:length(strs{1})
 end
 
 dur = mytoc(ts);
+if length(strs{1}) > 20
+    myprintf(DATA.frombinocfid,'Reading %d lines took %.2f%s\n',length(strs{1}),dur,pstr);
+end
 if dur > 1
-    fprintf('Reading %d lines took %.2f%s\n',length(strs{1}),dur,pstr);
+    fprintf('Reading %d lines took %.2f%s at %s\n',length(strs{1}),dur,pstr,datestr(now));
 end
 if frombinoc ~= 2 && paused == 0 %wasnt paused before this call.
     PauseRead(DATA,0);

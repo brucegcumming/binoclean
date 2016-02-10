@@ -1600,7 +1600,7 @@ void StopGo(int go)
         sprintf(buf,"%2s+\n",valstrings[valstringindex[STOP_BUTTON]].code);
         SerialString(buf,0);
         if(seroutfile)
-            fprintf(seroutfile,"#Stop Button Called (%d,%d)\n",stimstate,fixstate);
+            fprintf(seroutfile,"#StopGo Called (%d,%d)\n",stimstate,fixstate);
         if(stimstate == INSTIMULUS)
             TrialOver();
         start_timeout(SEARCH);
@@ -2598,7 +2598,7 @@ void run_swap_test_loop()
         }
         gettimeofday(&now,NULL);
         if (i==0 && useDIO){
-            DIOWriteBit(2,1);
+            DIOWriteBit(2,1); //in test loop
         }
         waittimes[i] = timediff(&now,&btime);
         if (i == 0){
@@ -2616,7 +2616,7 @@ void run_swap_test_loop()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glSwapAPPLE();
     if (useDIO){
-        DIOWriteBit(2,0);
+        DIOWriteBit(2,0); //in test loop
     }
     
     inexptstim = 0;
@@ -5163,6 +5163,62 @@ void search_background()
     }
 }
 
+
+void paint_timeout(int mode)
+{
+    int i,j,xstep,ystep,rnd;
+    float val;
+    struct timeval estart;
+    
+
+    clearcolor = expt.vals[SETCLEARCOLOR];
+    glDrawBuffer(GL_FRONT_AND_BACK);
+    setmask(ALLMODE);
+    glClearColor(clearcolor,TheStim->gammaback,clearcolor,clearcolor);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    switch (mode){   /*j monkey needs to know what he has done wrong */
+        default:
+        case SEARCH:
+            search_background();
+            break;
+        case SHAKE_TIMEOUT_PART1:
+            
+            break;
+        case SHAKE_TIMEOUT_PART2:
+            sprintf(timeoutstring,"Shake Timeout");
+            SetStimulus(expt.st,0.5, SETBACKCOLOR,NULL);
+            SetStimulus(expt.st,1.0, BLANKCOLOR_CODE,NULL);
+            glDrawBuffer(GL_FRONT_AND_BACK);
+            setmask(ALLMODE);
+            search_background();
+            glDrawBuffer(GL_BACK);
+            glFlushRenderAPPLE();
+            break;
+        case BAD_FIXATION:
+            fixstate = BADFIX_STATE;
+            stimstate = POSTTRIAL;
+            /*
+             * BC changed to give normal timeout pattern for
+             * bad saccades, chessboard for wrong response
+             */
+            /*	if(SACCREQD(afc_s) && fixstate != BADFIX_STATE)
+             chessboard(128,128);
+             else
+             */
+            if(TheStim->fix.timeout > 0.01)
+                search_background();
+            break;
+        case WURTZ_OK_W:
+            if (afc_s.wrongtimeout > 0){
+                chessboard(128,128);
+            }
+            stimstate = POSTTRIAL;
+            break;
+    }
+    glFlushRenderAPPLE();
+
+}
 void start_timeout(int mode)
 {
     int i,j,xstep,ystep,rnd;
@@ -5178,14 +5234,27 @@ void start_timeout(int mode)
     newtimeout = 1;
     if(optionflags[INITIAL_TRAINING])
         optionflags[INITIAL_TRAINING] = 2;
+
     if(mode == SHAKE_TIMEOUT)
         mode = timeout_type = SHAKE_TIMEOUT_PART1;
+
     if(timeout_type == SHAKE_TIMEOUT_PART1 || timeout_type == SHAKE_TIMEOUT)
     {
+        if (stimstate != STIMSTOPPED && stimstate != IN_TIMEOUT){
+            fixstate = BADFIX_STATE;
+            stimstate = POSTTRIAL;
+        }
+
+        fprintf(seroutfile,"#Shake Start Timeout at %.3f\n",ufftime(&now));
         timeout_type = SHAKE_TIMEOUT_PART1;
         SetStimulus(expt.st,0.0, SETBACKCOLOR,NULL);
         mode = SHAKE_TIMEOUT_PART1;
         TheStim->fixcolor = 0;
+        sprintf(timeoutstring,"Shake Timeout");
+    }
+    else if (timeout_type == SHAKE_TIMEOUT_PART2){
+        SetStimulus(expt.st,expt.vals[SETBACKCOLOR], SETBACKCOLOR,NULL);
+        mode = timeout_type;
     }
     else if(TheStim->fix.timeout > 0 || mode != BAD_FIXATION){
         glDrawBuffer(GL_FRONT_AND_BACK);
@@ -5215,47 +5284,7 @@ void start_timeout(int mode)
     if (timeoutadjust < 0)
         timeoutadjust = 0;
     
-    switch (mode){   /*j monkey needs to know what he has done wrong */   
-	    default:
-	    case SEARCH:
-            search_background();
-            break;
-        case SHAKE_TIMEOUT_PART1:
-            if(stimstate != STIMSTOPPED){
-                fixstate = BADFIX_STATE;
-                stimstate = POSTTRIAL;
-            }
-            break;
-        case SHAKE_TIMEOUT_PART2:
-            SetStimulus(expt.st,0.5, SETBACKCOLOR,NULL);
-            SetStimulus(expt.st,1.0, BLANKCOLOR_CODE,NULL);
-            glDrawBuffer(GL_FRONT_AND_BACK);
-            setmask(ALLMODE);
-            search_background();
-               glDrawBuffer(GL_BACK);
-            break;
-	    case BAD_FIXATION:
-            fixstate = BADFIX_STATE;
-            stimstate = POSTTRIAL;
-            /*	
-             * BC changed to give normal timeout pattern for
-             * bad saccades, chessboard for wrong response
-             */
-            /*	if(SACCREQD(afc_s) && fixstate != BADFIX_STATE)
-             chessboard(128,128);
-             else
-             */
-            if(TheStim->fix.timeout > 0.01)
-                search_background();
-            break;
-        case WURTZ_OK_W:
-            if (afc_s.wrongtimeout > 0){
-                chessboard(128,128);
-            }
-            stimstate = POSTTRIAL;
-            break;
-	}
-	glFlushRenderAPPLE();
+//    change_frame();
 	if(stimstate != IN_TIMEOUT && stimstate != POSTTRIAL)
         stimstate = STIMSTOPPED;
 	BackupStimFile();
@@ -5271,6 +5300,9 @@ void start_timeout(int mode)
         gettimeofday(&now,NULL);
 	}
     /*	fiterate(toplevel, 0, 0);*/
+    paint_timeout(mode);
+    change_frame();
+    paint_timeout(mode);
 }
 
 void end_timeout()
@@ -5285,6 +5317,7 @@ void end_timeout()
         glDrawBuffer(GL_FRONT_AND_BACK);
         setmask(ALLMODE);
         search_background();
+        fprintf(seroutfile,"#Shake Timout End %.3f\n",ufftime(&now));
     }
     
     
@@ -5292,6 +5325,8 @@ void end_timeout()
     TheStim->mode &= (~(INTRIAL));
     clearcolor = dogamma(expt.vals[SETCLEARCOLOR]);
     timeout_type = 0;
+    sprintf(timeoutstring,"Done");
+
     if(monkeypress == WURTZ_STOPPED)
         return;
     TheStim->fixcolor = TheStim->fix.offcolor;
@@ -5430,7 +5465,7 @@ int change_frame()
     int blockallframes = 0;
     float tval;
     struct timeval atime,btime;
-	vcoord x[2],pt[4],boxw = 50;
+	vcoord x[2],pt[4],boxw = 100;
     
     
 #if defined(WIN32NOT)
@@ -5467,12 +5502,15 @@ int change_frame()
         framesswapped = 0;
 	}
     if (optionflags[TESTING_FRAMES]){
+        boxw=200;
         pt[0] = expt.mon->pixels[0]/2 - boxw;
         pt[1] = boxw-expt.mon->pixels[1]/2;
         pt[2] = expt.mon->pixels[0]/2;
         pt[3] = -expt.mon->pixels[1]/2;
+        glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
         if (framesswapped & 1)
-                glColor3f(0.5,0.5,0.5);
+                glColor3f(0.04,0.04,0.04);
         else
             glColor3f(1,1,1);
         myrect(pt[0],pt[1],pt[2],pt[3]);
@@ -6615,7 +6653,7 @@ int next_frame(Stimulus *st)
     int nf,nerr;
     int crasher = 0;
     static int stimerr = 0;
-    int paintall = 0;
+    int paintall = 0,firststate;
     
     gettimeofday(&now,NULL);
     t2 = timediff(&now,&lastcalltime);
@@ -6660,8 +6698,11 @@ int next_frame(Stimulus *st)
         }
         
     }
+    firststate = stimstate;
 // if we get here, means not in an expt stim, so can set timeout
+// But should have been set earlier?
     if(timeout_type == SHAKE_TIMEOUT){
+        fprintf(seroutfile,"#S%dL%d T%d\n",stimstate,laststate,timeout_type);
         stimstate = IN_TIMEOUT;
         start_timeout(SHAKE_TIMEOUT);
     }
@@ -6719,6 +6760,7 @@ int next_frame(Stimulus *st)
                 search_background();
                 val = timediff(&now, &starttimeout);
                 ShowTime();
+                sprintf(timeoutstring,"Shake Timeout");
                 glDrawBuffer(GL_BACK);
                 if(val  > expt.vals[SHAKE_TIMEOUT_DURATION2]){
                     end_timeout();
@@ -6829,6 +6871,9 @@ int next_frame(Stimulus *st)
             memcpy(&lastcleartime,&now,sizeof(struct timeval));
             if (expt.verbose[0] && t2 > 1){
             }
+            if (laststate != firststate)
+                fprintf(seroutfile,"#Stop%dL%d T%d\n",laststate,firststate,stimstate,laststate,timeout_type);
+
             break;
         case INTERTRIAL:
 #ifdef NIDAQ
@@ -7566,7 +7611,7 @@ int next_frame(Stimulus *st)
             if(rdspair(expt.st))
                 i = 0;
             if(seroutfile){
-                fprintf(seroutfile,"#PostTrial, last %d stimno%d%c T%d F%d\n",laststate,stimno,exptchr,timeout_type,fixstate);
+                fprintf(seroutfile,"#PostTrial, last %d stimno%d%c T%d F%d sb%d\n",laststate,stimno,exptchr,timeout_type,fixstate,stopgo);
                 fflush(seroutfile);
             }
             if (netoutfile)
@@ -7667,6 +7712,8 @@ int next_frame(Stimulus *st)
 
             if(fixstate == BADFIX_STATE && TheStim->fix.timeout > 0)
                 stimstate = IN_TIMEOUT;
+            else if(timeout_type == SHAKE_TIMEOUT)
+                start_timeout(SHAKE_TIMEOUT);
             else if(timeout_type > 0)
                 stimstate = IN_TIMEOUT;
             else if(monkeypress == WURTZ_OK_W)
@@ -7679,13 +7726,16 @@ int next_frame(Stimulus *st)
                     states[ONE_TRIAL] = 0;
                 }
             }
-            if(stopgo == STOP)
+// execute request from GUI to stop running trials once reaching POSTTRIAL
+            if(stopgo == STOP && timeout_type ==0)
                 StopGo(STOP);
             if(stairfd){
                 fprintf(stairfd,"Post%d(%d) ",stimno,stimorder[stimno]);
             }
-            if (stimstate != POSTTRIAL)
+            if (stimstate != POSTTRIAL){
                 ReadCommandFile(expt.cmdinfile);
+                fprintf(seroutfile,"#S%d-%d-%d\n",laststate,firststate,stimstate);
+            }
             break;
         case IN_TIMEOUT:
         case IN_TIMEOUT_W:
@@ -7699,8 +7749,13 @@ int next_frame(Stimulus *st)
                 duration = afc_s.wrongtimeout; 
             else if (timeout_type == SHAKE_TIMEOUT_PART1)
                 duration = expt.vals[SHAKE_TIMEOUT_DURATION]; 
-            else if (timeout_type == SHAKE_TIMEOUT_PART2)
+            else if (timeout_type == SHAKE_TIMEOUT_PART2){
                 duration = expt.vals[SHAKE_TIMEOUT_DURATION2];
+                paint_timeout(timeout_type);
+                change_frame();
+                paint_timeout(timeout_type);
+
+            }
             markercolor = 0;
             if (timeout_type == SHAKE_TIMEOUT_PART1){
                 expt.st->fixcolor = 0;
@@ -7734,11 +7789,15 @@ int next_frame(Stimulus *st)
             }
             
             redraw_overlay(expt.plot);
-            glstatusline(NULL,1); //? put this in runbetweentrials?
+            if (timeout_type < SHAKE_TIMEOUT)
+                glstatusline(NULL,1); //? put this in runbetweentrials?
 
             if(timeout_type == SHAKE_TIMEOUT_PART2 && 0)
                 ShowTime();
             change_frame();
+            if (stimstate != firststate)
+                fprintf(seroutfile,"#S%d->%d->%d %.3f\n",laststate,firststate,stimstate,ufftime(&now));
+
             break;
         case TEST_BINOCLEAN:
             teststate = 1;

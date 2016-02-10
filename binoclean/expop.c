@@ -9946,8 +9946,8 @@ int PrepareExptStim(int show, int caller)
         ResetFixWin();
         setoption();
         SerialSend(OPTION_CODE);
-        clear_display(1);
         if (oldoptionflag != optionflag){
+            clear_display(1);
             mode |= STIMCHANGE_FRAME;
             WriteSignal();
         }
@@ -13153,7 +13153,7 @@ int CheckStimDuration(int retval, int warning)
     else{
         crittime = (framesdone+5.5)/expt.mon->framerate;
     }
-    sprintf(buf,"#du%.3f(%d:%.3f) http%.3f\n",frametimes[framesdone],framesdone,(framesdone-0.5)/expt.mon->framerate,httpcalltime);
+    sprintf(buf,"#du%.3f(%d:%.3f) http%.3f S%d\n",frametimes[framesdone],framesdone,(framesdone-0.5)/expt.mon->framerate,httpcalltime,stimstate);
     SerialString(buf,0);
     if (optionflags[FIXNUM_PAINTED_FRAMES]){
         if(frametimes[framesdone]  > (1+framesdone)/expt.mon->framerate && retval != BADFIX_STATE){
@@ -14978,8 +14978,13 @@ int InterpretLine(char *line, Expt *ex, int frompc)
                 fprintf(seroutfile,"monkshake %.2f state%d (%d)\n",ufftime(&now),stimstate);
 // Setting timeout type means that shake is not punished until end of trial.
 // i.e. allowed to shake if maintain fixataion.
-            if(timeout_type == 0)
+            if(timeout_type == 0){
                 timeout_type = SHAKE_TIMEOUT;
+                if (stimstate != INTRIAL && stimstate != PRESTIMULUS && stimstate != INSTIMULUS){
+                    stimstate = IN_TIMEOUT;
+                    start_timeout(SHAKE_TIMEOUT);
+                }
+            }
             else if(timeout_type == SHAKE_TIMEOUT_PART2){
                 start_timeout(SHAKE_TIMEOUT);
             }  // got shake during shake timeout
