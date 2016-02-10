@@ -9095,6 +9095,9 @@ char *ShowStimVals(Thisstim *stp)
         }
     }
     
+    sprintf(tmp," E%d",stimno);
+    strcat(cbuf,tmp);
+    
     if(optionflags[MICROSTIM]){
         if (expt.type3 == FAKESTIM_EXPT){
             sprintf(tmp," ustim%.3f",fakestim);
@@ -12778,7 +12781,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
                         }
                     }
                 }
-                if (stimstate == INTERTRIAL || stimstate == STIMSTOPPED){ // stopped readinput
+                if (stimstate == INTERTRIAL || stimstate == STIMSTOPPED || stimstate == IN_TIMEOUT){ // stopped readinput
                     retval = BAD_TRIAL;
                     fixstate = BADFIX_STATE;
                     finished = 2;
@@ -14695,6 +14698,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     FILE *fd;
     char *sublabel,qlabel[BUFSIZ],qpath[BUFSIZ],qname[BUFSIZ];
     PGM *pgm;
+    int shakeimmediate = 1;
     time_t nowtime;
     
     float fxpos[4];
@@ -14980,7 +14984,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
 // i.e. allowed to shake if maintain fixataion.
             if(timeout_type == 0){
                 timeout_type = SHAKE_TIMEOUT;
-                if (stimstate != INTRIAL && stimstate != PRESTIMULUS && stimstate != INSTIMULUS){
+                if ((stimstate != INTRIAL && stimstate != PRESTIMULUS && stimstate != INSTIMULUS) || shakeimmediate){
                     stimstate = IN_TIMEOUT;
                     start_timeout(SHAKE_TIMEOUT);
                 }
