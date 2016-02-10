@@ -467,7 +467,7 @@ function WriteText(txt, name, varargin)
         end
         
     
-function [DATA, codetype, badcodes] = InterpretLine(DATA, line, varargin)
+function [DATA, codetype, badcodes, nlines] = InterpretLine(DATA, line, varargin)
 
     
     
@@ -516,7 +516,7 @@ if frombinoc ~= 2
 end
 ts = now;
 strs = textscan(line,'%s','delimiter','\n');
-
+nlines = length(strs{1});
 if DATA.verbose(1) && length(strs{1}) > 1
     fprintf('Reading %d lines\n',length(strs{1}));
 end
@@ -2222,9 +2222,9 @@ function DATA = GetState(DATA, caller, verbose)
         elseif strncmp('STATEX',bstr,6)
             vergwarning('GetState Fault Rectified');
         end
-         DATA = InterpretLine(DATA, bstr,'fromgetstate');
+         [DATA,~,~,nlines] = InterpretLine(DATA, bstr,'fromgetstate');
          if verbose
-             fprintf('Read/Interpret took %.3f,%.3f\n',a,mytoc(ts));
+             fprintf('Read/Interpret took %.3f,%.3f (%d lines)\n',a,mytoc(ts),nlines);
          end
          myprintf(DATA.frombinocfid,'Getstate took %.3f,%.3f\n,',a,mytoc(ts))
     else

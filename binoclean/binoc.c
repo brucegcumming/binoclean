@@ -5187,8 +5187,8 @@ void paint_timeout(int mode)
             break;
         case SHAKE_TIMEOUT_PART2:
             sprintf(timeoutstring,"Shake Timeout");
-            SetStimulus(expt.st,0.5, SETBACKCOLOR,NULL);
-            SetStimulus(expt.st,1.0, BLANKCOLOR_CODE,NULL);
+            SetStimulus(expt.st,0.5, SETBACKCOLOR,NOEVENT);
+            SetStimulus(expt.st,1.0, BLANKCOLOR_CODE,NOEVENT);
             glDrawBuffer(GL_FRONT_AND_BACK);
             setmask(ALLMODE);
             search_background();
@@ -6753,15 +6753,7 @@ int next_frame(Stimulus *st)
             else if ( optionflag & GO_BIT)
                 stimstate = INTERTRIAL;
             if(timeout_type == SHAKE_TIMEOUT_PART2){
-                glDrawBuffer(GL_BACK);
-                SetStimulus(expt.st,0.5, SETBACKCOLOR,-1);
-                SetStimulus(expt.st,1.0, BLANKCOLOR_CODE,-1);
-                setmask(ALLMODE);
-                search_background();
-                val = timediff(&now, &starttimeout);
-                ShowTime();
-                sprintf(timeoutstring,"Shake Timeout");
-                glDrawBuffer(GL_BACK);
+                paint_timeout(timeout_type);
                 if(val  > expt.vals[SHAKE_TIMEOUT_DURATION2]){
                     end_timeout();
                 }
