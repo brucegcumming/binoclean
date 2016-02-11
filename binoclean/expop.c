@@ -6487,7 +6487,7 @@ void setstimulusorder(int warnings, int force)
         }
         sprintf(cbuf,"Min reps %d\n",nmin);
         statusline(cbuf);
-        glstatusline(cbuf,1);
+        glstatusline(cbuf,3);
     }
     else{
         for(i = 0; i < expt.nstim[5]; i++){
@@ -13442,7 +13442,7 @@ int CheckBW(int signal, char *msg)
             fprintf(seroutfile,"End/Bad combination %d %.2f %d",totaltrials,ufftime(&now),stimstate);
             }
             endbadctr++;
-            glstatusline("End/Bad",3);
+            glstatusline("End/Bad",0);
             gotspikes = 1;
         }
         s[ctr] = 0;
@@ -13563,7 +13563,7 @@ int ReplayExpt(char *name)
     
     if(name != NULL && !strcmp(name,"Show")){
         sprintf(buf,"Line %d at %s: %s",linectr,stimbuf,lastbuf);
-        glstatusline(buf,3);
+        glstatusline(buf,0);
         return(0);
     }
     if(rfd == NULL){
@@ -13599,7 +13599,7 @@ int ReplayExpt(char *name)
         }
         if(linectr < skiplines){
             sprintf(lastbuf,"Line %d %s",linectr,buf);
-            glstatusline(lastbuf,3);
+            glstatusline(lastbuf,0);
         }
         else if(buf[0] == '\\')
             ReadCommand(&buf[1]);
@@ -13668,7 +13668,7 @@ int ReplayExpt(char *name)
             ShowStimVals(&estim);
             sprintf(buf,"Line %d %s st = %s id%d",linectr,stimbuf,stimulus_names[expt.st->type],expt.allstimid);
             
-            glstatusline(buf,3);
+            glstatusline(buf,0);
             printf("Stim %s id%d\n",stimulus_names[expt.st->type],expt.allstimid);
             fixstate = GOOD_FIXATION;
             if(stimstate == STIMSTOPPED || stimstate == INTERTRIAL)

@@ -1483,7 +1483,7 @@ void glstatusline(char *s, int line)
         lines[line] = myscopy(lines[line],s);
     if(s != NULL){ /* new string */
         glDrawBuffer(GL_FRONT_AND_BACK);
-        if (line == 3){
+        if (line == 0){
             strcpy(timeoutstring,s);
         }
     }
@@ -1491,10 +1491,10 @@ void glstatusline(char *s, int line)
         setmask(ALLPLANES);
 
 	if(s != NULL){
-        printStringOnMonkeyView(s, strlen(s));
+        printStringOnMonkeyView(s, line);
     }
 	else if(lines[line] != NULL)
-        printStringOnMonkeyView(lines[line], strlen(lines[line]));
+        printStringOnMonkeyView(lines[line], line);
 	if(states[EXPT_PAUSED]){
 //        statusline("Paused");
 	}
@@ -1592,7 +1592,7 @@ void StopGo(int go)
      */
     else if(stimstate != POSTSTIMULUS || testflags[PLAYING_EXPT])
     {
-        sprintf(timeoutstring,"Stopped");
+        sprintf(timeoutstring,"Stopped at %s",binocTimeString());
 
         optionflag &= (~GO_BIT);
         mode &= (~(ANIMATE_BIT | TEST_PENDING));
@@ -1667,7 +1667,7 @@ void ButtonDrag(vcoord *start, vcoord *end, WindowEvent e)
                 StimulusProperty(stimptr,SETZYOFF),
                 serial_strings[ABS_ORTHOG_POS],StimulusProperty(stimptr,ABS_ORTHOG_POS),
         serial_strings[ABS_PARA_POS],StimulusProperty(stimptr,ABS_PARA_POS));
-        glstatusline(mssg,3);
+        glstatusline(mssg,0);
     }
     else if(eventstate & MBUTTON)
     {
@@ -1677,7 +1677,7 @@ void ButtonDrag(vcoord *start, vcoord *end, WindowEvent e)
         stmode |= (MOVED_STIMULUS | DRAG_STIMULUS);
         RotateStimulus(e.mouseX,e.mouseY);
         sprintf(mssg,"Orientation %.1f",StimulusProperty(stimptr,ORIENTATION));
-        glstatusline(mssg,3);
+        glstatusline(mssg,0);
     }
 }
 
@@ -1718,7 +1718,7 @@ void CntrlDrag(vcoord *start, vcoord *end,  WindowEvent e)
             pix2deg(expt.rf->size[0]),
             pix2deg(expt.rf->size[1]),
             expt.rf->angle);
-    glstatusline(s,3);
+    glstatusline(s,0);
     EndOverlay();
     glFinish();
 }
@@ -1790,7 +1790,7 @@ void ButtonReleased(vcoord *start, vcoord *end, WindowEvent e)
                     StimulusProperty(stimptr,SETZYOFF),
                     serial_strings[ABS_ORTHOG_POS],StimulusProperty(stimptr,ABS_ORTHOG_POS),
                     serial_strings[ABS_PARA_POS],StimulusProperty(stimptr,ABS_PARA_POS));
-            glstatusline(mssg,3);
+            glstatusline(mssg,0);
 
         }
     }
@@ -1970,7 +1970,7 @@ void CntrlButtonRelease(vcoord *start, vcoord *end, WindowEvent e)
             expt.rf->angle);
     
     statusline(s);
-    glstatusline(s,3);
+    glstatusline(s,0);
     ss = SendBoth(RF_DIMENSIONS,1);
     if(penlog)
         fprintf(penlog,"%s\n",ss);
@@ -5158,7 +5158,9 @@ void search_background()
 //		glDisable(GL_LINE_SMOOTH);
 //        glEnable(GL_BLEND);
         if(strlen(timeoutstring) > 0)
-            printStringOnMonkeyView(timeoutstring,6);
+            printStringOnMonkeyView(timeoutstring,0);
+        glstatusline(NULL,1);
+        glstatusline(NULL,2);
         setmask(bothmask);
     }
 }
@@ -5180,6 +5182,7 @@ void paint_timeout(int mode)
     switch (mode){   /*j monkey needs to know what he has done wrong */
         default:
         case SEARCH:
+        case STIMSTOPPED:
             search_background();
             break;
         case SHAKE_TIMEOUT_PART1:
@@ -6763,6 +6766,10 @@ int next_frame(Stimulus *st)
                     timeout_type = SHAKE_TIMEOUT_PART2;
                 }
             }
+            if (timeout_type == 0){
+                paint_timeout(stimstate);
+            }
+                
             if(expt.vals[GRIDSIZE] > 100){ //specify in pixels, not degrees
                 setmask(ALLMODE);
                 chessboard((int)(expt.vals[GRIDSIZE]), (int)(expt.vals[GRIDSIZE]));
@@ -6885,7 +6892,7 @@ int next_frame(Stimulus *st)
             newtimeout = 1;
             if(rdspair(expt.st))
                 i = 0;
-            if(debug) glstatusline("InterTrial",3);
+            if(debug) glstatusline("InterTrial",0);
             if(TheStim->mode & EXPT_OVER)
             {
                 expt_over(1);
@@ -7443,7 +7450,7 @@ int next_frame(Stimulus *st)
             if(debug){
                 sprintf(buf,"Wait %.4f",val);
                 printf("%s\n",buf);
-                glstatusline(buf,3);
+                glstatusline(buf,0);
             }
             if(freezestimulus)
                 return(framecount);
@@ -7629,7 +7636,7 @@ int next_frame(Stimulus *st)
                     paint_target(expt.targetcolor,2);
                 change_frame();
             }
-            if(debug) glstatusline("PostTrial",3);
+            if(debug) glstatusline("PostTrial",0);
             if(fabs(expt.vals[PURSUIT_INCREMENT]) > 0.001 && fixstate != BAD_FIXATION){
                 /*
                  * N.B. at this moment changes in PURSUIT INCREMENT as part of an expt will not
@@ -7781,8 +7788,6 @@ int next_frame(Stimulus *st)
             }
             
             redraw_overlay(expt.plot);
-            if (timeout_type < SHAKE_TIMEOUT)
-                glstatusline(NULL,1); //? put this in runbetweentrials?
 
             if(timeout_type == SHAKE_TIMEOUT_PART2 && 0)
                 ShowTime();
@@ -9035,7 +9040,7 @@ void run_rds_test_loop()
     val = timediff(&now,&timeb);
     sprintf(mssg,"B%d dots(%dx%d) * 72 = %.3f seconds",sst->ndots,fw,fh,val);
     statusline(mssg);
-    glstatusline(NULL,1);
+    glstatusline(NULL,0);
     
     gettimeofday(&timeb,NULL);
     for(frame = 0; frame < 72; frame++){
@@ -11800,7 +11805,7 @@ void printStringOnMonkeyView(char *s, int size)
     glColor4f(1.0,1.0,1.0,1.0); //white text
     glColorMask(GL_FALSE, GL_TRUE, GL_FALSE, GL_TRUE);
     gettimeofday(&atime,NULL);
-    displayOnMonkeyView(s, -500, -450);
+    displayOnMonkeyView(s, -500, -450+size*20);
     if (optionflags[WATCH_TIMES]){
         gettimeofday(&btime,NULL);
         aval = timediff(&btime,&atime) * mon.framerate;
