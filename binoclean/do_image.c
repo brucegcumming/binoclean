@@ -388,7 +388,7 @@ int calc_image(Stimulus *st, Substim *sst)
         }
     }
     else if(sst->imagei > 0)
-        sprintf(imname,"%s%d%c.pgm",st->imprefix,sst->imagei,eye);
+        sprintf(imname,"%s%.*d%c.pgm",st->imprefix,st->nimplaces,sst->imagei,eye);
     else if(sst->imagei > 0)
         sprintf(imname,"%s%.0f.%d%c.pgm",st->imprefix,sst->xshift,sst->imagei,eye);
     else

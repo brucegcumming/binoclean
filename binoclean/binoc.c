@@ -10791,6 +10791,7 @@ int ShowTrialCount(float down, float sum)
     {
 	    sprintf(mssg,"Ex: %ld/%d %.1f +- SD %.2f %d,%d outliers",frametotal,expt.nreps*expt.nstim[5],framemean,framesd,outliers[0],outliers[1]);
     }
+//    glstatusline(mssg,1);
 	statusline(mssg);
 	return(0);
 }
@@ -11988,7 +11989,7 @@ void expt_over(int flag)
             fprintf(seroutfile,"Run ended at %s\n",ctime(&tval));
             fflush(seroutfile);
         }
-        sprintf(timeoutstring,"Expt Over");
+        sprintf(timeoutstring,"Expt Over at %s",binocTimeString());
     }
 //Clear screen to search screen here, since some file operations below can be slow
     if(demomode == 0){

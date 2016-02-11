@@ -9113,7 +9113,7 @@ char *ShowStimVals(Thisstim *stp)
     else if(!expt.st->mode & EXPTPENDING)
         strcat(cbuf,"*rolling*");
     
-    glstatusline(cbuf,1);
+    glstatusline(cbuf,0);
     printString(cbuf, strlen(cbuf)); //Need this? removed May 2013
     sprintf(ebuf,"statusS=%s\n",cbuf);
     notify(ebuf);
