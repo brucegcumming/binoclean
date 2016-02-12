@@ -6505,11 +6505,11 @@ int RunBetweenTrials(Stimulus *st, Locator *pos)
     if(!(optionflag & STIM_IN_WURTZ_BIT)){
         if(expt.st->type == STIM_IMAGE && expt.st->preload && expt.st->preloaded)
             expt.st->framectr = myrnd_i() % expt.st->nframes;
+        expt.st->framectr = expt.st->framectr % expt.st->nframes;
         paint_frame(WHOLESTIM, !(mode & FIXATION_OFF_BIT));
         increment_stimulus(st, pos);
         loopframes++;
         expt.framesdone = loopframes%expt.st->nframes; // mimics things that depend on frame count
-        expt.st->framectr = expt.st->framectr % expt.st->nframes;
         return(1);
     }
     else if (afc_s.target_in_trial != 0){

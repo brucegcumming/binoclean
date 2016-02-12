@@ -130,7 +130,7 @@ fprintf(fid,'\n');
 fprintf(fid,'expname=%s\n',name);    
 fprintf(fid,'%s\n',sprintf('%d ',stimorder));
 fclose(fid);
-fprintf('%d stim * %d repeats = %d trials (%d)\n',ns,nr,ceil(ns * nr/pt),length(stimorder));
+fprintf('%d stim * %d repeats = %d trials (%d stim)\n',ns,nr,ceil(ns * nr/pt),length(stimorder));
 
 
 function WriteStim(basedir, stimno, S, exvals)
