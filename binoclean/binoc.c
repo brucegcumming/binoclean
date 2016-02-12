@@ -6509,6 +6509,7 @@ int RunBetweenTrials(Stimulus *st, Locator *pos)
         increment_stimulus(st, pos);
         loopframes++;
         expt.framesdone = loopframes%expt.st->nframes; // mimics things that depend on frame count
+        expt.st->framectr = expt.st->framectr % expt.st->nframes;
         return(1);
     }
     else if (afc_s.target_in_trial != 0){
