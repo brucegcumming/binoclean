@@ -457,6 +457,7 @@ struct EXPERIMENT{
     int magicnumber;
     char *manuallabels[MAXMANUALPARAMS];
     double manualvalues[MAXMANUALPARAMS];
+    char lastresult; //outcome of most recent trial
     
 };
 

@@ -12043,7 +12043,7 @@ int RunPsychStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int wi
         }
     
 #ifdef NIDAQ
-    DIOWriteBit(0,0); //clear stimchange pin
+    DIOWriteBit(DIO_STIMCHANGE,0); //clear stimchange pin
 #endif
     httpcalltime = timediff(&endstimtime,&lastcalltime);
     inexptstim = 0;
@@ -12805,7 +12805,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
             wipescreen(clearcolor); //wipe for next swap too
         }
 #ifdef NIDAQ
-    DIOWriteBit(0,0); //clear stimchange pin
+    DIOWriteBit(DIO_STIMCHANGE,0); //clear stimchange pin
 #endif
     httpcalltime = timediff(&endstimtime,&lastcalltime);
     inexptstim = 0;

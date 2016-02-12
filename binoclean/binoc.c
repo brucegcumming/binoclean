@@ -373,14 +373,14 @@ void TriggerExpt()
 #ifdef NIDAQ
     SerialSignal(TRIGGEREXPT);
     // trigger data collection for Spike2
-    DIOWriteBit(0,1);
+    DIOWriteBit(DIO_STIMCHANGE,1);
     DIOWriteBit(2,1);
     
     fsleep(0.01);
-    DIOWriteBit(0,0);
+    DIOWriteBit(DIO_STIMCHANGE,0);
     DIOWriteBit(2,0);
 #endif
-    
+    fprintf(seroutfile,"#Trig %.3f\n",TRIGGEREXPT,ufftime(&now));
 }
 
 
@@ -5172,9 +5172,10 @@ void paint_timeout(int mode)
     float val;
     struct timeval estart;
     
-
+// DO NOT set GL DrawBuffer in here, as this may be called
+// on many frames = risk of tearing. Set the drawbuffer in calling fucntions
+// when its clearly a single call
     clearcolor = expt.vals[SETCLEARCOLOR];
-    glDrawBuffer(GL_FRONT_AND_BACK);
     setmask(ALLMODE);
     glClearColor(clearcolor,TheStim->gammaback,clearcolor,clearcolor);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -5192,10 +5193,8 @@ void paint_timeout(int mode)
             sprintf(timeoutstring,"Shake Timeout");
             SetStimulus(expt.st,0.5, SETBACKCOLOR,NOEVENT);
             SetStimulus(expt.st,1.0, BLANKCOLOR_CODE,NOEVENT);
-            glDrawBuffer(GL_FRONT_AND_BACK);
             setmask(ALLMODE);
             search_background();
-            glDrawBuffer(GL_BACK);
             glFlushRenderAPPLE();
             break;
         case BAD_FIXATION:
@@ -5292,12 +5291,13 @@ void start_timeout(int mode)
         stimstate = STIMSTOPPED;
 	BackupStimFile();
 
-	if(ExptIsRunning()){
+    /*
+     * Some expts it is crucial that reset is call before prepare
+     * e.g. if animal broke fixation during a pursuit trial
+     * but do not need to do this for both parts of a shake timeout
+     */
+	if(ExptIsRunning() && timeout_type != SHAKE_TIMEOUT_PART2){
         gettimeofday(&estart,NULL);
-        /*
-         * Some expts it is crucial that reset is call before prepare
-         * e.g. if animal broke fixation during a pursuit trial
-         */
         ResetExpStim(1);
         PrepareExptStim(1,11);
         gettimeofday(&now,NULL);
@@ -5390,7 +5390,7 @@ void WriteSignal()
     {
 #ifdef NIDAQ
         if (optionflags[MICROSTIM])
-            DIOWriteBit(1, 1);
+            DIOWriteBit(DIO_USTIM, 1);
         if ((i = DIOWriteBit(2, 1)) < 0){
             fprintf(seroutfile,"#DIO error at Stim on\n");
         }
@@ -5442,7 +5442,7 @@ void WriteSignal()
 	    write(ttys[0],&c,1);
         stimchanged = 1;
 #ifdef NIDAQ
-	    if ((i = DIOWriteBit(0, 1)) < 0){
+	    if ((i = DIOWriteBit(DIO_STIMCHANGE, 1)) < 0){
             fprintf(seroutfile,"#DIO Error at StimChange\n");
         }
 #endif
@@ -5550,7 +5550,7 @@ int change_frame()
 	framesswapped++;
 #ifdef NIDAQ
     if (stimchanged){ //put DIO back down after change
-        i = DIOWriteBit(0, 0);
+        i = DIOWriteBit(DIO_STIMCHANGE, 0);
         stimchanged = 0;
     }
 #endif
@@ -6737,7 +6737,7 @@ int next_frame(Stimulus *st)
                     nerr++;
                 if((i = DIOWriteBit(1,  0)) < 0)
                       nerr++;
-                if((i = DIOWriteBit(0,  0)) < 0)
+                if((i = DIOWriteBit(DIO_STIMCHANGE,  0)) < 0)
                       nerr++;
                 if(nerr&& seroutfile != NULL)
                     fprintf(seroutfile,"#DIO Error at StimStopped\n");
@@ -6883,7 +6883,7 @@ int next_frame(Stimulus *st)
                    nerr++;
                 if((i = DIOWriteBit(1,  0)) < 0)
                     nerr++;
-                if((i = DIOWriteBit(0,  0)) < 0)
+                if((i = DIOWriteBit(DIO_STIMCHANGE,  0)) < 0)
                     nerr++;
                 if (nerr && seroutfile != NULL)
                     fprintf(seroutfile,"#DIO Error at InterTrial\n");
@@ -7760,7 +7760,7 @@ int next_frame(Stimulus *st)
             if (timeout_type == SHAKE_TIMEOUT_PART1){
                 expt.st->fixcolor = 0;
                 if (laststate != IN_TIMEOUT)
-                    fprintf(seroutfile,"#Shake Timeout Start at %.3f\n",ufftime(&now));
+                    fprintf(seroutfile,"#In Shake Timeout at %.3f\n",ufftime(&now));
             }
             else if(monkeypress == WURTZ_OK_W)
             {
@@ -10768,10 +10768,13 @@ int ShowTrialCount(float down, float sum)
     if (val < 0)
         val = timediff(&now, &firstframetime);
 	if(debug)
-        sprintf(mssg,"%s(%.2f) Frames: %d/%d (%.3f sec) %d/%d %d late %d bad (%.2f), %0f/%d",binocTimeString(),ufftime(&now),framesdone,TheStim->nframes,val,goodtrials,totaltrials,
+        sprintf(mssg,"%s(%.2f) Frames: %d/%d (%.3f sec) %c %d/%d %d late %d bad (%.2f), %0f/%d",binocTimeString(),ufftime(&now),framesdone,TheStim->nframes,val,
+                expt.lastresult,
+                goodtrials,totaltrials,
                 totaltrials-(goodtrials+fixtrials),fixtrials,down,fsum,nt);
 	else
-        sprintf(mssg,"%s Frames: %d/%d (%.3f sec) %d/%d %d late %d bad (%.2f), %.0f/%d",binocTimeString(),framesdone,TheStim->nframes,val,goodtrials,totaltrials,
+        sprintf(mssg,"%s Frames: %d/%d (%.3f sec) %c%d/%d %d late %d bad (%.2f), %.0f/%d",binocTimeString(),framesdone,TheStim->nframes,val,
+                expt.lastresult, goodtrials,totaltrials,
                 totaltrials-(goodtrials+fixtrials),fixtrials,down,fsum,nt);
     
     
@@ -11050,9 +11053,9 @@ int GotChar(char c)
 //  Save to ingore these cases
             if (makingserialconnection != 1){
                 //Just write StimChange bit if here, for diagnostics
-                DIOWriteBit(0,1);
+                DIOWriteBit(DIO_STIMCHANGE,1);
                 fsleep(0.01);
-                DIOWriteBit(0,0);
+                DIOWriteBit(DIO_STIMCHANGE,0);
                 sprintf(buf,"Very Short interval between Serial Connect at %.2f: %s",ufftime(&now),binocTimeString());
                 acklog(buf,NULL);
             }
@@ -11219,7 +11222,7 @@ int GotChar(char c)
                     nerr++;
                 if((i = DIOWriteBit(1,  0)) < 0)
                     nerr++;
-                if((i = DIOWriteBit(0,  0)) < 0)
+                if((i = DIOWriteBit(DIO_STIMCHANGE,  0)) < 0)
                     nerr++;
                 if (nerr && seroutfile != NULL){
                     fprintf(seroutfile,"#DIO Error GotChar%d\n",(int)c);
@@ -11553,6 +11556,7 @@ int GotChar(char c)
                 TheStim->fix.rwsize = oldrw;		    
                 newrewardset = 1;
                 lastresult = c;
+                expt.lastresult = result;
                 
                 if(stimstate == WAIT_FOR_RESPONSE && monkeypress != WURTZ_STOPPED)
                 {
@@ -11979,8 +11983,7 @@ void expt_over(int flag)
             fprintf(seroutfile,"Cancelled at %.2f\n",ufftime(&now));
             fprintf(seroutfile,"Run ended at %s\n",ctime(&tval));
         }
-        sprintf(timeoutstring,"Expt Cancelled");
-
+        sprintf(timeoutstring,"Expt Cancelled at %s",binocTimeString());
     }
     else{
         gettimeofday(&now,NULL);
@@ -12222,17 +12225,10 @@ void ReopenSerial(void)
     
 #ifdef NIDAQ
     printf("Writing to DIO\n");
-    SerialSignal(TRIGGEREXPT);
-    DIOWriteBit(2,  1);
-    DIOWriteBit(1,  1);
-    DIOWriteBit(0,  1);
-//    DIOWrite(0x7); 
-    fsleep(0.01);
-    DIOWriteBit(2,  0);
-    DIOWriteBit(1,  0);
-    DIOWriteBit(0,  0);
-    //DIOWrite(0); DIOval = 0;
+    TriggerExpt();
+    DIOWriteBit(1,0); // not set in TriggerExpt
 #endif
+    
     closeserial(0);
     if((i = OpenSerial(theport)) <= 0){
         mode |= NO_SERIAL_PORT;

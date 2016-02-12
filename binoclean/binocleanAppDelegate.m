@@ -319,8 +319,8 @@ int  processUIEvents()
 	}
     else if (useDIO)
     {
-        DIOWriteBit(0,0);
-        DIOWriteBit(0,1);
+        DIOWriteBit(DIO_STIMCHANGE,0);
+        DIOWriteBit(DIO_STIMCHANGE,1);
 //        DIOWrite(0xF);
     }
     

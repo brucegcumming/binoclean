@@ -47,6 +47,12 @@
 #define INTERSTIMULUS (char)17
 #define MYEOF (char)17
 
+//DIO Lines
+#define DIO_STIMON 2
+#define DIO_STIMCHANGE 0
+#define DIO_USTIM 1
+
+
 #define FRAMERATE 60.0
 #define FIXEDDELAY 0.000001
 #define SERIALDELAY 92L /* in BW ticks */

@@ -1,6 +1,6 @@
 #simple stm file for showing binocular images from disk
 st=image
-impref=/b/bgc/matlab/Images/rds
+impref=/local/Images/rds
 immode=twoeyes
 imload=preload
 nimplaces=3

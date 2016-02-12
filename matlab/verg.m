@@ -306,6 +306,7 @@ function SaveComCodes(DATA)
         end
     end
     WriteText(DATA.Statuslines,'/local/vergstatus.txt','backup');
+    CloseChildren(DATA.toplevel);
 
 function DATA = OpenBinocLog(DATA, type)
 
@@ -7884,6 +7885,8 @@ function ChoosePsych(a,b, mode)
             it = findobj(get(a,'parent'),'Tag',DATA.psych.blockmode);
             set(it,'Checked','on');
         end
+    elseif strcmp(mode,'exptrelist')
+        PsychMenu(DATA);
     elseif strcmp(mode,'exptsummary')
         PlotExptsSummary(DATA.Expts);
     elseif strmatch(mode,'Current')
@@ -7954,7 +7957,7 @@ function ChoosePsych(a,b, mode)
 
 function DATA = SetFigure(tag, DATA)
 
-    [a,isnew] = GetFigure(tag);
+    [a,isnew] = GetFigure(tag,'parent',DATA.toplevel);
     onoff = {'off' 'on'};
     if isnew
         DATA.figs.(tag) = a;
@@ -7972,6 +7975,7 @@ function DATA = SetFigure(tag, DATA)
             sm = uimenu(hm,'Label','Read Todays PsychFile','callback', {@ChoosePsych, 'readpsychfile'});
             sm = uimenu(hm,'Label','Read Previous PsychFile','callback', {@ChoosePsych, 'choosepsychfile'});
             sm = uimenu(hm,'Label','Plot Expt Summary','callback', {@ChoosePsych, 'exptsummary'});
+            sm = uimenu(hm,'Label','Refresh Expt List','callback', {@ChoosePsych, 'exptrelist'});
             set(a,'UserData',DATA.toplevel);
             set(a,'DefaultUIControlFontSize',DATA.font.FontSize);
             set(a,'DefaultUIControlFontName',DATA.font.FontName);
