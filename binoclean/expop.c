@@ -2077,7 +2077,6 @@ char *ReadManualStim(char *file, int stimid){
             expt.st->next->preloaded = 0;
             expt.st->next->left->baseseed = st->left->baseseed;
             expt.st->next->seedoffset = st->seedoffset;
-            expt.st->next->imprefix = st->imprefix;
             expt.st->next->preload = st->preload;
             expt.st->next->imprefix = st->imprefix;
             expt.st->next->immode = st->immode;
@@ -2919,8 +2918,8 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
         case SHOWFLAGS_CODE:
             expt.showflags = myscopy(expt.showflags,s);           
             break;
-        case IMAGELOAD_PREFIX:
-            expt.st->imprefix = myscopy(expt.st->imprefix,nonewline(s));
+        case IMAGELOAD_PREFIX: // can be different for background
+            stimptr->imprefix = myscopy(stimptr->imprefix,nonewline(s));
         
             break;
         case IMAGELOAD_TYPE:
@@ -9387,9 +9386,9 @@ int PreLoadImages()
                 st->next->preloaded = 0;
                 st->next->left->baseseed = st->left->baseseed;
                 st->next->seedoffset = st->seedoffset;
-                st->next->imprefix = st->imprefix;
+                if (!(optionflag & BACKGROUND_FIXED_BIT))
+                    st->next->imprefix = st->imprefix;
                 st->next->preload = st->preload;
-                st->next->imprefix = st->imprefix;
                 st->next->immode = st->immode;
                 st->next->jumps = st->jumps;
                 st->next->left->calculated = st->next->right->calculated = 0;
@@ -10808,10 +10807,12 @@ int PrepareExptStim(int show, int caller)
     
     
     if(expt.st->next != NULL && expt.st->next->type == STIM_IMAGE){
-        st->next->imprefix = st->imprefix;
-        st->next->preload = st->preload;
-        st->next->imprefix = st->imprefix;
-        st->next->immode = st->immode;
+        if (!(optionflag & BACKGROUND_FIXED_BIT)){
+            st->next->imprefix = st->imprefix;
+            st->next->preload = st->preload;
+            st->next->imprefix = st->imprefix;
+            st->next->immode = st->immode;
+        }
         st->next->left->calculated = st->next->right->calculated = 0;
     }
     

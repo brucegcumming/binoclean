@@ -3245,9 +3245,9 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
         case IMAGEINDEX:
             stimptr->left->imagei = val;
             stimptr->right->imagei = val;
-            if (stimptr->next != NULL){
-            stimptr->next->left->imagei = val;
-            stimptr->next->right->imagei = val;
+            if (stimptr->next != NULL  && !(optionflag & BACKGROUND_FIXED_BIT)){
+                stimptr->next->left->imagei = val;
+                stimptr->next->right->imagei = val;
             }
             break;
         case BACKGROUND_MOVIE:  //need this in setstimulus for Expt sequence modes
