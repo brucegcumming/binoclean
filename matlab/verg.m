@@ -611,6 +611,8 @@ for j = 1:length(strs{1})
                 else
                     DATA.autorestart = 0;
                 end
+            elseif strncmp(s,'autostart',9)
+                    DATA.autorestart = 2;
             elseif strncmp(s,'optionwinpos=',10)
                 DATA.winpos{2} = sscanf(value,'%d');
             elseif strncmp(s,'softoffwinpos=',10)
@@ -2141,8 +2143,20 @@ rbusy = 0;
 
 [a, pstr] = system('ps -e | grep binoclean');
 if isempty(strfind(pstr, 'binoclean.app'))
-    fprintf('Binoc is Not Running');
-    binocisrunning = 0;
+    if DATA.autorestart
+        if DATA.autorestart == 2 %only start at beginning
+            DATA.autorestart = 0;
+        end
+        [a,b] = system('open /local/bin/binoclean.app');        
+        pause(1);
+        binocisrunning = ~a; 
+        if a ~= 0
+            vergwarning('Tried to Open Binoc But Failed!!!!\n');
+        end
+    else
+        fprintf('Binoc is Not Running');
+        binocisrunning = 0;
+    end
 else
     binocisrunning = 1;
 end
@@ -2570,7 +2584,11 @@ for j = 1:length(DATA.comcodes)
         DATA.expmenuvals{3} = [DATA.expmenuvals{3} DATA.comcodes(j).const];
     end
 end
-
+txt = scanlines('/local/verg.setup');
+id = find(strncmp('autostart',txt,9));
+if ~isempty(id) && DATA.autorestart == 0
+    DATA.autorestart = 2;
+end
 
 function [strs, Keys] = ReadHelp(DATA)
  
