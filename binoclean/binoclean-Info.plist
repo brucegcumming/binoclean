@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>CFBuildNumber</key>
-	<string>138</string>
+	<string>139</string>
 	<key>CFBuildVersion</key>
 	<string>binoclean.1.2</string>
 	<key>CFBundleDevelopmentRegion</key>
@@ -38,11 +38,11 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>binoclean.1.2.138</string>
+	<string>binoclean.1.2.139</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleVersion</key>
-	<string>binoclean.1.2.138.Mon Feb 15 10:31:00 EST 2016</string>
+	<string>binoclean.1.2.139.Wed Feb 17 09:12:30 EST 2016</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.medical</string>
 	<key>LSMinimumSystemVersion</key>

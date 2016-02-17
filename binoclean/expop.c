@@ -12815,6 +12815,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
 
     if (seroutfile)
         fprintf(seroutfile,"se%d\n",expt.st->firstseed);
+    SerialSend(NFRAMES_DONE); // get this recorded at stim end also
     SerialSend(SET_SEED); // get this recorded at stim end also
     if(cctr && 0) // Don't do this normally
         printf("Serial %d: %s\n",cctr,cbuf);
