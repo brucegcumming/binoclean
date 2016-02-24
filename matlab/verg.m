@@ -8204,6 +8204,12 @@ function DATA = PlotPsych(DATA, Expts)
         np = sum(abs([Expt.Trials.RespDir]) ==1); %psych trials
         Expt = FillTrials(Expt,Expt.Stimvals.et);
         Expt = FillTrials(Expt,Expt.Stimvals.e2);
+        if isfield(Expt.Trials,'psyv')
+            npsy = length(unique([Expt.Trials.psyv]));
+            if npsy > 2
+                eargs = {eargs{:} 'type' 'psyv'};
+            end
+        end
         if np > 1
             if strcmp(Expt.Stimvals.e2,'od') && isfield(Expt.Stimvals,'or')
                 for j = 1:length(DATA.expvals{2})

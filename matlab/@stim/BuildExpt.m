@@ -15,12 +15,13 @@ nrpt = 5;
 speed = 10;
 npass = 2;
 teststim = [];
-dxs = [-5 5];
+dxs = [-4 4];
 noises = [5 10 15];
 sz = [256 256];
 nim = 5;
 ndots = 200;
 prefix = '/local/Images/rds/';
+args = {'step'};
 j = 1;
 while j <= length(varargin)
     if strncmp(varargin{j},'basedir',6)
@@ -32,6 +33,9 @@ while j <= length(varargin)
     elseif strncmp(varargin{j},'npass',4)
         j = j+1;
         npass = varargin{j};
+    elseif strncmp(varargin{j},'noisesds',7)
+        j = j+1;
+        noises = varargin{j};
     elseif strncmp(varargin{j},'speed',4)
         j = j+1;
         speed = varargin{j};
@@ -58,13 +62,13 @@ if strcmp(type,'HarrisParker')
             for n = 1:length(noisetypes);
             for r = 1:nrpt
                 if noisetypes(n) == 'w'
-                    stim.rds(sz, [dxs(j) 0], ndots, [noises(k) 0],'prefix',sprintf('%s/rds%03d',prefix,imi));
+                    stim.rds(sz, [dxs(j) 0], ndots, [noises(k) 0],'prefix',sprintf('%s/rds%03d',prefix,imi),args{:});
                     S.pnoise = 1;
                 elseif noisetypes(n) == 'b'
-                    stim.rds(sz, [dxs(j) 0], ndots, [0 noises(k)],'prefix',sprintf('%s/rds%03d',prefix,imi));
+                    stim.rds(sz, [dxs(j) 0], ndots, [0 noises(k)],'prefix',sprintf('%s/rds%03d',prefix,imi),args{:});
                     S.pnoise = 0;
                 elseif noisetypes(n) == 'g'
-                    stim.rds(sz, [dxs(j) 0], ndots, [noises(k) 0],'pnoise',0.5,'prefix',sprintf('%s/rds%03d',prefix,imi));                    
+                    stim.rds(sz, [dxs(j) 0], ndots, [noises(k) 0],'pnoise',0.5,'prefix',sprintf('%s/rds%03d',prefix,imi),args{:});                    
                     S.pnoise = 0.5;
                 end                    
                 S.imi = imi;

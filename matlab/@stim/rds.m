@@ -3,7 +3,7 @@ function [bim, left, right] = rds(sz, dxy,ndots, varargin)
  %build an RDS.  sz is in pixels. 
  %dxy is horiztonalal and vertical disp in pxiels
  %'noise',[b w], adds gaussain nose with SD w to white dots, sd b to black dots
- %e.g. stim.rds([256 256],[0 0],200,'noise',[1 0]); for the new Harris/Parker thing
+ %e.g. stim.rds([256 256],[0 0],200,'noise',[1 0],'step'); for the new Harris/Parker thing
  %
  %... 'noise', [w b], 'pnoise' 0.5, uses sd 'w' with p o f0.5, else uses sd
  %'b' but applies these regardless of dot color
