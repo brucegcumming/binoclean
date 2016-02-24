@@ -106,6 +106,7 @@ extern char * VERSION_STRING;
 
 
 #define MAXRF 10
+int exptvars[100] = {0}; //list of vars that change in expt for manual expts and resetting
 extern Expstim oldrfs[];
 extern int Frames2DIO,teststate;
 extern float pursuedir;
@@ -1775,7 +1776,7 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
         ex->pnum = myscopy(ex->pnum, "?");
     ReadHelpDir("/bgc/bgc/c/binoc/help");
     if(ex->helpfile == NULL)
-        ex->helpfile = myscopy(ex->helpfile, "/bgc/bgc/c/binoc/helpfile");
+        ex->helpfile = myscopy(ex->helpfile, "/b/binoclean/help/helpfile");
     ex->blksize = 1;
     ex->stimpertrial = 1;
     ex->type2 = EXPTYPE_NONE;	
@@ -1790,6 +1791,7 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
     /* Default Color Scheme */
     ex->bwptr->colors[0] = 14; /*Bright Green */
     ex->bwptr->colors[1] = 13; /* Bright Red */
+    ex->bwptr->prefix = myscopy(ex->bwptr->prefix, "/local/binoc");
     ex->rf = (Expstim *)malloc(sizeof(Expstim));
     ex->rf->flag |= CENTERMARK_ON;
     ex->rf->size[0] = 100;
@@ -2709,6 +2711,7 @@ int UpdateNetworkFile(Expt expt)
 {
     char *t,*r,buf[BUFSIZ],name[BUFSIZ],sfile[BUFSIZ],path[BUFSIZ],oldname[BUFSIZ];
     char netname[BUFSIZ],netrcname[BUFSIZ];
+    char *netdirpath;
     char nbuf[BUFSIZ];
     static int lastresult = 1;  // start as if was success
     time_t tval,nowtime;
@@ -2742,8 +2745,12 @@ int UpdateNetworkFile(Expt expt)
         while((t = strchr(sfile,'\\')) != NULL)
             *t = '/';
         
-        
         sprintf(netname,"%s/%s.bnc",expt.strings[NETWORK_PREFIX],sfile);
+        netdirpath = getdirname(netname);
+        if (!isdir(netdirpath)){
+            sprintf(buf,"Network Folder  %s Does not exist\n?Change netpref=",netdirpath);
+            acknowledge(buf,NULL);
+        }
         sprintf(name,"/local/%s.bnc",sfile);
 //do copy as a background job so that large files don't cause delay
         sprintf(nbuf,"cp %s %s &",bncfilename,netname);
@@ -3108,7 +3115,10 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
                 free(t);
                 t = NULL;
             }
-            
+            if (seroutfile == NULL) //failed to open
+            {
+                seroutfile = fopen("/local/binocserial.txt","w"); //don't need append - should be temporary
+            }
 //            BackupStimFile();
             if(flag != TO_FILE && (mode & UFF_FILE_OPEN))
                 CheckPenetration();
@@ -4957,7 +4967,7 @@ int ReadCommand(char *s)
     else if(!strncasecmp(s,"seted",5)){
         r = s;
         r = strchr(r,'=');
-        if (r){
+        if (r && strncmp(r,"=NaN",4) != NULL){
             sscanf(++r,"%f",&val);
             SetStepperDepth(1000*val);
         }
@@ -14783,6 +14793,17 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     }
     else if(!strncmp(line,"replayexpt",9) && goteq){
         ReplayExpt(value);
+    }
+    else if(!strncmp(line,"expvars",7) && goteq){
+        i = 0;
+        SetExptString(&expt, expt.st, EXPTVARS, s);
+        s--;
+        do{
+            exptvars[i++] = FindCode(++s);
+            s = strchr(s,',');
+        }while(s != NULL);
+        exptvars[i] = 0;
+
     }
     else if(!strncmp(line,"demomode",8)){
         demomode = 2;

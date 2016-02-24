@@ -22,12 +22,10 @@ OneStim *NewGabor(Stimulus *st, Substim *sst, Substim *copy)
 	gb = sst->ptr; 
 	gb->plaid_angle = 0;
     
-    
-	gb->im = NULL;
-	gb->carray = NULL;
-	gb->xpos = NULL;
-	gb->ypos = NULL;
-	gb->xbell = NULL;
+// Now these all done in NewStimulus only when first alloc'd
+//	gb->im = NULL;
+//	gb->carray = NULL;
+//	gb->xbell = NULL;
 	gb->sx = 2.0;
 	gb->sy = 2.0;
 	st->pos.size[1] = 80;
@@ -42,22 +40,22 @@ OneStim *NewGabor(Stimulus *st, Substim *sst, Substim *copy)
 void free_gabor_ptr(OneStim *ptr)
 {
     
-    if(ptr != NULL)
-    {
-        free(ptr->xbell);
-        ptr->xbell = NULL;
-        free(ptr->xpos);
-        ptr->xpos = NULL;
-        free(ptr->ypos);
-        ptr->ypos = NULL;
-        free(ptr->carray);
-        ptr->carray = NULL;
-    }
+//    if(ptr != NULL)
+//    {
+//        free(ptr->xbell);
+//        ptr->xbell = NULL;
+//        free(ptr->xpos);
+//        ptr->xpos = NULL;
+//        free(ptr->ypos);
+//        ptr->ypos = NULL;
+//        free(ptr->carray);
+//        ptr->carray = NULL;
+//    }
 }
 
 void free_gabor(Substim *st)
 {
-	free_gabor_ptr((OneStim *)st->ptr);
+//	free_gabor_ptr((OneStim *)st->ptr);
 }
 
 void init_gabor(Stimulus *st,  Substim *sst)

@@ -1,4 +1,29 @@
 function [bim, left, right] = rds(sz, dxy,ndots, varargin)
+%[bim, left, right] = rds(sz, dxy,ndots, varargin)
+ %build an RDS.  sz is in pixels. 
+ %dxy is horiztonalal and vertical disp in pxiels
+ %'noise',[b w], adds gaussain nose with SD w to white dots, sd b to black dots
+ %e.g. stim.rds([256 256],[0 0],200,'noise',[1 0]); for the new Harris/Parker thing
+ %
+ %... 'noise', [w b], 'pnoise' 0.5, uses sd 'w' with p o f0.5, else uses sd
+ %'b' but applies these regardless of dot color
+% Writes result to ./Images/rds001L.pgm or PREFIXL.pgm if set with
+% rds(...,'prefix', PREFIX)
+ 
+prefix = 'Images/rds001';
+
+j = 1;
+while j <= length(varargin)
+    if strncmpi(varargin{j},'noise',5)
+        j = j+1;
+        noisesd = varargin{j};
+    elseif strncmpi(varargin{j},'prefix',5)
+        j = j+1;
+        prefix = varargin{j};
+    end
+    j = j+1;
+end
+
 strs = cell2cellstr(varargin);
 if sum(strcmp('step',strs))
   [left, right] = steprds(sz, dxy,ndots, varargin{:});
@@ -7,20 +32,12 @@ else
 end
 
 bim = left+right;
-imwrite(left,'Images/rds001L.pgm','pgm');
-imwrite(right,'Images/rds001R.pgm','pgm');
+imwrite(left,[prefix 'L.pgm'],'pgm');
+imwrite(right,[prefix 'R.pgm'],'pgm');
 
     
 function [left, right] = squarerds(sz, dxy,ndots, varargin)
- %[bim, left, right] = rds(sz, dxy,ndots, varargin)
- %build an RDS.  sz is in pixels. 
- %dxy is horiztonalal and vertical disp in pxiels
- %'noise',[b w], adds gaussain nose with SD w to white dots, sd b to black
- %dots
- %Writes reslt to ./Images/rds001L.pgm
- %e.g. stim.rds([256 256],[0 0],200,'noise',[1 0]); for the new
- %Harris/Parker thing
-
+ 
 left = zeros(sz)+0.5;
 right = zeros(sz)+0.5;
 dw = 6;

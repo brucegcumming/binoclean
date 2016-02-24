@@ -1,0 +1,4 @@
+op=+exm #manual experiment
+!mat=stim.example('nrpts',10) #do 10 of each disparity
+
+

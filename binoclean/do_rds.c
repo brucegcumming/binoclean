@@ -46,7 +46,7 @@ Substim *NewRds(Stimulus *st, Substim *sst, Substim  *copy)
     sst->dotsiz[0] = sst->dotsiz[1] = pos->dotsize;
   else
     sst->dotsiz[0] = sst->dotsiz[1] = 5;
-  sst->xpos = sst->ypos = NULL;
+
   if(pos->density != 0)
     sst->density = pos->density;
   else
@@ -83,16 +83,7 @@ Substim *NewChecker(Stimulus *st, Substim *sst, Substim  *copy)
  */
 void free_rds(Substim *st)
 {
-  /*
-    if(st->xpos != NULL){
-    //      free(st->xpos);
-    st->xpos = NULL;
-    }
-    if(st->ypos != NULL){
-    free(st->ypos);
-    st->ypos = NULL;
-    }
-  */
+
     
 }
 

@@ -76,6 +76,7 @@ int testloops = 0;
 static int newrewardset = 0;
 
 static int track_resets[] = {XPOS, YPOS, FIXPOS_X, FIXPOS_Y, -1};
+extern int exptvars[];
 
 #define NTRACKCODES 100
 int trackcodes[NTRACKCODES+1] = {0};
@@ -380,7 +381,8 @@ void TriggerExpt()
     DIOWriteBit(DIO_STIMCHANGE,0);
     DIOWriteBit(2,0);
 #endif
-    fprintf(seroutfile,"#Trig %.3f\n",TRIGGEREXPT,ufftime(&now));
+    if (seroutfile)
+        fprintf(seroutfile,"#Trig %.3f\n",TRIGGEREXPT,ufftime(&now));
 }
 
 
@@ -11952,12 +11954,33 @@ void expt_over(int flag)
     
     expt.st->flag = expt.stflag;
     if(seroutfile){
+        i = 0;
+        while(track_resets[i] >= 0){
+            SetProperty(&expt,expt.st,track_resets[i],expt.stimvals[track_resets[i]]);
+            i++;
+        }
+        i = 0;
+        while(exptvars[i] > 0){
+            if (exptvars[i] < MAXTOTALCODES){
+                SetProperty(&expt,expt.st,exptvars[i],expt.stimvals[exptvars[i]]);
+            }
+            i++;
+        }
         fprintf(seroutfile,"#Resetting: ");
         i = 0;
         while(track_resets[i] >= 0){
-            fprintf(seroutfile,"%2s->%.4f ",serial_strings[track_resets[i]],GetProperty(&expt,expt.st,track_resets[i]));
+            fprintf(seroutfile,"%s->%.*f",serial_strings[track_resets[i]],nfplaces[track_resets[i]],GetProperty(&expt,expt.st,track_resets[i]));
             i++;
         }
+        fprintf(seroutfile,"\n#Resetting expvars: ");
+        i = 0;
+        while(exptvars[i] > 0){
+            if (exptvars[i] < MAXTOTALCODES){
+                fprintf(seroutfile,"%s->%.*f",serial_strings[exptvars[i]],nfplaces[exptvars[i]],GetProperty(&expt,expt.st,exptvars[i]));
+            }
+            i++;
+        }
+        fprintf(seroutfile,"\n");
     }
     expt.vals[PLC_MAG] = expt.stimvals[PLC_MAG];
     

@@ -175,8 +175,8 @@ if isnan(startdepth)
     end    
 elseif length(DATA.alldepths) && max(DATA.alltimes)-now < 2/24
     x = GetCurrentPosition(DATA);
-    msg = sprintf('MicroDrive set to %.0fuM on %s. Now %.0f, Sure you want to set %.0f?',DATA.alldepths(end),datestr(DATA.alltimes(end)),x,startdepth);
-    yn = questdlg(msg,'ServoDrive Message','Yes','No','Yes');
+    msg = sprintf('MicroDrive last set to %.0fuM on %s. Now Reads %.0f. Do you you want to set %.0f (without moving)?',DATA.alldepths(end),datestr(DATA.alltimes(end)),x,startdepth);
+    yn = questdlg(msg,'ServoDrive Message','Yes',sprintf('No Leave Reading at %.3f',x),'Yes');
     if strcmp(yn,'No')
         return;
     end    

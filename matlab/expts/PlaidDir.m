@@ -18,6 +18,9 @@ while j <= length(varargin)
     elseif strncmp(varargin{j},'nrpt',4)
         j = j+1;
         nr = varargin{j};
+    elseif strncmp(varargin{j},'npass',4)
+        j = j+1;
+        npass = varargin{j};
     elseif strncmp(varargin{j},'speed',4)
         j = j+1;
         speed = varargin{j};

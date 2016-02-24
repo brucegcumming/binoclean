@@ -249,7 +249,7 @@ function CheckState(DATA, varargin)
 % of params in varargin with binoc
     for j = 1:length(varargin)
         if ischar(varargin{j})
-            myprintf(DATA.tobinocfid,'%s ',varargin{j});
+            outprintf(DATA,'%s ',varargin{j});
         end
     end
         
@@ -480,6 +480,7 @@ paused = 0;
 src = 'unknown';
 srcchr = 'U';
 badcodes = {};
+nlines = 0;
 j = 1;
 while j <= length(varargin)
     if strncmpi(varargin{j},'from',4)
@@ -595,6 +596,14 @@ for j = 1:length(strs{1})
                 %       pause(DATA.readpause);
                 DATA.pausetime = now;
             end  %end of NotBinoc group
+        elseif strncmp(s,'DATA',4) %lines Begining DATA are read as matlab instructions
+            try
+                eval(s);
+                SetData(DATA);
+            catch ME
+                CheckExceptions(ME);
+            end
+            sendtobinoc = 0;
         elseif codelen > 8  % long lines from files
             sendtobinoc = 0;
             codetype = -1;
@@ -700,7 +709,7 @@ for j = 1:length(strs{1})
         
         
         
-    elseif sum(strncmp(s,{'EXPTSTART' 'EXPTOVER' 'EXPTRUNNING' 'TESTOVER' 'CODE OVER'},8))
+    elseif sum(strncmp(s,{'EXPTSTART' 'EXPTOVER' 'EXPTRUNNING' 'TESTOVER' 'CODE OVER' 'manexpvals'},8))
         if strncmp(s,'EXPTSTART',8)
             DATA.inexpt = 1;
             tic; PsychMenu(DATA); 
@@ -809,7 +818,10 @@ for j = 1:length(strs{1})
            if isfield(DATA,'reopenstr') && ~isempty(DATA.reopenstr) && DATA.optionflags.do
                outprintf(DATA,'%s\n',DATA.reopenstr);
            end
-        end  %8 char codes 
+        elseif strncmp(s,'manexpvals',10)
+            sv = sscanf(s(11:end),'%f');
+            DATA.Trial.sv(1:length(sv)) = sv;   
+        end  %8 char codes
 
         
         
@@ -1090,6 +1102,9 @@ for j = 1:length(strs{1})
                 DATA.Trial.good = -1;
             else
                 DATA.Trial.good = 0;
+            end
+            if ~isnan(GetValue(DATA,'psyv'))
+                DATA.Trial.psyv = GetValue(DATA,'psyv');
             end
             DATA.Trial.saved = DATA.optionflags.ts;
             DATA.Trial.RespDir = a(1);
@@ -1462,7 +1477,9 @@ for j = 1:length(strs{1})
 %set in verg.setup before binoc has been started. 
             code = s(1:id(1)-1);
             code = strrep(code, 'electrode','Electrode');
-            if isvarname(code) %legal name
+            if isfield(DATA,'matexpres') && isfield(DATA.matexpres,'expvars') && sum(strcmp(code,DATA.matexpres.expvars))
+                %this is OK 
+            elseif isvarname(code) %legal name
                 % was  isempty(find(strcmp(code, {'1t' '2t' '3t' '4t' ''}))) %illegal names
                 if sum(strcmp(code,{'ereset'}))
                     bid = DATA.currentstim;
@@ -1606,15 +1623,20 @@ function str =  ShowFlagString(DATA)
     
     
 function res = binoceval(DATA, str)
-    h = waitbar(0.5,sprintf('Running %s',strrep(str,'_',' ')));
     id = strfind(str,'$');
     while ~isempty(id)
         sid = regexp(str(id(1)+1:end),'[\s\,\)]')+id(1);
         f = str(id(1)+1:sid(1)-1);
-        str = [str(1:id(1)-1) num2str(DATA.binoc{1}.(f)) str(sid(1):end)]
+        if isfield(DATA.matexpvars,f)
+            str = [str(1:id(1)-1) num2str(DATA.matexpvars.(f)) str(sid(1):end)];
+        elseif isfield(DATA.binoc{1},f)
+            str = [str(1:id(1)-1) num2str(DATA.binoc{1}.(f)) str(sid(1):end)];
+        end
         id = strfind(str,'$');
     end
-    myprintf(DATA.tobinocfid,'%s %s\n',datestr(now),str);
+    h = waitbar(0.5,sprintf('Running %s',strrep(str,'_',' ')));
+    fprintf('Running %s\n',str);
+    outprintf(DATA,'#%s %s\n',datestr(now),str);
     res = eval(str);
     delete(h);
     
@@ -1764,7 +1786,7 @@ tellbinoc = 0;
    try
        
        if tellbinoc
-           myprintf(DATA.tobinocfid,'#%s\n',s)
+           outprintf(DATA,'#%s\n',s)
        end
        if showpopup
            h = msgbox(split(s,'\\n'),'Binoc Warning','warn',CreateStruct);
@@ -2564,10 +2586,14 @@ DATA = ReadSetupFile(DATA, '/local/binoc.setup');
 DATA = ReadStimFile(DATA, '/local/verg.setup');
 [DATA.helpstrs, DATA.helpkeys] = ReadHelp(DATA);
 
+if ~isfield(DATA,'matexpvars') %may have been set in verg.setup
+    DATA.matexpvars = [];
+end
+
 for j = 1:3 
-DATA.expmenucodes{j} = {};
-DATA.expstrs{j} = {};
-DATA.expmenuvals{j} = [];
+    DATA.expmenucodes{j} = {};
+    DATA.expstrs{j} = {};
+    DATA.expmenuvals{j} = [];
 end
 for j = 1:length(DATA.comcodes)
     if ismember(DATA.comcodes(j).const,DATA.extypes{1})
@@ -4452,6 +4478,7 @@ function SetVerbose(a,b, flag)
      for j = 1:3
          it = findobj(allchild(DATA.toplevel),'flat','Tag',['Expt' num2str(j) 'List']);
          id = strmatch(DATA.exptype{j},DATA.expmenucodes{j},'exact');
+         mstr = get(it,'String');
          if isempty(id)
              DATA.expmenucodes{j} = {DATA.expmenucodes{j}{:} DATA.exptype{j}};
              a = find(strcmp(DATA.exptype{j},{DATA.comcodes.code}));
@@ -4463,6 +4490,9 @@ function SetVerbose(a,b, flag)
              DATA.expstrs{j}{end+1} = str;
              set(it,'string',DATA.expstrs{j});
              new = new+1;             
+         elseif id > length(mstr)
+             fprintf('GUI Expt %d list was reset\n',j)
+             set(it,'string',DATA.expstrs{j});
          end
      end
 if new
@@ -5135,7 +5165,6 @@ function DATA = RunButton(a,b, type)
                     myprintf(DATA.frombinocfid,'PAUSE ERROR pause %d\n',pauseread);
                 end
                 if DATA.optionflags.exm && ~isempty(DATA.matexpt)
-                    fprintf('Running %s\n',DATA.matexpt);
                     DATA.matexpres = binoceval(DATA, DATA.matexpt);
                     if isfield(DATA.matexpres,'abort') && DATA.matexpres.abort > 0 %matlab script finds a problem
                         vergwarning(sprintf('%s Says abort',DATA.matexpt));
@@ -7231,7 +7260,10 @@ function SendCode(DATA, code)
             outprintf(DATA,'Electrode=%s\n',DATA.electrodestrings{DATA.electrodeid});
         end
     elseif strcmp(code,'ed')
-        outprintf(DATA,'!seted=%.3f\n',GetValue(DATA,'ed'));
+        x = GetValue(DATA,'ed');
+        if ~isnan(x)
+            outprintf(DATA,'!seted=%.3f\n',x);
+        end
     elseif strcmp(code,'exp')
         if isfield(DATA.matexpres,'stimdir')
             outprintf(DATA,'exp=%s\n',DATA.matexpres.stimdir);

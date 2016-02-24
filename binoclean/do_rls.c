@@ -44,7 +44,6 @@ Substim *NewRls(Stimulus *st, Substim *sst, Substim  *copy)
         sst->dotsiz[0] = sst->dotsiz[1] = pos->dotsize;
     else
         sst->dotsiz[0] = sst->dotsiz[1] = 5;
-    sst->xpos = sst->ypos = NULL;
     if(pos->density != 0)
         sst->density = pos->density;
     else
@@ -66,10 +65,10 @@ Substim *NewRls(Stimulus *st, Substim *sst, Substim  *copy)
  */
 void free_rls(Substim *st)
 {
-    if(st->ypos != NULL){
-        free(st->ypos);
-        st->ypos = NULL;
-    }
+//    if(st->ypos != NULL){
+//        free(st->ypos);
+//        st->ypos = NULL;
+//    }
 }
 
 /*

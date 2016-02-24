@@ -126,6 +126,9 @@ ec After responding incorrectly to N consecutive stimuli of a given sign, enter 
 ed in mm. Normally set automatically by microdrive. Chage with caution.
 Electrode Best to select from menu (elements can be added to binoc.setup) to keep uniform. 
 ePr distance from base of microdrive to tip of support tube (mm)
+expvars For Manual Experiments. Gives list of paramters that will be varied acros Trials.
+#Lets binoc know to reset these things at expt end
+#Also allows plotting functions to know what to plot
 eZ Just for penetration log.
 Er Er=x y delivers a reward mid-trial, every Er Seconds. y set size of reward
 ereset path of file applied before reading a new expt file, to reset state. I.e clear out odd variables.

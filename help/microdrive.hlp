@@ -1,4 +1,9 @@
 Microdrive
+Control Window Buttons
+"Set"  Changes the current recorded position, but does not move the microdrive
+"Move" Moves the drive to the position entered into the text box.  So the distance travelled will be this minus the current position recorded at the bottom of the Window. 
+
+If verg is restarted, and attempts to set the current position (e.g. to -2.0 at the start of the day), you will be asked to confirm this change if microdrive was moved with the contol window in the previous 2 hours. 
 
 Initialising a new Chip
 

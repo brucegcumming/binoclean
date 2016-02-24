@@ -49,16 +49,16 @@ OneStim *NewCorrug(Stimulus *st, Substim *sst, Substim  *copy)
  */
 void free_corrug(Substim *st)
 {
-    OneStim *ptr;
-    
-    if((ptr = st->ptr) != NULL)
-    {
-        free(ptr->ypos);
-        ptr->ypos = NULL;
-        /*      free(ptr);
-         st->ptr = 0;
-         */
-    }
+//    OneStim *ptr;
+//    
+//    if((ptr = st->ptr) != NULL)
+//    {
+//        free(ptr->ypos);
+//        ptr->ypos = NULL;
+//        /*      free(ptr);
+//         st->ptr = 0;
+//         */
+//    }
 }
 
 /*
