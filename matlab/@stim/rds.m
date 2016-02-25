@@ -131,7 +131,7 @@ noise(noisetype == 1) = noise(noisetype == 1) .* noisesd(2);
 %ind2sub might speed this up....
 sw = diff(box(1:2));
 sh = diff(box(3:4));
-iw = w - 2 * dw;
+iw = w - dw;
 for j = 1:ndots    
     x = rnd(j,1);
     y = rnd(j,2);
@@ -143,11 +143,14 @@ for j = 1:ndots
     else
         dx = -dxy(1) + noise(j);
     end
-    if x+dx > w-dw
-        right(y+dy:y+dw+dy,[x+dx:x+dw+dx]-iw) = color(j);
-    elseif x+dx < dw
-        right(y+dy:y+dw+dy,[x+dx:x+dw+dx]+iw) = color(j);
-    else
+    while x > (w - dw -dx)
+        x = 1+ x- iw;
+    end
+    while x+dx < 1
+        x = x + iw;
+    end
         right(y+dy:y+dw+dy,x+dx:x+dw+dx) = color(j);
+    if size(right,2) > w
+        x = rnd(j,1);        
     end
 end

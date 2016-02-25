@@ -3303,6 +3303,9 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
     
     switch(flag)
     {
+        case STIMVERSION:
+            expt.st->stimversion = val;
+            break;
         case XY_FSD:
             expt.bwptr->fsd[10] = val;
             expt.vals[flag] = val;
@@ -4099,6 +4102,9 @@ float ExptProperty(Expt *exp, int flag)
     }
     else switch(flag)
     {
+        case STIMVERSION:
+            val = expt.st->stimversion;
+            break;
         case MAGIC_ID:
             val = (float)expt.magicnumber;
             break;

@@ -68,16 +68,16 @@ if strcmp(type,'HarrisParker')
             for n = 1:length(noisetypes);
             for r = 1:nrpt
                 if noisetypes(n) == 'w'
-                    stim.rds(sz, [dxs(j) 0], ndots, [noises(k) 0],'prefix',sprintf('%s/rds%03d',prefix,imi),args{:});
+                    stim.rds(sz, [dxs(j) 0], ndots, 'noise',[noises(k) 0],'prefix',sprintf('%s/rds%03d',prefix,imi),args{:});
                     S.pnoise = 1;
                 elseif noisetypes(n) == 'b'
-                    stim.rds(sz, [dxs(j) 0], ndots, [0 noises(k)],'prefix',sprintf('%s/rds%03d',prefix,imi),args{:});
+                    stim.rds(sz, [dxs(j) 0], ndots, 'noise', [0 noises(k)],'prefix',sprintf('%s/rds%03d',prefix,imi),args{:});
                     S.pnoise = 0;
                 elseif noisetypes(n) == 'g'
-                    stim.rds(sz, [dxs(j) 0], ndots, [noises(k) 0],'pnoise',0.5,'prefix',sprintf('%s/rds%03d',prefix,imi),args{:});                    
+                    stim.rds(sz, [dxs(j) 0], ndots, 'noise', [noises(k) 0],'pnoise',0.5,'prefix',sprintf('%s/rds%03d',prefix,imi),args{:});                    
                     S.pnoise = 0.5;
                 elseif noisetypes(n) == 'x'
-                    stim.rds(sz, [dxs(j) 0], ndots, [noises(k) noises(k)],'prefix',sprintf('%s/rds%03d',prefix,imi),args{:});                    
+                    stim.rds(sz, [dxs(j) 0], ndots, 'noise', [noises(k) noises(k)],'prefix',sprintf('%s/rds%03d',prefix,imi),args{:});                    
                     S.pnoise = 0.5;
                 end                    
                 S.imi = imi;
@@ -92,8 +92,10 @@ if strcmp(type,'HarrisParker')
     end           
 end
 Expt.stimdir = basedir;
+Expt.imagedir = prefix;
 Expt.stimorder = stim.SetOrder([0:imi-1],npass);
 Expt.expvars = expvars;
+Expt.version = str2num(ObjectVersion(stim));
 Expt.types{2} = 'pnoise';
 stim.WriteOrder(basedir, Expt.stimorder, expvars, name);
 

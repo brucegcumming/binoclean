@@ -529,8 +529,9 @@
 #define DAYLOGFILE (MAXSAVECODES+50)
 #define MAXREWARD (MAXSAVECODES+51)
 #define EXPTVARS (MAXSAVECODES+52)
+#define STIMVERSION (MAXSAVECODES+53)
 
-#define MAXTOTALCODES (MAXSAVECODES+53)  //440
+#define MAXTOTALCODES (MAXSAVECODES+54)  //440
 
 
 /*
@@ -1359,6 +1360,7 @@ ValueCode valstrings[] = {
     {"netpref","Prefix for Network Data Record",  NETWORK_PREFIX, 16, 'C', 2, SEND_VERG_ONLY, SAVE_ALWAYS},
     {"magic","Magic Number",  MAGIC_ID, INTERNALCOMMAND, 'N', 0, SEND_EXPLICIT, SAVE_NEVER},
     {"maxrw","Max reward ",MAXREWARD, 0, 'N', 2, SEND_VERG_ONLY, SAVE_ALWAYS},
+    {"stimver","External Stimulus Version",STIMVERSION, 0, 'N', 3, SEND_VERG_ONLY, SAVE_ALWAYS},
     {"rcfile","File Name for stim desciptions",  RCFILENAME, INDIRECT, 'C', SEND_NEVER,  SAVE_NEVER},
     {  "EA", "Expt1 CustomVal", EXPT1CUSTOMVAL, 16|PARTIAL_CODE, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "EB", "Expt2 CustomVal", EXPT2CUSTOMVAL, 16|PARTIAL_CODE, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},

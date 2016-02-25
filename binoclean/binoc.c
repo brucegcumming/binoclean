@@ -12133,10 +12133,10 @@ void Stim2PsychFile(int state, FILE *fd)
         fprintf(fd," %.2lf %.2f %.2f",t,
                 GetProperty(&expt,expt.st,XPOS),
                 GetProperty(&expt,expt.st,YPOS));
-        fprintf(fd," %s=%.2f %s=%.2f %s=%.2f %s=%.3f expt=%d x=0\n",serial_strings[XPOS],GetProperty(&expt,expt.st,XPOS),serial_strings[YPOS],GetProperty(&expt,expt.st,YPOS),
+        fprintf(fd," %s=%.2f %s=%.2f %s=%.2f %s=%.3f expt=%d %s=%.3f\n",serial_strings[XPOS],GetProperty(&expt,expt.st,XPOS),serial_strings[YPOS],GetProperty(&expt,expt.st,YPOS),
                 serial_strings[DOT_DENSITY],GetProperty(&expt,expt.st,DOT_DENSITY),
                 serial_strings[CONTRAST2],GetProperty(&expt,expt.st,CONTRAST2),
-                state);
+                state,serial_strings[STIMVERSION],GetProperty(&expt,expt.st,STIMVERSION));
 
 //NB ENDEXPT -> R10
         

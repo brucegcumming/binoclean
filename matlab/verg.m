@@ -1639,6 +1639,9 @@ function res = binoceval(DATA, str)
     fprintf('Running %s\n',str);
     outprintf(DATA,'#%s %s\n',datestr(now),str);
     res = eval(str);
+    if isfield(res,'version')
+        outprintf(DATA,'stimver=%.3f\n',res.version);
+    end
     delete(h);
     
     
