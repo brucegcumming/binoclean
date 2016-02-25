@@ -458,7 +458,7 @@ struct EXPERIMENT{
     char *manuallabels[MAXMANUALPARAMS];
     double manualvalues[MAXMANUALPARAMS];
     char lastresult; //outcome of most recent trial
-    
+    char *stimline;
 };
 
 typedef struct EXPERIMENT Expt;

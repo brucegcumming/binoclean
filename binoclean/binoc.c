@@ -7548,6 +7548,9 @@ int next_frame(Stimulus *st)
                 else
                     draw_fix(fixpos[0],fixpos[1], TheStim->fix.size, TheStim->fixcolor);
             }
+            else if(expt.vals[FIXATION_OVERLAP] == 0 && fabsf(TheStim->fixcolor-TheStim->background) > 0.1){
+                draw_fix(fixpos[0],fixpos[1], TheStim->fix.size, TheStim->fix.offcolor);
+            }
             else
                 draw_fix(fixpos[0],fixpos[1], TheStim->fix.size, TheStim->gammaback);
             
@@ -10872,7 +10875,7 @@ int PrintTrialResult(FILE *fd, char result)
 
 int PrintPsychLine(int presult, int sign, FILE *fd)
 {
-    char str[BUFSIZ];
+    char str[BUFSIZ],*s;
     double start, down;
     char c = ' ';
     
@@ -10891,7 +10894,14 @@ int PrintPsychLine(int presult, int sign, FILE *fd)
             presult += 100;
         if(!SACCREQD(afc_s) && !(option2flag & PSYCHOPHYSICS_BIT))
             presult +=50;
-        if(abs(afc_s.ccvar) > 0.01 && expt.type2 == EXPTYPE_NONE)
+        if (optionflags[MANUAL_EXPT]){
+            s = strchr(expt.stimline,':');
+            if (s == NULL)
+                fprintf(fd,"R%d%c %s", presult,c,expt.stimline);
+            else
+                fprintf(fd,"R%d%c %s", presult,c,++s);
+        }
+        else if(abs(afc_s.ccvar) > 0.01 && expt.type2 == EXPTYPE_NONE)
             fprintf(fd,"R%d%c %s=%.5f %s=%.5f",
                     presult,c,serial_strings[expt.mode],expt.currentval[0],
                     serial_strings[covaryprop],GetProperty(&expt,expt.st,covaryprop));

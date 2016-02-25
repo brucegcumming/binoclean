@@ -1478,6 +1478,7 @@ for j = 1:length(strs{1})
             code = s(1:id(1)-1);
             code = strrep(code, 'electrode','Electrode');
             if isfield(DATA,'matexpres') && isfield(DATA.matexpres,'expvars') && sum(strcmp(code,DATA.matexpres.expvars))
+                DATA.Trial.(code) = str2num(value);
                 %this is OK 
             elseif isvarname(code) %legal name
                 % was  isempty(find(strcmp(code, {'1t' '2t' '3t' '4t' ''}))) %illegal names
@@ -8209,6 +8210,9 @@ function DATA = PlotPsych(DATA, Expts)
             if npsy > 2
                 eargs = {eargs{:} 'type' 'psyv'};
             end
+        end
+        if isfield(DATA.matexpres,'types') && length(DATA.matexpres.types) > 1
+            eargs = {eargs{:} 'type2' DATA.matexpres.types{2} 'collapse' [0 0 0]};
         end
         if np > 1
             if strcmp(Expt.Stimvals.e2,'od') && isfield(Expt.Stimvals,'or')

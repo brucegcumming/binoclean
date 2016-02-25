@@ -1767,6 +1767,7 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
     ex->penfile = NULL;
     ex->backprefix = NULL;
     ex->cmdinfile = NULL;
+    ex->stimline = NULL;
     
     ex->username = myscopy(ex->username, "not set");
     for(i = 0; i < MAXBACKIM; i++)
@@ -2101,6 +2102,7 @@ char *ReadManualStim(char *file, int stimid){
     else{
         lastresult = 0;
     }
+    expt.stimline = myscopy(expt.stimline,cbuf);
    return(cbuf);
 }
 

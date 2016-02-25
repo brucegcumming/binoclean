@@ -139,7 +139,10 @@ f2 SF of second frequency component for compound gratings/plaids
 Fa Direction for movement of Fixation point (Saccadic if Ff >0, Pursuit if pi > 0) #eye movements. fixation
 FakeSig Value of dS used to mimic microstim 
 fc color of fixation marker when fixating. 
-fd if >0, fixation marker turns off fd sec after trial start
+fd if >0, fixation marker turns off fd sec after trial start. #psych
+#if fd == 0 in human psych, then fixation off color (fo) determines what happens
+#after the stimulus before a button press. 
+#If fo = 0.5, then fixation marker is not shown
 Ff Frame on which Fixation point jumps. Jumps back after 2x Ff frames have elapsed #eye movements. fixation
 fH For generating rectangular fixation windows. Set fw first, then fH. 
 fi No longer implemented

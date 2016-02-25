@@ -27,7 +27,7 @@ for j = 1:length(f)
             exstr = [exstr ' ' x];
         end
     else
-        fprintf(fid,'%s=%.2f\n',f{j},x);
+        fprintf(fid,'%s=%s\n',f{j},num2str(x));
         if sum(strcmp(f{j},exf));
             exstr = [exstr ' ' num2str(x)];
         end

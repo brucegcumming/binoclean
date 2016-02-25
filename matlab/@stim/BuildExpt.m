@@ -15,7 +15,7 @@ nrpt = 5;
 speed = 10;
 npass = 2;
 teststim = [];
-dxs = [-4 4];
+dxs = [-2 2];
 noises = [5 10 15];
 sz = [256 256];
 nim = 5;
@@ -27,6 +27,12 @@ while j <= length(varargin)
     if strncmp(varargin{j},'basedir',6)
         j = j+1;
         basedir = varargin{j};
+    elseif strncmp(varargin{j},'dx',2)
+        j = j+1;
+        dxs = varargin{j};
+    elseif strncmp(varargin{j},'ndots',4)
+        j = j+1;
+        ndots = varargin{j};
     elseif strncmp(varargin{j},'nrpt',4)
         j = j+1;
         nr = varargin{j};
@@ -51,7 +57,7 @@ while j <= length(varargin)
 end
 
 imi = 0;
-noisetypes = 'wbgg';
+noisetypes = 'bwgg';
 if strcmp(type,'HarrisParker')
     expvars = {'stepdx' 'noise' 'pnoise'}; %not binoc codes
     for j = 1:length(dxs)
@@ -70,6 +76,9 @@ if strcmp(type,'HarrisParker')
                 elseif noisetypes(n) == 'g'
                     stim.rds(sz, [dxs(j) 0], ndots, [noises(k) 0],'pnoise',0.5,'prefix',sprintf('%s/rds%03d',prefix,imi),args{:});                    
                     S.pnoise = 0.5;
+                elseif noisetypes(n) == 'x'
+                    stim.rds(sz, [dxs(j) 0], ndots, [noises(k) noises(k)],'prefix',sprintf('%s/rds%03d',prefix,imi),args{:});                    
+                    S.pnoise = 0.5;
                 end                    
                 S.imi = imi;
                 S.psyv = sign(dxs(j)) .* 1./noises(k);
@@ -85,6 +94,7 @@ end
 Expt.stimdir = basedir;
 Expt.stimorder = stim.SetOrder([0:imi-1],npass);
 Expt.expvars = expvars;
+Expt.types{2} = 'pnoise';
 stim.WriteOrder(basedir, Expt.stimorder, expvars, name);
 
 
