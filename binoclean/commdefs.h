@@ -1365,7 +1365,7 @@ ValueCode valstrings[] = {
     {  "EA", "Expt1 CustomVal", EXPT1CUSTOMVAL, 16|PARTIAL_CODE, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "EB", "Expt2 CustomVal", EXPT2CUSTOMVAL, 16|PARTIAL_CODE, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "EC", "Expt3 CustomVal", EXPT3CUSTOMVAL, 16|PARTIAL_CODE, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},
-    {  "expvars", "Expt Variables", EXPTVARS, 16, 'C', 0, SEND_NEVER, SAVE_ALWAYS},
+    {  "expvars", "Expt Variables", EXPTVARS, 16, 'C', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     
     { NULL, NULL, -1, -1 ,0 ,0, 0},
 };

@@ -1,20 +1,20 @@
 #simple stm file for showing binocular images from disk
 mo=back
 st=image
-impref=/b/Images/rds/rds
+impref=/local/Images/rds/rds
 immode=twoeyes
 imload=preload
 nimplaces=3
-imi=2
+imi=0
 op=+bf+bp
 xo=-5
 mo=fore
 st=image
-impref=/b/Images/rds/rds
+impref=/local/Images/rds/rds
 immode=twoeyes
 imload=preload
 nimplaces=3
 xo=5
 op=+exm
-imi=1
+imi=0
 

@@ -10895,11 +10895,15 @@ int PrintPsychLine(int presult, int sign, FILE *fd)
         if(!SACCREQD(afc_s) && !(option2flag & PSYCHOPHYSICS_BIT))
             presult +=50;
         if (optionflags[MANUAL_EXPT]){
-            s = strchr(expt.stimline,':');
+            if (expt.stimline != NULL){
+                s = strchr(expt.stimline,':');
             if (s == NULL)
                 fprintf(fd,"R%d%c %s", presult,c,expt.stimline);
             else
                 fprintf(fd,"R%d%c %s", presult,c,++s);
+            }
+            else
+                fprintf(fd,"R%d%c ", presult,c);
         }
         else if(abs(afc_s.ccvar) > 0.01 && expt.type2 == EXPTYPE_NONE)
             fprintf(fd,"R%d%c %s=%.5f %s=%.5f",
@@ -11965,26 +11969,26 @@ void expt_over(int flag)
     expt.st->flag = expt.stflag;
     if(seroutfile){
         i = 0;
-        while(track_resets[i] >= 0){
+        while(track_resets[i] >= 0 && expt.savedcode[track_resets[i]]){
             SetProperty(&expt,expt.st,track_resets[i],expt.stimvals[track_resets[i]]);
             i++;
         }
         i = 0;
         while(exptvars[i] > 0){
-            if (exptvars[i] < MAXTOTALCODES){
+            if (exptvars[i] < MAXTOTALCODES && expt.savedcode[exptvars[i]]){
                 SetProperty(&expt,expt.st,exptvars[i],expt.stimvals[exptvars[i]]);
             }
             i++;
         }
         fprintf(seroutfile,"#Resetting: ");
         i = 0;
-        while(track_resets[i] >= 0){
+        while(track_resets[i] >= 0 && expt.savedcode[track_resets[i]]){
             fprintf(seroutfile,"%s->%.*f",serial_strings[track_resets[i]],nfplaces[track_resets[i]],GetProperty(&expt,expt.st,track_resets[i]));
             i++;
         }
         fprintf(seroutfile,"\n#Resetting expvars: ");
         i = 0;
-        while(exptvars[i] > 0){
+        while(exptvars[i] > 0 && expt.savedcode[exptvars[i]]){
             if (exptvars[i] < MAXTOTALCODES){
                 fprintf(seroutfile,"%s->%.*f",serial_strings[exptvars[i]],nfplaces[exptvars[i]],GetProperty(&expt,expt.st,exptvars[i]));
             }

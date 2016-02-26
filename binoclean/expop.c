@@ -2924,6 +2924,16 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
         return(0);
     switch(flag)
     {
+        case EXPTVARS:
+            expt.strings[flag] = myscopy(expt.strings[flag],s);
+            s--;
+            i = 0;
+            do{
+                exptvars[i++] = FindCode(++s);
+                s = strchr(s,',');
+            }while(s != NULL);
+            exptvars[i] = 0;
+            break;
         case SHOWFLAGS_CODE:
             expt.showflags = myscopy(expt.showflags,s);           
             break;
@@ -5939,8 +5949,10 @@ int ReadStimOrder(char *file)
             else{ // send all other lines to serial file or InterpretLine
 //Dont send all to Interpretline in case of accidental code.
                 ival = FindCode(s);
-                if(s[0] != '#' && ival >= 0 && ival < MAXTOTALCODES)
-                    InterpretLine(s, &expt, 2);
+                if(s[0] != '#' && ival >= 0 && ival < MAXTOTALCODES){
+                    expt.codesent = 0;
+                    InterpretLine(s, &expt, 4);
+                }
                 else
                     SerialString(s,0);
             }
@@ -7995,41 +8007,30 @@ void InitExpt()
      * starts playing with it. expt.stimvals[i] can then be used to reset the 
      * stimulus property to whatever it was before the experiment started
      */
+    for (i = 1; i < MAXTOTALCODES; i++)
+        expt.savedcode[i] = 0;
+        
     for(code = 0; code < expt.lastsavecode; code++){
         i = valstrings[code].icode;
         switch(i){
-            case SETZXOFF:
-            case SETZYOFF:
-                expt.vals[i] = GetProperty(&expt,expt.st,i);
-            case DISP_X:
-            case DISP_Y:
-            case DEPTH_MOD:
-            case STIM_WIDTH:
-            case STIM_HEIGHT:
-            case ORIENTATION:
-            case SF:
-            case SF2:
-            case TF:
-            case TF2:
-            case SD_X:
-            case SETCONTRAST:
-            case CONTRAST2:
-            case CORRELATION:
-            case BACK_CORRELATION:
-            case SEED_DELAY:
-            case MODULATION_F:
-            case CHANGE_SEED:
-            case JVELOCITY:
-            case VELOCITY2:
-            case NCOMPONENTS:
-            case ORI_BANDWIDTH:
-            case PLAID_RATIO:
-            case ORIENTATION_DIFF:
-            case PLAID_ANGLE:
-                expt.stimvals[i] = GetProperty(&expt,expt.st,i);
-                break;
             case TARGET_RATIO:
                 expt.stimvals[i] = expt.vals[i];
+                expt.savedcode[i] = 1;
+                break;
+            case STIMULUS_TYPE_CODE:
+                expt.stimvals[i] = expt.st->type;
+                expt.savedcode[i] = 1;
+                break;
+            case BACKSTIM_TYPE:
+                expt.stimvals[i] = expt.st->next->type;
+                expt.savedcode[i] = 1;
+                break;
+            default:
+                if (valstrings[code].ctype == 'N')
+                {
+                    expt.stimvals[i] = GetProperty(&expt,expt.st,i);
+                    expt.savedcode[i] = 1;
+                }
                 break;
         }
     }
@@ -14697,6 +14698,7 @@ char *deblank(char *s)
  * frompc = 1 mean it came form the serial line
  * frompc = 2 means it came from the GUI input line, or a disk file
  * frompc = 3 means generated within binoclean, eg in ReadCommandLine
+ * frompc = 4 means from a file, but read by binoc, not passed through verg.  These need to go back to verg
  */
 int InterpretLine(char *line, Expt *ex, int frompc)
 {
@@ -14801,17 +14803,6 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     }
     else if(!strncmp(line,"replayexpt",9) && goteq){
         ReplayExpt(value);
-    }
-    else if(!strncmp(line,"expvars",7) && goteq){
-        i = 0;
-        SetExptString(&expt, expt.st, EXPTVARS, s);
-        s--;
-        do{
-            exptvars[i++] = FindCode(++s);
-            s = strchr(s,',');
-        }while(s != NULL);
-        exptvars[i] = 0;
-
     }
     else if(!strncmp(line,"demomode",8)){
         demomode = 2;
@@ -16202,14 +16193,15 @@ int InterpretLine(char *line, Expt *ex, int frompc)
                 break;
         }
     }
-    if (frompc != 2 && code >= 0){  // send to verg if it came from Spike2 or binoc GUI
+    if (frompc != 2 && code >= 0){  // send to verg if it came from Spike2 or binoc GUI/file read by binoc
         notify(line);
         notify("\n");
     }
-    else if(frompc ==2 && code >= 0){ //came from verg. Some of these need -> spike2
+    else if((frompc ==2 || frompc ==4) && code >= 0){ //came from verg or file. Some of these need -> spike2
         switch(code){
             case VWHERE:
             case TOTAL_REWARD:
+            case EXPTVARS:
                 SerialSend(code);
                 break;
         //       SendToGui(code); // would like this only when readval uses another property.  Let verg figure this out

@@ -1156,6 +1156,8 @@ for j = 1:length(strs{1})
             DATA = ReadStimFile(DATA, value, 'inread');
         elseif strncmp(s,'exp=',4)
             DATA.binoc{1}.exp = value;
+        else
+            gotstr = 0; %didn't process it yet
         end
     elseif sum(strncmp(s,{ 'mo=' 'pf=' 'qe=' 'nt='},3))
 
@@ -1369,6 +1371,8 @@ for j = 1:length(strs{1})
              DATA.binoc{1}.Bs = DATA.stimulusnames{DATA.stimtype(2)};
     else
         gotstr = 0;
+    end
+    if gotstr == 0
         codematches = strcmp(code,{DATA.comcodes.code});
     end
         

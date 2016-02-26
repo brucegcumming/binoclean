@@ -459,6 +459,7 @@ struct EXPERIMENT{
     double manualvalues[MAXMANUALPARAMS];
     char lastresult; //outcome of most recent trial
     char *stimline;
+    int savedcode[MAXTOTALCODES]; // if value recorded at start expt
 };
 
 typedef struct EXPERIMENT Expt;
