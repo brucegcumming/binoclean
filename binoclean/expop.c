@@ -1768,6 +1768,7 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
     ex->backprefix = NULL;
     ex->cmdinfile = NULL;
     ex->stimline = NULL;
+    ex->exptstring = NULL;
     
     ex->username = myscopy(ex->username, "not set");
     for(i = 0; i < MAXBACKIM; i++)
@@ -1960,6 +1961,7 @@ char *ReadManualStim(char *file, int stimid){
     static char cbuf[BUFSIZ*10];
     static int lastresult = 0;
     int stimframes = 0;
+    int gotcodes = 0;
     
     manualprop[0] = -1;  //in case file error
     if(file == NULL)
@@ -2057,9 +2059,14 @@ char *ReadManualStim(char *file, int stimid){
                 SerialString(inbuf,0);
                 SerialString("\n",0);
             }
-            if (strncmp(inbuf,"exvals",5) != NULL&& strncmp(inbuf,"manexpvals",8) && strlen(inbuf) < 100){
+            if (strncmp(inbuf,"exvals",5) != NULL && strncmp(inbuf,"manexpvals",8) ){
+                if (strlen(inbuf) < 100 && gotcodes == 0){
                 strcat(cbuf, inbuf);
                 strcat(cbuf, " ");
+                }
+            }
+            else{
+                gotcodes = 1;
             }
         }
         manualstimvals[nprop][0] = NOTSET;
@@ -5902,7 +5909,7 @@ int ReadStimOrder(char *file)
 {
 
     FILE *fd;
-    char buf[BUFSIZ*10],*s,*t;
+    char buf[BUFSIZ*10],*s,*t,cbuf[BUFSIZ*10];
     int ival,nt=0,imax = 0,ok,i,pad = 10,nseq = 0,buflen = 0;
  
     if (expt.strings[EXPT_PREFIX] != NULL){
@@ -5911,6 +5918,7 @@ int ReadStimOrder(char *file)
     else{
         sprintf(buf,"%s/stimorder",file);
     }
+    sprintf(cbuf,"");
     fd = fopen(buf,"r");
     if (fd != NULL){
         fprintf(seroutfile,"#Stimorder from %s fid%d\n",buf,fd->_file);
@@ -5955,6 +5963,8 @@ int ReadStimOrder(char *file)
                 }
                 else
                     SerialString(s,0);
+                strcat(cbuf,nonewline(s));
+                strcat(cbuf," ");
             }
         }
         fclose(fd);
@@ -5970,6 +5980,7 @@ int ReadStimOrder(char *file)
     sprintf(buf,"Manual Stimorder %d stim, %d trials (%d chars)\n",imax+1,nt,buflen);
     fprintf(seroutfile,"#%s",buf);
     statusline(buf);
+    expt.exptstring = myscopy(expt.exptstring,cbuf);
     return(nseq); // this is # of trials, not index of last trial.  But nt gets increment
 }
 
@@ -14787,6 +14798,8 @@ int InterpretLine(char *line, Expt *ex, int frompc)
         }
         SerialString(line,0);
         SerialString("\n",0);
+        if (psychfile != NULL)
+            fprintf(psychfile,"R7 %s\n",line);
         return(-1);
     }
     else if(line[0] == '\\' || line[0] == '\!'){

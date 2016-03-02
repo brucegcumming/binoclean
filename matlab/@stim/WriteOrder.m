@@ -28,7 +28,14 @@ if nargin > 2
     fprintf(fid,'\n');
 end
 if nargin > 3
-    fprintf(fid,'expname=%s\n',name);
+    if ischar(name)
+        fprintf(fid,'expname=%s\n',name);
+    elseif isfield(name,'expname')
+        fprintf(fid,'expname=%s\n',name.expname);
+    end
+    if isfield(name,'filename') %saved details of matlab stimuli
+        fprintf(fid,'expfilename=%s\n',name.filename);
+    end
 end
 fprintf(fid,'%s\n',sprintf('%d ',stimorder));
 fclose(fid);

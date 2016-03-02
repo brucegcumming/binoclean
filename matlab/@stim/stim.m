@@ -22,7 +22,7 @@ classdef stim
 %stim.WriteOrder(basedir,stim.SetOrder([0:n-1],5);
 
     properties
-CurrentVersion = '1.1';
+CurrentVersion = '1.11';
 %1.1 BuildExpt fixed - was not sending noise parameter
 STIM_GRATING = 3;
 end

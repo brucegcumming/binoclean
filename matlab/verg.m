@@ -732,6 +732,7 @@ for j = 1:length(strs{1})
         elseif strncmp(s,'EXPTRUNNING',8) %from GetState
             DATA.inexpt = 1;
         elseif strncmp(s,'EXPTOVER',8) %called at end or cancel
+            exptcancel = 0;
             if DATA.inexpt %in case reopen pipes missed expt
                 DATA.optionflags.do = 0;
                 outprintf(DATA,'op=-do\n');
@@ -741,6 +742,8 @@ for j = 1:length(strs{1})
                 if DATA.inexpt == 0
                     exptover = 0; %put a check in here to resolve confusions
                 end
+            elseif strcmp(s,'EXPTOVERC') %expt cancelled
+                exptcancel = 1;
             end
             
             wasexpt = DATA.inexpt;
@@ -759,7 +762,7 @@ for j = 1:length(strs{1})
             end
             if exptover
                 CheckTrialDurations(DATA,'EXPTOVER');
-                if DATA.optionflags.py && DATA.optionflags.da
+                if DATA.optionflags.py && DATA.optionflags.da && exptcancel == 0
                     CopyLog(DATA,'psych');
                     CopyLog(DATA,'serialpsych');
                 end
@@ -1641,7 +1644,7 @@ function res = binoceval(DATA, str)
     end
     h = waitbar(0.5,sprintf('Running %s',strrep(str,'_',' ')));
     fprintf('Running %s\n',str);
-    outprintf(DATA,'#%s %s\n',datestr(now),str);
+    outprintf(DATA,'#!mat=%s %s\n',datestr(now),str);
     res = eval(str);
     if isfield(res,'version')
         outprintf(DATA,'stimver=%.3f\n',res.version);
@@ -2469,6 +2472,7 @@ DATA.electrodestrings = {'NotSet'};
 DATA.userstrings = {'bgc' 'ali' 'ink' 'agb' 'pla' 'sid'};
 DATA.monkeystrings = {'Icarus' 'Junior Barnes' 'Lemieux' 'Pepper' 'Rufus' };
 DATA.monkeystrs = {'ica' 'jbe' 'lem' 'ppr' 'ruf' };
+DATA.humanstrs = {'bgc' 'sid' 'pla' 'ink' 'agb'};
 
 %make sure some fields exist. Be careful with this - if verg is resstarte
 %and binoc is running, these might override what is in binoc
@@ -2849,13 +2853,28 @@ function DATA = InitInterface(DATA)
      bp(3) = cw/2;
     bp(2) = 3./nr;
     bp(1) = xp;
-    uicontrol(gcf,'style','checkbox','string','XYR',  'Tag', 'XYR', 'value', DATA.showxy(1), 'units', 'norm', 'position',bp, 'callback', {@OtherToggles, 'XYR'});
+    ai = uicontrol(gcf,'style','checkbox','string','XYR',  'Tag', 'XYR', 'value', DATA.showxy(1), 'units', 'norm', 'position',bp, 'callback', {@OtherToggles, 'XYR'});
     
     bp(1) = bp(1)+bp(3);
     uicontrol(gcf,'style','checkbox','string','XYL',  'Tag', 'XYL', 'value', DATA.showxy(2), 'units', 'norm', 'position',bp, 'callback', {@OtherToggles, 'XYL'});
     bp(1) = bp(1)+bp(3);
     uicontrol(gcf,'style','checkbox','string','XYB',  'Tag', 'XYB', 'value', DATA.showxy(3), 'units', 'norm', 'position',bp, 'callback', {@OtherToggles, 'XYB'});
 
+    if GetOption(DATA,'py')
+        bp(1) = bp(1)+bp(3);
+        bp(3) = 0.25;
+        id = find(strcmp(DATA.binoc{1}.monkey,DATA.monkeystrs));
+        if isempty(id)
+            id = 1;
+        end
+        h = uicontrol(gcf,'style','pop','string',DATA.humanstrs, ...
+            'units', 'norm', 'position',bp,'value',id,'Tag','Monkey','callback',{@MenuGui});                
+        gui.place(h,'up', ai);
+        bp(3) = 0.9./nc;
+        a = uicontrol(gcf,'style','text','string','Subject', ...
+            'units', 'norm', 'position',bp);
+        gui.place(a, 'up',h);
+    end
     
     bp(1) = 0.01;
     bp(2) = 8./nr;
@@ -3115,6 +3134,7 @@ function DATA = InitInterface(DATA)
     uimenu(sm,'Label','Save Layout','Callback',{@SaveFile, 'layout'});
     uimenu(sm,'Label','Choose Font','Callback',{@MenuHit, 'choosefont'});
     uimenu(sm,'Label','Update local .m files','Callback',{@SaveFile, 'update'});
+    uimenu(sm,'Label','Push local .m files to network binoclean','Callback',{@SaveFile, 'push'});
     sm = uimenu(hm,'Label','Today Slots');
     for j = 1:8
     uimenu(sm,'Label',['Expt' num2str(j)],'Callback',{@SaveSlot, j});
@@ -3779,6 +3799,12 @@ function AddTodayMenu(DATA, id,label)
         set(it,'Label',label);
     end
     
+function PushChanges(DATA)
+    vpath = fileparts(mfilename('fullpath'));
+    tgt = DATA.netmatdir;
+    CheckFileUpdate([vpath '/verg.m'],[tgt '/verg.m'],'nobackup',DATA);
+    CheckFileUpdate([vpath '/ServoDrive.m'],[tgt '/ServoDrive.m'],'nobackup',DATA);
+
 function CheckForUpdate(DATA)
     
     vpath = mfilename('fullpath');
@@ -3855,6 +3881,8 @@ function SaveFile(a,b,type)
         SaveExpt(DATA, filename);
     elseif strcmp(type,'fix')
         CheckStimFile(DATA,'new');
+    elseif strcmp(type,'push')
+        PushChanges(DATA)
     elseif strcmp(type,'update')
         CheckForUpdate(DATA)
     elseif strcmp(type,'layout')
@@ -4216,6 +4244,17 @@ function MenuGui(a,b)
              DATA.binoc{1}.Vn = str;
              SendCode(DATA,'Vn');
              myprintf(DATA.penid,'VisualArea %s\n',str);
+         case 'Monkey'
+             mnk = DATA.binoc{1}.monkey;
+             DATA.binoc{1}.monkey = str;
+             if isfield(DATA.binoc{1},'psychfile')
+                 if ~isempty(strfind(DATA.binoc{1}.psychfile,mnk))
+                     DATA.binoc{1}.psychfile = strrep(DATA.binoc{1}.psychfile,mnk,str);
+                     fprintf('Setting Psych Log to %s\n',DATA.binoc{1}.psychfile);
+                     SendCode(DATA,'psychfile');
+                 end
+             end
+             SendCode(DATA,'monkey');             
      end
      set(DATA.toplevel,'UserData',DATA);
 
@@ -4619,6 +4658,16 @@ function SetExptItems(DATA, varargin)
             set(it,'backgroundcolor','r');
         end
     end
+    
+    it= findobj(allchild(DATA.toplevel),'flat','Tag','Monkey');
+    if ~isempty(it)
+        strs = get(it,'string');
+        id = find(strcmp(DATA.binoc{1}.monkey,strs));
+        if ~isempty(id)
+            set(it,'value',id);
+        end
+    end
+ 
     
     ot = findobj(allchild(0),'flat','tag',DATA.windownames{2},'type','figure'); %options window
        f = fields(DATA.optionflags);
@@ -6298,7 +6347,7 @@ function DATA = RunExptSequence(DATA, str, line)
             line = 1;
         else
             DATA.seqline = 0;
-            myprintf(DATA.cmdfid,'Sequence End\n');
+            myprintf(DATA.cmdfid,'-show','Sequence End\n');
             return;
         end
     end
@@ -6542,9 +6591,9 @@ function SequencePopup(a,exptlines,type)
         set(cntrl_box,'DefaultUIControlFontSize',DATA.font.FontSize);
 
         bp(1) = 0.01;
-bp(2) = 1-1./nr;
+bp(2) = 1-2./nr;
 bp(3) = 1./nc;
-bp(4) = 1./nr;
+bp(4) = 2./nr;
 uicontrol(gcf,'style','pushbutton','string','Run', ...
     'Callback', {@SequencePopup, 'run'} ,...
     'units', 'norm', 'position',bp,'value',1);
@@ -6562,15 +6611,26 @@ if usejava
 lst = jcontrol(gcf,'javax.swing.JTextField',...
                     'Units','normalized',...
              'Tag','SequenceList',...
-                    'Position',[0.01 0.01 0.98 0.99-1./nr]);
+                    'Position',[0.01 0.01 0.98 0.99-2./nr]);
       set(lst,'Text','this is a test');
 else
-lst = uicontrol(gcf, 'Style','edit','String', 'sequence',...
+    lst = uicontrol(gcf, 'Style','edit','String', 'sequence',...
         'HorizontalAlignment','left',...
         'Max',10,'Min',0,...
-         'Tag','SequenceList',...
-'units','norm', 'Position',[0.01 0.01 0.99 0.99-1./nr]);
-set(lst,'string',exptlines);
+        'Tag','SequenceList',...
+        'units','norm', 'Position',[0.01 0.01 0.99 0.99-2./nr]);
+    if iscellstr(exptlines)
+        set(lst,'string',exptlines);
+    elseif strncmp(class(exptlines),'matlab.ui',9) || isempty(exptlines)
+        sid = find(strcmp('sequence',DATA.exptlines));
+        if ~isempty(sid)
+            set(lst,'string',DATA.exptlines(sid+1:end));
+        elseif isfield(DATA,'matexpt')
+            exptline{1} = sprintf('!mat=%s',DATA.matexpt);
+            exptline{2} = '!expt';
+            set(lst,'string',exptline);
+        end
+    end
 end
 set(DATA.toplevel,'UserData',DATA);
 
@@ -7282,7 +7342,14 @@ function SendCode(DATA, code)
             outprintf(DATA,'%s\n',s);
         end
     end
-    
+
+function val = GetOption(DATA,code)    
+    if isfield(DATA,'optionflags') && isfield(DATA.optionflags,code)
+        val = DATA.optionflags.(code);
+    else
+        val = 0;
+    end
+
 function val = GetValue(DATA,code)    
 %Gets value of a code
 
@@ -8242,8 +8309,13 @@ function DATA = PlotPsych(DATA, Expts)
                 set(get(gca,'xlabel'),'string',DATA.comcodes(id).label);
             end
             if DATA.psych.crosshairs
-                plot([0 0], get(gca,'ylim'),'k:')
-                plot(get(gca,'xlim'),[0.5 0.5],'k:')
+                holdstate = ishold;
+                hold on;
+                plot([0 0], get(gca,'ylim'),'k:');
+                plot(get(gca,'xlim'),[0.5 0.5],'k:');
+                if holdstate == 0
+                    hold off;
+                end
             end
         end
         end

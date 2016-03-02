@@ -4403,6 +4403,9 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
                     st->pos.dotsize = fval;
                 }
             }
+            else{
+                st->pos.dotsize = fval;
+            }
             break;
         case YSAMPLES:/*j*/
             if(st->type == STIM_GRATING || st->type == STIM_GRATING2 || st->type == STIM_GABOR)
@@ -9970,6 +9973,8 @@ float StimulusProperty(Stimulus *st, int code)
                 value = pix2deg(st->left->dotsiz[0]);
             else if(st->type == STIM_CYLINDER || st->type == STIM_CORRUG || st->type == STIM_SQCORRUG)
                 value = pix2deg(st->left->ptr->dotsiz[0]);
+            else
+                value = pix2deg(st->pos.dotsize);
             break;
         case YSAMPLES:
             if(st->type == STIM_GRATING || st->type == STIM_GRATING2 || st->type == STIM_GABOR)
@@ -10934,7 +10939,7 @@ int PrintPsychLine(int presult, int sign, FILE *fd)
         else
             sprintf(str,"%s=%d",serial_strings[SET_SEED],expt.st->left->baseseed);
         if (option2flag & PSYCHOPHYSICS_BIT)
-            sprintf(str,"%s %c=%.2f x=0 x=0 x=0",str,afc_s.respdir,afc_s.rt);
+            sprintf(str,"%s %c=%.2f tid=%d x=0 x=0",str,afc_s.respdir,afc_s.rt,stimno);
         else
             sprintf(str,"%s %s",str,EyePosString());
         if(expt.type3 != EXPTYPE_NONE)
@@ -11882,6 +11887,9 @@ void expt_over(int flag)
     eventstate = 0;
     if(stimstate == WAIT_FOR_RESPONSE && flag != CANCEL_EXPT){
         TheStim->mode |= EXPT_OVER; // make sure this is called again after response
+        if (option2flag & PSYCHOPHYSICS_BIT){
+            acknowledge("You Must Respond to the last Stimulus.\n  Then Expt Will End.");
+        }
         return;
     }
     else if (flag == CANCEL_EXPT){
@@ -12085,7 +12093,10 @@ void expt_over(int flag)
         fflush(seroutfile);
     }
     unlink("/tmp/binocstimisup"); //make sure comms not blocked
-    notify("\nEXPTOVERE\n");
+    if(flag == CANCEL_EXPT)
+        notify("\nEXPTOVERC\n");
+    else
+        notify("\nEXPTOVERE\n");
     SaveExptFile("./leaneo.stm",SAVE_STATE);
     SendAllToGui();
     if (netoutfile != NULL){
@@ -12129,7 +12140,7 @@ void Stim2PsychFile(int state, FILE *fd)
 
     if(fd){
 
-        fprintf(fd,"R5 %s=%.2f %s=%.2f %s=%.2f",
+        fprintf(fd,"R5 %s=%.4f %s=%.2f %s=%.2f",
                 serial_strings[STIM_SIZE],GetProperty(&expt,expt.st,STIM_SIZE), 
                 serial_strings[SETCONTRAST],GetProperty(&expt,expt.st,SETCONTRAST),
                 serial_strings[JVELOCITY],GetProperty(&expt,expt.st,JVELOCITY));
@@ -12197,12 +12208,17 @@ void Stim2PsychFile(int state, FILE *fd)
         tval = RunTime();
         if(state == START_EXPT || state == START_EXPT+100){
             fprintf(fd,"R7 %s date=%s progtime=%.3f bt=%.3f diff=%.3f\n", StimString(STIMULUS_TYPE_CODE),binocDateString(1),timediff(&now,&progstarttime),timediff(&now,&sessiontime),bwtimeoffset[1]);
+            if (expt.exptstring != NULL){
+                fprintf(fd,"R7 %s\n",expt.exptstring);
+            }
             fprintf(fd,"R7 binoclean=%s time=%s %s", s, &r[0],StimString(OPTION_CODE));
             fprintf(fd," bt=%.2f", timediff(&now,&sessiontime));
             fprintf(fd," %s",StimString(UFF_PREFIX));
             fprintf(fd," %s",StimString(EXPT_NAME));
+            fprintf(fd," %s",StimString(EXPTVARS));
             fprintf(fd," rptexpt=%d",expt.rptexpt);
-            j = 5;
+            fprintf(fd,"\nR7 pix2deg=%.5f ",pix2deg(1));
+            j = 1;
             for(i = 0; i < MAXMANUALPARAMS; i++){
                 if (expt.manuallabels[i] != NULL && strcmp(expt.manuallabels[i],"NotSet")){
                     fprintf(fd," %s=%.4f",expt.manuallabels[i], expt.manualvalues[i]);
