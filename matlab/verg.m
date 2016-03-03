@@ -110,9 +110,6 @@ if isempty(it)
         if exist(DATA.binoc{1}.lo,'file')
             DATA = ReadLogFile(DATA, DATA.binoc{1}.lo);
         end
-        if checkforrestart
-            DATA = LoadLastSettings(DATA,'interactive');
-        end
         DATA = GetState(DATA,'stimfile');
         DATA = DrainBinocPipe(DATA);
         tt = TimeMark(tt, 'FromBinoc');
@@ -140,6 +137,10 @@ if isempty(it)
     end
 
     DATA = InitInterface(DATA);
+    if checkforrestart
+        DATA = LoadLastSettings(DATA,'interactive');
+    end
+    figure(DATA.toplevel);
     if ~exist('comcodes','file')
         SaveComCodes(DATA);
     end
@@ -1201,13 +1202,15 @@ for j = 1:length(strs{1})
 %when binoc echose back the qe list, stimdir instrutions from the stim file are
 % lost. So only add menus if name is unique.  Might mean missing some
 % qexpts when verg gets settig from binoc.
-        if isempty(id) && (~sum(strcmp(src,{'frombinoc' 'fromgetstate'})) || isempty(xid))
+        if isempty(id) && (~sum(strcmp(src,{'frombinoc' 'frombinocT' 'fromgetstate'})) || isempty(xid))
             n = length(DATA.quickexpts)+1;
             DATA.quickexpts(n).name = b;
             DATA.quickexpts(n).filename = s;
             DATA.quickexpts(n).submenu = submenu;
             if strcmp(src,'fromgui')
                 ReBuildQuickMenu(DATA);
+            else
+                DATA.newqe = 1;
             end
         end
         end
@@ -1687,6 +1690,7 @@ function [DATA, details] = ReadExptLines(DATA, strs, src)
         elseif ~isempty(strfind(tline,'$MNK')) && ~isempty(DATA.binoc{1}.monkey)
             tline = strrep(tline,'$MNK',DATA.binoc{1}.monkey);
         end
+        monkey = DATA.binoc{1}.monkey;
         if strcmp(tline,'immode=preload')
             fprintf('Substituting imload for immode\n');
             tline = 'imload=preload';
@@ -1710,6 +1714,11 @@ function [DATA, details] = ReadExptLines(DATA, strs, src)
                 SendCode(DATA,'monkey');
             else
                 myprintf(DATA.frombinocfid,'Can''t find Monkey Name in %s\n',tline)
+            end
+        end
+        if strncmp(tline,'monkey',6)
+            if ~strcmp(monkey,DATA.binoc{1}.monkey) %changed Subject
+                NewMonkey(DATA, monkey);
             end
         end
         if DATA.over
@@ -1879,6 +1888,7 @@ function [DATA, details] = ReadStimFile(DATA, name, varargin)
     end
 %if this is the first load since running an expt, Call the reset
 %file
+DATA.newqe = 0;
 if DATA.newexptdef == 0 && isfield(DATA.binoc{1},'ereset') && ~strcmp('NotSet',DATA.binoc{1}.ereset);
     fprintf('Resetting Expt with %s\n',DATA.binoc{1}.ereset);
     DATA.newexptdef = 1;
@@ -1928,6 +1938,10 @@ else
         fprintf('Can''t read stimfile %s\n',name)
     end
 end
+if strcmp(src,'quickmenu') && DATA.newqe > 0
+    ReBuildQuickMenu(DATA);
+end
+
 if setall
     DATA = ReadVergFile(DATA, DATA.layoutfile);
 end
@@ -3688,6 +3702,7 @@ function DATA = LoadLastSettings(DATA, varargin)
         if now - d.datenum < 0.5/24 %less than an half an hour old - read in settings
             go = 1;
             if interactive 
+                cprintf('red', 'Looks Like restart.  Answer dialog\n');
                 yn = questdlg(sprintf('Looks like you are re-starting Mid expt. Do you want to reload id/se from %s',d.filename),'Binoc has been working','Reload minimum','Reload all','No','Reload minimum');
                 if ~strncmp(yn,'Reload',5)
                     go = 0;
@@ -4247,16 +4262,21 @@ function MenuGui(a,b)
          case 'Monkey'
              mnk = DATA.binoc{1}.monkey;
              DATA.binoc{1}.monkey = str;
-             if isfield(DATA.binoc{1},'psychfile')
-                 if ~isempty(strfind(DATA.binoc{1}.psychfile,mnk))
-                     DATA.binoc{1}.psychfile = strrep(DATA.binoc{1}.psychfile,mnk,str);
-                     fprintf('Setting Psych Log to %s\n',DATA.binoc{1}.psychfile);
-                     SendCode(DATA,'psychfile');
-                 end
-             end
+             NewMonkey(DATA, mnk);
              SendCode(DATA,'monkey');             
      end
      set(DATA.toplevel,'UserData',DATA);
+
+     
+function NewMonkey(DATA, mnk)
+%mnk is old monkey    
+    if isfield(DATA.binoc{1},'psychfile')
+        if ~isempty(strfind(DATA.binoc{1}.psychfile,mnk))
+            DATA.binoc{1}.psychfile = strrep(DATA.binoc{1}.psychfile,mnk,DATA.binoc{1}.monkey);
+            fprintf('Setting Psych Log to %s\n',DATA.binoc{1}.psychfile);
+            SendCode(DATA,'psychfile');
+        end
+    end
 
 function DATA = AddComment(DATA, str, src)
     
