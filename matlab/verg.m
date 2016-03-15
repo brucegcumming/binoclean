@@ -3,6 +3,8 @@ function verg(varargin)
 %GUI for running binoclean via pipe.
 
 autoquit = 0;
+uselastlayout = 0;
+layoutfile = '';
 
 if length(varargin) & ishandle(varargin{1})
     f = varargin{1};
@@ -34,6 +36,20 @@ while j <= length(varargin)
     elseif strcmp(varargin{j},'host')
         j = j+1;
         DATA.ip = ['http://' varargin{j} ':1110/'];
+    elseif strcmp(varargin{j},'lastlayout')
+        uselastlayout = 1;
+    elseif strcmp(varargin{j},'layout')
+        j = j+1;
+        layoutfile = varargin{j};
+        if strcmp(layoutfile,'last')
+            uselastlayout = 1;
+        else
+            d = dir('/local/*.layout');
+            id = find(CellToMat(strfind({d.name},varargin{j})));
+            if ~isempty(id)
+                layoutfile = ['/local/' d(id(1)).name];
+            end
+        end
     elseif strcmp(varargin{j},'new')
         checkforrestart = 0;
     elseif strcmp(varargin{j},'record')
@@ -131,7 +147,12 @@ if isempty(it)
         DATA.Expts{1} = ExptSummary(DATA);
     end
     
-    
+    if uselastlayout
+        DATA = ReadVergFile(DATA, strrep(DATA.layoutfile,'.layout','last.layout'));
+    elseif ~isempty(layoutfile)
+        DATA = ReadVergFile(DATA, layoutfile);
+        fprintf('Using layout in %s\n',layoutfile);
+    end
     if sum(strncmp(vpath,{'/b/bgc/matlab','/Volumes/bgc'},12)) || ~strcmp(fileparts(vpath),DATA.localmatdir)
         cprintf('red','CAREFUL!!!!!!!!!!\nVerg code is from %s not %s\n',vpath,DATA.localmatdir);
     end
@@ -277,6 +298,8 @@ function SaveComCodes(DATA)
     
     
     UpdateLogFile(DATA);
+    SaveLayout(DATA, strrep(DATA.layoutfile,'.layout','last.layout'));
+
     if DATA.pipelog
         system([GetFilePath('perl') '/pipelog end']);
     end
@@ -1916,10 +1939,13 @@ if fid > 0
     a = textscan(fid,'%s','delimiter','\n');
     DATA.exptlines = a{1};
     fclose(fid);
-    sid = find(strcmp('sequence',DATA.exptlines));
+    sid = find(strncmp('sequence',DATA.exptlines,8));
     if ~isempty(sid)
-        SequencePopup(DATA,DATA.exptlines(sid+1:end),'popup');
+        popup = 'popup';
         if sid > 1
+            if strcmp(DATA.exptlines{sid},'sequencenew')
+                popup = 'popupnew';
+            end
             DATA.exptlines = DATA.exptlines(1:sid-1);
         end
     end
@@ -1927,6 +1953,9 @@ if fid > 0
         [DATA, details] = ReadExptLines(DATA,DATA.exptlines,linesrc);
         if details.badcodes > 1
             fprintf('Choose Fix from the file menu, or run verg([],''checkstim'') to remove bad/old codes from %s\n',name);
+        end
+        if ~isempty(sid)
+            SequencePopup(DATA,DATA.exptlines(sid+1:end),popup);
         end
     else %just a sequence file
         outprintf(DATA,'\neventcontinue\n');
@@ -2437,6 +2466,8 @@ DATA.psych.trialresult = 0;
 DATA.psych.showblocks = 0;
 DATA.psych.blockmode = 'All';
 DATA.psych.crosshairs = 1;
+DATA.psych.collapse(2) = 0;
+DATA.psych.collapse(3) = 1;
 DATA.psych.blockid = [];
 DATA.silentoption.NotSet = 1;
 DATA.overcmds = {};
@@ -6574,7 +6605,7 @@ function SequencePopup(a,exptlines,type)
 
   DATA = GetDataFromFig(a);
   cntrl_box = findobj('Tag',DATA.windownames{8},'type','figure');
-  if ~strcmp(type,'popup')
+  if ~strncmp(type,'popup',5)
       if strcmp(type,'run')
           DATA = GetState(DATA,'runseq');
           DATA.runsequence = 1;
@@ -6601,6 +6632,10 @@ function SequencePopup(a,exptlines,type)
   end
   if ~isempty(cntrl_box)
       figure(cntrl_box);
+      if strcmp(type,'popupnew')
+          lst = findobj(allchild(cntrl_box),'flat','tag', 'SequenceList');
+          SetSequenceString(lst, DATA, exptlines);
+      end
       return;
   end
   
@@ -6639,7 +6674,12 @@ else
         'Max',10,'Min',0,...
         'Tag','SequenceList',...
         'units','norm', 'Position',[0.01 0.01 0.99 0.99-2./nr]);
-    if iscellstr(exptlines)
+    SetSequenceString(lst,DATA, exptlines);
+end
+set(DATA.toplevel,'UserData',DATA);
+
+function SetSequenceString(lst, DATA, exptlines)
+    if iscellstr(exptlines) && ~isempty(exptlines)
         set(lst,'string',exptlines);
     elseif strncmp(class(exptlines),'matlab.ui',9) || isempty(exptlines)
         sid = find(strcmp('sequence',DATA.exptlines));
@@ -6651,9 +6691,6 @@ else
             set(lst,'string',exptline);
         end
     end
-end
-set(DATA.toplevel,'UserData',DATA);
-
 
 function d = Dev(DATA)
     if isfield(DATA.binoc{1},'ui') && strcmp(DATA.binoc{1}.ui,'bgc')
@@ -8061,6 +8098,11 @@ function ChoosePsych(a,b, mode)
         DATA.psych.show = ~DATA.psych.show;
         set(a,'Checked',onoff{DATA.psych.show+1});
         PlotPsych(DATA);
+    elseif sum(strcmp(mode,{'collapse2' 'collapse3'}))
+        j = find(strcmp(mode,{'collapse2' 'collapse3'}))+1;
+        DATA.psych.collapse(j) = ~DATA.psych.collapse(j);
+        set(a,'Checked',onoff{DATA.psych.collapse(j)+1});
+        PlotPsych(DATA);
     elseif sum(strcmp(mode,{'crosshairs' 'trialresult' 'showblocks'}))
         DATA.psych.(mode) = ~DATA.psych.(mode);
         set(a,'Checked',onoff{DATA.psych.(mode)+1});
@@ -8112,6 +8154,10 @@ function DATA = SetFigure(tag, DATA)
             hm = uimenu(a, 'Label','Options','Tag','PsychOptions');
             sm = uimenu(hm,'Label','Crosshairs','callback', {@ChoosePsych, 'crosshairs'},...
                 'checked',onoff{DATA.psych.crosshairs+1});
+            sm = uimenu(hm,'Label','Collapse Expt2','callback', {@ChoosePsych, 'collapse2'},...
+                'checked',onoff{DATA.psych.collapse(2)+1});
+            sm = uimenu(hm,'Label','Collapse Expt3','callback', {@ChoosePsych, 'collapse3'},...
+                'checked',onoff{DATA.psych.collapse(3)+1});
             sm = uimenu(hm,'Label','Just Show Trial outcomes','callback', {@ChoosePsych, 'trialresult'},...
                 'checked',onoff{DATA.psych.trialresult+1});
             sm = uimenu(hm,'Label','Separate by Block','callback', {@ChoosePsych, 'showblocks'},...
@@ -8288,7 +8334,7 @@ function DATA = PlotPsych(DATA, Expts)
                 
         DATA = SetFigure('VergPsych', DATA);
         hold off;
-        eargs = {};
+        eargs = {'collapse' DATA.psych.collapse};
         if DATA.psych.trialresult
             plot([Expt.Trials.Start],[Expt.Trials.good],'o');
             datetick('x','hh:mm');

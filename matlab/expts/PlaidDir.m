@@ -41,6 +41,18 @@ if strcmp(type,'unikinetic')
     values{2} = [0 1  1 1];
     values{3} = [90 90 45 -45];
     stimvars = {'or' 'c2' 'a2'};
+elseif strcmp(type, 'orientation') %direction and orientation
+    values{1} = [0:30:330];
+    values{3} = {'rds' 'rds' 'rls' 'rls' 'rls'};
+    values{2} = [1 1 1 1 24];
+    stimvars = {'or' 'sl' 'st'};
+elseif strcmp(type, 'classify') %direction and orientation + UK plaids
+    values{1} = [0:30:330];
+    values{2} = [1 1 1 1 24 1 1];
+    values{3} = {'rds' 'rds' 'rls' 'rls' 'rls' 'rls' 'rls'};
+    values{4} = [0 0 0 0 0 -45 45];
+    values{5} = [1 1 1 1 1  1   1];
+    stimvars = {'or' 'sl' 'st' 'a2' 'c2'};
 elseif strcmp(type, 'fullunikinetic') %include RDS, dynamic unikinetic, and dynamic rls
 %1 SG
 %2 UP90
@@ -74,7 +86,7 @@ for j = 1:length(values{1})
         ns = ns+1;
         AllS(ns).sM = 0;
         AllS(ns).or = values{1}(j);
-        AllS(ns).c2 = values{2}(k);
+        AllS(ns).(stimvars{2}) = values{2}(k);
         for c = 3:length(values)
             if iscellstr(values{c})
                 AllS(ns).(stimvars{c}) = values{c}{k};
@@ -83,13 +95,17 @@ for j = 1:length(values{1})
             end
         end
     end
-    if ~strcmp(type,'fullunikinetic')
+    if strcmp(type,'unikinetic')
         ns = ns+1;
         AllS(ns).or = values{1}(j);
         AllS(ns).c2 = 1;
         AllS(ns).sM = 33;
         for c = 3:length(values)
-            AllS(ns).(stimvars{c}) = values{c}(1);
+            if iscellstr(values{c})
+                AllS(ns).(stimvars{c}) = values{c}{k};
+            else
+                AllS(ns).(stimvars{c}) = values{c}(1);
+            end
         end
     end
     exvals(ns,1) = values{1}(j);

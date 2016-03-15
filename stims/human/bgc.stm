@@ -47,6 +47,7 @@ qe="ACexpts"dew.latest
 qe="ACexpts"halfmatch_vertoffset
 qe="Test"/b/binoclean/stims/human/Images.stm
 qe=/b/binoclean/stims/human/HarrisParker.stm
+qe="HarrisParker"/b/binoclean/stims/human/HarrisParker/sid.stm
 qe="HarrisParker"/b/binoclean/stims/human/HarrisParker/bgc.stm
 qe="HarrisParker"/b/binoclean/stims/human/HarrisParker/bgcdense.stm
 qe="Adapt"stepadapt

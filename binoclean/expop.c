@@ -2041,7 +2041,7 @@ char *ReadManualStim(char *file, int stimid){
             if (i == expt.mode){
                 expt.currentval[0] = GetProperty(&expt, expt.st, i);
                 if(r){
-                    if (fabs(expt.currentval[0] - expt.codevalue) > 0.001){
+                    if (fabs(expt.currentval[0] - expt.codevalue) > 0.001 && i != ORIENTATION){
                         sprintf(msg,"DX set error %s->%.6f",inbuf,expt.currentval[0]);
                         acklog(msg,0);
                         i = InterpretLine(inbuf,&expt,3); //try again to see if it repeats
@@ -16210,7 +16210,8 @@ int InterpretLine(char *line, Expt *ex, int frompc)
         notify(line);
         notify("\n");
     }
-    else if((frompc ==2 || frompc ==4) && code >= 0){ //came from verg or file. Some of these need -> spike2
+// if frompc == 4, has come from a file read  by binoclean.  Need to send this to GUI (above) AND to spike2
+    if((frompc ==2 || frompc ==4) && code >= 0){ //came from verg or file. Some of these need -> spike2
         switch(code){
             case VWHERE:
             case TOTAL_REWARD:
