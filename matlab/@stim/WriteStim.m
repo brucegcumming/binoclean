@@ -12,7 +12,11 @@ if fid < 0
     return;
 end
 f = fields(S);
-forcef = {'psyv'};  %codes to send to string description in binoc
+if isfield(S,'psyv')
+    forcef = {'psyv'};  %codes to send to string description in binoc
+else
+    forcef = {};
+end
 j = 1;
 while j <= length(varargin)
     if strcmp(varargin{j},'ignore') %list of fields NOT to write
@@ -37,6 +41,13 @@ for j = 1:length(exf)
     if ischar(x)
         fprintf(fid,'%s=%s\n',exf{j},x);
         exstr = [exstr ' ' x];
+    elseif length(x) > 1 %subspace
+        fprintf(fid,'%s:',exf{j});
+        for k = 1:length(x)
+            fprintf(fid,'%s ',num2str(x(k)));
+        end
+        fprintf(fid,'\n');            
+        exstr = [exstr ' ' num2str(x(1))];
     else
         fprintf(fid,'%s=%s\n',exf{j},num2str(x));
         exstr = [exstr ' ' num2str(x)];

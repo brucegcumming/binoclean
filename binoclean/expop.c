@@ -2155,6 +2155,7 @@ int SetManualStim(int frame)
         else{
             if((i = SetStimulus(expt.st, val, code, NOEVENT)) < 0)
                 SetExptProperty(&expt, expt.st, code, val, NOEVENT);
+            rcstimvals[p][frame] = val;
         }
         p++;
     }
@@ -2757,7 +2758,7 @@ int UpdateNetworkFile(Expt expt)
         sprintf(netname,"%s/%s.bnc",expt.strings[NETWORK_PREFIX],sfile);
         netdirpath = getdirname(netname);
         if (!isdir(netdirpath)){
-            sprintf(buf,"Network Folder  %s Does not exist\n?Change netpref=",netdirpath);
+            sprintf(buf,"Network Folder %s Does not exist\n?Change netpref=\nLocal File %s\n",netdirpath,bncfilename);
             acknowledge(buf,NULL);
         }
         sprintf(name,"/local/%s.bnc",sfile);
@@ -5996,6 +5997,8 @@ int ReadStimOrder(char *file)
  * then stimorder is nstim[2] + exp1 val + nstim[1] * exp2 val
  */
 
+#define WATCHSEQ 1
+
 void setstimulusorder(int warnings, int force)
 {
     int i, j = 0,nstim,n,tw,a,b;
@@ -6247,6 +6250,7 @@ void setstimulusorder(int warnings, int force)
                      * may not need any for this exp2/exp3 combo, but will do some interleaves
                      * on later passes
                      */
+//if nneed is 0 for 10 passes, seems likely we are at the end
                     if(nneed){
                         rnd = myrnd_i();
                         j = rnd % nneed;
@@ -6448,6 +6452,8 @@ void setstimulusorder(int warnings, int force)
     
     /*
      * Check that have correctly generated nreps repetitions
+     *when using subspace maps and nreps is < 2/non-integer, this
+     %does not work.
      */
     if(expt.vals[RC_REPEATS] > 0){
         rcrpt = expt.vals[RC_REPEATS]+1;
@@ -6469,20 +6475,44 @@ void setstimulusorder(int warnings, int force)
         }
         fclose(out);
 #endif
-        n = floor(nreps/(rcrpt));
-        for(j = 0; j < nstimtotal; j++){
-            for(k = 0; k < n; k++){
-                a = rpts[j][k*rcrpt];
-                for (m = 1; m < rcrpt; m++){
-                    b = rpts[j][(k*rcrpt)+m];
-                    seedorder[rptid[j][b]] = seedorder[rptid[j][a]];
+        if (optionflags[FAST_SEQUENCE] && expt.nstim[4] > 1){
+            ns = ntoset/expt.nstim[4];
+            for(j = 0; j < ns; j++)
+                permute(&rpts[j][0], ns);
+            for(i = 0; i < ns; i++){
+                stimcount[i] = 0;
+            }
+            for(i = 0; i < ntoset; i++){
+                k = stim3order[i];
+                rptid[k][stimcount[k]] = i;
+                stimcount[k]++;
+            }
+            for(j = 0; j < expt.nstim[4]; j++){
+                for(k = 0; k < ns; k++){
+                    a = rpts[j][k*rcrpt];
+                    for (m = 1; m < rcrpt; m++){
+                        b = rpts[j][(k*rcrpt)+m];
+                        seedorder[rptid[j][b]] = seedorder[rptid[j][a]];
+                    }
+                }
+            }
+        }
+        else{
+            n = floor(nreps/(rcrpt));
+            for(j = 0; j < nstimtotal; j++){
+                for(k = 0; k < n; k++){
+                    a = rpts[j][k*rcrpt];
+                    for (m = 1; m < rcrpt; m++){
+                        b = rpts[j][(k*rcrpt)+m];
+                        seedorder[rptid[j][b]] = seedorder[rptid[j][a]];
+                    }
                 }
             }
         }
 #ifdef WATCHSEQ
         out = fopen("seed.test","w");
         for(j = 0; j < ntoset; j++){
-            fprintf(out,"%d %d\n",seedorder[j],stimorder[j]);
+            fprintf(out,"%d %d %d\n",seedorder[j],stimorder[j],stim3order[j]);
         }
         fclose(out);
 #endif
@@ -8013,6 +8043,9 @@ void InitExpt()
     stimdurn = 0;
     stimdursum = 0;
     cancelflag = 0;
+    for(i = 0; i < 5; i++)
+        expt.fastnstim[i] = expt.nstim[i];
+
     /*
      * This list of properties is recorded fo the stimulus before an expt run
      * starts playing with it. expt.stimvals[i] can then be used to reset the 
@@ -10406,6 +10439,7 @@ int PrepareExptStim(int show, int caller)
         
         if(dorpt == 2){
             expt.st->left->baseseed = seedorder[stimno];
+            expt.vals[SET_SEED] = seedorder[stimno];
         }
         else if(dorpt){
 #ifdef WATCHSEQ
@@ -10663,7 +10697,8 @@ int PrepareExptStim(int show, int caller)
 //                lrnd = myrnd_i();
 //                lrnd = mydrand() * (UINT64_MAX-1);
 //looks like seed set for rds pattern might control this. Dangerous if we ever wanted to
-//repeat seed but have diffeent sequences. 
+//repeat seed but have diffeent sequences.
+//But good if we want to repeat both sequence and seed
                 lrnd = myrnd_i();
                 SetFrameStim(i, lrnd, inc, stp, nstim);
                 ivals[id] = frameiseq[i];
@@ -12481,7 +12516,7 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
     SerialSend(STIMID);
 //if setting seed as an expt variable, make sure it hasn't been changed
 //in the intertrial interval since PrepareExptStim was called
-    if (expt.mode == SET_SEED || expt.type2 == SET_SEED || expt.type3 == SET_SEED){
+    if (expt.mode == SET_SEED || expt.type2 == SET_SEED || expt.type3 == SET_SEED || expt.vals[RC_REPEATS] > 0){
         st->left->seed = st->left->baseseed = (int)expt.vals[SET_SEED];
         st->right->seed = st->right->baseseed = (int)expt.vals[SET_SEED];
     }
@@ -12547,7 +12582,10 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
             lastframecount = rc;
             if(expt.type2 == BACKGROUND_MOVIE || expt.mode == BACKGROUND_MOVIE)
                 expt.st->mode |= STIMULUS_NEEDS_CLEAR;
-            if(optionflags[FAST_SEQUENCE]){
+//MANUAL_EXPT trumps fast sequence - user must provided sequences in stim files
+            if(optionflags[MANUAL_EXPT]){
+            }
+            else if(optionflags[FAST_SEQUENCE]){
                 if(expt.fastctype != EXPTYPE_NONE)
                     SetStimulus(expt.st,frameseqc[framesdone],expt.fastctype,NOEVENT);
                 if(expt.fastbtype != EXPTYPE_NONE && dframeseq[framesdone])

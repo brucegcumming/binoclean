@@ -21,13 +21,18 @@ classdef stim
 %end
 %stim.WriteOrder(basedir,stim.SetOrder([0:n-1],5);
 
-    properties
+    properties (Constant)
 CurrentVersion = '1.11';
 %1.1 BuildExpt fixed - was not sending noise parameter
 STIM_GRATING = 3;
+IUNCORR = -1005;
+IBLANK = -1009;
+ILEFTMONOC = -1001;
+IRIGHTMONOC = -1002;
 end
 methods (Static)
-    AllS = BuildExpt(type, varargin); 
+    [Expt, AllS] = BuildExpt(expts, values, varargin); 
+    AllS = BuildImageExpt(type, varargin); 
     AllS = example(varargin); 
     [b,l,r] = rds(sz,dxy,ndots,varargin);
     stimorder = SetOrder(stims, nr, varargin)

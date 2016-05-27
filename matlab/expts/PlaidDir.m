@@ -43,16 +43,22 @@ if strcmp(type,'unikinetic')
     stimvars = {'or' 'c2' 'a2'};
 elseif strcmp(type, 'orientation') %direction and orientation
     values{1} = [0:30:330];
-    values{3} = {'rds' 'rds' 'rls' 'rls' 'rls'};
-    values{2} = [1 1 1 1 24];
-    stimvars = {'or' 'sl' 'st'};
+    values{3} = {'rds' 'rds' 'rls' 'rls' 'rls' 'rls'};
+    values{2} = [1 1 1 1 0 1];
+    values{4}(1:5) = speed;
+    values{4}(6) = 0;
+    stimvars = {'or' 'sl' 'st' 'jv'};
+    name = 'PlaidOrOnly';
 elseif strcmp(type, 'classify') %direction and orientation + UK plaids
     values{1} = [0:30:330];
-    values{2} = [1 1 1 1 24 1 1];
-    values{3} = {'rds' 'rds' 'rls' 'rls' 'rls' 'rls' 'rls'};
-    values{4} = [0 0 0 0 0 -45 45];
-    values{5} = [1 1 1 1 1  1   1];
-    stimvars = {'or' 'sl' 'st' 'a2' 'c2'};
+    values{3} = {'rds' 'rls' 'rls' 'rls' 'rls' 'rls'};
+    values{2} = [1 1 0 1   1  1];
+    values{4} = [0 0 0 -45 45 0];
+    values{5} = [1 1 1 1   1  1];
+    values{6} = values{5} .* speed;
+    values{6}(end) = 0;
+    stimvars = {'or' 'sl' 'st' 'a2' 'c2' 'jv'};
+    name = 'PlaidOr';
 elseif strcmp(type, 'fullunikinetic') %include RDS, dynamic unikinetic, and dynamic rls
 %1 SG
 %2 UP90
@@ -167,7 +173,7 @@ end
 
 for j = 1:length(f)
     x = S.(f{j});
-    if sum(strmatch(f{j},{'st'})); %char fields
+    if sum(strcmp(f{j},{'st' 'op'})); %char fields
         fprintf(fid,'%s=%s\n',f{j},x);
     else
         fprintf(fid,'%s=%.2f\n',f{j},x);

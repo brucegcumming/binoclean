@@ -5767,9 +5767,10 @@ void increment_stimulus(Stimulus *st, Locator *pos)
     //if manualprop[0] < 0 increment using binoc rules
     rds = st->left;
     if (optionflags[MANUAL_EXPT] && manualprop[0] >= 0  && st->splane == 1){
-        SetManualStim(expt.framesdone);
-        if(rds->seedloop == 0)
+        if(rds->seedloop == 0 || (rds->seedloop > 1 && expt.framesdone%rds->seedloop == 0)){
             rds->baseseed += 2;
+        }
+        SetManualStim(expt.framesdone);
     }
     st->framectr++;  //increment first called AFTER painting frame 0
     frame = expt.st->framectr;
@@ -7137,8 +7138,10 @@ int next_frame(Stimulus *st)
                              * This is where stimno is incremented when there are > 1 stim per trial and
                              * we are still in a trial
                              */
-                            if(!freezeexpt)
+                            if(!freezeexpt){
                                 stimno++;
+                                SerialString("OK",0);
+                            }
                             /*
                              * need to get spikes back from BW before preparing next expt stim
                              */
@@ -7574,8 +7577,10 @@ int next_frame(Stimulus *st)
                  */
                 if(!states[EXPT_PAUSED] && TheStim->mode & EXPTPENDING 
                    && afc_s.loopstate != CORRECTION_LOOP
-                   && !optionflags[RUN_SEQUENCE] && !freezeexpt)
+                   && !optionflags[RUN_SEQUENCE] && !freezeexpt){
                     stimno++;
+                    SerialString("OK",0);
+                }
                 if(seroutfile)
                     fprintf(seroutfile,"#stimno %d%c\n",stimno,exptchr);
                 fixstate = INTERTRIAL;

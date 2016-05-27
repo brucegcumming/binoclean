@@ -35,7 +35,17 @@ You can force it to use the same files and order by using !exptrpt in a sequence
 
 Stim files
 
-These can conatin any lines settting the state of binoc, including stimulus properties or fixation controls. In addition there are two lines that are just passed on into the data file
+These can conatin any lines settting the state of binoc, including stimulus properties or fixation controls. Any line that begins with a recognized code followed by a colon specifies values for each frame: E.G.
+
+ddx: 0 0 0.1 0.1 0.3 -0.1 .....
+sets up a sequence of disparity values for each frame in this stimulus. Its your job to be sure that the length is right (i.e. the number of elements matches the value of nf)! These sequences can produce fairly long strings. For this reason, lines with a colon are NOT sent do Spike2 down the serial line. Instead they are written to a text file. Life is much easier if this is in the same location as all the .smr data files. This can be achieved by mounting the PC disk on the mac , and then setting 
+
+netpref=/Volumes/Datafiles
+
+This can even be done in /local/verg.setup or /local/binoc.setup, so that it becomes the default for all experiments run on that machine. Binoc builds the text file name by replacing the drive letter in the filename (in verg) with the prefix here, and then adding “.bnc”. APlaySpkFile looks for this file when building Expt structures, and incorporates the data if the file is found. Obviously this only works if you remember to mount the drive. If this fails, binoc writes all the information to the serial output file, and you will then have to do manual work to get that information into the matlab Expt Structures. To avoid this happening accidentally, binoc checks that this file has  been opened successfully when starting any manual experiment, and pops up a warning if it fails.
+
+
+In addition there are two lines that are just passed on into the data file
 
 manexvals15 1.0 3.0 4.0
 

@@ -315,7 +315,7 @@ Ro Orientation of Box on screen. Also sets rotation used for Op,Pp,dO etc
 RO Sets RF box location on axis orthogonal to its Ori. Use RO = RO+x to displace distance x from current lotation. #position location
 RP Sets RF box location, direction parallel to its Ori. Use RP=RP+x to displace distance x from current lotation. #position location
 rp Sets p2 to ph+rp (degrees)
-rr # of times to repeat each stimulus exactly (seed and all). 1 = twopass (.i.e. 1 repeat). > 1 is hazardous.
+rr \# of times to repeat each stimulus exactly (seed and all). 1 = twopass (.i.e. 1 repeat). 0 is no repeating. > 1 is hazardous.
 rv Sets dy for foreground to rv/2 and background to -rv/2
 Rw Width of RF marking box (also recorded as RF width in datafile)
 rw in ml. setupall.txt on Spike2 computer convergs ml -> pump duration.

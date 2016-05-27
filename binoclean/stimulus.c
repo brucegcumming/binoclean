@@ -46,6 +46,8 @@ extern int winsiz[],fixpos[],optionflags[];
 extern Expt expt;
 extern vcoord psychoff[];
 extern vcoord conjpos[],oldpos[];
+extern int manualprop[];
+extern float *manualstimvals[];
 vcoord lastpos[2];
 extern float cmarker_size;
 extern OneStim *thecorrug;
@@ -96,13 +98,15 @@ int *RecordImage(int frame, Stimulus *st){
 //stimsave savestim stimrecord recordstim StimStringRecord()
 void StimStringRecord(FILE *fd, Expt *ex)
 {
-    int j,*p,i;
+    int j,*p,i,c;
     char s[BUFSIZ];
     char buf[BUFSIZ*1000];
+    float x;
     
     
     if (fd <= 0)
         return;
+    j = 0;
     for (j = 0; j < expt.st->framectr; j++){
         sprintf(buf,"",j);
         p = imagerec[j];
@@ -133,6 +137,15 @@ void StimStringRecord(FILE *fd, Expt *ex)
                 sprintf(s,"!dp%.1f",2*rcstimvals[10][j]/expt.st->left->dotsiz[1]);
                 strcat(buf,s);
             }
+            c = 2;
+                while (manualprop[c] >= 0)
+                {
+                    x = manualstimvals[c][j];
+                    sprintf(s,"!%.2f",x);
+                    strcat(buf,s);
+                    c++;
+                }
+        
             if(rcstimvals[9][j] < 0){
                 strcat(buf,"*");
             }

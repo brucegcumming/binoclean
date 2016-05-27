@@ -282,13 +282,19 @@ function CheckState(DATA, varargin)
 function SaveComCodes(DATA)
     X.comcodes = DATA.comcodes;
     f = fields(DATA.helpstrs);
-    for j = 1:length(X.comcodes)
-        
+    for j = 1:length(X.comcodes)       
         if isfield(DATA.helpstrs,X.comcodes(j).code)
             X.comcodes(j).helpstr = DATA.helpstrs.(X.comcodes(j).code);
         end
+        if isfield(DATA.helpkeys.extras,X.comcodes(j).code)
+            X.comcodes(j).extra = DATA.helpkeys.extras.(X.comcodes(j).code);
+        end
+        if isfield(DATA.helpkeys.KeyWords,X.comcodes(j).code)
+            X.comcodes(j).keys = DATA.helpkeys.KeyWords.(X.comcodes(j).code);
+        end
     end
     X.optionstrings = DATA.optionstrings;
+    X.helpkeys = DATA.helpkeys;
     save('comcodes','-struct','X');
 
         
@@ -578,7 +584,7 @@ for j = 1:length(strs{1})
     if frombinoc == 0
         donestr = 1;
         oldsend = sendtobinoc;
-        if sum(strncmp(s,{'!mat=' 'timerperiod' 'read=' 'pause' 'user=' '!onestim' 'pausetimeout'},5))
+        if sum(strncmp(s,{'!mat=' '!matnow' 'timerperiod' 'read=' 'pause' 'user=' '!onestim' 'pausetimeout'},5))
             sendtobinoc = 0;
             codetype = -1;
             if strncmp(s,'!mat',4) && ~isempty(value)
@@ -700,7 +706,7 @@ for j = 1:length(strs{1})
     
     
     if sendtobinoc
-        tline = CheckLineForBinoc(strs{1}{j});
+        tline = CheckLineForBinoc(strs{1}{j},DATA);
         outprintf(DATA,'%s\n',tline);
     end
 
@@ -914,6 +920,9 @@ for j = 1:length(strs{1})
         elseif strncmp(s,'rptexpts',6)
             if ~isempty(value)
                 DATA.rptexpts = sscanf(value,'%d');
+            end
+            if isempty(DATA.rptexpts)
+                DATA.rptexpts = 0;
             end
         elseif strncmp(s,'STIMTYPE',6)
             id = strfind(s,' ');
@@ -1748,7 +1757,7 @@ function [DATA, details] = ReadExptLines(DATA, strs, src)
             DATA.overcmds = {DATA.overcmds{:} tline};
         else
             if type >= 0 %don't send these lines to binoc
-                tline = CheckLineForBinoc(tline);
+                tline = CheckLineForBinoc(tline, DATA);
                 outprintf(DATA,'%s\n',tline);
             else
                 if DATA.verbose(4)
@@ -1847,7 +1856,7 @@ tellbinoc = 0;
    lastmsg = s;
    lastcalltime = ts;
    
-function line = CheckLineForBinoc(tline)
+function line = CheckLineForBinoc(tline, DATA)
     if strncmp(tline,'op',2)
         tline = strrep(tline,'+2a','+afc');
     end
@@ -1859,6 +1868,9 @@ function line = CheckLineForBinoc(tline)
 %        tline = regexprep(tline,'\','\\');
 %beware fprintf('%s',tline) and fprintf(tline) behave differetnly with \\
         tline = regexprep(tline,'/','\\'); %Spike 2 needs \ not /
+        if ~isempty(DATA.pcdrive)
+            tline = strrep(tline,'$D',DATA.pcdrive);
+        end
     else
         tline = regexprep(tline,'\','/');
     end
@@ -1942,10 +1954,12 @@ if fid > 0
     sid = find(strncmp('sequence',DATA.exptlines,8));
     if ~isempty(sid)
         popup = 'popup';
+        seqlines = DATA.exptlines(sid+1:end);
         if sid > 1
             if strcmp(DATA.exptlines{sid},'sequencenew')
                 popup = 'popupnew';
             end
+%if sequcence appears after line 1, only send lines about this to binoc
             DATA.exptlines = DATA.exptlines(1:sid-1);
         end
     end
@@ -1954,11 +1968,11 @@ if fid > 0
         if details.badcodes > 1
             fprintf('Choose Fix from the file menu, or run verg([],''checkstim'') to remove bad/old codes from %s\n',name);
         end
-        if ~isempty(sid)
-            SequencePopup(DATA,DATA.exptlines(sid+1:end),popup);
-        end
     else %just a sequence file
         outprintf(DATA,'\neventcontinue\n');
+    end
+    if ~isempty(sid)
+        SequencePopup(DATA,seqlines,popup);
     end
 else
     try
@@ -2428,6 +2442,7 @@ DATA.runsequence = 0;
 DATA.canceltimer = 0;
 DATA.pausereading = 0;  %stop timer driven reads when want to control
 DATA.binocisup = 0;
+DATA.pcdrive = '';
 DATA.savestrs = 0;
 DATA.restartbinoc = 0;
 DATA.vergversion=vergversion();
@@ -2724,7 +2739,11 @@ function [strs, Keys] = ReadHelp(DATA)
             else
                 Keys.KeyWords.(code) = '';
             end     
-            str = regexprep(str,'#.*','');
+            if strfind(str,'\#')
+                str = strrep(str,'\#','#');
+            else
+                str = regexprep(str,'#.*','');
+            end
             if isfield(Keys.cmdcode,code)
                 strs.(code) =  [Keys.cmdcode.(code) str];
             else
@@ -3712,6 +3731,7 @@ function DATA = LoadLastSettings(DATA, varargin)
     while j <= length(varargin)
         if strncmpi(varargin{j},'force',5)
             go = 1;
+            yn = 'Yes';
         elseif strncmpi(varargin{j},'interactive',5)
             interactive = 1;
         end
@@ -4332,6 +4352,9 @@ function DATA = AddComment(DATA, str, src)
      switch type
          case 'RptExpts'
              DATA.rptexpts = str2num(str);
+             if isempty(DATA.rptexpts)
+                 DATA.rptexpts = 0;
+             end
              set(DATA.toplevel,'UserData',DATA);
          case 'cm'
              outprintf(DATA,'cm=%s\n',str);
@@ -8054,19 +8077,27 @@ function ChoosePsych(a,b, mode)
         else
             DATA.plotexpts(e) = ~DATA.plotexpts(e);
         end
-        DATA.psych.blockmode = 'Select';
-        PlotPsych(DATA, Expts);
-        if strmatch(DATA.psych.blockmode,'OneOnly')
+        if strcmp(DATA.psych.blockmode,'OneOnly')
+            DATA.plotexpts = zeros(size(DATA.plotexpts));
+            DATA.plotexpts(e) = 1;
             c = get(get(a,'parent'),'children');
-            set(c,'checked','off');
+            for j = 1:length(c)
+                if ~strcmp(get(c(j),'tag'),'OneOnly')
+                    set(c(j),'checked','off');
+                end
+            end
         else
             ClearTaggedChecks(get(a,'parent'),{});
         end
-        set(a,'checked',onoff{DATA.plotexpts(e)+1});
         if strmatch(DATA.psych.blockmode,{'Current' 'OneOnly'})
             it = findobj(get(a,'parent'),'Tag',DATA.psych.blockmode);
             set(it,'Checked','on');
+        else
+            DATA.psych.blockmode = 'Select';
         end
+        PlotPsych(DATA, Expts);
+
+        set(a,'checked',onoff{DATA.plotexpts(e)+1});
     elseif strcmp(mode,'exptrelist')
         PsychMenu(DATA);
     elseif strcmp(mode,'exptsummary')
@@ -8082,12 +8113,17 @@ function ChoosePsych(a,b, mode)
         ClearTaggedChecks(get(a,'parent'),{});
         PlotPsych(DATA);
     elseif strmatch(mode,{'OnlyCurrent','All' 'None' 'OneOnly'})
-        DATA.psych.blockmode = mode;
         DATA.plotexpts = zeros(size(DATA.plotexpts));
         PlotPsych(DATA);
         c = get(get(a,'parent'),'children');
         set(c,'checked','off');
-        set(a,'checked','on');
+        if ~strcmp(DATA.psych.blockmode,mode)
+            set(a,'checked','on');
+            DATA.psych.blockmode = mode;
+        else
+            set(a,'checked','on');
+            DATA.psych.blockmode = 'Select';
+        end        
         if strcmp(mode,'All')
             DATA.plotexpts(1:end) = 1;
             strs = get(c,'label');
@@ -8185,7 +8221,7 @@ function PsychMenu(DATA, varargin)
         end
         j = j+1;
     end
-    if ~isfield(DATA,'figs')
+    if ~isfield(DATA,'figs') || ~isfigure(DATA.figs.VergPsych)
         return;
     end
     hm = findobj(DATA.figs.VergPsych,'tag','ExptMenu');
@@ -8352,7 +8388,9 @@ function DATA = PlotPsych(DATA, Expts)
             end
         end
         if isfield(DATA.matexpres,'types') && length(DATA.matexpres.types) > 1
-            eargs = {eargs{:} 'type2' DATA.matexpres.types{2} 'collapse' [0 0 0]};
+            eargs = {eargs{:} 'type2' DATA.matexpres.types{2}};
+        elseif ~strcmp(Expt.Stimvals.e2,'e0')
+            eargs = {eargs{:} 'type2' Expt.Stimvals.e2};
         end
         if np > 1
             if strcmp(Expt.Stimvals.e2,'od') && isfield(Expt.Stimvals,'or')

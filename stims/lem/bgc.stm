@@ -136,7 +136,7 @@ du2.000	#STIMULUS DURATION
 po=0.00	#POSTPERIOD
 mo=+db+zb	#Mode
 nt=9	#N Stim (Expt 1)
-uf=F:\Spike2\Data\lem\lem000	#Uff Prefix
+uf=$D\Spike2\Data\lem\M000\lemM000	#Uff Prefix
 hx=0.00	#High X Value for Interleaves
 sM=0.00	#Stimulus mode
 wr=0.50	#WURTZ task response period
@@ -343,6 +343,7 @@ qe="RDS"/local/c/binoclean/stims/lem/rdsac4
 qe="RDS"/b/bgc/matlab/@stim/manAC.stm
 qe="RLS"/local/c/binoclean/stims/lem/rlssave
 qe="RLS"/local/c/binoclean/stims/lem/ACRC1D30
+qe="RLS"/local/c/binoclean/stims/lem/ACRCm
 qe="RLS"/b/binoclean/stims/MT/PlaidAll.stm
 qe="RLS"/b/binoclean/stims/MT/PlaidDir.stm
 qe="RLS"/b/binoclean/stims/MT/PlaidSpeed.stm

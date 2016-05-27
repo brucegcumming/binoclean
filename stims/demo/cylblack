@@ -9,6 +9,9 @@ sz=7
 op=-fi
 jv=15
 fl=-nc+pc
-op=+aa
+op=+aa-sw+pe-afc
+sa=0
+sq=0
+dx=0
 
 
