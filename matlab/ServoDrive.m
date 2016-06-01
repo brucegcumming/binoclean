@@ -177,7 +177,7 @@ elseif length(DATA.alldepths) && max(DATA.alltimes)-now < 2/24
     x = GetCurrentPosition(DATA);
     msg = sprintf('MicroDrive last set to %.0fuM on %s. Now Reads %.0f. Do you you want to set %.0f (without moving)?',DATA.alldepths(end),datestr(DATA.alltimes(end)),x,startdepth);
     yn = questdlg(msg,'ServoDrive Message','Yes',sprintf('No Leave Reading at %.3f',x),'Yes');
-    if strcmp(yn,'No')
+    if strncmp(yn,'No',2)
         return;
     end    
 end
@@ -583,11 +583,16 @@ else
 fprintf(DATA.sport,sprintf('POS\n'));
 end
 %fprintf(DATA.sport,sprintf('0POS\n'));
-pause(0.01);
+pause(0.05);
 s = ReadLine(DATA.sport);
 d = sscanf(s,'%d');
 if DATA.verbose
     fprintf('From uDrive:%s\n',s);
+end
+if isempty(d) && ~isempty(s)
+    fprintf('Microdrive response is not valid. Suggests configuation error in Serial Port.\n');
+    fprintf('Microdrive Response was:%s\n',s);
+    uiwait(warndlg(sprintf('MicroDrive Response Not Recognized. Serial Port Error?'),'Microdrive Error','modal'));    
 end
 d = d./DATA.stepscale;
 if showdepth
@@ -695,6 +700,10 @@ if strcmp(s,'OK') %has not been sent ANSW1
     return;
 end
 d = sscanf(s,'%d');
+if isempty(d)
+    uiwait(warndlg(sprintf('MicroDrive Response Not Recognized'),'Microdrive Error','modal'));    
+    return;
+end
 startpos = d./DATA.stepscale;
 
 margin = 20 * DATA.stepscale; %allow for up to 20uM of noise

@@ -137,12 +137,14 @@ void StimStringRecord(FILE *fd, Expt *ex)
                 sprintf(s,"!dp%.1f",2*rcstimvals[10][j]/expt.st->left->dotsiz[1]);
                 strcat(buf,s);
             }
-            c = 2;
+            c = 0;
                 while (manualprop[c] >= 0)
                 {
                     x = manualstimvals[c][j];
+                    if (c > 1){
                     sprintf(s,"!%.2f",x);
                     strcat(buf,s);
+                    }
                     c++;
                 }
         

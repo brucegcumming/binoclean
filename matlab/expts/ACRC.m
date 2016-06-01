@@ -11,6 +11,7 @@ type = 'normal';
 basedir = '';
 expts = {'dp' 'ce' 'Fr' 'cL' 'cR' 'sl'};
 values{1} = -0.4:0.05:0.4;
+verbose = 0;
 %For values > 1, where subspace is set
 %user specifies combinations of
 %conditions used for each case of values{1}
@@ -34,6 +35,7 @@ Expt.pblank = 0.02;
 Expt.expttype = 'ACRC1D';
 Expt.nframes = 201;
 Expt.ntrials = 80;
+Expt.nrpt = 1;
 j = 1;
 while j <= length(varargin)
     if strncmp(varargin{j},'basedir',6)
@@ -46,12 +48,16 @@ while j <= length(varargin)
         j = j+1;
         values{1} = varargin{j};
         expts{1} = 'dp';        
+    elseif strncmp(varargin{j},'Frs',3)
+        j = j+1;
+        values{3} = varargin{j};
     elseif strncmp(varargin{j},'freqs',5)
         j = j+1;
         freqs = varargin{j};
     elseif strncmp(varargin{j},'nrpt',4)
         j = j+1;
         nr = varargin{j};
+        Expt.nrpt = nr;
     elseif strncmp(varargin{j},'nframes',4)
         j = j+1;
         Expt.nframes = varargin{j};
@@ -70,12 +76,17 @@ while j <= length(varargin)
     elseif strncmp(varargin{j},'speed',4)
         j = j+1;
         speed = varargin{j};
+    elseif strncmp(varargin{j},'sls',3)
+        j = j+1;
+        values{6} = varargin{j};
     elseif strncmp(varargin{j},'test',4)
         j = j+1;
         teststim = varargin{j};
     elseif strncmp(varargin{j},'type',4)
         j = j+1;
         type = varargin{j};
+    elseif strncmp(varargin{j},'verbose',4)
+        verbose = 1;
     end
     j = j+1;
 end
@@ -93,8 +104,32 @@ if strcmp(type,'nocontrast')
     values{4} = [0 3];
     expts = {'dp' 'ce' 'Fr' 'sl'};
     subspace = [1 1 0 0];
+elseif strcmp(type,'fixed')
+    values{2} = [-1 1];
+    expts = {'dp' 'ce'};
+    values = values(1:2);
+    subspace = [0 0 0 0];
+    Expt.expttype = 'AC1D';
 end
-[E, AllS] = stim.BuildExpt(expts, values, Expt, 'subspace',subspace,'freqs',frequencies,'nseeds',10000,'show','se');
+%If length(Frs)  >2, then only apply changes in contrast to the longest Fr
+%case
+if length(values{3}) > 2
+    allvalues = values;
+    values{3} = values{3}(1:2);
+    values{6} = values{6}(1:2);
+    values{4} = ones(size(values{3}));
+    subspace(4) = 0;
+    [Ea, AllS] = stim.BuildExpt(expts, values, Expt, 'subspace',subspace,'freqs',frequencies,'nseeds',10000,'show','se');
+    Ea.S = AllS;
+    values{3} = allvalues{3}(3:end);
+    values{6} = allvalues{6}(3:end);
+    values{4} = allvalues{4}; %Have contrast changes in the long Fr case
+    subspace(4) = 1;
+    [E, AllS] = stim.BuildExpt(expts, values, Ea, 'subspace',subspace,'freqs',frequencies,'nseeds',10000,'show','se');
+    E.S = AllS;
+else
+    [E, AllS] = stim.BuildExpt(expts, values, Expt, 'subspace',subspace,'freqs',frequencies,'nseeds',10000,'show','se');
+end
 
 %if mixinf Fr and cL, we don't want contrast variation in the Fr==1 case
 if isfield(AllS,'Fr') && isfield(AllS,'cL')
@@ -105,8 +140,12 @@ if isfield(AllS,'Fr') && isfield(AllS,'cL')
     end
 end
 E.S = AllS;
+if verbose
+    stim.Print(E.S);
+end
 
 return;
+
 ses = 1000+ round(rand(1,length(AllS)).*10000);
 for j = 1:length(AllS)
     AllS(j).se = ses(j);

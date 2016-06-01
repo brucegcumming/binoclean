@@ -112,11 +112,20 @@ b = stimvars{2};
 ns = 0;
 
 Expt.npass = npass;
-
+if ~isfield(Expt,'nrpt')
+    if nr > 0
+        Expt.nrpt = nr;
+    else
+        Expt.nrpt = 1;
+    end
+end
 if subspace(1) && subspace(2)
     AllS = MakeSubSpace(expts, values, subspace, frequencies, Expt);
     ns = length(AllS);
 else
+    n = length(values{1}).*length(values{2}) .* Expt.nrpt;
+    seeds = ceil(rand(1,n) .*  Expt.nseeds .* Expt.nframes);
+    for in = 1:Expt.nrpt;
     for j = 1:length(values{1})
         for k = 1:length(values{2})
             ns = ns+1;
@@ -129,13 +138,20 @@ else
                     AllS(ns).(stimvars{c}) = values{c}(k);
                 end
             end
+            AllS(ns).se = seeds(ns);
         end
         exvals(ns,1) = values{1}(j);
         exvals(ns,2) = values{2}(k);
     end
+    end
+end
+if isfield(Expt,'S')
+    offset = length(Expt.S);
+else
+    offset = 0;
 end
 for j = 1:length(AllS)
-    stim.WriteStim(Expt.stimdir, j-1, AllS(j), {stimvars{:} showvars{:}});
+    stim.WriteStim(Expt.stimdir, offset+j-1, AllS(j), {stimvars{:} showvars{:}});
 end
 
 Expt.imagedir = prefix;
@@ -143,7 +159,11 @@ Expt.stimorder = stim.SetOrder([0:ns-1],npass);
 Expt.expts = expts;
 
 Expt.version = str2num(ObjectVersion(stim));
-Expt.expname = name;
+if isfield(Expt,'expttype')
+    Expt.expname = Expt.expttype;
+else
+    Expt.expname = name;
+end
 
 if saveexptfile
     d = dir([Expt.stimdir '/Expt*.mat']);
@@ -180,6 +200,13 @@ pextra = 0;
 xp= [0 0 0]; %probabilities for extra interleaves
 xval = [0 0 0];
 xi = 0;
+
+if isfield(Expt,'S')  %already have some stimuli defined
+    ns = length(Expt.S)-1;
+    AllS = Expt.S;
+    seeds(ns+1:ns+n) = seeds(1:n);
+end
+
 if isfield(Expt,'puncorr')
     xi = xi+1;
     pextra = pextra + Expt.puncorr;

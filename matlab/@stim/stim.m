@@ -31,12 +31,12 @@ ILEFTMONOC = -1001;
 IRIGHTMONOC = -1002;
 end
 methods (Static)
-    [Expt, AllS] = BuildExpt(expts, values, varargin); 
-    AllS = BuildImageExpt(type, varargin); 
-    AllS = example(varargin); 
-    [b,l,r] = rds(sz,dxy,ndots,varargin);
+    [E, AllS] = BuildExpt(type, varargin); 
+         AllS = example(varargin); 
+            s = Print(S, varargin);
+      [b,l,r] = rds(sz,dxy,ndots,varargin);
     stimorder = SetOrder(stims, nr, varargin)
-    WriteOrder(basedir, exptvars, name, stimorder, varargin);
-    WriteStim(basedir, stimno, S, exvals, varargin);
+                WriteOrder(basedir, exptvars, name, stimorder, varargin);
+                WriteStim(basedir, stimno, S, exvals, varargin);
 end
 end
