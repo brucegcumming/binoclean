@@ -3195,10 +3195,10 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
     
 	if(val == INTERLEAVE_EXPT_BLANK && !expt.st->preload){
         st->type = STIM_NONE;
-        setblank = 1;
+        setblank = st->framectr;
         val = 0;
 	}
-	else if(st->type == STIM_NONE && setblank && st->prev == NULL){
+	else if(st->type == STIM_NONE && setblank >0 && setblank < st->framectr && st->prev == NULL){
         /*
          * if preloading image stimuli this doesn't work because
          * setting stimtype is only done at the preload stage
@@ -7140,7 +7140,7 @@ int next_frame(Stimulus *st)
                              */
                             if(!freezeexpt){
                                 stimno++;
-                                SerialString("OK",0);
+                                SerialString("OK\n",0);
                             }
                             /*
                              * need to get spikes back from BW before preparing next expt stim
@@ -7579,7 +7579,7 @@ int next_frame(Stimulus *st)
                    && afc_s.loopstate != CORRECTION_LOOP
                    && !optionflags[RUN_SEQUENCE] && !freezeexpt){
                     stimno++;
-                    SerialString("OK",0);
+                    SerialString("OK\n",0);
                 }
                 if(seroutfile)
                     fprintf(seroutfile,"#stimno %d%c\n",stimno,exptchr);
@@ -12115,7 +12115,7 @@ void expt_over(int flag)
             sprintf(buf,"Expt over %d stim at %s",trialsdone,binocTimeString());
         statusline(buf);
     }
-    UpdateNetworkFile(expt);
+    UpdateNetworkFile(expt, 1);
 
 }
 

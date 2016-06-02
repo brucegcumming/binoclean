@@ -584,15 +584,19 @@ fprintf(DATA.sport,sprintf('POS\n'));
 end
 %fprintf(DATA.sport,sprintf('0POS\n'));
 pause(0.05);
-s = ReadLine(DATA.sport);
+[s, sdetails] = ReadLine(DATA.sport);
 d = sscanf(s,'%d');
 if DATA.verbose
     fprintf('From uDrive:%s\n',s);
 end
-if isempty(d) && ~isempty(s)
-    fprintf('Microdrive response is not valid. Suggests configuation error in Serial Port.\n');
-    fprintf('Microdrive Response was:%s\n',s);
-    uiwait(warndlg(sprintf('MicroDrive Response Not Recognized. Serial Port Error?'),'Microdrive Error','modal'));    
+if isempty(d)
+    if ~isempty(s)
+        fprintf('Microdrive response is not valid. Suggests configuation error in Serial Port.\n');
+        fprintf('Microdrive Response was:%s\n',s);
+        uiwait(warndlg(sprintf('MicroDrive Response Not Recognized. Serial Port Error?'),'Microdrive Error','modal'));
+    elseif sdetails.nbtyes == 0
+        uiwait(warndlg(sprintf('MircorDrive Serial Line No Response'),'Microdrive Error','modal'));                
+    end
 end
 d = d./DATA.stepscale;
 if showdepth
@@ -985,13 +989,15 @@ set(cm,'visible','on');
 
 
 
-function s = ReadLine(port)
+function [s, details] = ReadLine(port)
 
-waitforbytes = 0;
+waitforbytes = 0.05; %wait 50ms if no bytes ready
 ts = now;
-while get(port,'BytesAvailable') == 0 && waitforbytes
+while get(port,'BytesAvailable') == 0 && waitforbytes && mytoc(ts) < waitforbytes
     pause(0.001);
 end
+details.delay = mytoc(ts);
+details.nbytes = get(port,'BytesAvailable');
 s = fscanf(port,'%s');
 
 

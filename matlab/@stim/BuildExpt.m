@@ -146,7 +146,8 @@ else
     end
 end
 if isfield(Expt,'S')
-    offset = length(Expt.S);
+%    offset = length(Expt.S);
+offset = 0;
 else
     offset = 0;
 end
@@ -216,7 +217,7 @@ end
 if isfield(Expt,'pblank')
     xi = xi+1;
     pextra = pextra + Expt.pblank;
-    xp(xi) = Expt.puncorr;
+    xp(xi) = Expt.pblank;
     xval(xi) = stim.IBLANK;
 end
 p = 1+pextra;
@@ -291,6 +292,7 @@ end
 Expt.nstims = ns;
 
 function Y = RepeatFrames(X, Fr)
-Y = interp1(1:length(X),X,[1:1./Fr:length(X)+1],'previous',X(end));
-Y = Y(1:end-1);
+%Y = interp1(1:length(X),X,[1:1./Fr:length(X)+1],'previous',X(end));
+Y = repmat(X(:),1,Fr)';
+Y = Y(:);
 

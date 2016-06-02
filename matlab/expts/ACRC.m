@@ -111,6 +111,7 @@ elseif strcmp(type,'fixed')
     subspace = [0 0 0 0];
     Expt.expttype = 'AC1D';
 end
+Expt.values = values;
 %If length(Frs)  >2, then only apply changes in contrast to the longest Fr
 %case
 if length(values{3}) > 2
@@ -119,12 +120,16 @@ if length(values{3}) > 2
     values{6} = values{6}(1:2);
     values{4} = ones(size(values{3}));
     subspace(4) = 0;
+    values{5} = ones(size(values{3}));
+    subspace(5) = 0;
     [Ea, AllS] = stim.BuildExpt(expts, values, Expt, 'subspace',subspace,'freqs',frequencies,'nseeds',10000,'show','se');
     Ea.S = AllS;
     values{3} = allvalues{3}(3:end);
     values{6} = allvalues{6}(3:end);
     values{4} = allvalues{4}; %Have contrast changes in the long Fr case
     subspace(4) = 1;
+    values{5} = allvalues{5}; %Have contrast changes in the long Fr case
+    subspace(5) = 1;
     [E, AllS] = stim.BuildExpt(expts, values, Ea, 'subspace',subspace,'freqs',frequencies,'nseeds',10000,'show','se');
     E.S = AllS;
 else

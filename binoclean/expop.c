@@ -2138,13 +2138,16 @@ int SendManualSequence()
 
 int SetManualStim(int frame)
 {
-    int i,p = 0,code;
+    int i,p = 0,code, setblank = 0;
     float val;
     
     expt.codevalue = NOTSET;
     
     while(manualprop[p] >= 0){
         val = manualstimvals[p][frame];
+//if a sc
+        if (val ==  INTERLEAVE_EXPT_BLANK || val ==  INTERLEAVE_EXPT_UNCORR)
+            setblank = val;
         expt.st->modifier = propmodifier[p];
         code = manualprop[p];
         if (code == STIMCHANGE_CODE){
@@ -2717,7 +2720,7 @@ int CheckDirExists(char *name)
 /*
  * Close the existing parameter file, and copy to the network
  */
-int UpdateNetworkFile(Expt expt)
+int UpdateNetworkFile(Expt expt, int caller)
 {
     char *t,*r,buf[BUFSIZ],name[BUFSIZ],sfile[BUFSIZ],path[BUFSIZ],oldname[BUFSIZ];
     char netname[BUFSIZ],netrcname[BUFSIZ];
@@ -2793,7 +2796,7 @@ int UpdateNetworkFile(Expt expt)
     }
 }
 
-int OpenNetworkFile(Expt expt)
+int OpenNetworkFile(Expt expt, int caller)
 {
     char *t,*r,buf[BUFSIZ],name[BUFSIZ],sfile[BUFSIZ],path[BUFSIZ],oldname[BUFSIZ];
     char nbuf[BUFSIZ];
@@ -2801,9 +2804,13 @@ int OpenNetworkFile(Expt expt)
     time_t tval,nowtime;
     int method = 1;
 
-    
-    if (netoutfile != NULL)
+//caller = 2 called at start expt all for manual expts
+//no need to close and re-open
+    if (netoutfile != NULL){
+        if (caller == 2)
+            return(0);
         fclose(netoutfile);
+    }
     netoutfile= NULL;
     if (expt.strings[NETWORK_PREFIX] == NULL || !strcmp(expt.strings[NETWORK_PREFIX],"NotSet"))
     {
@@ -2863,7 +2870,7 @@ int OpenNetworkFile(Expt expt)
     }
     tval = time(NULL);
     if (netoutfile != NULL){
-        fprintf(netoutfile,"Reopened %s by binoc Version %s",ctime(&tval),VERSION_STRING);
+        fprintf(netoutfile,"Reopened (bnc) %s by binoc Version %s (%d)\n",ctime(&tval),VERSION_STRING,caller);
         if (seroutfile != NULL)
             fprintf(seroutfile,"Network Record to %s fid %d\n",bncfilename,netoutfile->_file);
         sprintf(buf,"status=Network Record to %s (last %d)\n",bncfilename,lastresult);
@@ -3103,7 +3110,7 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
             if(option2flag & PSYCHOPHYSICS_BIT){
                 seroutfile = fopen(expname,"a");
                 tval = time(NULL);
-                fprintf(seroutfile,"Reopened %s",ctime(&tval));
+                fprintf(seroutfile,"Reopened (psych) %s",ctime(&tval));
                 fprintf(binoclog,"%s Serial Out to %s/%s\n",binocDateString(1),expt.cwd,expname);
                 fflush(binoclog);
             }
@@ -3120,8 +3127,8 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
                     fprintf(binoclog,"%s Serial Out to %s/%s\n",binocDateString(1),expt.cwd,sfile);
                     statusline(buf);
                     fprintf(stderr,"%s\n",buf);
-                    fprintf(seroutfile,"Reopened %s by binoc Version %s",ctime(&tval),VERSION_STRING);
-                    sprintf(buf,"Reopened %s",ctime(&tval));
+                    fprintf(seroutfile,"Reopened %s by binoc Version %s (newprefix)",ctime(&tval),VERSION_STRING);
+                    sprintf(buf,"Reopened (uf) %s",ctime(&tval));
                     SerialString(buf,NULL);
                     fflush(binoclog);
                 }
@@ -4831,7 +4838,7 @@ int ReadCommand(char *s)
     else if(!strncasecmp(s,"openuff",7)){
         SerialSend(UFF_PREFIX);
         fsleep(0.5);  // allow time for spike2 to make dir
-        OpenNetworkFile(expt);
+        OpenNetworkFile(expt, 1);
     }
     else if(!strncasecmp(s,"renderoff",9)){
         sscanf(s,"renderoff%d",&renderoff); //renderoff 2 renders but does not swap buffers/ 
@@ -8020,7 +8027,7 @@ void InitExpt()
     HideCursor();
 
     if (optionflags[MANUAL_EXPT] || netoutfile == NULL)
-        OpenNetworkFile(expt);
+        OpenNetworkFile(expt,2);
     expt.cramp = expt.ramp;
     expt.expseed = 1;
     
@@ -12883,6 +12890,9 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
 
     if (seroutfile)
         fprintf(seroutfile,"se%d\n",expt.st->firstseed);
+    if (framesdone == 0)
+        tval = frametimes[framesdone] = timediff(&endstimtime,&zeroframetime);
+    
     SerialSend(NFRAMES_DONE); // get this recorded at stim end also
     SerialSend(SET_SEED); // get this recorded at stim end also
     if(cctr && 0) // Don't do this normally

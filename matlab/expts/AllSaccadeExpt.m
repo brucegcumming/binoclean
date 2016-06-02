@@ -180,6 +180,7 @@ for k = 1:nstim(2)
         nsig = floor((stimvals{1}(j) .* nf));
         S.vals{1} = imx;
         S.vals{2} = imy;
+        S.nblank = 0;
         else            
             if longblank && pb > 0
                 S.types{1} = 'co';
