@@ -194,8 +194,13 @@ stimvars = expts;
 ea = expts{1};
 eb = expts{2};
 ns = 0;
-nstim = round(Expt.ntrials./(Expt.npass .* trialtypes));
-n = ceil(nstim.*ntrialtypes); %number of different stims
+if length(Expt.ntrials) == ntrialtypes
+    nstim = round(Expt.ntrials./(Expt.npass));
+else
+    nstim = round(Expt.ntrials./(Expt.npass .* trialtypes));
+    nstim = ones(1,ntrialtypes).*nstim;
+end
+n = ceil(sum(nstim).*ntrialtypes); %number of different stims
 seeds = ceil(rand(1,n) .*  Expt.nseeds .* Expt.nframes);
 pextra = 0;
 xp= [0 0 0]; %probabilities for extra interleaves
@@ -203,7 +208,7 @@ xval = [0 0 0];
 xi = 0;
 
 if isfield(Expt,'S')  %already have some stimuli defined
-    ns = length(Expt.S)-1;
+    ns = length(Expt.S);
     AllS = Expt.S;
     seeds(ns+1:ns+n) = seeds(1:n);
 end
@@ -222,7 +227,7 @@ if isfield(Expt,'pblank')
 end
 p = 1+pextra;
 for j = 1:ntrialtypes
-    for k = 1:nstim
+    for k = 1:nstim(j)
 
     ns = ns+1;
     if ~isempty(frid)

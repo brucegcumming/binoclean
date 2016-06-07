@@ -460,6 +460,7 @@ struct EXPERIMENT{
     char lastresult; //outcome of most recent trial
     char *stimline,*exptstring;
     int savedcode[MAXTOTALCODES]; // if value recorded at start expt
+    int currentstim;
 };
 
 typedef struct EXPERIMENT Expt;

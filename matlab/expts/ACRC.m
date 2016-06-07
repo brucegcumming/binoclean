@@ -115,6 +115,7 @@ Expt.values = values;
 %If length(Frs)  >2, then only apply changes in contrast to the longest Fr
 %case
 if length(values{3}) > 2
+    ntrials = Expt.ntrials;
     allvalues = values;
     values{3} = values{3}(1:2);
     values{6} = values{6}(1:2);
@@ -122,6 +123,9 @@ if length(values{3}) > 2
     subspace(4) = 0;
     values{5} = ones(size(values{3}));
     subspace(5) = 0;
+    if length(ntrials) == length(allvalues{3})
+        Expt.ntrials = ntrials(1:2);
+    end
     [Ea, AllS] = stim.BuildExpt(expts, values, Expt, 'subspace',subspace,'freqs',frequencies,'nseeds',10000,'show','se');
     Ea.S = AllS;
     values{3} = allvalues{3}(3:end);
@@ -130,6 +134,9 @@ if length(values{3}) > 2
     subspace(4) = 1;
     values{5} = allvalues{5}; %Have contrast changes in the long Fr case
     subspace(5) = 1;
+    if length(ntrials) == length(allvalues{3})
+        Ea.ntrials = ntrials(3);
+    end
     [E, AllS] = stim.BuildExpt(expts, values, Ea, 'subspace',subspace,'freqs',frequencies,'nseeds',10000,'show','se');
     E.S = AllS;
 else

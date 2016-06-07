@@ -511,6 +511,8 @@ src = 'unknown';
 srcchr = 'U';
 badcodes = {};
 nlines = 0;
+setgui = 0;
+
 j = 1;
 while j <= length(varargin)
     if strncmpi(varargin{j},'from',4)
@@ -982,6 +984,10 @@ for j = 1:length(strs{1})
         elseif sum(strncmp(s(8:end),{'Expt'},4))
                 savestr = 'Saved';
             stype = 'expt';
+        elseif sum(strncmp(s(8:end),{'uf='},3))
+            DATA.smrfile = s(11:end);
+            stype = 'expt';
+            setgui = 1;
         end
         DATA = AddStatusLine(DATA,sstr,stype);
         if ishandle(DATA.statusitem)
@@ -1199,12 +1205,16 @@ for j = 1:length(strs{1})
 
     if strncmp(s,'mo=fore',7)
         DATA.currentstim = 1;
+        DATA.binoc{1}.mo = 'fore';
     elseif strncmp(s,'mo=back',7)
         DATA.currentstim = 2;
+        DATA.binoc{1}.mo = 'back';
     elseif strncmp(s,'mo=ChoiceU',10)
         DATA.currentstim = 3;
+        DATA.binoc{1}.mo = 'ChoiceU';
     elseif strncmp(s,'mo=ChoiceD',10)
         DATA.currentstim = 4;
+        DATA.binoc{1}.mo = 'ChoiceD';
     elseif strncmp(s,'qe=',3)
         
         id = strfind(s,'"');
@@ -1572,6 +1582,9 @@ if length(strs{1}) > 20
 end
 if dur > 1
     fprintf('Reading %d lines took %.2f%s at %s\n',length(strs{1}),dur,pstr,datestr(now));
+end
+if setgui
+    SetGui(DATA);
 end
 if frombinoc ~= 2 && paused == 0 %wasnt paused before this call.
     PauseRead(DATA,0);
@@ -2416,6 +2429,7 @@ function DATA = SetDefaults(DATA)
 scrsz = get(0,'Screensize');
 DATA = SetField(DATA,'ip','http://localhost:1110/');
 DATA.lastreadtime = now;
+DATA.smrfile = '';
 DATA.showstatus.update = 1;
 DATA.network = 2;
 DATA.lastmsg = '';
@@ -2525,6 +2539,7 @@ DATA = SetField(DATA,'nowarning',0);
 
 DATA.commands = {};
 DATA.commandctr = 1;
+DATA.commandlines = [];
 DATA.historyctr = 0;
 DATA.inexpt = 0;
 DATA.binoc{1}.uf = '';
@@ -4396,6 +4411,7 @@ function DATA = AddComment(DATA, str, src)
          case 'uf'
              DATA = InterpretLine(DATA, ['uf=' str],'fromgui','tobinoc');
              set(DATA.toplevel,'UserData',DATA);
+             SetGui(DATA);
          otherwise
              DATA.binoc{DATA.currentstim}.(type) = str2num(str);
              outprintf(DATA,'%s=%s\n',type,str);
@@ -4726,10 +4742,15 @@ function SetExptItems(DATA, varargin)
         set(it,'string','Cancel');
     elseif DATA.optionflags.ts
         set(it,'string','Store');
+        set(it,'backgroundcolor', DATA.windowcolor);
     else
         set(it,'string','Run','backgroundcolor',DATA.windowcolor);
-        if isfield(DATA.optionflags,'py') && ~DATA.optionflags.py  %%Human Psych
-            set(it,'backgroundcolor','r');
+        if isfield(DATA.optionflags,'py') && ~DATA.optionflags.py  %%Not Human Psych
+            if strncmp(DATA.smrfile,DATA.binoc{1}.uf,length(DATA.binoc{1}.uf))
+                set(it,'backgroundcolor','r');
+            else
+                set(it,'backgroundcolor', DATA.windowcolor);
+            end
         end
     end
     
@@ -4809,11 +4830,20 @@ function SetExptItems(DATA, varargin)
         end
         end
     end
+
+    ot = findobj(allchild(DATA.toplevel),'flat','tag','UffButton');
+    if strncmp(DATA.smrfile,DATA.binoc{1}.uf,length(DATA.binoc{1}.uf))
+        set(ot,'BackGroundColor',DATA.windowcolor);
+    else
+        set(ot,'BackGroundColor','r');
+    end
     
     if DATA.verbose(4)
         fprintf('SetGUI: Ex%d\n',DATA.inexpt);
     end
     DATA.guiset = 1;
+
+    
     if paused == 0 %only release pause if we weren't paused at the start.
         PauseRead(DATA,0);
     end
@@ -5291,6 +5321,29 @@ function DATA = RunButton(a,b, type)
         if type == 1
             if DATA.inexpt == 0 %sarting a new one. Increment counter
                 DATA = CheckPenLog(DATA);
+
+%if storage is off, and correct smr file is open, check that user means it                
+                if isfield(DATA.binoc{1},'uf') && ~isempty(DATA.smrfile)
+                    if strncmp(DATA.smrfile,DATA.binoc{1}.uf,length(DATA.binoc{1}.uf))
+                        if DATA.optionflags.ts == 0
+                            yn = gui.Dlg(sprintf('smr file %s is open - Did you want storage on?',DATA.smrfile),DATA.toplevel);
+                            if strcmp(yn,'Yes')
+                                DATA.optionflags.ts = 1;
+                                SendCode(DATA,'optionflag');
+                                SetGui(DATA);
+                            end
+                        end
+                    end
+                end
+%if storage is on, but filname does not match, warn used                
+                if DATA.optionflags.ts == 1
+                    if ~strncmp(DATA.smrfile,DATA.binoc{1}.uf,length(DATA.binoc{1}.uf))
+                        yn = gui.Dlg(sprintf('smr file is %s. Proceed?',DATA.smrfile),DATA.toplevel);
+                        if strcmp(yn,'No')
+                            return;
+                        end                        
+                    end
+                end
                 pauseread = getappdata(DATA.toplevel, 'PauseReading');
                 if pauseread ==0
                     myprintf(DATA.frombinocfid,'PAUSE ERROR pause %d\n',pauseread);
@@ -6613,8 +6666,8 @@ function DATA = LogCommand(DATA, str, varargin)
     end
 
     if reccmd
-    DATA.commands = {DATA.commands{:} str};
-    DATA.commandctr = length(DATA.commands)+1;
+        DATA.commands = {DATA.commands{:} str};
+        DATA.commandctr = length(DATA.commands)+1;
     end
     
     if DATA.cmdfid > 0
@@ -7605,7 +7658,11 @@ function [DATA, txt] = PrevCommand(DATA, src, step)
         else
             txt = DATA.commands{DATA.commandctr};
             if DATA.commandctr < nlines
-                set(DATA.txtrec,'value',DATA.commandctr+1);
+                if length(DATA.commandlines) >= DATA.commandctr
+                    set(DATA.txtrec,'value',DATA.commandlines(DATA.commandctr));
+                else
+                    set(DATA.txtrec,'value',DATA.commandctr+1);
+                end
             else
                 set(DATA.txtrec,'value',nlines);
             end
@@ -7982,7 +8039,9 @@ end
 
 if addline %show this instruction in the history window. Cancelled commands dont
     a =  get(DATA.txtrec,'string');
+    txtpos =  get(DATA.txtrec,'value');
     n = size(a,1);
+    DATA.commandlines(length(DATA.commands)) = n+1;
     if strcmp(code,'px')
         pixdeg = atan(DATA.binoc{1}.px/DATA.binoc{1}.vd) * 180/pi;
         txt = [txt sprintf(' (%.5f deg)',pixdeg)];
@@ -8000,8 +8059,13 @@ if addline %show this instruction in the history window. Cancelled commands dont
     end
     set(DATA.txtrec,'string',a);
     x = get(DATA.txtrec,'value');
+%used only to do this if x > size(a,1) but need
+%to set value to length a to make added text visible
+%so added the elseif...
     if x > size(a,1)
         set(DATA.txtrec,'value',size(a,1));
+    elseif x > 1
+        set(DATA.txtrec,'value',size(a,1));        
     end
     set(DATA.txtrec,'listboxtop',n+1);
     DATA = LogCommand(DATA, txt, 'norec');

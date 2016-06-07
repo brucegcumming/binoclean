@@ -1694,6 +1694,7 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
 // expt.totalcodes is the size of valstrings, expt.maxcode is max value of icode
     expt.totalcodes = i;
     expt.maxcode = ncodes-1;
+    expt.currentstim = 1;
     
 // serial_stings[i] gives the string associated with code i
     serial_strings = (char**)(malloc(sizeof(char *) * ncodes));
@@ -7117,6 +7118,7 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
             }
             break;
         case UFF_PREFIX:
+
             if(expt.bwptr->prefix != NULL)
             {
                 if(flag != TO_FILE && (r = strchr(expt.bwptr->prefix,'%')) != NULL && *(r+1) == 'd')
@@ -7278,6 +7280,14 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
         case MODE_CODE:
             if(flag != TO_BW)
             {
+                if (expt.currentstim ==2){
+                    sprintf(cbuf,"%s%sback",scode,temp);
+                }
+                else{
+                    sprintf(cbuf,"%s%sfore",scode,temp);
+                }
+            }
+            else if(flag != TO_BW) {// obsolete
                 sprintf(cbuf,"%s%s",scode,temp);
                 i = 0;
                 while(mode_codes[i] != NULL)
@@ -15037,6 +15047,7 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     }
     else if(!strncmp(line,"NewMatlab",9)){
         PrintCodes(0);
+        SerialString("uf=\n",0);
         return(0);
     }
     else if(!strncmp(line,"QueryState",9)){
@@ -15825,12 +15836,15 @@ int InterpretLine(char *line, Expt *ex, int frompc)
                 }
                 stimptr = ex->st->next->next;
                 TheStim = ex->st->next->next;
+                ex->currentstim = 3;
             }
             else if(!strncasecmp(s,"ChoiceU/R",7)){
                 stimptr = TheStim = ChoiceStima;
+                ex->currentstim = 4;
             }
             else if(!strncasecmp(s,"ChoiceD/L",7)){
                 stimptr = TheStim = ChoiceStimb;
+                ex->currentstim = 5;
             }
             else if(!strncasecmp(s,"bac",3))
             {
@@ -15841,14 +15855,17 @@ int InterpretLine(char *line, Expt *ex, int frompc)
                 }
                 stimptr = ex->st->next;
                 TheStim = ex->st->next;
+                ex->currentstim = 2;
+
             }
             else if(!strncasecmp(s,"for",3))
             {
                 lineflag &= ~(BACKSTIM_BIT);
                 TheStim = expt.st;
                 stimptr = expt.st;
+                ex->currentstim = 1;
             }
-            else 
+            else
             {
                 while(s[j] != 0)
                 {
@@ -15927,8 +15944,14 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             break;
 
         case UFF_PREFIX: //don't send to Spike2 when get new name. Wait for Open button
-            SetExptString(ex, TheStim, code, s);
-            statusline(s);
+            if (frompc == 1){ //from spike2 - confirming open
+                statusline(line);
+                code = -1;  //don't send this on to verg. Handled via status line
+            }
+            else{
+                SetExptString(ex, TheStim, code, s);
+                statusline(s);
+            }
             break;
         case CHANNEL_CODE: //just relay these from verg. don't send all channels'
             SetBWChannel(s);
