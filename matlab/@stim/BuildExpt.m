@@ -26,6 +26,8 @@ prefix = '/local/Images/rds/'; %where images are writte
 args = {'step'};
 ntrials = 0;
 Expt.nframes = 0;
+Expt.nseeds =0;
+Expt.onelist = 0;
 showvars = {};
 frequencies = {};
 j = 1;
@@ -122,9 +124,39 @@ end
 if subspace(1) && subspace(2)
     AllS = MakeSubSpace(expts, values, subspace, frequencies, Expt);
     ns = length(AllS);
+elseif Expt.onelist %each value list is the same length - all combinations built by used
+        if Expt.nseeds > 0
+            n = length(values{1}).*  Expt.nrpt;
+            laps = Expt.nrpt;
+        else
+            n = length(values{1});
+            laps = 1;
+            npass = Expt.nrpt;
+        end
+    for in = 1:laps;
+    for j = 1:length(values{1})
+        ns = ns+1;
+        AllS(ns).(a) = values{1}(j);
+        for c = 2:length(values)
+            if iscellstr(values{c})
+                AllS(ns).(stimvars{c}) = values{c}{j};
+            else
+                AllS(ns).(stimvars{c}) = values{c}(j);
+            end
+        end
+        if Expt.nseeds > 0
+            AllS(ns).se = seeds(ns);
+        end
+    end
+    exvals(ns,1) = values{1}(j);
+    exvals(ns,2) = values{2}(j);
+    end
+    
 else
     n = length(values{1}).*length(values{2}) .* Expt.nrpt;
-    seeds = ceil(rand(1,n) .*  Expt.nseeds .* Expt.nframes);
+    if Expt.nseeds > 0
+        expt.seeds = ceil(rand(1,n) .*  Expt.nseeds .* Expt.nframes);
+    end
     for in = 1:Expt.nrpt;
     for j = 1:length(values{1})
         for k = 1:length(values{2})
@@ -138,7 +170,9 @@ else
                     AllS(ns).(stimvars{c}) = values{c}(k);
                 end
             end
-            AllS(ns).se = seeds(ns);
+            if Expt.nseeds > 0
+                AllS(ns).se = seeds(ns);
+            end
         end
         exvals(ns,1) = values{1}(j);
         exvals(ns,2) = values{2}(k);
@@ -177,7 +211,7 @@ if saveexptfile
     save(Expt.filename,'Expt');
 end
 stim.WriteOrder(Expt.stimdir, Expt.stimorder, expts, Expt);
-fprintf('%d Trials (%d stim, %d pass)\n',length(Expt.stimorder),ns,Expt.npass);
+fprintf('%d Trials (%d stim, %d pass)\n',length(Expt.stimorder),ns,npass);
 
 
 function AllS = MakeSubSpace(expts, values, subspace, frequencies, Expt)

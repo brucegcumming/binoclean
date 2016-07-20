@@ -2062,8 +2062,10 @@ char *ReadManualStim(char *file, int stimid){
             }
             if (strncmp(inbuf,"exvals",5) != NULL && strncmp(inbuf,"manexpvals",8) ){
                 if (strlen(inbuf) < 100 && gotcodes == 0){
-                strcat(cbuf, inbuf);
-                strcat(cbuf, " ");
+                    if (strncmp(inbuf,"mo=",3) != NULL){
+                        strcat(cbuf, inbuf);
+                        strcat(cbuf, " ");
+                    }
                 }
             }
             else{
@@ -2140,6 +2142,7 @@ int SendManualSequence()
 int SetManualStim(int frame)
 {
     int i,p = 0,code, setblank = 0;
+    int checkic = 0;
     float val;
     
     expt.codevalue = NOTSET;
@@ -2161,7 +2164,13 @@ int SetManualStim(int frame)
                 SetExptProperty(&expt, expt.st, code, val, NOEVENT);
             rcstimvals[p][frame] = val;
         }
+        if (code == CONTRAST_LEFT|| code == CONTRAST_RIGHT)
+            checkic = 1;
         p++;
+    }
+    if (checkic){
+        rcstimvals[p++][frame] = GetProperty(&expt, expt.st,CONTRAST_DIFF);
+        rcstimvals[p++][frame] = GetProperty(&expt, expt.st,SETCONTRAST);
     }
 }
 
@@ -3025,6 +3034,8 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
             else{
                 fprintf(binoclog,"%s cwd is %s\n",binocDateString(1),expt.cwd);
             }
+//            getcwd(path,BUFSIZ);
+//            SetExptString(&expt, expt.st,EXPTCWD,path);
             sprintf(buf,"%s/logs/%s%s",expt.cwd,expt.monkey,datestr());
             if (todaylog != NULL)
                 fclose(todaylog);
@@ -3262,6 +3273,9 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
             }
             psychlogparams[i++] = FindCode(s);
             psychlogparams[i] = -1;
+            break;
+//        case EXPTCWD: // can only be set inside binoc - ignore from GUI
+//                expt.strings[flag] = myscopy(expt.strings[flag],s);
             break;
         default:
             expt.strings[flag] = myscopy(expt.strings[flag],s);

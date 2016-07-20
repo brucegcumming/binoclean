@@ -1682,6 +1682,7 @@ void paint_rls(Stimulus *st, int mode)
         vcolor[3] = sst->lum[0];
         bcolor[3] = sst->lum[1];
         gcolor[3] = 0.5;
+        angle = rad_deg(st->left->pos.angle);
     }
     else if(mode == RIGHTMODE)
     {
@@ -1692,6 +1693,7 @@ void paint_rls(Stimulus *st, int mode)
         vcolor[3] = vcolor[1] = vcolor[2] = sst->lum[0];
         bcolor[3] = bcolor[1] = bcolor[2] = sst->lum[1];
         gcolor[3] = gcolor[1] = gcolor[2] = 0.5;
+        angle = rad_deg(st->right->pos.angle);
     }
     if(optionflags[STIMULUS_IN_OVERLAY])
     {

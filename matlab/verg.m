@@ -1128,6 +1128,7 @@ for j = 1:length(strs{1})
             end
         elseif strncmp(s,'cwd=',4)
             DATA.cwd = value;
+%            DATA.binoc{1}.cwd = value;
         elseif strncmp(s,'over',4)
             DATA.over = 1;
         elseif strncmp(s,'Not ',4)
@@ -4268,6 +4269,10 @@ function DATA = SetNewPenetration(DATA)
     for j = min([length(id) 3]):-1:1
         pendata{j} = ReadPen([DATA.cwd '/' d(id(j)).name],'noplot');
         fprintf('%d: %.1f,%.1f',pendata{j}.num,pendata{j}.pos);
+        files = unique(pendata{j}.files);
+        for k = 1:length(files)
+            fprintf(' %s',files{k});
+        end
         if isfield(pendata{j},'Electrode')
             fprintf(' Electrode %s',pendata{j}.Electrode);
             DATA.binoc{1}.Electrode = pendata{j}.Electrode;
@@ -4283,10 +4288,6 @@ function DATA = SetNewPenetration(DATA)
         if isfield(pendata{j},'coarsemm')
             fprintf(' at %.1f mm',pendata{j}.coarsemm);
             DATA.binoc{1}.coarsemm = pendata{j}.coarsemm;
-        end
-        files = unique(pendata{j}.files);
-        for k = 1:length(files)
-            fprintf(' %s',files{k});
         end
         fprintf('\n');
     end
@@ -5289,7 +5290,7 @@ function Expt = ExptSummary(DATA)
     Expt.Stimvals.Bs = DATA.stimulusnames{DATA.stimtype(2)};
     Expt.Start = now;
     Expt.Header.Name = GetName(DATA.binoc{1}.uf,'-silent');
-    
+    Expt.Header.Subject = GetValue(DATA,'monkey');
 
         
 function DATA = RunButton(a,b, type)
@@ -6676,8 +6677,18 @@ function DATA = LogCommand(DATA, str, varargin)
     if nargout == 0
         set(DATA.toplevel,'UserData',DATA);
     end
-
-function SequencePopup(a,exptlines,type)
+    
+    
+function name = Seq2Name(str)
+    name = '??';
+    id = find(strncmp('!mat',str,4));
+    if ~isempty(id)
+        x = str{id(1)};
+        name = regexprep(x(6:end),'(.*','');
+    end
+    
+    
+function SequencePopup(a,exptlines,type, varargin)
 
   DATA = GetDataFromFig(a);
   cntrl_box = findobj('Tag',DATA.windownames{8},'type','figure');
@@ -6688,13 +6699,34 @@ function SequencePopup(a,exptlines,type)
           DATA.seqline = 0;
           lst = findobj(cntrl_box,'Tag','SequenceList');
           DATA = RunExptSequence(DATA,get(lst,'string'),1);
+      elseif strcmp(type,'Revert')
+          oldid = varargin{1};
+          lst = findobj(cntrl_box,'Tag','SequenceList');
+          set(lst,'string',DATA.sequences(oldid).str);
+      elseif strcmp(type,'Save')
+          lst = findobj(cntrl_box,'Tag','SequenceList');
+          str = get(lst,'string');
+          if ~isfield(DATA,'sequences')
+              it= uimenu(gcf,'Label','Revert','Tag','SequenceRevert');
+              n = 1;
+          else
+              n = length(DATA.sequences)+1;
+              it = findobj(allchild(cntrl_box),'flat','Tag','SequenceRevert');
+          end
+          DATA.sequences(n).str = str;
+          DATA.sequences(n).name = Seq2Name(str);
+          DATA.sequences(n).time = now;
+          if ~isempty(it)
+              uimenu(it,'Label',sprintf('%s %s',DATA.sequences(n).name,datestr(now,'HH:MM')),'callback',{@SequencePopup,'Revert', n});
+          end
+          SetData(DATA);  
       elseif strcmp(type,'pause')
-          str = get(a,'string');
-          if strcmp(str,'pause');
-              set(a,'string','continue');
+          str = get(a,'String');
+          if strcmp(str,'Pause');
+              set(a,'String','continue');
               DATA.runsequence = 0;
           else
-              set(a,'string','pause');
+              set(a,'String','Pause');
               DATA.runsequence = 1;
 %if continue is hit while still running the same expt where pause was hit,
 %dont advance to the next experiment immediatel - wait for expt to finish
@@ -6735,6 +6767,17 @@ if Dev(DATA)
         'Callback', {@SequencePopup, 'pause'} ,...
         'units', 'norm', 'position',bp,'value',1);
    
+end
+bp(1) = bp(1)+bp(3)+0.01;
+uicontrol(gcf,'style','pushbutton','string','Save', ...
+    'Callback', {@SequencePopup, 'Save'} ,...
+    'units', 'norm', 'position',bp,'value',1);
+
+if isfield(DATA,'sequences')
+    it= uimenu(gcf,'Label','Revert','Tag','SequenceRevert');
+    for j = 1:length(DATA.sequences)
+        uimenu(it,'Label',sprintf('%s %s',DATA.sequences(j).name,datestr(DATA.sequences(j).time,'HH:MM')),'callback',{@SequencePopup,'Revert', j});
+    end
 end
 
 usejava =0;
@@ -7985,6 +8028,9 @@ if showbinoc
     if sum(strcmp(code,{'uf' 'monkey'})) && isfield(DATA,'cwd')
        DATA = AddTextToGui(DATA,['cwd=' DATA.cwd]);
     end
+    if strcmp(code,'cwd') && isfield(DATA,'cwd')
+       DATA = AddTextToGui(DATA,['cwd=' DATA.cwd ': Set When set monkey=xxx']);
+    end
     if sum(strcmp(code,{'rw'})) %show total reward
         if isfield(DATA.Trials,'good') && isfield(DATA.Trials,'rw')
             rwsum = sum([DATA.Trials([DATA.Trials.good] ==1).rw]);
@@ -8177,8 +8223,7 @@ function ChoosePsych(a,b, mode)
         ClearTaggedChecks(get(a,'parent'),{});
         PlotPsych(DATA);
     elseif strmatch(mode,{'OnlyCurrent','All' 'None' 'OneOnly'})
-        DATA.plotexpts = zeros(size(DATA.plotexpts));
-        PlotPsych(DATA);
+        DATA.plotexpts = zeros(1,length(DATA.expts));
         c = get(get(a,'parent'),'children');
         set(c,'checked','off');
         if ~strcmp(DATA.psych.blockmode,mode)
@@ -8194,6 +8239,7 @@ function ChoosePsych(a,b, mode)
             id = find(strncmp('Expt',strs,4));
             set(c(id),'checked','on');
         end
+        PlotPsych(DATA);
     elseif strmatch(mode,'Pause')
         DATA.psych.show = ~DATA.psych.show;
         set(a,'Checked',onoff{DATA.psych.show+1});

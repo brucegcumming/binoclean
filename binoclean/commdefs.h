@@ -530,8 +530,10 @@
 #define MAXREWARD (MAXSAVECODES+51)
 #define EXPTVARS (MAXSAVECODES+52)
 #define STIMVERSION (MAXSAVECODES+53)
+#define EXPTCWD (MAXSAVECODES+54)
 
-#define MAXTOTALCODES (MAXSAVECODES+54)  //440
+
+#define MAXTOTALCODES (MAXSAVECODES+55)  //440
 
 
 /*
@@ -1366,6 +1368,7 @@ ValueCode valstrings[] = {
     {  "EB", "Expt2 CustomVal", EXPT2CUSTOMVAL, 16|PARTIAL_CODE, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "EC", "Expt3 CustomVal", EXPT3CUSTOMVAL, 16|PARTIAL_CODE, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "expvars", "Expt Variables", EXPTVARS, 16, 'C', 0, SEND_EXPLICIT, SAVE_ALWAYS},
+//    {  "cwd", "Current Directory", EXPTCWD, 16, 'C', 0, SEND_VERG_ONLY, SAVE_NEVER},
     
     { NULL, NULL, -1, -1 ,0 ,0, 0},
 };

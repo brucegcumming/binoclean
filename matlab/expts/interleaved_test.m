@@ -1,4 +1,4 @@
-function varargout = interleaved_test(path)
+function varargout = interleaved_test(path, varargin)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % function varargout = interleaved_test(path)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -22,10 +22,17 @@ function varargout = interleaved_test(path)
 
 %BuildACadapt('dxvals',[-0.6:0.1:0.6],'preframes',0,'ntrials',80,'nrpts',2,'nf',150,'clear','dir','/local/lem/expts/tmp/runB','ilac',0,'uncor',0,'blank',0)
 %DEFAULTS
-MONKEY = 'lem';
-SIGNALS = [0 0.06 0.12 0.18];
-NTRIALS = 5;
-PATH = ['/local/' MONKEY '/expts'];
+%MONKEY  = 'pla';
+PATH    = ['/local/expts'];
+
+SIGNALS = [0 0.09 0.18 0.27];
+NTRIALS = 3;
+NRPTS   = 2;
+DX      = [-0.3:0.05:0.3];
+NBLK    = 10;
+NF      = 300;
+PF      = 150;
+
 % if ~isempty(name)
 %     MONKEY = name;
 % end
@@ -46,9 +53,17 @@ end
 dirA = [PATH '/runA/'];
 dirB = [PATH '/runB/'];
 SVDIR = [PATH '/ACadaptpsych/'];
+j = 1;
+while j <= length(varargin)
+    if strcmp(varargin{j},'signals')
+        j = j+1;
+        SIGNALS = varargin{j};
+    end
+    j = j+1;
+end
 
-BuildACadapt('dxvals',[-0.6:0.1:0.6],'disps',[-0.1 0.1],'signals', SIGNALS,'preframes',150,'ntrials',NTRIALS,'nrpts', 1,'nf',300,'clear','psych','dir',dirA,'acdisp',-0.1,'adaptcorr',-1,'ilac',0,'uncor',0,'blank',0);
-BuildACadapt('dxvals',[-0.6:0.1:0.6],'disps',[-0.1 0.1],'signals', SIGNALS,'preframes',150,'ntrials',NTRIALS,'nrpts', 1,'nf',300,'clear','psych','dir',dirB,'acdisp',0.1,'adaptcorr',-1,'ilac',0,'uncor',0,'blank',0);
+BuildACadapt2('dxvals',DX,'disps',[-0.1 0.1],'signals', SIGNALS,'preframes',PF,'ntrials',NTRIALS,'nrpts', 1,'nf',NF,'clear','psych','dir',dirA,'acdisp',-0.1,'adaptcorr',-1,'ilac',0,'uncor',0,'blank',0);
+BuildACadapt2('dxvals',DX,'disps',[-0.1 0.1],'signals', SIGNALS,'preframes',PF,'ntrials',NTRIALS,'nrpts', 1,'nf',NF,'clear','psych','dir',dirB,'acdisp',0.1,'adaptcorr',-1,'ilac',0,'uncor',0,'blank',0);
 
 
 % dirA = ['/local/' MONKEY '/expts/tmp/runA/'];
@@ -90,21 +105,56 @@ end
 %make stimorder file
 t1 = 0:len1-1;
 t2 = len1:len1+len2-1;
+%add repeat
+n1 = []; n2 = [];
+for i=1:NRPTS
+    n1 = [n1 t1];
+    n2 = [n2 t2];
+end
 
-order1 = t1(randperm(length(t1)));
-order2 = t2(randperm(length(t2)));
-stimorder=[]; group=[];
-for i=1:length(order1)/5
-    tmpA = order1((i-1)*5+1:i*5);
-    tmpB = order2((i-1)*5+1:i*5);
-    
-    stimorder = [stimorder tmpA];
-    group = [group ones(1,5)];
-    
-    stimorder = [stimorder tmpB];
-    group = [group 2*ones(1,5)];
-    
-    clear tmpA tmpB
+%%combine into one group
+%n = [n1 n2]; 
+% stimorder = n(randperm(length(n)));
+% for i=1:length(stimorder)
+%     if ismember(stimorder(i),n1)
+%         group(i) = 1;
+%     elseif ismember(stimorder(i),n2)
+%         group(i) = 2;
+%     else
+%         group(i) = 0;
+%     end
+% end
+
+order{1} = n1(randperm(length(n1)));
+order{2} = n2(randperm(length(n2)));
+stimorder=[]; group=[]; 
+ID = round(rand)+1;AD = setdiff(1:2,ID);
+for i=1:ceil(length(order{1})/NBLK)
+    if i==ceil(length(order{1})/NBLK)
+        tmpA = order{ID}((i-1)*NBLK+1:length(order{ID}));
+        tmpB = order{AD}((i-1)*NBLK+1:length(order{AD}));
+
+        stimorder = [stimorder tmpA];
+        group = [group ones(1,length(tmpA))];
+
+        stimorder = [stimorder tmpB];
+        group = [group 2*ones(1,length(tmpB))];
+
+        clear tmpA tmpB
+    else
+
+        tmpA = order{ID}((i-1)*NBLK+1:i*NBLK);
+        tmpB = order{AD}((i-1)*NBLK+1:i*NBLK);
+
+        stimorder = [stimorder tmpA];
+        group = [group ones(1,length(tmpA))];
+
+        stimorder = [stimorder tmpB];
+        group = [group 2*ones(1,length(tmpB))];
+
+        clear tmpA tmpB
+
+    end
 end
 
 %write order file to disk

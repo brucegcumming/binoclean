@@ -83,12 +83,12 @@ ch Internal, for setting xy eye position display.
 cha Normally the axis along which choice targets are displaced is determined by binoc from the stimulus. This forces the choice axis. 
 choicedur For correct choices, target remains on after saccade for this duration (sec) # psychophy
 cm Comment. Internal really. Typing the the comment field of verg enters a commnent too.
-cL Contrast of L eye stimulus. See also cR, ic #Binocular Disparity
+cL Contrast of L eye stimulus. See also cR, ic. = co+ic #Binocular Disparity
 cmdfile the named file is monitored for changes. If it changes, then binoc reads its contents and executes the commands. Used for remote monitoring/control
 co Range 0 -> 1
 coarsemm measurement on microdrive at starting postion (set by penlog)
 Covariate name of a parameter that covaries with psych metameter (signal). Typically xo. See also cc #Psych Training
-cR Contrast of R eye stimulus. See also cL, ic #Binocular Disparity
+cR Contrast of R eye stimulus. See also cL, ic. = co-ic #Binocular Disparity
 cb Correlation of background. Needs op+bf
 cr Set ratio of contrast left/contrast right (changes co and ic)
 cs Seed used to calculate OLD RC  sequence. Obsolete 

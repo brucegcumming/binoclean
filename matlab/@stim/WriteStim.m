@@ -54,6 +54,8 @@ for j = 1:length(exf)
     end
 end
 
+%Don't allow forcing of non-existent fields
+forcef = intersect(forcef, fields(S));
 for j = 1:length(forcef)
     x = S.(forcef{j});
     if ischar(x)

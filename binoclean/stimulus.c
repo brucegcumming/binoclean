@@ -1385,11 +1385,11 @@ void calc_stimulus(Stimulus *st)
     st->right->pos.contrast = st->pos.contrast - st->contrast_disp;
     st->left->mixdots = st->right->mixdots = st->mixdots;
     
-    if(isdotstim(st)){
+    if(isdotstim(st)){ //means matched PAIR  rds/rds rls/rls etc 
         st->left->pos.sf = st->pos.sf;
         st->right->pos.sf =  st->pos.sf;
         st->left->pos.angle = st->pos.angle;
-        st->right->pos.angle = st->pos.angle; 
+        st->right->pos.angle = st->pos.angle;
     }
     else{
         st->left->pos.sf = st->pos.sf + st->sf_disp;
@@ -1397,7 +1397,6 @@ void calc_stimulus(Stimulus *st)
         st->left->pos.angle = st->pos.angle + st->ori_disp;
         st->right->pos.angle = st->pos.angle - st->ori_disp;
     }
-    
     
     if(expt.stimmode == BUTTSEXPT){
         expt.st->mode |= STIMULUS_NEEDS_CLEAR;

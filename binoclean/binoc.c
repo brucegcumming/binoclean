@@ -1609,6 +1609,7 @@ void StopGo(int go)
         if(stimstate == IN_TIMEOUT)
             stimstate = STIMSTOPPED;
         SendAllToGui();
+        expt.st->framectr = 0;
     }
 }
 
@@ -11978,6 +11979,7 @@ void expt_over(int flag)
     SetProperty(&expt,expt.st,FIXPOS_Y,expt.fixpos[1]);
     SetProperty(&expt,expt.st,FIXPOS_X,expt.fixpos[0]);
     expt.vals[TARGET_RATIO] = expt.stimvals[TARGET_RATIO];
+    expt.st->framectr = 0;  //force this in case its been left > 0
     
     expt.st->flag = expt.stflag;
     if(seroutfile){
