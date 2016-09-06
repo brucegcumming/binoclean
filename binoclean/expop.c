@@ -15039,6 +15039,9 @@ int InterpretLine(char *line, Expt *ex, int frompc)
     else if(!strncmp(line,"slider",6) && frompc){ //old commands that we don't want to drop down to codes below
         return(0);
     }
+    else if(!strncmp(line,"spike2:",7) && frompc == 2){
+        SerialString(&line[7],0);
+    }
     else if(!strncmp(line,"splitctr",8) && frompc){
         if(seroutfile)
             fprintf(seroutfile,"#%s Expt File Number in Spike\n",line);

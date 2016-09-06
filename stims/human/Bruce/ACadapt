@@ -33,5 +33,5 @@ nf=300
 uf=/local/data/psych/bgc/ACLogDATE
 exp=/local/expts/ACadaptpsych
 psychfile=/local/data/psych/bgc/ACadaptDATE
-!mat=interleaved_test('/local/expts')
+!mat=interleaved_test('/local/expts','signals',[0 0.09 0.18 0.27])
 

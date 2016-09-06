@@ -124,7 +124,9 @@ e1max sets largest abs(value) of stimvals for expt 1 , EG. nt=7 produces [ -e1ma
 e2 See also op+x2
 ec After responding incorrectly to N consecutive stimuli of a given sign, enter a correction loop wehre only that choice direction is shown. #Psych Training
 ed in mm. Normally set automatically by microdrive. Chage with caution.
-Electrode Best to select from menu (elements can be added to binoc.setup) to keep uniform. 
+Electrode Best to select from menu (elements can be added to /local/binoc.setup) to keep uniform. 
+#Important that this is correct when using multi-contact probes
+#ESPECIALLY if not linear (e.g. 2x12 uProbe)
 ePr distance from base of microdrive to tip of support tube (mm)
 expvars For Manual Experiments. Gives list of paramters that will be varied acros Trials.
 #Lets binoc know to reset these things at expt end

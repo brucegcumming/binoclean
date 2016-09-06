@@ -731,6 +731,17 @@ for j = 1:length(strs{1})
         s = strrep(s,char(9),'\n');%'\t' in c. ->\n. So that message is all on one line
         if strncmp(s,'ACK::',5)
             vergwarning(s(6:end),'newwin');
+        elseif strncmp(s(5:end),' Error Reading Stimulus',10)
+            if isappdata(DATA.toplevel,'WaitingForDlg') && getappdata(DATA.toplevel,'WaitingForDlg') ==0 && DATA.inexpt
+                setappdata(DATA.toplevel,'WaitingForDlg',1);
+                yn = gui.Dlg(['WARNING:' s(5:end)],DATA.toplevel,{'Continue' 'Cancel'});
+                if strcmp(yn,'Cancel')
+                    DATA = RunButton(DATA,'ForceCancel',1);
+                end
+                setappdata(DATA.toplevel,'WaitingForDlg',0);
+            else
+                fprintf('WARNING (waiting for dlg): %s\n',s(5:end));
+            end
         else
             vergwarning(s(5:end));
         end
@@ -2444,6 +2455,7 @@ DATA.Comments = [];
 DATA.state.stimfileerrs = 0;
 DATA.state.stimfile = '';
 DATA.state.query = 0;
+DATA.state.dlgup = 0;
 DATA.state.penwarned = 0;
 DATA.currentrw = 0;
 DATA.Header.dailyvars = {'id' 'se' 'ed' 'Rx' 'Ry' 'Ro' 'Rw' 'Rh' 'Xp' 'Yp' 'Pn' 'pe' 'Electrode' 'hemi'...
@@ -3251,6 +3263,7 @@ function DATA = InitInterface(DATA)
     uimenu(hm,'Label','pipelog','Callback',{@MenuHit, 'pipelog'});
     uimenu(hm,'Label','Update Network Psych Files','Callback',{@MenuHit, 'updatepsych'});
     uimenu(hm,'Label','freereward','Callback',{@MenuHit, 'freereward'},'accelerator','R');
+    uimenu(hm,'Label','Set Spike Display (Spike2)','Callback',{@SendStr,'spike2:setspkv'});
     uimenu(hm,'Label','Run One Trial','Callback',{@MenuHit, 'onetrial'},'accelerator','1');
 
     
@@ -3312,6 +3325,7 @@ function DATA = InitInterface(DATA)
     sm = uimenu(subm,'Label','Try Pipes','Callback',{@ReadIO, 8},'foregroundcolor','r');
     sm = uimenu(subm,'Label','Restart Binoc between Expts','Callback',{@SetMenuToggle, 'restartbinoc'});
     sm = uimenu(subm,'Label','Send Expt Trigger to Spike2','Callback',{@SendStr, '!expttrigger'});
+    sm = uimenu(subm,'Label','Send Spike Clear to Spike2','Callback',{@SendStr, 'cl'});
     uimenu(subm,'Label','Log Inputs','Callback',{@ReadIO, 'openlog'});
     sm = uimenu(subm,'Label','Tests');
     uimenu(sm,'Label','Run/Cancel','Callback',{@TestIO, 'cancel'});
@@ -4522,6 +4536,7 @@ function DATA = AddComment(DATA, str, src)
      elseif flag == 5
         DATA = ReadFromBinoc(DATA,'reset');   
         outprintf(DATA,'\neventcontinue\nEDONE\n');
+        setappdata(DATA.toplevel,'WaitingForDlg',0);
         if ~strcmp(get(DATA.timerobj,'Running'),'on')
         start(DATA.timerobj);
         end
@@ -5318,9 +5333,10 @@ function DATA = RunButton(a,b, type)
 
         DATA.newexptdef = 0;
         DATA.matexpres = [];
+        forcestop = sum(strcmp(caller,'ForceCancel'));
         inexpt = 0;
         if type == 1
-            if DATA.inexpt == 0 %sarting a new one. Increment counter
+            if DATA.inexpt == 0 && ~forcestop %sarting a new one. Increment counter
                 DATA = CheckPenLog(DATA);
 
 %if storage is off, and correct smr file is open, check that user means it                
@@ -5406,13 +5422,14 @@ function DATA = RunButton(a,b, type)
     end
     x(2) = mytoc(ts);
 
-    if sum(strcmp(caller,{'Cancel' 'Seqcancel'}))
+    if sum(strcmp(caller,{'Cancel' 'Seqcancel' 'ForceCancel'}))
           DATA = AddTextToGui(DATA,'Cancelled','norec');
                 if DATA.nexpts > 0
                 DATA.Expts{DATA.nexpts}.last = DATA.Trial.Trial;
                 DATA.Expts{DATA.nexpts}.End = now;
                 end
                 DATA.optionflags.do = 0;
+                DATA.exptstoppedbyuser = 1;
                 if strcmp(caller,'Cancel')
                     DATA.exptstoppedbyuser = 1;
                 end
