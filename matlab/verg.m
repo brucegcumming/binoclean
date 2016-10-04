@@ -87,6 +87,7 @@ if isempty(it)
 %open pipes to binoc 
 % if a file is named in teh command line, then take all setting from there.
 % Otherwise read from binoc
+    vtest = {};
     if strcmp(varargin{1},'help')
         CodesPopup(DATA,[],'popup');
         return;
@@ -103,6 +104,7 @@ if isempty(it)
         SendState(DATA); %params loaded from verg.setup, binoc.setup etc
         tt = TimeMark(tt, 'SendState');
         DATA = ReadStimFile(DATA, '/local/verg.setup','fromverg'); %make sure these go to binoc
+        vtext = DATA.exptlines;
         tt = TimeMark(tt, 'VergSetup');
         if strcmp(varargin{1},'demo') 
             if isfield(DATA.verg,'demofile')
@@ -198,6 +200,10 @@ if isempty(it)
     if exist(vpath,'dir')
         addpath(vpath);
     end
+    if cellstrcmp('!monkeylog',vtext) || now-GetValue(DATA,'weightdate') > 30
+        InterpretLine(DATA, '!monkeylog','fromverg');
+    end
+        
 else
     DATA = get(it,'UserData');
 end
@@ -248,6 +254,8 @@ while j <= length(varargin)
         DATA = UpdateLogFile(DATA);        
     elseif strcmp(varargin{j},'checkstart')
         DATA = CheckStateAtStart(DATA);
+    elseif strncmp(varargin{j},'readstim',7)
+        DATA = ReadStimFile(DATA,varargin{j+1},'-nowait');
     elseif strncmp(varargin{j},'savecom',7)
         SaveComCodes(DATA);
     elseif isfield(varargin{j},'Trials')
@@ -700,6 +708,12 @@ for j = 1:length(strs{1})
                         DATA.binoc{1}.rw = val;
                     end
                 end            
+        elseif s(1) == '!' %other commands
+            if strcmp(s,'!monkeylog')
+                if isfield(DATA,'toplevel')
+                    MonkeyLogPopup(DATA.toplevel,[],'popup');
+                end
+            end
         else
             donestr = 0;
         end
@@ -1569,7 +1583,14 @@ for j = 1:length(strs{1})
                         end
                     end
                     if codetype < 0 && srcchr ~= 'V'
-                        fprintf('%s:Code %s not in comcodes\n',datestr(now),code);
+                        s = GetValue(DATA,'expvars');
+                        if strfind(s,code)                            
+                            if DATA.trialcounts(6) == 0
+                                fprintf('%s:Seem to have manual Code %s \n',datestr(now),code);
+                            end
+                        else
+                            fprintf('%s:Code %s not in comcodes\n',datestr(now),code);
+                        end                        
                     end
                 end
                 SetCode(DATA,code);
@@ -1726,7 +1747,7 @@ function DATA = CheckToggleCodes(DATA)
         end
     end
 
-function [DATA, details] = ReadExptLines(DATA, strs, src)
+function [DATA, details] = ReadExptLines(DATA, strs, src,varargin)
 
     if isempty(strs)
         strs = DATA.explines
@@ -1735,6 +1756,12 @@ function [DATA, details] = ReadExptLines(DATA, strs, src)
         firstline = 1+DATA.exptnextline;
     end
     badcodes = 0;
+    [a,b] = cellstrcmp('-nowait',varargin);
+    if a
+        oargs = varargin(find(b));
+    else
+        oargs = {};
+    end
     
     for j = firstline:length(strs)
         tline = strs{j};
@@ -1781,9 +1808,10 @@ function [DATA, details] = ReadExptLines(DATA, strs, src)
         if DATA.over
             DATA.overcmds = {DATA.overcmds{:} tline};
         else
-            if type >= 0 %don't send these lines to binoc
+            if type >= 0 %don't send lines type < 0to binoc 
                 tline = CheckLineForBinoc(tline, DATA);
-                outprintf(DATA,'%s\n',tline);
+%                outprintf(DATA,'%s\n',tline,'-nowait');
+                outprintf(DATA,'%s\n',tline,oargs{:});
             else
                 if DATA.verbose(4)
                     fprintf('%s Not sent\n',tline);
@@ -1950,7 +1978,7 @@ function [DATA, details] = ReadStimFile(DATA, name, varargin)
 %file
 DATA.newqe = 0;
 if DATA.newexptdef == 0 && isfield(DATA.binoc{1},'ereset') && ~strcmp('NotSet',DATA.binoc{1}.ereset);
-    fprintf('Resetting Expt with %s\n',DATA.binoc{1}.ereset);
+    myprintf(DATA.cmdfid,'-show','#Resetting Expt with %s\n',DATA.binoc{1}.ereset);
     DATA.newexptdef = 1;
     outprintf(DATA,'newexpt\n');
     DATA = ReadStimFile(DATA, DATA.binoc{1}.ereset);
@@ -1989,7 +2017,7 @@ if fid > 0
         end
     end
     if isempty(sid) || sid > 1
-        [DATA, details] = ReadExptLines(DATA,DATA.exptlines,linesrc);
+        [DATA, details] = ReadExptLines(DATA,DATA.exptlines,linesrc,varargin{:});
         if details.badcodes > 1
             fprintf('Choose Fix from the file menu, or run verg([],''checkstim'') to remove bad/old codes from %s\n',name);
         end
@@ -2494,6 +2522,7 @@ DATA.Coil.offset= [0 0 0 0];
 DATA.Coil.so = [0 0 0 0];
 DATA.Coil.CriticalWeight = 0;
 DATA.Coil.Weight = 0;
+DATA.Coil.lastwt = 0;
 DATA.layoutfile = '/local/verg.layout';
 DATA.exptnextline = 0;
 DATA.exptstoppedbyuser = 0;
@@ -3941,7 +3970,7 @@ function CheckForUpdate(DATA)
         return;
     end
     if ~isempty(a) && ~isempty(b) && a.datenum > b.datenum
-        yn = myquestdlg(sprintf('%s is newer. Copy to %s?',src,tgt),'Update Check','Yes','No','','Yes',DATA.font);
+        yn = myquestdlg(sprintf('%s is newer. Copy to %s?',src,tgt),'Update Check','Yes','Compare','No','Yes',DATA.font);
         if strcmp(yn,'Yes')
             try  %This will produce and error becuase verg.m is in use. But the copy succeeds
                 if strncmp(chkmode,'backup',3)
@@ -3953,6 +3982,8 @@ function CheckForUpdate(DATA)
                 cprintf('errors',ME.message);
                 fprintf('possible error copying %s\n',tgt);
             end
+        elseif strcmp(yn,'Compare')
+            visdiff(src,tgt);
         end
     end
     
@@ -4438,9 +4469,15 @@ function DATA = AddComment(DATA, str, src)
  function outprintf(DATA,varargin)
  %send to binoc.  ? reomve comments  like in expt read? 
  show = 0;
+ waitforbinoc = 1;
  if strcmp(varargin{1},'-show')
      show = 1;
      varargin = varargin(2:end);
+ end
+ [a,b] = cellstrcmp('-nowait',varargin);
+ if a
+     varargin = varargin(setdiff(1:length(varargin),find(b)));
+     waitforbinoc = 0;
  end
  
  if DATA.network
@@ -4461,12 +4498,14 @@ function DATA = AddComment(DATA, str, src)
              if(DATA.tobinocfid > 0)
                  fprintf(DATA.tobinocfid,'%s:%s\n',datestr(now),str);
              end
-             ts = now;
-             [bstr, status] = urlread(str,'Timeout',2);
-             if ~isempty(bstr)
-                 fprintf('Binoc replied with %s\n',bstr);
-             elseif DATA.verbose(5)
-                 fprintf('Binoc returned in %.3f\n',mytoc(ts));
+             if waitforbinoc
+                 ts = now;
+                 [bstr, status] = urlread(str,'Timeout',2);
+                 if ~isempty(bstr)
+                     fprintf('Binoc replied with %s\n',bstr);
+                 elseif DATA.verbose(5)
+                     fprintf('Binoc returned in %.3f\n',mytoc(ts));
+                 end
              end
          end
      end
@@ -5380,6 +5419,7 @@ function DATA = RunButton(a,b, type)
                 DATA.Expts{DATA.nexpts} = ExptSummary(DATA);
                 DATA.optionflags.do = 1;
                 DATA.exptstoppedbyuser = 0;
+                DATA.trialcounts(6) = 0;
                 caller = 'Run';
                 inexpt = 1;
                 %            DATA = GetState(DATA);
@@ -5423,6 +5463,9 @@ function DATA = RunButton(a,b, type)
     x(2) = mytoc(ts);
 
     if sum(strcmp(caller,{'Cancel' 'Seqcancel' 'ForceCancel'}))
+        if DATA.nexpts <1
+            DATA.nexpts = 1;
+        end
           DATA = AddTextToGui(DATA,'Cancelled','norec');
                 if DATA.nexpts > 0
                 DATA.Expts{DATA.nexpts}.last = DATA.Trial.Trial;
@@ -5436,6 +5479,9 @@ function DATA = RunButton(a,b, type)
     elseif strcmp(caller,'Run')
        CheckExptIsGood(DATA);
     elseif strcmp(caller,'Finish')
+        if DATA.nexpts <1
+            DATA.nexpts = 1;
+        end
             DATA.rptexpts = 0;
             DATA.Expts{DATA.nexpts}.last = DATA.Trial.Trial;
             DATA.Expts{DATA.nexpts}.End = now;
@@ -6912,6 +6958,7 @@ function DATA = ReadLogFile(DATA, name)
     s = textscan(fid,'%s','delimiter','\n');
     s = s{1};
     gotwt = 0;
+    savetime = 0;
     for j = 1:length(s)
         e = strfind(s{j},'=');
         if ~isempty(e)
@@ -6923,6 +6970,7 @@ function DATA = ReadLogFile(DATA, name)
         if strncmp(s{j},'Saved',5)
             %used to read back to last save, but that assumes it was all
             %there
+            savetime = datenum(s{j}(8:end));
         elseif strncmp(s{j},'Gain',4)
             DATA.Coil.gain = sscanf(s{j}(6:end),'%f');
         elseif strncmp(s{j},'Offset',6)
@@ -6931,6 +6979,7 @@ function DATA = ReadLogFile(DATA, name)
             DATA.Coil.phase = sscanf(s{j}(7:end),'%f');
         elseif strncmp(s{j},'CriticalWeight',14)
             DATA.Coil.CriticalWeight = sscanf(s{j}(15:end),'%f');
+            DATA.Coil.CriticalDate = savetime;
         elseif strncmp(s{j},'so',2)
             DATA.Coil.so = sscanf(s{j}(4:end),'%f');
         elseif strncmp(s{j},'we',2)
@@ -6938,9 +6987,12 @@ function DATA = ReadLogFile(DATA, name)
             if we(1) > 0
                 gotwt = gotwt+1;
                 DATA.binoc{1}.we = we(1);
+                DATA.Coil.weightdate = savetime;
+                DATA.Coil.lastwt = we(1);
             end
             if length(we) > 1 && we(2) > 0
                 DATA.Coil.CriticalWeight = we(2);
+                DATA.Coil.CriticalDate = savetime;
             end
         elseif sum(strncmp(s{j},{'MicroDrive'},6)) 
             if isempty(code) %no =, use first space as delimiter
@@ -6983,9 +7035,15 @@ function MonkeyLogPopup(a,b, type, channel)
       SendCode(DATA,'so');
   elseif strncmp(type,'CriticalWeight',8)
       DATA.Coil.CriticalWeight = value;
+      DATA.Coil.CriticalDate = now;
+  elseif strncmp(type,'Comment',8)
+      if ishandle(a)
+          DATA.Coil.Comment = get(a,'string');
+      end
   elseif strncmp(type,'Weight',5)
       DATA.binoc{1}.we = value;
       DATA.Coil.Weight = value;
+      DATA.Coil.weightdate = now;
   elseif strncmp(type,'phase',5)
       DATA.Coil.phase(channel) = value;
   elseif strncmp(type,'Gain',4)
@@ -7002,12 +7060,24 @@ function MonkeyLogPopup(a,b, type, channel)
       fprintf(fid,'Gain%s\n',sprintf(' %.2f',DATA.Coil.gain));
       fprintf(fid,'Offset%s\n',sprintf(' %.2f',DATA.Coil.offset));
       fprintf(fid,'Phase%s\n',sprintf(' %.2f',DATA.Coil.phase));
-      if strcmp(type,'savelog') % only save weight if it has been added in GUI.
-          fprintf(fid,'we%.2f %.2f\n',DATA.Coil.Weight,DATA.Coil.CriticalWeight);
+      if  strcmp(type,'savelog') && DATA.Coil.Weight > 0 % only save weight if it has been added in GUI.
+          fprintf(fid,'we%.2f',DATA.Coil.Weight);
+          if DATA.Coil.CriticalDate - now > 0.5
+              fpritnf(fid,' %.2f\n',DATA.Coil.CriticalWeight);
+              fprintf('Setting Critical WEight to %.2f\n',DATA.Coil.CriticalWeight);
+          else
+              fprintf(fid,'\n');
+          end
+      else
+          fprintf('No Weight Given\n');
+      end
+      if isfield(DATA.Coil,'Comment') && ~isempty(DATA.Coil.Comment)
+          fprintf(fid,'#%s\n',DATA.Coil.Comment);
       end
       fclose(fid);
       fprintf('Saved to %s\n',DATA.binoc{1}.lo);
       end
+      close(GetFigure(a));
   end
   set(DATA.toplevel,'UserData',DATA);
       return;
@@ -7152,31 +7222,53 @@ bp(1) = bp(1)+bp(3)+0.01;
 
 bp(2) = bp(2)- 1./nr;
 bp(1) = 0.01;
-    it = uicontrol(gcf,'style','text','string','Weight', ...
+
+    if GetValue(DATA,'weightdate') >0
+        lstr = sprintf('Weight(%s)',datestr(DATA.Coil.weightdate,'dd/mm/yy'));
+    else
+        lstr = 'Weight';
+    end
+
+    it = uicontrol(gcf,'style','text','string',lstr, ...
     'units', 'norm', 'position',bp,'value',1);
 
 %Dont put current weight variarble in here - user should add new one
 bp(1) = bp(1)+bp(3)+0.01;
 if DATA.Coil.Weight > 0
     str = sprintf('%.2f',DATA.Coil.Weight);    
-elseif isfield(DATA.binoc{1},'we')
+elseif isfield(DATA.binoc{1},'we') && DATA.binoc{1}.we > 0
     str = sprintf('(%.1f)',DATA.binoc{1}.we);
+elseif DATA.Coil.lastwt > 0
+    str = sprintf('(%.2f)',DATA.Coil.lastwt);        
 else
     str = '0.00';
 end
+
+
     uicontrol(gcf,'style','edit','string',str, ...
         'Callback', {@MonkeyLogPopup, 'Weight'},'Tag','Weight',...
         'units', 'norm', 'position',bp);
 
 bp(1) = bp(1)+bp(3)+0.01;
-    it = uicontrol(gcf,'style','text','string','Critical Weight', ...
-    'units', 'norm', 'position',bp,'value',1);bp(1) = bp(1)+bp(3)+0.01;
+    if isfield(DATA.Coil,'CriticalDate') && DATA.Coil.CriticalDate > 0
+        lstr = sprintf('CriticalW(%s)',datestr(DATA.Coil.CriticalDate,'mm/yyyy'));
+    else
+        lstr = 'Critical Weight';
+    end
+    it = uicontrol(gcf,'style','text','string',lstr, ...
+    'units', 'norm', 'position',bp,'value',1);
 
 bp(1) = bp(1)+bp(3)+0.01;
     uicontrol(gcf,'style','edit','string',num2str(DATA.Coil.CriticalWeight), ...
         'Callback', {@MonkeyLogPopup, 'CriticalWeight'},'Tag','CriticalWeight',...
         'units', 'norm', 'position',bp);
+bp(1) = bp(1)+bp(3)+0.01;
+bp(3) = 0.99-bp(1);
+    uicontrol(gcf,'style','edit','string','', ...
+        'Callback', {@MonkeyLogPopup, 'Comment'},'Tag','Comment',...
+        'units', 'norm', 'position',bp);
 
+bp(3) = 1./nc;
     bp(1) = 0.01;
 bp(2) = bp(2)- 1./nr;
 uicontrol(gcf,'style','pushbutton','string','Save', ...
@@ -7548,6 +7640,12 @@ function val = GetValue(DATA,code)
 
 if isfield(DATA.binoc{1},code)
     val = DATA.binoc{1}.(code);
+elseif strcmp(code,'weightdate')
+    if ~isfield(DATA.Coil,code) 
+        val = NaN;
+    else
+        val = DATA.Coil.weightdate;
+    end
 else
     id = find(strcmp(code,DATA.vergonlycodes));
     if isempty(id)

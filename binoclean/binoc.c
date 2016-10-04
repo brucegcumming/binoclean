@@ -10883,6 +10883,35 @@ int PrintTrialResult(FILE *fd, char result)
     }
 }
 
+char *TrimStimLine(char *stimline, int mode)
+{
+    static char s[BUFSIZ];
+    char *t;
+
+    
+    if (stimline == NULL){
+        return(NULL);
+    }
+    t = strchr(stimline,':');
+    if (t == NULL)
+        strcpy(s, stimline);
+    else
+        strcpy(s, ++t);
+    t = strchr(s,' ');
+    if (t != NULL){
+        t = strchr(++t,' ');
+        if (t != NULL)
+            *t = 0;
+    }
+    if (mode == 1)
+        return(s);
+    else if (mode ==2){
+        if (strlen(++t) > 1){
+            return(t);
+        }
+    }
+}
+
 
 int PrintPsychLine(int presult, int sign, FILE *fd)
 {
@@ -10906,15 +10935,11 @@ int PrintPsychLine(int presult, int sign, FILE *fd)
         if(!SACCREQD(afc_s) && !(option2flag & PSYCHOPHYSICS_BIT))
             presult +=50;
         if (optionflags[MANUAL_EXPT]){
-            if (expt.stimline != NULL){
-                s = strchr(expt.stimline,':');
+            s = TrimStimLine(expt.stimline, 1);
             if (s == NULL)
-                fprintf(fd,"R%d%c %s", presult,c,expt.stimline);
-            else
-                fprintf(fd,"R%d%c %s", presult,c,++s);
-            }
-            else
                 fprintf(fd,"R%d%c ", presult,c);
+            else
+                fprintf(fd,"R%d%c %s", presult,c,s);
         }
         else if(abs(afc_s.ccvar) > 0.01 && expt.type2 == EXPTYPE_NONE)
             fprintf(fd,"R%d%c %s=%.5f %s=%.5f",
@@ -10948,6 +10973,12 @@ int PrintPsychLine(int presult, int sign, FILE *fd)
             sprintf(str,"%s %c=%.2f tid=%d x=0 x=0",str,afc_s.respdir,afc_s.rt,stimno);
         else
             sprintf(str,"%s %s",str,EyePosString());
+        if (optionflags[MANUAL_EXPT]){
+            s = TrimStimLine(expt.stimline, 2);
+            if (s != NULL && strlen(s) > 1)
+                fprintf(fd," %s",s);
+        }
+
         if(expt.type3 != EXPTYPE_NONE)
             fprintf(fd," %s=%.2f %s\n",serial_strings[expt.type3],expt.currentval[2],str);
         else if(expt.mode == TWOCYL_DISP)

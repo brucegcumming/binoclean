@@ -22,7 +22,7 @@ nframes = 200;
 noiseratio = 0;
 saveexptfile = 0;
 subspace = zeros(size(expts));
-prefix = '/local/Images/rds/'; %where images are writte
+prefix = '/local/Images/rds/'; %where images are written
 args = {'step'};
 ntrials = 0;
 Expt.nframes = 0;
@@ -49,6 +49,9 @@ while j <= length(varargin)
     elseif strncmp(varargin{j},'dx',2)
         j = j+1;
         dxs = varargin{j};
+    elseif strncmp(varargin{j},'name',4)
+        j = j+1;
+        name = varargin{j};
     elseif strncmp(varargin{j},'ndots',4)
         j = j+1;
         ndots = varargin{j};
@@ -155,7 +158,7 @@ elseif Expt.onelist %each value list is the same length - all combinations built
 else
     n = length(values{1}).*length(values{2}) .* Expt.nrpt;
     if Expt.nseeds > 0
-        expt.seeds = ceil(rand(1,n) .*  Expt.nseeds .* Expt.nframes);
+        Expt.seeds = ceil(rand(1,n) .*  Expt.nseeds .* Expt.nframes);
     end
     for in = 1:Expt.nrpt;
     for j = 1:length(values{1})
@@ -171,7 +174,7 @@ else
                 end
             end
             if Expt.nseeds > 0
-                AllS(ns).se = seeds(ns);
+                AllS(ns).se = Expt.seeds(ns);
             end
         end
         exvals(ns,1) = values{1}(j);
@@ -211,7 +214,7 @@ if saveexptfile
     save(Expt.filename,'Expt');
 end
 stim.WriteOrder(Expt.stimdir, Expt.stimorder, expts, Expt);
-fprintf('%d Trials (%d stim, %d pass)\n',length(Expt.stimorder),ns,npass);
+fprintf('%d Trials (%d stim, %d pass)\n',length(Expt.stimorder),ns,Expt.npass);
 
 
 function AllS = MakeSubSpace(expts, values, subspace, frequencies, Expt)

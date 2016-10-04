@@ -32,6 +32,7 @@ IRIGHTMONOC = -1002;
 end
 methods (Static)
     [E, AllS] = BuildExpt(type, varargin); 
+    [E, AllS] = CylPulse(dxs, pulset, pulsesz, varargin); 
          AllS = example(varargin); 
             s = Print(S, varargin);
       [b,l,r] = rds(sz,dxy,ndots,varargin);
