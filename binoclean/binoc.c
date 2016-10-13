@@ -554,6 +554,9 @@ void initial_setup()
     char *s,buf[BUFSIZ*10];
     Stimulus *new;
     
+//make sure seroutfile exists from the start, in case anything comes
+//from spike2 or verg before this is se up.
+    seroutfile = fopen("/local/binocserial.txt","w"); //don't need append - should be temporary
 	setgamma(1.22);
 	defaultflags[BINOCULAR_FIXPOINT] = 1;
 	defaultflags[STAIR_CENTER] = 1;

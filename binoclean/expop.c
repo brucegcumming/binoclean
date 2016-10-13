@@ -5947,6 +5947,7 @@ int ReadStimOrder(char *file)
         fprintf(seroutfile,"#Stimorder from %s fid%d\n",buf,fd->_file);
         while(fgets(buf, BUFSIZ * 2, fd) != NULL){
             s = buf;
+            fprintf(seroutfile,"#%s\n",buf);
 //If sequence gets split over lines by fgets, can start with space
             if (isdigit(s[0]) || (s[0] == ' ' && isdigit(s[1]))){
                 while(s){
@@ -5967,6 +5968,8 @@ int ReadStimOrder(char *file)
             else if (strncmp(s,"group",5) == NULL){
                 nt = 0;
                 s = &s[5];
+                while (isspace(*s))
+                    s++;
                 while(s){
                     ok = sscanf(s,"%d",&ival);
                     if (ok > 0){ // beware trailing whitespace
@@ -8069,6 +8072,14 @@ void InitExpt()
             }
         }
         fprintf(seroutfile,"\n#nset %d = %d * %d \n",expt.nstim[6]);
+        fprintf(seroutfile,"#SeqGroup");
+        for(i = 0; i < expt.nstim[6]; i++){
+            fprintf(seroutfile," %d",stimordertype[i]);
+            if (i%100 == 99){ //try to avoid v long lines.
+                fprintf(seroutfile,"\n#SeqGroup");
+            }
+        }
+        fprintf(seroutfile,"\n");
     }
     
     stimdurn = 0;
@@ -9569,7 +9580,7 @@ int PrepareExptStim(int show, int caller)
         fprintf(netoutfile,"#Prep%d %d %.3f id%d\n",stimno, stimorder[stimno],ufftime(&now),expt.allstimid);
     }
     if(seroutfile){
-        fprintf(seroutfile,"#Prep%c %d %d %.3f %d id%d\n",InExptChar,stimno, stimorder[stimno],ufftime(&now),caller,expt.allstimid);
+        fprintf(seroutfile,"#Prep%c %d %d(%d) %.3f %d id%d\n",InExptChar,stimno, stimorder[stimno],stimordertype[stimno],ufftime(&now),caller,expt.allstimid);
     }
 
     fakestim = 0;
