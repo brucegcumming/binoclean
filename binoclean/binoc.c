@@ -10969,7 +10969,7 @@ int PrintPsychLine(int presult, int sign, FILE *fd)
         if(microsaccade >0)
             sprintf(str,"%s(%,4f)=%.2f",serial_strings[SACCADE_DETECTED],microsaccdir, microsaccade);
         else if (optionflags[MANUAL_EXPT])
-            sprintf(str,"stid=%d",stimorder[stimno]);
+            sprintf(str,"stid=%d %s=%d",stimorder[stimno],serial_strings[SET_SEED],expt.st->left->baseseed);
         else
             sprintf(str,"%s=%d",serial_strings[SET_SEED],expt.st->left->baseseed);
         if (option2flag & PSYCHOPHYSICS_BIT)

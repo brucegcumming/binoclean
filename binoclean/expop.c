@@ -127,6 +127,8 @@ extern int shuffle_is_done;
 extern float monkeyhour;
 extern FILE *todaylog;
 
+char *serfilename = NULL;
+
 double fakestim =0;
 
 int usenewdirs=0;
@@ -2943,7 +2945,7 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
     time_t tval,nowtime;
     char *t,*r,buf[BUFSIZ],name[BUFSIZ],sfile[BUFSIZ],path[BUFSIZ],outbuf[BUFSIZ];
     char nbuf[BUFSIZ];
-    
+    int newfile = 0;
     s = nonewline(s);
     if (*s == NULL)
         return(0);
@@ -3130,8 +3132,13 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
             {
                 if(testflags[PLAYING_EXPT])
                     sprintf(sfile,"%s_replay",t);
-                else
+                else{
                     strcpy(sfile,t);
+                    if (serfilename == NULL || strcmp(sfile,serfilename)){
+                        serfilename = myscopy(serfilename, sfile);
+                        newfile = 1;
+                    }
+                }
 
                 
                 if((seroutfile = fopen(sfile,"a")) != NULL){
@@ -3139,7 +3146,10 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
                     fprintf(binoclog,"%s Serial Out to %s/%s\n",binocDateString(1),expt.cwd,sfile);
                     statusline(buf);
                     fprintf(stderr,"%s\n",buf);
-                    fprintf(seroutfile,"Reopened %s by binoc Version %s (newprefix)",ctime(&tval),VERSION_STRING);
+                    if (newfile)
+                        fprintf(seroutfile,"Reopened %s by binoc Version %s (newprefix)",ctime(&tval),VERSION_STRING);
+                    else
+                        fprintf(seroutfile,"Reopened %s by binoc Version %s (prefix reopen)",ctime(&tval),VERSION_STRING);
                     sprintf(buf,"Reopened (uf) %s",ctime(&tval));
                     SerialString(buf,NULL);
                     fflush(binoclog);
@@ -8855,7 +8865,7 @@ void ShuffleStimulus(int state)
     }
     temp = stimordertype[stimno];
     stimordertype[stimno] = stimordertype[stimno+i];
-    stimordertype[stimno+1] = temp;
+    stimordertype[stimno+i] = temp;
     
     stimseq[trialctr].a = stimorder[stimno];
     stimseq[trialctr].b = stimorder[stimno+i];  
@@ -16736,4 +16746,4 @@ int ReadPGM(char *name, PGM *pgm)
     len = fread(pgm->ptr,1,w*h,imfd);
     fclose(imfd);
     return(pgm->imlen);
-}
+    }

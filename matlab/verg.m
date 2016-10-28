@@ -641,7 +641,7 @@ for j = 1:length(strs{1})
                 eval(s);
                 SetData(DATA);
             catch ME
-                CheckExceptions(ME);
+                CheckExceptions(ME, DATA.cmdfid);
             end
             sendtobinoc = 0;
         elseif codelen > 8  % long lines from files
@@ -4105,7 +4105,7 @@ function CheckTrialDurations(DATA, varargin)
         fprintf('%d/%d trials were too long\n',sum(err > 1),length(err));
     end
 catch ME
-CheckExceptions(ME);
+CheckExceptions(ME, DATA.cmdfid);
 end
     
 function TextCallback(a,b)
@@ -5485,10 +5485,14 @@ function DATA = RunButton(a,b, type)
             DATA.rptexpts = 0;
             DATA.Expts{DATA.nexpts}.last = DATA.Trial.Trial;
             DATA.Expts{DATA.nexpts}.End = now;
-            ti = 1 + DATA.Trial.Trial-DATA.Expts{DATA.nexpts}.first;
-            DATA.optionflags.do = 0;
-            DATA = AddTextToGui(DATA,['Stopped after ' num2str(ti) ' Trials']);
-            DATA.exptstoppedbyuser = 1;
+            try
+                ti = 1 + DATA.Trial.Trial-DATA.Expts{DATA.nexpts}.first;
+                DATA.optionflags.do = 0;
+                DATA = AddTextToGui(DATA,['Stopped after ' num2str(ti) ' Trials']);
+                DATA.exptstoppedbyuser = 1;
+            catch ME
+                CheckExceptions(ME, DATA.cmdfid);
+            end
     end
     if DATA.inexpt ~= inexpt
             myprintf(DATA.frombinocfid,'-show','Expt Button (%s) Confused Inexpt is %d,%d. Trying again\n',caller,DATA.inexpt,inexpt);
@@ -5584,7 +5588,7 @@ else
         ServoDrive('label', sprintf('Penetration Not Set',S.Pn,S.Xp,S.Yp));
     end
     catch ME
-        CheckExceptions(ME);
+        CheckExceptions(ME, DATA.cmdfid);
     end
 end
 set(DATA.toplevel,'UserData',DATA);
