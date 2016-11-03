@@ -461,6 +461,7 @@ struct EXPERIMENT{
     char *stimline,*exptstring;
     int savedcode[MAXTOTALCODES]; // if value recorded at start expt
     int currentstim;
+    int selfrepeat;
 };
 
 typedef struct EXPERIMENT Expt;

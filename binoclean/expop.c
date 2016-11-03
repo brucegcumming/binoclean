@@ -1697,6 +1697,7 @@ void ExptInit(Expt *ex, Stimulus *stim, Monitor *mon)
     expt.totalcodes = i;
     expt.maxcode = ncodes-1;
     expt.currentstim = 1;
+    expt.selfrepeat = 0;
     
 // serial_stings[i] gives the string associated with code i
     serial_strings = (char**)(malloc(sizeof(char *) * ncodes));
@@ -4975,6 +4976,11 @@ int ReadCommand(char *s)
             fprintf(stderr,"Cant runexpstim while in stim\n");
         }
     }
+    else if(!strncasecmp(s,"selfrepeat",8)){
+        if ((r = strchr(s,'=')) != NULL){
+            sscanf(r,"=%d",&expt.selfrepeat);
+        }
+    }
     else if(!strncasecmp(s,"savemovie",8)){ // toggle on/off saving screen images
         if ((r = strchr(s,'=')) != NULL)
             strcpy(ImageOutDir,nonewline(&r[1]));
@@ -7604,7 +7610,7 @@ int MakeString(int code, char *cbuf, Expt *ex, Stimulus *st, int flag)
             if (flag != TO_BW)
                 sprintf(cbuf,"%s%s%.2f (%.2f)",scode,temp,expt.st->fix.fixrwsize,expt.st->fix.rwsize); //show fixed level and current
             else
-                sprintf(cbuf,"%s%s%.2f",scode,temp,expt.st->fix.rwsize);
+                sprintf(cbuf,"%s%s%.4f",scode,temp,expt.st->fix.rwsize);
             
             break;
 #endif
@@ -16239,8 +16245,12 @@ int InterpretLine(char *line, Expt *ex, int frompc)
         case SHAKE_TIMEOUT_DURATION:
             i = sscanf(s,"%f %f",&val,&fval);
             SetProperty(ex, TheStim,code, val);
-            if (i > 1 && fval > 0)
-                expt.vals[SHAKE_TIMEOUT_DURATION2] = fval;
+            if (i > 1 && fval > 0){
+                    if (fval > val)
+                        expt.vals[SHAKE_TIMEOUT_DURATION2] = fval;
+                    else
+                        expt.vals[SHAKE_TIMEOUT_DURATION2] = val;
+            }
             break;
         case TOTAL_REWARD:
             sscanf(s,"%f",&val);

@@ -574,6 +574,7 @@ void initial_setup()
     new = TheStim;
 
 	StimulusType(TheStim, STIM_GRATING);
+    SetStimulus(TheStim, 1.0, STIM_SIZE, NOEVENT); //set non-zero size to initialise
     NewStimulus(TheStim);
     StimulusType(TheStim->next, STIM_NONE);
     TheStim->next->prev = TheStim;
@@ -6766,6 +6767,12 @@ int next_frame(Stimulus *st)
                 stimstate = INTERTRIAL;
             else if ( optionflag & GO_BIT)
                 stimstate = INTERTRIAL;
+            else if(expt.selfrepeat > 0){
+                stimstate = INTERTRIAL;
+                TheStim->mode |= EXPTPENDING;
+                optionflag |= GO_BIT;
+            }
+            
             if(timeout_type == SHAKE_TIMEOUT_PART2){
                 paint_timeout(timeout_type);
                 if(val  > expt.vals[SHAKE_TIMEOUT_DURATION2]){
@@ -12152,6 +12159,12 @@ void expt_over(int flag)
         statusline(buf);
     }
     UpdateNetworkFile(expt, 1);
+    if (expt.selfrepeat > 0 && flag != CANCEL_EXPT){
+        fprintf(seroutfile,"#Repeating Expt (%d) to go\n",expt.selfrepeat);
+        expt.selfrepeat--;
+        expt.st->mode |= (EXPTPENDING);
+        optionflag |= GO_BIT;
+    }
 
 }
 

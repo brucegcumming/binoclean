@@ -576,6 +576,9 @@ void paint_cylinder(Stimulus *st, int mode, double subtracting)
     else 	
     	cyl->direction_r = 1;	
     
+    if (balls == NULL){
+        return;
+    }
     w = hdotsize[X] = cyl->dotsiz[X]/2;
     h = hdotsize[Y] = cyl->dotsiz[Y]/2;
     lw = w;

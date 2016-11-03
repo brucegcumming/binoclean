@@ -12,6 +12,10 @@ if length(varargin) & ishandle(varargin{1})
         f = get(f,'parent');
     end
     DATA = get(f,'UserData');
+    if ~isfield(DATA,'tag')
+        f = findobj(allchild(0),'flat','tag','vergwindow');
+        DATA = get(f,'UserData');        
+    end
     varargin = varargin(3:end);
 else
     checkforrestart = 1;
@@ -223,6 +227,8 @@ while j <= length(varargin)
         ts = now;
         SetGui(DATA);
         mytoc(ts);
+    elseif strncmpi(varargin{j},'slowtimer',5)
+        ReadIO(DATA,[],'slowtimer');
     elseif strncmpi(varargin{j},'getstate',5)
         ts = now;
         DATA = GetState(DATA,'commandline');
@@ -2485,6 +2491,7 @@ DATA.state.stimfile = '';
 DATA.state.query = 0;
 DATA.state.dlgup = 0;
 DATA.state.penwarned = 0;
+DATA.state.checksave = 1;
 DATA.currentrw = 0;
 DATA.Header.dailyvars = {'id' 'se' 'ed' 'Rx' 'Ry' 'Ro' 'Rw' 'Rh' 'Xp' 'Yp' 'Pn' 'pe' 'Electrode' 'hemi'...
                         'ui' 'ePr' 'eZ' 'monkey' 'coarsemm' 'adapter' 'Trw' 'Tg' 'nT' 'Tb' 'uf' 'fx' 'fy' 'so' 'oldrf'};
@@ -3324,6 +3331,7 @@ function DATA = InitInterface(DATA)
     uimenu(subm,'Label','GetState','Callback',{@ReadIO, 2});
     uimenu(subm,'Label','NewStart','Callback',{@ReadIO, 3});
     uimenu(subm,'Label','Stop Timer','Callback',{@ReadIO, 4});
+    uimenu(subm,'Label','Slow Timer','Callback',{@ReadIO, 'slowtimer'});
     sm = uimenu(subm,'Label','Check Timer','Callback',{@CheckTimerHit, 0});
     sm = uimenu(subm,'Label','Start Timer','Callback',{@ReadIO, 5},'foregroundcolor',[0 0 0.5]);
     sm = uimenu(subm,'Label','Verbose');
@@ -4556,6 +4564,25 @@ function DATA = AddComment(DATA, str, src)
     if strcmp(flag,'openlog')
         DATA = OpenBinocLog(DATA,'frombinoc');
         SetData(DATA);
+    elseif strcmp(flag,'slowtimer')
+        p = get(DATA.timerobj,'Period');
+        if p > DATA.timerperiod
+            SetTimerRate(DATA,DATA.timerperiod);
+            if ishandle(a)
+                set(a,'Checked','Off');
+            else
+                fprintf('Set Timer period to %.2f\n',DATA.timerperiod);
+            end
+            outprintf(DATA,'#Timer resumed at %s',datestr(now));
+        else
+            SetTimerRate(DATA,5);
+            if ishandle(a)
+                set(a,'Checked','On');
+            else
+                fprintf('Set Timer period to %.1fsec\n',5);
+            end
+            outprintf(DATA,'#Timer Slowed at %s',datestr(now));
+        end
     elseif flag == 2
          ts = now;
          DATA = GetState(DATA,'ReadIO',1);
@@ -4571,13 +4598,15 @@ function DATA = AddComment(DATA, str, src)
         SetGui(DATA);
         start(DATA.timerobj);
      elseif flag == 4
-        stop(DATA.timerobj)
-     elseif flag == 5
+        stop(DATA.timerobj);
+        outprintf(DATA,'#Timer Stopped at %s',datestr(now));
+     elseif flag == 5 %Start timer
         DATA = ReadFromBinoc(DATA,'reset');   
         outprintf(DATA,'\neventcontinue\nEDONE\n');
         setappdata(DATA.toplevel,'WaitingForDlg',0);
         if ~strcmp(get(DATA.timerobj,'Running'),'on')
-        start(DATA.timerobj);
+            start(DATA.timerobj);
+            outprintf(DATA,'#Timer started at %s',datestr(now));
         end
      elseif flag == 6  % Reopen pipes
         stop(DATA.timerobj);
@@ -5381,12 +5410,15 @@ function DATA = RunButton(a,b, type)
 %if storage is off, and correct smr file is open, check that user means it                
                 if isfield(DATA.binoc{1},'uf') && ~isempty(DATA.smrfile)
                     if strncmp(DATA.smrfile,DATA.binoc{1}.uf,length(DATA.binoc{1}.uf))
-                        if DATA.optionflags.ts == 0
-                            yn = gui.Dlg(sprintf('smr file %s is open - Did you want storage on?',DATA.smrfile),DATA.toplevel);
+                        if DATA.optionflags.ts == 0 && DATA.state.checksave
+                            qus = {'Yes' 'No' 'Dont Ask Again'};
+                            yn = gui.Dlg(sprintf('smr file %s is open - Did you want storage on?',DATA.smrfile),DATA.toplevel,qus);
                             if strcmp(yn,'Yes')
                                 DATA.optionflags.ts = 1;
                                 SendCode(DATA,'optionflag');
                                 SetGui(DATA);
+                            elseif strcmp(yn,qus{3})
+                                DATA.state.checksave = 0;
                             end
                         end
                     end
@@ -8655,6 +8687,11 @@ function DATA = PlotPsych(DATA, Expts)
     end
     DATA.Expt = Expt;
     
+function DATA = SetTimerRate(DATA, period)
+    stop(DATA.timerobj);
+    set(DATA.timerobj,'Period',period);
+    start(DATA.timerobj);
+
     
 function DATA = CheckTimer(DATA)
     
