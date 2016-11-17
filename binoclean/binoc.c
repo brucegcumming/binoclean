@@ -140,7 +140,7 @@ int freezestimulus = 0;
 
 #define DEBUG_CONJ_TIME (1<<1)
 
-int winsiz[2] = {0,0}; /* let X decide */
+extern int winsiz[2] = {0,0}; /* let X decide */
 int winpos[2] = {0,0};
 int fwinsiz[2],fwinoff[2];
 vcoord psychoff[2];
@@ -256,9 +256,9 @@ float videocapture[4] = {0, 0, 1280, 1024};
 
 long optionflag;
 long option2flag = PRETRIAL_BRIGHT;
-int optionflags[MAXALLFLAGS];
-int oldoptionflags[MAXALLFLAGS];
-int defaultflags[MAXALLFLAGS] = {0};
+int optionflags[MAXALLFLAGS+1];
+int oldoptionflags[MAXALLFLAGS+1] = {0};
+int defaultflags[MAXALLFLAGS+1] = {0};
 int testflags[NTESTFLAGS] = {0};
 
 int states[NSTATEFLAGS] = {0};
@@ -293,7 +293,8 @@ extern unsigned long charsread;
 extern int trialctr;
 extern int command_pending;
 extern /*Ali Cursor */ int thecursor;
-extern FILE *seroutfile,*penlog,*rcfd,*psychfile,*netoutfile;
+extern FILE *seroutfile,*penlog,*rcfd,*psychfile;
+extern FILE *netoutfile;
 extern int ranright,  ranleft, ranleftc, ranrightc,trialcnt;
 extern int ttys[];
 extern int laststimno,stimno;
@@ -315,7 +316,7 @@ int duration = 0;
 int stimstate = 0;
 int fixstate = 0;
 int stopgo = 0;
-int testcount[5];
+int testcount[50];
 
 /*Ali Display */ int D;
 static int      S;

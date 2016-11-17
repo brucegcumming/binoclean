@@ -15,7 +15,7 @@
 
 extern Expt expt;
 extern NSMutableArray * inputPipeBuffer;
-NSString * outputPipeBuffer;
+extern NSString * outputPipeBuffer;
 BOOL dataReadyInInputPipe;
 char *DescribeState(char caller);
 extern int inexptstim,innotify,ReadingInputPipe;
@@ -23,7 +23,7 @@ extern FILE *seroutfile;
 int AddingToInputPipe = 0,AddingToOutputPipe = 0;;
 static int notifyclash = 0;
 extern struct timeval firstframetime,zeroframetime,exptstimtime;
-struct timeval lastcalltime; //keep track of when this is called, to check that its not interupting expts
+extern struct timeval lastcalltime; //keep track of when this is called, to check that its not interupting expts
 int checkinexpt = 0;
 // Log levels : off, error, warn, info, verbose
 // Other flags: trace

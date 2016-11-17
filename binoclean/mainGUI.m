@@ -8,8 +8,8 @@
 
 #import "mainGUI.h"
 
-char * stimulus_names [];
-Expt expt;
+extern char * stimulus_names [];
+extern Expt expt;
 
 @implementation mainGUI
 

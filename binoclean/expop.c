@@ -12754,6 +12754,8 @@ int RunExptStim(Stimulus *st, int n, /*Ali Display */ int D, /*Window */ int win
                     aval = frametimes[framesdone];
                 }
                 }
+                if (framesdone == 0) // for debuggingf
+                    aval = changeframedur;
             }
             else
                 framecounts[framesdone] = rc;

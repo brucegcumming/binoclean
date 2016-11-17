@@ -9,13 +9,13 @@
 
 #import "binocleanAppDelegate.h"
 
-Expt expt;
+extern Expt expt;
 //int stimstate;
-BOOL dataReadyInInputPipe;
+extern BOOL dataReadyInInputPipe;
 char * inputLineChars = NULL;
-int winsiz [2];
-int winpos [2];
-int fullscreenmode;
+extern int winsiz [2];
+extern int winpos [2];
+extern int fullscreenmode;
 extern int useDIO;
 int freeToGo = 1;
 extern int inexptstim;

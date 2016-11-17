@@ -41,7 +41,8 @@ TTY save_ta;
 //Ali struct termio save_t;
 //Ali struct termio save_ta;
 //Ali #endif
-FILE *seroutfile,*serintest,*netoutfile;
+FILE *seroutfile,*serintest;
+extern FILE *netoutfile;
 int totalcharsin;
 unsigned long charsread = 0;
 char longlist[BUFSIZ*10];

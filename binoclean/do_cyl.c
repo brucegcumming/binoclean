@@ -167,6 +167,7 @@ void fill_balls(int ndots, ball_s *balls, int flag, int lifeframes, float correl
 	int i;
 	double drnd;
 	int needright = 0;
+    float a;
     
     if (correlation < 1)
         needright = 1;
@@ -191,10 +192,14 @@ void fill_balls(int ndots, ball_s *balls, int flag, int lifeframes, float correl
 	}
 	else{
 		for (i = 0; i < ndots; i++) {
-			balls[i].pos[X] = sinf(M_PI * (mydrand() - 0.5)); /* sin(-pi/2 -> pi/2 */
+            a = M_PI * (mydrand() - 0.5);
+			balls[i].pos[X] = sinf(a); /* sin(-pi/2 -> pi/2 */
+            balls[i].angle[X] = a;
 			drnd = mydrand();
 			balls[i].pos[Y] = 2.0 * (drnd - 0.5); /* -1 to +1 */
             if (needright){
+                a = M_PI * (mydrand() - 0.5);
+                balls[i].angle[RX] = a;
                 balls[i].pos[RX] = sinf(M_PI * (mydrand() - 0.5)); /* sin(-pi/2 -> pi/2 */
                 drnd = mydrand();
                 balls[i].pos[RY] = 2.0 * (drnd - 0.5); /* -1 to +1 */
@@ -976,7 +981,7 @@ void draw_dot(float rotatefactor[XY], float hdotsize[XY], float xpos, float ypos
 
 void calc_cyl_motion(ball_s *balls, float vel, int ndots, int flag, int lifeframes, float deathchance, int width, int mode, float preverse)
 {    
-    float delta, fraction, sign, rnd;
+    float delta, fraction, sign, rnd,a;
     int i;
     int xi = X,yi = Y;
     
@@ -985,6 +990,10 @@ void calc_cyl_motion(ball_s *balls, float vel, int ndots, int flag, int lifefram
         yi = RY;
     }
     for (i = 0; i < ndots; i++) {
+/*
+ *  pos goes +- 1. so asin(pos) is current angular position (0 = at apex in center)
+ *  cos(asin(pos)) is tangent vector
+ */
         balls[i].proportion[xi] = cos(asin(balls[i].pos[xi])); /* sinusoidal variation from -1 -> 1 */
         if (flag & FLAT_SURFACES) {
 		    if (flag & COUNTDOWN){
@@ -1017,15 +1026,23 @@ void calc_cyl_motion(ball_s *balls, float vel, int ndots, int flag, int lifefram
                 if ((rnd = mydrand()) < preverse) {
                         balls[i].left_right[xi]*=-1;		/* swaps LEFT and RIGHT  so will change disparity */
                     }
-                        else if((rnd = mydrand()) < deathchance){
-                            balls[i].pos[xi] = sinf(M_PI * (mydrand() - 0.5)); /* sin(-pi/2 -> pi/2 */
-                            balls[i].pos[yi] = (2.0) * (mydrand() - 0.5);
-                            nreplaced++;
-                        }
+               else if((rnd = mydrand()) < deathchance){
+                   a = (M_PI * (mydrand() - 0.5));
+                   balls[i].angle[X] = a;
+                   balls[i].pos[xi] = sinf(a); /* sin(-pi/2 -> pi/2 */
+                   balls[i].pos[yi] = (2.0) * (mydrand() - 0.5);
+                   
+                   nreplaced++;
+                 }
                 delta = fabsf(vel * balls[i].proportion[xi]);  	/* theta=asin(x)/r, dotvel=cos(theta)) */
         }
+//multiplying by delta here seems to use small angle approximation !!. But this
+// is for delta  assumes delta ~= sin(delta) which is good, as its per frame
+//Because imsize is passed as widht, rather than radius, speed is actually double.
+        a = balls[i].pos[xi];
         balls[i].pos[xi] += (balls[i].left_right[xi] * delta)/width*1000; 		/* adds or subtracts delta */
-        
+        balls[i].angle[X] = balls[i].angle[X] + vel;
+        a = asin(balls[i].pos[xi]);
         if ((balls[i].pos[xi] >= 1.0) || (balls[i].pos[xi] <= -1.0)) {
             fraction = (modff(balls[i].pos[xi], &sign));
             balls[i].pos[xi] = sign - fraction;

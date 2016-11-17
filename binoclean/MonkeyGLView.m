@@ -11,7 +11,7 @@
 #import "drawinfo.h"
 #import "stimdefs.h"
 
-int winsiz [2];
+extern int winsiz [2];
 
 
 recVec gOrigin = {0.0, 0.0, 0.0};

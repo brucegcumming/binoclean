@@ -24,6 +24,7 @@ typedef struct monitor{
 #include "jondefs.h"
 typedef struct  {
     float pos[XY];
+    float angle[XY];
     float countdown;
     int left_right[XY];
     float proportion[XY];
