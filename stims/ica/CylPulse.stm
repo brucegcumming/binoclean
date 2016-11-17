@@ -1,4 +1,4 @@
 st=cylinder
 op=+exm
-!mat=stim.CylPulse([0],[30 60 90],[-0.2 0.2],'nframes',120, 'nseeds', 1000,'nrpt',5);
+!mat=stim.CylPulse([-0.0075:0.0025:0.0075],[1 210],[-0.2 0.2],'nframes',120, 'nseeds', 1000,'nrpt',1);
 psychfile=/local/data/psych/ica/CylPulseDATE

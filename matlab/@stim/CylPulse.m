@@ -1,4 +1,4 @@
-function [Expt, AllS] = CylPulse(dxs, pulset, pulsesz, varargin)
+ function [Expt, AllS] = CylPulse(dxs, pulset, pulsesz, varargin)
 %AllS = stim.CylPulse(dxs, pulset, pulsesz)  make cylinder disparity expt
 %   with pulses 
 

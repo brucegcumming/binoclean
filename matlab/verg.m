@@ -1270,7 +1270,7 @@ for j = 1:length(strs{1})
         id = [];
         xid = [];
         if isfield(DATA.quickexpts,'filename') %check we don't alreayd have this
-            id = find(strcmp(s,{DATA.quickexpts.filename}));
+            id = find(strcmp(s,{DATA.quickexpts.filename}) & strcmp(submenu,{DATA.quickexpts.submenu}));
             xid = find(strcmp(b,{DATA.quickexpts.name}));
         end
 %when binoc echose back the qe list, stimdir instrutions from the stim file are
@@ -2504,7 +2504,7 @@ DATA.runsequence = 0;
 DATA.canceltimer = 0;
 DATA.pausereading = 0;  %stop timer driven reads when want to control
 DATA.binocisup = 0;
-DATA.pcdrive = '';
+DATA.pcdrive = 'E:'; %default
 DATA.savestrs = 0;
 DATA.restartbinoc = 0;
 DATA.vergversion=vergversion();
