@@ -1422,7 +1422,7 @@ void calc_stimulus(Stimulus *st)
             else
                 st->nimseed = 1000;
             calc_image(st, st->left);
-            if (st->flag & UNCORRELATE || st->immode == IMAGEMODE_LEFTRIGHT)
+            if (st->flag & UNCORRELATE || st->immode == IMAGEMODE_LEFTRIGHT || st->immode == BINOCULAR_SPACETIME_IMAGES)
                 calc_image(st, st->right);
             break;
         case STIM_SQUARE:

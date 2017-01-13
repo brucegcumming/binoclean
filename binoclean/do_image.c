@@ -377,6 +377,16 @@ int calc_image(Stimulus *st, Substim *sst)
         }
         sprintf(imname,"%s/se%d.pgm",impref,seed);
     }
+    else if(st->immode == BINOCULAR_SPACETIME_IMAGES){
+        seed = sst->imagei;
+        if (st->seedoffset > 0)
+            seed += st->seedoffset;
+        sprintf(imname,"%s%.*d%c.pgm",st->imprefix,st->nimplaces,seed,eye);
+        if(st->xstate == INTERLEAVE_EXPT_BLANK || ori == INTERLEAVE_EXPT_BLANK){
+            imageseed[st->framectr] = INTERLEAVE_EXPT_BLANK;
+            return(0);
+        }
+    }
     else if(st->immode == BINOCULAR_PLAIN_IMAGES){
         seed = sst->imagei;
         if (st->seedoffset > 0)
@@ -490,12 +500,128 @@ int ShiftImage(int frame, int x, int y)
 
 }
 
+int paint_1dImage(Stimulus *st, Substim*sst, frame)
+{
+    int i=0;
+    GLubyte *im,*lineim;
+    
+    
+        int *p,d,*end;
+        vcoord  w,h,*x,*y,fw,fh;
+        vcoord z[2];
+        short pt[2];
+    float pxy[2];
+    int co = -1;
+        float vcolor[4], bcolor[4];
+        vcoord xmv;
+        Locator *pos = &st->pos;
+        float angle,cosa,sina;
+        vcoord rect[8],crect[8];
+    int mode = sst->mode;
+    int ci; //index of color chan to set
+    
+    im = images[0];
+    lineim = im + (frame%imagehs[0])*imagews[0];
+    angle = rad_deg(pos->angle);
+        /*
+         * first glTranslatef the co-ordinate system to put the stimulus
+         * in the right place/orientation. Use different colors for
+         * L/R dots
+         */
+        
+        glPushMatrix();
+        vcolor[0] = vcolor[1] = vcolor[2] = 0;
+        bcolor[0] = bcolor[1] = bcolor[2] = 0;
+        if(mode == LEFTMODE)
+        {
+            xmv = pos->xy[0]+st->disp;
+            glTranslatef(xmv,pos->xy[1]+st->vdisp,0);
+            vcolor[0] = sst->lum[0];
+            bcolor[0] = sst->lum[1];
+            ci = 0;
+        }
+        else if(mode == RIGHTMODE)
+        {
+            sst = st->right;
+            xmv = pos->xy[0]-st->disp;
+            glTranslatef(xmv,pos->xy[1]-st->vdisp,0);
+            vcolor[1] = vcolor[2] = sst->lum[0];
+            bcolor[1] = bcolor[2] = sst->lum[1];
+            ci = 2;
+        }
+        if(optionflags[STIMULUS_IN_OVERLAY])
+        {
+            vcolor[1] = vcolor[2] = vcolor[0] = sst->lum[0];
+            bcolor[1] = bcolor[2] = bcolor[0] = sst->lum[1];
+            if (mode == RIGHTMODE)
+                co = 1;
+        }
+        bcolor[3] = vcolor[3] = 1.0;
+        glRotatef(angle,0.0,0.0,1.0);
+        
+        mycolor(vcolor);
+        w = sst->dotsiz[0]/2;
+        h = sst->dotsiz[1]/2;
+        fw = sst->dotsiz[1];
+        fh = sst->dotsiz[0];
+        
+        h = h - 0.5;
+
+        
+        p = sst->iim;
+        end = (sst->iim+sst->ndots);
+        x = sst->xpos;
+        y = sst->ypos;
+        i = 0;
+        /* now paint the lines */
+        
+        p = sst->iim;
+        x = sst->xpos;
+        y = sst->ypos;
+        glDisable(GL_BLEND);
+        glDisable(GL_LINE_SMOOTH);
+        glLineWidth(fw*1.5);
+        
+        if(optionflag & ANTIALIAS_BIT)
+        {
+            glEnable(GL_BLEND);
+            glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glEnable(GL_LINE_SMOOTH);
+            glLineWidth(fw*2);
+        }
+        
+        glBegin(GL_LINES);
+        i = 0;
+    pxy[0] = 0;
+    pxy[1] = -imagews[0]/2;
+    for(i = 0; i < imagews[0]; i++)
+        {
+            vcolor[ci] = lineim[i]/256.0;
+            if (co >= 0)
+                vcolor[co] = vcolor[ci];
+                
+            mycolor(vcolor);
+                z[0] = pxy[0]+pos->radius[0];
+                z[1] = pxy[1];
+                myvx(z);
+                z[0] = pxy[0]-pos->radius[0];
+                z[1] = pxy[1];
+                myvx(z);
+            pxy[1] = pxy[1]+1;
+        }
+        glEnd();
+        glPopMatrix();
+    }
+
+
 int paint_image(Stimulus *st, Substim *sst)
 {
     int w,h,frame,x,y;
     GLfloat rasterpos[4];
+    int forcetest = 0;
     
     double c;
+
     if(st->xstate == INTERLEAVE_EXPT_BLANK || imageseed[st->framectr] < 0){
         if (imageseed[st->framectr] == -1) // don't clear, just leave image up
             return(0);
@@ -513,12 +639,21 @@ int paint_image(Stimulus *st, Substim *sst)
         if(st->preload & frame > st->preloaded)
             frame = st->preloaded;
     }
+    
+    if (st->immode == IMAGEMODE_ORBW){ //test
+        forcetest = 1;
+    }
+    
     /*
      if(optionflags[FAST_SEQUENCE] & expt.vals[FAST_SEQUENCE_RPT] > 1)
      frame = floor(st->framectr/expt.vals[FAST_SEQUENCE_RPT]);
      */
     frame = frame % MAXFRAMES; // in case set nf > MAXFRAMES
     if(st->stimid > -1000){
+        if (st->immode == BINOCULAR_SPACETIME_IMAGES || forcetest){
+            paint_1dImage(st, sst, frame);
+            return(0);
+        }
         glPixelZoom(1.0,-1.0);
         if(st->preload){
             w= imagews[frame];

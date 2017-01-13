@@ -1039,8 +1039,7 @@ void calc_cyl_motion(ball_s *balls, float vel, int ndots, int flag, int lifefram
 //multiplying by delta here seems to use small angle approximation !!. But this
 // is for delta  assumes delta ~= sin(delta) which is good, as its per frame
 //Because imsize is passed as widht, rather than radius, speed is actually double.
-        a = balls[i].pos[xi];
-        
+        a = balls[i].pos[xi];    
         balls[i].pos[xi] += (balls[i].left_right[xi] * delta)/width*1000; 		/* adds or subtracts delta */
         balls[i].angle[X] = balls[i].angle[X] + vel;
         a = asin(balls[i].pos[xi]);

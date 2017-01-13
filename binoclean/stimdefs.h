@@ -667,7 +667,7 @@ long rnd_i(void);
 #define IMAGEMODE_LEFTRIGHT 0
 #define IMAGEMODE_ORBW 1
 #define BINOCULAR_PLAIN_IMAGES 2
-
+#define BINOCULAR_SPACETIME_IMAGES 3
 #define MAXORBW 126
 
 

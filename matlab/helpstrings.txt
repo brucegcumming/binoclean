@@ -209,7 +209,9 @@ jn Number of dots making a cylinder. Read only
 js For cylinders, adds an absolute disparity to the whole cylinder. 
 Jt  0 = fixpt moves paraelle, 1 = fixpt orthog.  2 = stim moves para, 3 = stim moves ortho
 jt size of choice target markers.
-jv Drift speed of dots in RLS, lines in RLS. For Cylinder sets speed of axial rotation (360 = one complete rotation per second)
+jv Drift speed of dots in RLS, lines in RLS. For Cylinder sets speed of axial rotation (but 180 = one complete rotation per second)
+#180/360 is for historical reasons.  Peak dot velocity is 2 * pi * W * jv/260 degrees/sec
+#where W is the FULL width of the stimulus (parameter wi)
 jx p(dot dies) to control dot lifetime in cylinder
 LB Expt Type only. Sets monoc expt with L and binoc
 lb minimum duration after fixation achieved before first stimulus shown.

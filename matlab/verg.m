@@ -1174,6 +1174,8 @@ for j = 1:length(strs{1})
                 DATA.Trial.good = 1;
             elseif(s(6) == 'W')
                 DATA.Trial.good = -1;
+            elseif(s(6) == 'L')
+                DATA.Trial.good = -2;
             else
                 DATA.Trial.good = 0;
             end
@@ -8634,8 +8636,14 @@ function DATA = PlotPsych(DATA, Expts)
         eargs = {'collapse' DATA.psych.collapse};
         if DATA.psych.trialresult
             plot([Expt.Trials.Start],[Expt.Trials.good],'o');
-            datetick('x','hh:mm');
+            if length(Expt.Trials) > 10
+                hold on;
+                gid = double([Expt.Trials.good]>0);
+                plot([Expt.Trials.Start],smooth(gid,10),'k-');
+                hold off;
+            end
             axis('tight');
+            datetick('x','hh:MM');
         elseif DATA.psych.showblocks
             ExptPsych(Expts(expts),'labelblock','nmin',2, 'mintrials', 2, 'shown', eargs{:});
         else

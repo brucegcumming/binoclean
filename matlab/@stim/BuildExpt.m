@@ -1,10 +1,25 @@
 function [Expt, AllS] = BuildExpt(expts, values, varargin)
-%Expt = stim.BuildExpt(expts, values, varargin) Set up a manual experiment that uses images build
-%by matlab
+%Expt = stim.BuildExpt(expts, values, varargin) build stim files for a manual experiment
+%values is a cell array of variable names
 %...,'npass') sets the number of times each image is shown
-%...,'nrpt')  set the number of equivalent images (same parameters) that
+%...,'nrpt')  set the number of equivalent stim files to make for each expt
+%            If stimulus repeats are identical, do not need this - set
+%            'npass' for number of repeat presnentations
+%...,'nseeds') sets seed value in each stim file. With RLS/RDS and npass > 0
+%              need to set this so that seed is repeated
 %are built;
+%example
+%stim.BuildExpt({'dx' or'}, {[-0.5:0.1:0.5] [-90:45:90]},'basedir','/local/Expts/Dispor')
 %
+%Stimuli made. A stimuus is built for each combination of values{1} and values{2}
+%if values has a third element, this must be the same length as values{2}.
+%The number of stimuli build is still lenght(values{1}) * length(values{2})
+%but each stimfile will set  values{2} and values{3}. For example
+%Expt = stim.BuildExpt({'or' 'dx' 'me'}, {[0:30:360] [-0.1 0 0.1 0 0] [0 0 0 -1 1]})
+%  will present each orientation binocularlr at the three disparities, and
+% monocularly with zero disparity.  With this syntax, the values can be any
+% length - values{2} to values{n} all have the same length, so the contents
+%of these vectors determine which combinations are made
 name = 'MatExpt';
 Expt.stimdir = '';
 nr = 0;
@@ -30,6 +45,7 @@ Expt.nseeds =0;
 Expt.onelist = 0;
 showvars = {};
 frequencies = {};
+rndvars = {};
 j = 1;
 while j <= length(varargin)
     if isstruct(varargin{j}) && isfield(varargin{j},'expttype')
@@ -70,6 +86,8 @@ while j <= length(varargin)
     elseif strncmp(varargin{j},'nseeds',4)
         j = j+1;
         Expt.nseeds = varargin{j};
+    elseif strncmp(varargin{j},'onelist',4)
+        Expt.onelist = 1;
     elseif strncmp(varargin{j},'ratio',5)
         j = j+1;
         noiseratio = varargin{j};
@@ -85,6 +103,11 @@ while j <= length(varargin)
     elseif strncmp(varargin{j},'subspace',7)
         j = j+1;
         subspace = varargin{j};
+    elseif strncmp(varargin{j},'randvar',5)
+        j = j+1;
+        rndvars{end+1} = varargin{j};
+        j = j+1;
+        rndvals{length(rndvars)} = varargin{j};
     elseif strncmp(varargin{j},'show',4)
         j = j+1;
         showvars = {showvars{:} varargin{j}};
@@ -111,7 +134,7 @@ Monitor = binoc.GetMonitor;
 if ~isempty(Monitor)
     args = {args{:} 'Monitor' Monitor};
 end
-stimvars = expts;
+stimvars = {expts{:} rndvars{:}};
 a = stimvars{1};
 b = stimvars{2};
 ns = 0;
@@ -123,6 +146,9 @@ if ~isfield(Expt,'nrpt')
     else
         Expt.nrpt = 1;
     end
+end
+if Expt.nframes <= 0
+    Expt.nframes = 100;
 end
 if subspace(1) && subspace(2)
     AllS = MakeSubSpace(expts, values, subspace, frequencies, Expt);
@@ -136,6 +162,8 @@ elseif Expt.onelist %each value list is the same length - all combinations built
             laps = 1;
             npass = Expt.nrpt;
         end
+    n = length(values{1}) .* Expt.nrpt;
+    seeds = ceil(rand(1,n) .*  Expt.nseeds .* Expt.nframes);
     for in = 1:laps;
     for j = 1:length(values{1})
         ns = ns+1;
@@ -150,6 +178,10 @@ elseif Expt.onelist %each value list is the same length - all combinations built
         if Expt.nseeds > 0
             AllS(ns).se = seeds(ns);
         end
+        for m = 1:length(rndvars)
+            x = ceil(rand(1,1) .* length(rndvals{m}));
+            AllS(ns).(rndvars{m}) = rndvals{m}(x);
+        end
     end
     exvals(ns,1) = values{1}(j);
     exvals(ns,2) = values{2}(j);
@@ -158,7 +190,11 @@ elseif Expt.onelist %each value list is the same length - all combinations built
 else
     n = length(values{1}).*length(values{2}) .* Expt.nrpt;
     if Expt.nseeds > 0
-        Expt.seeds = ceil(rand(1,n) .*  Expt.nseeds .* Expt.nframes);
+        if Expt.nframes > 0
+            Expt.seeds = ceil(rand(1,n) .*  Expt.nseeds .* Expt.nframes);
+        else
+            Expt.seeds = ceil(rand(1,n) .*  Expt.nseeds .* 200);
+        end
     end
     for in = 1:Expt.nrpt;
     for j = 1:length(values{1})
@@ -175,6 +211,10 @@ else
             end
             if Expt.nseeds > 0
                 AllS(ns).se = Expt.seeds(ns);
+            end
+            for m = 1:length(rndvars)
+                x = ceil(rand(1,1) .* length(rndvals{m}));
+                AllS(ns).(rndvars{m}) = rndvals{m}(x);
             end
         end
         exvals(ns,1) = values{1}(j);
@@ -214,7 +254,7 @@ if saveexptfile
     save(Expt.filename,'Expt');
 end
 stim.WriteOrder(Expt.stimdir, Expt.stimorder, expts, Expt);
-fprintf('%d Trials (%d stim, %d pass)\n',length(Expt.stimorder),ns,Expt.npass);
+fprintf('%d Trials (%d stim, %d pass) in %s\n',length(Expt.stimorder),ns,Expt.npass,Expt.stimdir);
 
 
 function AllS = MakeSubSpace(expts, values, subspace, frequencies, Expt)

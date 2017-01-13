@@ -2993,6 +2993,10 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
                     expt.st->immode = 0;
                     expt.st->nimseed = 0;
                 }
+                else if(!strncmp(s,"spacetime",6)){
+                    expt.st->immode = BINOCULAR_SPACETIME_IMAGES;
+                    expt.st->preload = 1;
+                }
                 else if(!strncmp(s,"twoeyes",4)){
                     expt.st->immode = IMAGEMODE_LEFTRIGHT;
                     expt.st->nimseed = 0;
@@ -3713,7 +3717,7 @@ int SetExptProperty(Expt *exp, Stimulus *st, int flag, float val, int event)
                 exp->postperiod = val;
             break;
         case PREPERIOD_CODE:
-            if(val > 0.9)
+            if(val > 1.9) //need a better way to deal with Frames/sec
                 exp->preperiod = val * 1/mon.framerate; 
             else
                 exp->preperiod = val;
@@ -9500,6 +9504,8 @@ int PreLoadImages()
                     return(-1);
                 if(expt.st->flag & UNCORRELATE || expt.st->immode == IMAGEMODE_LEFTRIGHT)
                     j = calc_image(expt.st,expt.st->right);
+                if(expt.st->immode == BINOCULAR_SPACETIME_IMAGES) //only need one image file
+                    break;
                 for (j = 1; j < frpt; j++){
                     st->framectr = i+j;
                     st->left->calculated = st->right->calculated = 0;

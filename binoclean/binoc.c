@@ -7096,6 +7096,8 @@ int next_frame(Stimulus *st)
             //Ali  CheckKeyboard(D, allframe);
             if(laststate != PRESTIMULUS){
                 mode |= STIM_FRAME_BIT; /* send trial signal at next frame */
+                memcpy(&goodfixtime, &now, sizeof(struct timeval));
+
 #ifdef MONITOR_CLOSE
                 if(seroutfile)
                     fprintf(seroutfile,"#Presstim VS%.1f %.3f%c\n",afc_s.sacval[1],timediff(&now,&goodfixtime),exptchr);
@@ -7542,6 +7544,7 @@ int next_frame(Stimulus *st)
                 SerialSignal(END_TRIAL);
                 fixstate = RESPONDED;
                 notify("TRES L\n");
+                latetrials++;
                 change_frame();
                 oldstimpos[0] = TheStim->pos.xy[0];
                 oldstimpos[1] = TheStim->pos.xy[1];
@@ -10797,12 +10800,12 @@ int ShowTrialCount(float down, float sum)
 	if(debug)
         sprintf(mssg,"%s(%.2f) Frames: %d/%d (%.3f sec) %c %d/%d %d late %d bad (%.2f), %0f/%d",binocTimeString(),ufftime(&now),framesdone,TheStim->nframes,val,
                 expt.lastresult,
-                goodtrials,totaltrials,
-                totaltrials-(goodtrials+fixtrials),fixtrials,down,fsum,nt);
+                goodtrials,totaltrials,latetrials,
+                fixtrials,down,fsum,nt);
 	else
         sprintf(mssg,"%s Frames: %d/%d (%.3f sec) %c%d/%d %d late %d bad (%.2f), %.0f/%d",binocTimeString(),framesdone,TheStim->nframes,val,
                 expt.lastresult, goodtrials,totaltrials,
-                totaltrials-(goodtrials+fixtrials),fixtrials,down,fsum,nt);
+                latetrials,fixtrials,down,fsum,nt);
     
     
     sprintf(buf," rw%.1f ",totalreward);
