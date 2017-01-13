@@ -506,7 +506,7 @@ int paint_1dImage(Stimulus *st, Substim*sst, frame)
     GLubyte *im,*lineim;
     
     
-        int *p,d,*end;
+    int *p,d,*end;
         vcoord  w,h,*x,*y,fw,fh;
         vcoord z[2];
         short pt[2];
