@@ -507,9 +507,9 @@ int paint_1dImage(Stimulus *st, Substim*sst, frame)
     
     
     int *p,d,*end;
-        vcoord  w,h,*x,*y,fw,fh;
-        vcoord z[2];
-        short pt[2];
+    vcoord  w,h,*x,*y,fw,fh;
+    vcoord z[2];
+    short pt[2];
     float pxy[2];
     int co = -1;
         float vcolor[4], bcolor[4];
