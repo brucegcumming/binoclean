@@ -2,9 +2,27 @@ function WriteStim(basedir, stimno, S, exf,varargin)
 %stim.WriteStim(basedir, stimno, S, exvals)
 %Creates a stimN file for controlling binoc expts in basedir
 %each field in S, is written into the file
-%if exvals is givne, it lists fields that matter for subsequent plotting
+%if exvals is given, it lists fields that matter for subsequent plotting
 %recorded in each stim file with manexpvals
+%
+%stim.WriteStim(basedir, AllS) where AllS is a struct length > 1
+%    writes all teh stim files
 
+
+if isstruct(stimno)
+    AllS = stimno;
+    for j = 1:length(AllS)
+        stim.WriteStim(basedir,j-1,AllS(j));
+    end
+    return;
+end
+if nargin < 4
+    exf = {};
+end
+
+if isempty(exf)
+    exf = fields(S);
+end
 stimname = sprintf('%s/stim%d',basedir,stimno);
 fid = fopen(stimname,'w');
 if fid < 0

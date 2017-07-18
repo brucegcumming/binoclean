@@ -83,7 +83,7 @@ int PreloadPGM(char *name, Stimulus *st, Substim *sst, int frame){
     struct timeval(now);
     static int readwasgood = -1;
     float val;
-    int w,h,imax,x,y,silly = 0;
+    int w,h,imax,x,y,silly = 0,n;
     
     
     if (readwasgood == -1){ //first call
@@ -111,7 +111,15 @@ int PreloadPGM(char *name, Stimulus *st, Substim *sst, int frame){
     }
     readwasgood = 1;
     fgets(buf, BUFSIZ, imfd);
-    sscanf(buf,"P5 %d %d %d",&w,&h,&imax);
+    n = sscanf(buf,"P5 %d %d %d",&w,&h,&imax);
+    if (n < 2){
+        fgets(buf, BUFSIZ, imfd);
+        n = sscanf(buf,"%d %d %d",&w,&h,&imax);
+        if (n == 2){
+            fgets(buf, BUFSIZ, imfd);
+            n = sscanf(buf,"%d",&imax);
+        }
+    }
     imagews[frame] = w;
     imagehs[frame] = h;
     
@@ -377,7 +385,7 @@ int calc_image(Stimulus *st, Substim *sst)
         }
         sprintf(imname,"%s/se%d.pgm",impref,seed);
     }
-    else if(st->immode == BINOCULAR_SPACETIME_IMAGES){
+    else if(st->immode == BINOCULAR_SPACETIME_IMAGES || st->immode == LEFTRIGHT_SPACETIME_IMAGES){
         seed = sst->imagei;
         if (st->seedoffset > 0)
             seed += st->seedoffset;
@@ -521,6 +529,14 @@ int paint_1dImage(Stimulus *st, Substim*sst, frame)
     int ci; //index of color chan to set
     
     im = images[0];
+    if (mode == RIGHTMODE && st->immode == LEFTRIGHT_SPACETIME_IMAGES){
+        im = rightimages[0];
+    }
+
+    if (im == NULL){
+        fprintf(stderr,"No Image Loaded\n");
+        return(-1);
+    }
     lineim = im + (frame%imagehs[0])*imagews[0];
     angle = rad_deg(pos->angle);
         /*
@@ -650,7 +666,7 @@ int paint_image(Stimulus *st, Substim *sst)
      */
     frame = frame % MAXFRAMES; // in case set nf > MAXFRAMES
     if(st->stimid > -1000){
-        if (st->immode == BINOCULAR_SPACETIME_IMAGES || forcetest){
+        if (st->immode == BINOCULAR_SPACETIME_IMAGES || st->immode == LEFTRIGHT_SPACETIME_IMAGES){
             paint_1dImage(st, sst, frame);
             return(0);
         }

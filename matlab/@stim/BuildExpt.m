@@ -7,9 +7,20 @@ function [Expt, AllS] = BuildExpt(expts, values, varargin)
 %            'npass' for number of repeat presnentations
 %...,'nseeds') sets seed value in each stim file. With RLS/RDS and npass > 0
 %              need to set this so that seed is repeated
-%are built;
+%
 %example
 %stim.BuildExpt({'dx' or'}, {[-0.5:0.1:0.5] [-90:45:90]},'basedir','/local/Expts/Dispor')
+%
+% when length(expts) > 2, there are three ways that combinations can be
+% built:
+% stim.BuildExpt({A B C}) length(A) * length(B) stimuli are build (all
+% combinations.  length(C) must equal length(B), and for each A(j),  B{k}
+% and C{k} are set
+%
+% stim.BuildExpt( {A B C}) length(A) stimuli build. all three must be the same length. Stim(i) has
+% A(i),B(i) and C(i).
+%
+%stim.BuildExpt( {A B C},'all') A*B*C stimuli - all combinations
 %
 %Stimuli made. A stimuus is built for each combination of values{1} and values{2}
 %if values has a third element, this must be the same length as values{2}.
@@ -46,10 +57,14 @@ Expt.onelist = 0;
 showvars = {};
 frequencies = {};
 rndvars = {};
+allcombinations = 0;
+
 j = 1;
 while j <= length(varargin)
     if isstruct(varargin{j}) && isfield(varargin{j},'expttype')
         Expt = CopyFields(Expt,varargin{j});
+    elseif strncmp(varargin{j},'all',3) %all combinations
+        allcombinations = 1;
     elseif strncmp(varargin{j},'basedir',6)
         j = j+1;
         Expt.stimdir = varargin{j};
@@ -186,8 +201,35 @@ elseif Expt.onelist %each value list is the same length - all combinations built
     exvals(ns,1) = values{1}(j);
     exvals(ns,2) = values{2}(j);
     end
+elseif allcombinations && length(values) == 3
+    c = stimvars{3};
     
-else
+    for t =1:Expt.nrpt;
+    for j = 1:length(values{1})
+        for k = 1:length(values{2})
+            for m = 1:length(values{3})
+                ns = ns+1;
+                AllS(ns).(a) = values{1}(j);
+                AllS(ns).(b) = values{2}(k);
+                AllS(ns).(c) = values{3}(m);
+                if Expt.nseeds > 0
+                    AllS(ns).se = Expt.seeds(ns);
+                end
+                for v = 1:length(rndvars)
+                    x = ceil(rand(1,1) .* length(rndvals{v}));
+                    AllS(ns).(rndvars{v}) = rndvals{v}(x);
+                end
+                exvals(ns,1) = values{1}(j);
+                exvals(ns,2) = values{2}(k);
+                exvals(ns,3) = values{3}(m);
+            end
+        end
+    end
+    end
+    
+else %expt1 * expt 2. If values{3} is defined, must be same length
+    %as 2, then each condition for expt2 is values{2}(i),values{3}(i) etc
+    
     n = length(values{1}).*length(values{2}) .* Expt.nrpt;
     if Expt.nseeds > 0
         if Expt.nframes > 0

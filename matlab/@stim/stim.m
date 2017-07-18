@@ -36,6 +36,8 @@ methods (Static)
          AllS = example(varargin); 
             s = Print(S, varargin);
       [b,l,r] = rds(sz,dxy,ndots,varargin);
+      [b,l,r] = sqwave(sf,varargin);
+      [b,l,r] = sqwvexpt(varargin);
     stimorder = SetOrder(stims, nr, varargin)
                 WriteOrder(basedir, exptvars, name, stimorder, varargin);
                 WriteStim(basedir, stimno, S, exvals, varargin);

@@ -705,6 +705,9 @@ void initial_setup()
             else if(!strncmp(buf,"monitor",7)){
                 InterpretLine(buf,&expt,3);
             }
+            else if(buf[0] == '!'){ //do commands
+                InterpretLine(buf,&expt,3);
+            }
         }
     }
     
@@ -2397,6 +2400,9 @@ void StartRunning()
     setstimuli(0);
     ResetCustomVals(i);
     
+    if (mimic_fixation > 0 ){
+        printString("Mimicking Fixataion...",0);        
+    }
     
     //Ali SetExpPanel(&expt);
     psychclear(expt.plot,1);
@@ -2692,8 +2698,9 @@ int event_loop(float delay)
     gettimeofday(&now,NULL);
     
     val = timediff(&now,&then); //time since next frame exited
-    if(!window_is_mapped) //first call
+    if(!window_is_mapped) {//first call
         mon.framerate = GetFrameRate();
+    }
     window_is_mapped = 1;
  //   ReadInputPipe();
     if(cleartime.tv_sec != 0){
@@ -7339,7 +7346,17 @@ int next_frame(Stimulus *st)
 //when free running, just use elapsed time here.
 // if need to override this ? use another flag
             paintall = 0;
-            if(paintall && framesdone >= TheStim->nframes ||
+            if (TheStim->nframes > 700){
+                if (option2flag & PSYCHOPHYSICS_BIT){
+                    if (framesdone >= 700){
+                        framesdone = 0;
+                        expt.framesdone = 0;
+                        st->framectr = 0;
+                    }
+                }
+// leave up until mouse press
+            }
+            else if(paintall && framesdone >= TheStim->nframes ||
                (paintall == 0 && (realframecount = getframecount()) >= TheStim->nframes))
             {
                 framesdone--; //frametimes[framesdone] is last frame
@@ -10919,10 +10936,13 @@ char *TrimStimLine(char *stimline, int mode)
     }
     if (mode == 1)
         return(s);
-    else if (mode ==2){
+    else if (mode ==2 && t != NULL){
         if (strlen(++t) > 1){
             return(t);
         }
+    }
+    else{
+            return(s);
     }
 }
 

@@ -295,6 +295,7 @@ function CheckState(DATA, varargin)
     
 function SaveComCodes(DATA)
     X.comcodes = DATA.comcodes;
+    if isfield(DATA, 'helpstrs') && ~isempty(DATA.helpstrs)
     f = fields(DATA.helpstrs);
     for j = 1:length(X.comcodes)       
         if isfield(DATA.helpstrs,X.comcodes(j).code)
@@ -310,6 +311,7 @@ function SaveComCodes(DATA)
     X.optionstrings = DATA.optionstrings;
     X.helpkeys = DATA.helpkeys;
     save('comcodes','-struct','X');
+    end
 
         
         
@@ -600,7 +602,7 @@ for j = 1:length(strs{1})
     if frombinoc == 0
         donestr = 1;
         oldsend = sendtobinoc;
-        if sum(strncmp(s,{'!mat=' '!matnow' 'timerperiod' 'read=' 'pause' 'user=' '!onestim' 'pausetimeout'},5))
+        if sum(strncmp(s,{'!mat=' '!matnow' 'timerperiod' 'read=' 'pause' 'user=' '!onestim' 'pausetimeout' 'monitor'},5))
             sendtobinoc = 0;
             codetype = -1;
             if strncmp(s,'!mat',4) && ~isempty(value)
@@ -616,6 +618,12 @@ for j = 1:length(strs{1})
                     DATA.matlabwasrun = 1;
                 end
                 SendCode(DATA, 'exp');
+            elseif strncmp(s,'monitor',6) && ~isempty(value)
+                Monitor = binoc.GetMonitor(value);
+                if isfield(Monitor,'pix2deg')
+                    setappdata(0,'MonitorCalibration',Monitor);
+                end
+
             elseif strncmp(s,'!onestim',8) 
                 outprintf(DATA,'%s\n',s);
                 pause(0.2);

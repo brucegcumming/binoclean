@@ -2994,6 +2994,10 @@ int SetExptString(Expt *exp, Stimulus *st, int flag, char *s)
                     expt.st->nimseed = 0;
                 }
                 else if(!strncmp(s,"spacetime",6)){
+                    expt.st->immode = LEFTRIGHT_SPACETIME_IMAGES;
+                    expt.st->preload = 1;
+                }
+                else if(!strncmp(s,"spacetimeone",9)){
                     expt.st->immode = BINOCULAR_SPACETIME_IMAGES;
                     expt.st->preload = 1;
                 }
@@ -4851,6 +4855,10 @@ int ReadCommand(char *s)
             stopline = skiplines+stop;
             sprintf(command_result,"Skip to line %d",skiplines);
         }
+    }
+    else if(!strncasecmp(s,"mimic",5)) {
+        mimic_fixation = 1;
+        statusline("mimicking fixation");
     }
     else if(!strncasecmp(s,"print",4) && (r = strchr(s,' '))){
         printf("%s",++r);
@@ -9504,7 +9512,11 @@ int PreLoadImages()
                     return(-1);
                 if(expt.st->flag & UNCORRELATE || expt.st->immode == IMAGEMODE_LEFTRIGHT)
                     j = calc_image(expt.st,expt.st->right);
-                if(expt.st->immode == BINOCULAR_SPACETIME_IMAGES) //only need one image file
+                if(expt.st->immode == LEFTRIGHT_SPACETIME_IMAGES){
+                    if((j = calc_image(expt.st,expt.st->right)) <0)
+                        return(-1);
+                }
+                else if(expt.st->immode == BINOCULAR_SPACETIME_IMAGES) //only need one image file
                     break;
                 for (j = 1; j < frpt; j++){
                     st->framectr = i+j;
