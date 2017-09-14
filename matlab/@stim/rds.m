@@ -13,12 +13,13 @@ function [bim, left, right] = rds(sz, dxy,ndots, varargin)
  
 prefix = 'Images/rds001';
 Monitor.pix2deg = 0.0166;   %default
-
 j = 1;
 while j <= length(varargin)
     if strncmpi(varargin{j},'noise',5)
         j = j+1;
         noisesd = varargin{j};
+    elseif strncmpi(varargin{j},'nowrite',5)
+        prefix = '';
     elseif strncmpi(varargin{j},'Monitor',5)
         j = j+1;
         Monitor = varargin{j};
@@ -29,45 +30,99 @@ while j <= length(varargin)
     j = j+1;
 end
 
+if length(sz) ==1
+    sz(2) = sz(1);
+end
+if length(dxy) == 1
+    dxy(2) = 0;
+end
+
+
 strs = cell2cellstr(varargin);
 if sum(strcmp('step',strs))
   [left, right, bim] = steprds(sz, dxy,ndots, Monitor, varargin{:});
 else
-  [left, right] = squarerds(sz, dxy,ndots, varargin{:});
+  [left, right, bim] = squarerds(sz, dxy,ndots, Monitor, varargin{:});
 end
 
 %bim = left+right;
 %bim.dd = ndots
+if ~isempty(prefix)
 imwrite(left,[prefix 'L.pgm'],'pgm');
 imwrite(right,[prefix 'R.pgm'],'pgm');
+end
 
     
-function [left, right] = squarerds(sz, dxy,ndots, varargin)
+function [left, right, details] = squarerds(sz, dxy,ndots, Monitor, varargin)
  
 left = zeros(sz)+0.5;
 right = zeros(sz)+0.5;
-dw = 6;
+
+dw = 5;
 pnoise = 0;
 noisesd = [4 0];
+colors = [0 1];
+correlation = 1;
 j = 1;
 while j <= length(varargin)
     if strncmpi(varargin{j},'noise',5)
         j = j+1;
         noisesd = varargin{j};
+        if length(noisesd) ==1
+            noisesd(2) = noisesd(1);
+        end
+    elseif strncmpi(varargin{j},'dotsize',5)
+        j = j+1;
+        dw = varargin{j}-1;
     elseif strncmpi(varargin{j},'pnoise',5)
         j = j+1;
         pnoise = varargin{j};
+    elseif strncmpi(varargin{j},'correlation',4)
+        j = j+1;
+        correlation = varargin{j};
+    elseif strncmpi(varargin{j},'colors',5)
+        j = j+1;
+        colors = varargin{j};
     end
     j = j+1;
 end
+
+superpix = parseargin('superpix',varargin,0);  %make larger effective pixels
 w = sz(1);
 h = sz(2);
-dx = dxy(1);
-dy = dxy(2);
+if correlation == 0 || isinf(dxy(1))
+    correlation = 0;
+    dx = 0;
+    dy = 0;
+    dxy = [0 0];
+    rrnd = dw + ceil(rand(ndots,2) .* (w-2*dw));
+    rcolor = round(rand(1,ndots));
+else
+    dx = dxy(1);
+    dy = dxy(2);
+end;
+
+seed = parseargin('seed', varargin,0);
+if seed > 0
+    rng(seed);
+else
+    seed = ceil(rand(1) .* 100000);
+end
+details.seed = seed;
 
 box = round([w/6 5*w/6 h/6 5*h/6]);
+if cellstrcmp('fullscreen',varargin)
+    box = [1 w 1 h];
+end
 rnd = dw + ceil(rand(ndots,2) .* (w-2*dw));
+
 color = round(rand(1,ndots));
+color = colors(color+1);
+if correlation == 0
+    rcolor = colors(rcolor+1);
+else
+    rcolor = color;
+end
 noise = round(randn(1,ndots));
 
 if pnoise > 0
@@ -77,27 +132,99 @@ else
 end
 noise(noisetype == 0) = noise(noisetype == 0) .* noisesd(1);
 noise(noisetype == 1) = noise(noisetype == 1) .* noisesd(2);
+details.dd = ndots .* (dw+1).^2./(w.*h);
+details.dw = dw .* Monitor.pix2deg;
+details.wi = w.* Monitor.pix2deg;
+details.hi = h.* Monitor.pix2deg;
+rrnd = rnd;
+for j = 1:length(rnd)
+    rrnd(j,1) = rnd(j,1) + dxy(1) + noise(j);
+end
+if superpix > 0
+    rnd = floor(rnd./superpix) .* superpix;
+    rrnd = floor(rrnd./superpix) .* superpix;
+end
+details.rnd = rnd;
+details.rrnd = rrnd;
     
-%ind2sub might speed this up....
+checkoverlap = cellstrcmp('nooverlap',varargin);
+if checkoverlap
+    nfix = 1;
+    fix = zeros(length(rnd),2);
+    for j = 1:length(rnd)
+        rdh = abs(rrnd(j,1)-rrnd(:,1));
+        dh = abs(rnd(j,1)-rnd(:,1));
+        dv = abs(rnd(j,2)-rnd(:,2));
+        overlap = sum((dh <= dw | rdh <= dw) & dv <= dw);
+        if overlap > 1 %dot always overlaps itself
+            fix(j,1) = overlap-1;
+            fix(j,2) = 0;            
+            k = 1;
+            while overlap
+%check each dot in brnd against all in rnd                
+                brnd = dw + ceil(rand(1,2) .* (w-2*dw));
+                rdh = abs(brnd(1)-rrnd(:,1));
+                dh = abs(brnd(1)-rnd(:,1));
+                dv = abs(brnd(2)-rnd(:,2));
+                rdh(j) = NaN;
+                dh(j) = NaN;
+                dv(j) = NaN;
+                overlap = sum((dh <= dw | rdh <= dw) & dv <= dw);
+               
+                if ~overlap
+                    rnd(j,:) = brnd;
+                    fix(j,2) = k;
+                    k = -1;
+                else
+                    bad(k) = overlap;
+                end
+                k = k+1;
+            end
+        end
+    end
+end
+%ind2sub might speed this up....x-
 sw = diff(box(1:2));
 sh = diff(box(3:4));
+details.checkoverlap = checkoverlap;
+if cellstrcmp('fullscreen',varargin) %simples
+    for j = 1:ndots
+        x = rnd(j,1);
+        y = rnd(j,2);
+        left(y:y+dw,x:x+dw) = color(j);
+        x = rrnd(j,1);
+        y = rrnd(j,2);
+        if x <= 0 
+            x = x + sw;
+        elseif x+dw > box(2)
+            x = x-sw;
+        end
+        right(y:y+dw+dy,x:x+dw) = rcolor(j);
+    end
+else
 for j = 1:ndots    
     x = rnd(j,1);
     y = rnd(j,2);
     left(y:y+dw,x:x+dw) = color(j);
-    dx = dxy(1) + noise(j);
-%add disparity to dots in center    
+    x = rrnd(j,1);
+    y = rrnd(j,2);
+    
     if(abs(x- w/2) < sw/2 & abs(y - h/2) < sh/2)
         if x+dx > box(2)
-            right(y+dy:y+dw+dy,[x+dx:x+dw+dx]-sw) = color(j);
+            right(y+dy:y+dw+dy,[x+dx:x+dw+dx]-sw) = rcolor(j);
+        elseif x+dx-dw < box(1)
+            right(y+dy:y+dw+dy,[x+dx:x+dw+dx]+sw) = rcolor(j);
         else
-            right(y+dy:y+dw+dy,x+dx:x+dw+dx) = color(j);
+            right(y+dy:y+dw+dy,x+dx:x+dw+dx) = rcolor(j);
         end
     else
-        right(y+dy:y+dw+dy,x:x+dw) =  color(j);
+        right(y+dy:y+dw+dy,x:x+dw) =  rcolor(j);
     end
 end
-
+end
+if size(right,1) > size(left,1) || size(right,2) > size(left,2)
+    right = right(1:w,1:h);
+end
 
 function [left, right, details] = steprds(sz, dxy,ndots, Monitor, varargin)
 left = zeros(sz)+0.5;
@@ -127,11 +254,12 @@ dx = dxy(1);
 dy = dxy(2);
 
 if seed > 0
-    rng(seed);
+    rng(seed);    
 else
     seed = ceil(rand(1) .* 100000);
 end
 
+details.seed = seed;
 %x:x+dw is set tto color, which is dw+1 pixels
 dw = dw-1;
 details.se = seed;
