@@ -290,10 +290,12 @@
 #define ARB_VALUE  (LAST_STIMULUS_CODE+178)
 #define REVERSAL_PROB (LAST_STIMULUS_CODE+179)
 #define VELOCITY2 (LAST_STIMULUS_CODE+180)
+#define BACK_X (LAST_STIMULUS_CODE+181)
+#define BACK_Y (LAST_STIMULUS_CODE+182)
 //Add above here anything that needs to go to Spike2
 
 
-#define MAXSERIALCODES (LAST_STIMULUS_CODE+181)/* 224 */
+#define MAXSERIALCODES (LAST_STIMULUS_CODE+183)/* 226 */
 #define OPPOSITE_DELAY  MAXSERIALCODES
 #define FAST_SEQUENCE_RPT MAXSERIALCODES+1
 #define BRIGHTSHIFT_CODE MAXSERIALCODES+2
@@ -1368,6 +1370,8 @@ ValueCode valstrings[] = {
     {  "EB", "Expt2 CustomVal", EXPT2CUSTOMVAL, 16|PARTIAL_CODE, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "EC", "Expt3 CustomVal", EXPT3CUSTOMVAL, 16|PARTIAL_CODE, 'N', 0, SEND_EXPLICIT, SAVE_ALWAYS},
     {  "expvars", "Expt Variables", EXPTVARS, 16, 'C', 0, SEND_EXPLICIT, SAVE_ALWAYS},
+    { "bxo", "Backgr Xpos", BACK_X, 64, 'N', 3, SEND_EXPT, SAVE_ALWAYS},
+    { "byo", "Backgr Ypos", BACK_Y, 64, 'N', 3, SEND_EXPT, SAVE_ALWAYS},
 //    {  "cwd", "Current Directory", EXPTCWD, 16, 'C', 0, SEND_VERG_ONLY, SAVE_NEVER},
     
     { NULL, NULL, -1, -1 ,0 ,0, 0},

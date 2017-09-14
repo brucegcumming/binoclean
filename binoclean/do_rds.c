@@ -663,8 +663,16 @@ July 2015 put pos->locn[0] inside bracket so that direction matches gratings
       /* calculate parameters for hole */
       if(st->prev != NULL && st->prev->type == STIM_RDS)
         {
-	  csq = st->prev->pos.radius[0] * st->prev->pos.radius[0];
-	  dsq = st->prev->pos.radius[1] * st->prev->pos.radius[1];
+// if oris are different, dont claculated hole
+           if(optionflag & BACKGROUND_FIXED_BIT  && abs(st->pos.angle - st->prev->pos.angle) > 0.001)
+           {
+               csq = 0;
+           }
+           else
+           {
+            csq = st->prev->pos.radius[0] * st->prev->pos.radius[0];
+            dsq = st->prev->pos.radius[1] * st->prev->pos.radius[1];
+           }
         }
       else if(st->prev != NULL && st->prev->type == STIM_ANNULUS)
         {
@@ -676,8 +684,14 @@ July 2015 put pos->locn[0] inside bracket so that direction matches gratings
         
     {
       if(st->prev->type == STIM_RDS){
-	csq = fabsf(st->prev->pos.radius[0]-sst->dotsiz[0]/2);
-	dsq = fabsf(st->prev->pos.radius[1]-sst->dotsiz[1]/2);
+          if(optionflag & BACKGROUND_FIXED_BIT  && abs(st->pos.angle - st->prev->pos.angle) > 0.001)
+          {
+              csq = 0;
+          }
+          else{
+              csq = fabsf(st->prev->pos.radius[0]-sst->dotsiz[0]/2);
+             dsq = fabsf(st->prev->pos.radius[1]-sst->dotsiz[1]/2);
+         }
       }
       else
         {

@@ -16,5 +16,8 @@ imload=preload
 nimplaces=3
 xo=5
 op=+exm
-imi=0
+imi=1
+bc=0.5
+op=+py
+
 

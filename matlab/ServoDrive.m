@@ -70,6 +70,11 @@ while j <= length(varargin)
     j = j+1;
 end
 
+if  cellstrcmp('readmservo',varargin)
+    DATA.position = str2num(mservo('GETPOS'));
+    return;
+end
+
 [F, isnew] = GetFigure(tag);
 if isnew
     DATA.toplevel = F;
@@ -110,6 +115,16 @@ DATA = GetDataFromFig(a);
 
 EnableMoveButtons(DATA,'off');
 it = findobj(DATA.toplevel,'tag','StepSize');
+ts = now;
+
+if sum(strcmp(fcn,{'readposition'})) == 0        
+    if ~isfield(DATA,'servogui')
+        DATA.servogui(1).time = now;
+    else
+        DATA.servogui(end+1).time = now;
+    end
+    DATA.servogui(end).action = fcn;
+end
 
 if strcmp(fcn,'moveto')
     newpos = str2num(get(DATA.setdepth,'string'));
@@ -124,6 +139,7 @@ if strcmp(fcn,'moveto')
             SetData(DATA);
         end
     end
+    DATA.servogui(end).step = newpos;
     DATA = SetNewPosition(DATA, newpos);
 elseif strcmp(fcn,'readposition')
     d = GetCurrentPosition(DATA, 'show');
@@ -131,7 +147,9 @@ elseif strcmp(fcn,'readposition')
 elseif strcmp(fcn,'set')
     newpos = str2num(get(DATA.setdepth,'string'));
     SetHomePosition(DATA, newpos);
+    DATA.servogui(end).step = newpos;
 else
+    ts=now;
     str = get(it,'string');
     j= get(it,'value');
     step = sscanf(str(j,:),'%d');
@@ -139,11 +157,13 @@ else
     if  strcmp(fcn,'Up')
         step = -step;
     end
+    DATA.servogui(end).step = step;
     if DATA.verbose > 1
         fprintf('Moving %d\n',step);
     end
     DATA = ChangePosition(DATA, step);
 end
+ts = mytoc(ts);
 EnableMoveButtons(DATA,'on');
 set(DATA.toplevel,'UserData',DATA);
 
@@ -169,14 +189,19 @@ if isnan(startdepth)
             msg = sprintf('MicroDrive was %.0fuM At %s. Now Reads %.0f\nPerhaps it was turned off.\n Reset (no movement) to  %.0f?',DATA.alldepths(end),datestr(DATA.alltimes(end)),x,startdepth);
             yn = questdlg(msg,'ServoDrive Message','Yes','No','Yes');
         end
+    else
+        x = NaN;
     end
     if strcmp(yn,'No')
+        if DATA.commode && ~isnan(x);
+            SetHomePosition(DATA, x);
+        end
         return;
     end    
 elseif length(DATA.alldepths) && max(DATA.alltimes)-now < 2/24
     x = GetCurrentPosition(DATA);
     msg = sprintf('MicroDrive last set to %.0fuM on %s. Now Reads %.0f. Do you you want to set %.0f (without moving)?',DATA.alldepths(end),datestr(DATA.alltimes(end)),x,startdepth);
-    yn = questdlg(msg,'ServoDrive Message','Yes',sprintf('No Leave Reading at %.3f',x),'Yes');
+    yn = gui.Dlg(msg,DATA.toplevel,{'Yes' sprintf('No Leave Reading at %.0f',x) 'Yes'},'attach');
     if strncmp(yn,'No',2)
         return;
     end    
@@ -210,9 +235,10 @@ bcolor = get(gcf,'color');
 im.cdata = repmat(upx,[1 1 3]);
 im.cdata(find(im.cdata > 0.96)) = mean(bcolor);
 bp = [0.1 0.7 0.3 0.2];
-uicontrol(gcf,'style','pushbutton','string','Up', ...
+x = uicontrol(gcf,'style','pushbutton','string','Up', ...
      'foregroundcolor','w', ...
    'Callback', {@MoveMicroDrive, 'Up'}, 'Tag','UpArrow',...
+   'Interruptible','off','BusyAction','cancel',...
    'backgroundcolor',bcolor,...
         'units', 'norm', 'position',bp,'value',1,'cdata',im.cdata);
 
@@ -267,6 +293,7 @@ im.cdata(find(im.cdata > 0.96)) = mean(bcolor);
 h = uicontrol(gcf,'style','pushbutton','string','Down', ...
    'Callback', {@MoveMicroDrive, 'down'}, 'Tag','DownArrow',...
         'units', 'norm', 'position',bp,'value',1,...
+   'Interruptible','off','BusyAction','cancel',...
         'foregroundcolor','w', 'backgroundcolor',bcolor,'cdata',im.cdata);
     bp(1) = bp(1)+bp(3);
     bp(1) = bp(1)+bp(3);
@@ -366,6 +393,9 @@ function DATA = SaveDiskLog(DATA)
 
 X.alltimes = DATA.alltimes;
 X.alldepths = DATA.alldepths;
+if isfield(DATA,'servogui')
+    X.servogui = DATA.servogui;
+end
 save(DATA.logfile,'-struct','X');
 
 
@@ -424,6 +454,9 @@ elseif strcmp(tag,'Custom')
     DATA.customspeed = step./1000;
 end
 if DATA.motorspeed > 0
+    if DATA.commode
+        mservo(sprintf('SETSPEED%.0f',DATA.motorspeed.*1000));
+    else    
     ispeed = round(DATA.motorspeed.*DATA.speedscale.*DATA.stepscale/1000);
     fprintf('New Speed %.3f mm/sec  = %.0f RPM\n',DATA.motorspeed,ispeed);
     if ispeed < DATA.minrpm
@@ -433,6 +466,7 @@ if DATA.motorspeed > 0
         fprintf(DATA.sport,'SP%.0f\n',ispeed);
     end
     DATA.motorspeed = ispeed;
+    end
 end
 SetMenuCheck(a,'exclusive');
 set(DATA.toplevel,'UserData',DATA);
@@ -506,6 +540,11 @@ DATA.lastspeed = 0;
 DATA.motorid = -1; %< 0 means dont set id
 DATA = addfield(DATA,{'stepsize' 'customstep' 'position'},0);
 DATA = addfield(DATA,{'alldepths' 'alltimes' 'offidx'},[]);
+if ~isfield(DATA,'servogui')
+    DATA.servogui(1).time = now;
+    DATA.servogui(1).action = 'init';
+    DATA.servogui(1).step = 0;
+end
 txt = scanlines(DATA.setupfile,'silent');
 
 if ~isempty(txt)
@@ -530,6 +569,13 @@ elseif  ~isfield(DATA,'ttyname')
     cprintf('red','No Serial device Named, and missing file %s',DATA.setupfile);
 end
 
+if strcmp(DATA.ttyname,'mservo')
+    DATA.commode = 1;
+    DATA.stepscale = 1;
+else
+    DATA.commode = 0;
+end
+
 if ~isfield(DATA,'figpos') || isempty(DATA.figpos)
     DATA.figpos = [1400 400 350 350];
 end
@@ -552,7 +598,9 @@ end
 
 function SetHomePosition(DATA, pos)
 
-if DATA.motorid >= 0
+if DATA.commode
+    mservo(sprintf('SETPOS%.0f',pos));
+elseif DATA.motorid >= 0
 	fprintf(DATA.sport,sprintf('%dHO%.0f\n', DATA.motorid, pos .* DATA.stepscale));
 else
 	fprintf(DATA.sport,sprintf('HO%.0f\n', pos .* DATA.stepscale));
@@ -564,6 +612,7 @@ end
 function DATA = ChangePosition(DATA, step)
 
 d = GetCurrentPosition(DATA,'show');
+DATA.position = d;
 DATA = SetNewPosition(DATA,d+step);
 
 function d = GetCurrentPosition(DATA, varargin)
@@ -577,7 +626,13 @@ while j <= length(varargin)
     j = j+1;
 end
 
-if DATA.motorid >= 0
+if DATA.commode
+    d = str2num(mservo('getpos'));
+    if showdepth
+        set(DATA.depthlabel,'string',sprintf('%.0f uM',d));
+    end
+    return;
+elseif DATA.motorid >= 0
 fprintf(DATA.sport,sprintf('%dPOS\n',DATA.motorid));
 else
 fprintf(DATA.sport,sprintf('POS\n'));
@@ -594,7 +649,7 @@ if isempty(d)
         fprintf('Microdrive response is not valid. Suggests configuation error in Serial Port.\n');
         fprintf('Microdrive Response was:%s\n',s);
         uiwait(warndlg(sprintf('MicroDrive Response Not Recognized. Serial Port Error?'),'Microdrive Error','modal'));
-    elseif sdetails.nbtyes == 0
+    elseif sdetails.nbytes == 0
         uiwait(warndlg(sprintf('MircorDrive Serial Line No Response'),'Microdrive Error','modal'));                
     end
 end
@@ -605,6 +660,12 @@ end
 
 function StopMotor(a,b)
 DATA = GetDataFromFig(a);
+
+if DATA.commode
+    mservo('STOP');
+    return;
+end
+
 if DATA.motorid >= 0
     fprintf(DATA.sport,'%dDI\n',DATA.motorid);
 else
@@ -673,7 +734,30 @@ DATA.firstsample = 0;
 function DATA = SetNewPosition(DATA, pos)
 
 
-
+if DATA.commode
+    ts(1) = now;
+    newd(1) = DATA.position;
+    mservo(sprintf('GOTO%.0f',pos));
+    ts(2) = now;
+    while strcmp(mservo('STATUS'),'MOVING')
+        ts(2) = now;
+    end
+    pause(0.01);
+    newd(2) = GetCurrentPosition(DATA, 'show');
+    DATA = PlotDepths(DATA, ts, newd);
+    SaveDiskLog(DATA);
+    it = findobj(DATA.toplevel,'tag','ManualSet');
+    if ~isempty(it)
+        set(it,'string',sprintf('%.0f',DATA.position));
+    end
+    
+    if ~isempty(DATA.callback)
+        feval(DATA.callback{:}, newd(end), DATA);
+    end
+    DATA.movedur = diff(ts);
+    DATA.position = newd(2);
+    return;
+end
 newpos = pos .* DATA.stepscale;
 pause(0.01);
 d = NaN;
@@ -1004,6 +1088,9 @@ s = fscanf(port,'%s');
 function DATA = OpenServoPort(a,b)
  
 DATA = GetDataFromFig(a);
+if DATA.commode
+    return;
+end
 x = instrfind('type','serial');
 delete(x);
 DATA.sport = serial(DATA.ttyname,'BaudRate',9600,'Timeout',1);

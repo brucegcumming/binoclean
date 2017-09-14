@@ -58,6 +58,8 @@ showvars = {};
 frequencies = {};
 rndvars = {};
 allcombinations = 0;
+state.indep = 0;
+state.meaninc = 0;
 
 j = 1;
 while j <= length(varargin)
@@ -80,6 +82,13 @@ while j <= length(varargin)
     elseif strncmp(varargin{j},'dx',2)
         j = j+1;
         dxs = varargin{j};
+    elseif strncmp(varargin{j},'indep',4)
+        state.indep = 1;
+    elseif strncmp(varargin{j},'meaninc',7)
+        state.meaninc = 1;
+    elseif strncmp(varargin{j},'expname',6)
+        j = j+1;
+        Expt.expname = varargin{j};
     elseif strncmp(varargin{j},'name',4)
         j = j+1;
         name = varargin{j};
@@ -144,6 +153,17 @@ if isempty(Expt.stimdir)
     Expt.stimdir = ['/local/expts/' name]; %where stim files are written
 end
 
+if state.meaninc
+    for j = 1:length(values)
+    if length(values{j}) ==3
+        m = values{j}(1);
+        n = values{j}(3);
+        inc = values{j}(2);
+        w = (n-1)*inc;
+        values{j} = m-w/2:inc:m+w/2;
+    end
+    end
+end
 %Get Pixel scaling
 Monitor = binoc.GetMonitor;
 if ~isempty(Monitor)
@@ -226,7 +246,36 @@ elseif allcombinations && length(values) == 3
         end
     end
     end
-    
+elseif state.indep    
+    n(1) = length(values{1}).* Expt.nrpt;
+    n(2) = length(values{2}).* Expt.nrpt;
+    n = max(n);
+    for in = 1:Expt.nrpt;
+        for j = 1:length(values{1})
+            ns = ns+1;
+            k = rem(((in-1).*Expt.nrpt)+j-1,length(values{2}))+1;
+            bval(ns) = values{2}(k);
+        end
+    end
+    bid = randperm(length(bval));
+    bval = bval(bid);
+    ns = 0;
+    for in = 1:Expt.nrpt;
+    for j = 1:length(values{1})
+        ns = ns+1;
+        AllS(ns).(a) = values{1}(j);
+        AllS(ns).(b) = bval(ns);
+        for c = 3:length(values)
+            if iscellstr(values{c})
+                AllS(ns).(stimvars{c}) = values{c}{k};
+            else
+                AllS(ns).(stimvars{c}) = values{c}(k);
+            end
+        end
+        AllS(ns).x2 = 2;
+    end
+    end
+    offset = 0;
 else %expt1 * expt 2. If values{3} is defined, must be same length
     %as 2, then each condition for expt2 is values{2}(i),values{3}(i) etc
     
@@ -281,7 +330,7 @@ Expt.expts = expts;
 Expt.version = str2num(ObjectVersion(stim));
 if isfield(Expt,'expttype')
     Expt.expname = Expt.expttype;
-else
+elseif ~isfield(Expt,'expname')
     Expt.expname = name;
 end
 

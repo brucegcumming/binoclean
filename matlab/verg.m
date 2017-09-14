@@ -333,6 +333,8 @@ function SaveComCodes(DATA)
     end
     CloseTag(DATA.windownames{1});
     if isfigure(DATA.servofig);
+        X = get(DATA.servofig,'UserData');
+%when using the Tablet to control microdrive, can keep polling depth        
         if isfield(DATA,'servotimer') & isvalid(DATA.servotimer)
             stop(DATA.servotimer);
         end
@@ -1604,6 +1606,7 @@ for j = 1:length(strs{1})
                             if DATA.trialcounts(6) == 0
                                 fprintf('%s:Seem to have manual Code %s \n',datestr(now),code);
                             end
+                        elseif (frombinoc == 2 || frombinoc == 1) && DATA.optionflags.exm %from binoc, not in comcodes = Manual expt line
                         else
                             fprintf('%s:Code %s not in comcodes\n',datestr(now),code);
                         end                        
@@ -1730,14 +1733,17 @@ function str =  ShowFlagString(DATA)
 function res = binoceval(DATA, str)
     id = strfind(str,'$');
     while ~isempty(id)
-        sid = regexp(str(id(1)+1:end),'[\s\,\)]')+id(1);
+        sid = regexp(str(id(1)+1:end),'[\s\,\),\]]')+id(1);
         f = str(id(1)+1:sid(1)-1);
         if isfield(DATA.matexpvars,f)
             str = [str(1:id(1)-1) num2str(DATA.matexpvars.(f)) str(sid(1):end)];
         elseif isfield(DATA.binoc{1},f)
             str = [str(1:id(1)-1) num2str(DATA.binoc{1}.(f)) str(sid(1):end)];
-        end
-        id = strfind(str,'$');
+        else
+            cprintf('red','Unrecognized variable $%s in matlab string',f);
+            str = [str(1:id(1)-1) 0 str(sid(1):end)];
+        end        
+        id = id(1)+strfind(str(id+1:end),'$');
     end
     h = waitbar(0.5,sprintf('Running %s',strrep(str,'_',' ')));
     fprintf('Running %s\n',str);
@@ -3375,6 +3381,7 @@ function DATA = InitInterface(DATA)
     sm = uimenu(subm,'Label','Send Spike Clear to Spike2','Callback',{@SendStr, 'cl'});
     uimenu(subm,'Label','Log Inputs','Callback',{@ReadIO, 'openlog'});
     sm = uimenu(subm,'Label','Tests');
+    uimenu(sm,'Label','Sample Electrode Depths','Callback',{@ElectrodeTimer, 'start'});    
     uimenu(sm,'Label','Run/Cancel','Callback',{@TestIO, 'cancel'});
     uimenu(sm,'Label','Freeze','Callback',{@TestIO, 'freeze'});
     uimenu(sm,'Label','Step','Callback',{@TestIO, 'step'});
@@ -3396,6 +3403,14 @@ function DATA = InitInterface(DATA)
     
     set(DATA.toplevel,'UserData',DATA);
     start(DATA.timerobj);
+
+    
+function ElectrodeTimer(a,b)
+    if isfield(DATA,'servotimer') & isvalid(DATA.servotimer)
+        start(DATA.servotimer);
+    else
+        gui.Dlg('No valid Timer for electrode yet.',DATA.toplevel, {'OK'},'nonmodal');
+    end
 
 function ShowHelp(a,b,file)
 
@@ -4810,6 +4825,13 @@ function SetExptItems(DATA, varargin)
      if paused ==0
         PauseRead(DATA,1);
      end
+     
+    a =  get(DATA.txtrec,'string');
+    b =  get(DATA.txtrec,'value');
+    if b > size(a,1) || b < 1
+        set(DATA.txtrec,'value',size(a,1));
+    end
+
     DATA= CheckExptMenus(DATA);
     SetExptItems(DATA);
     SetTextItem(DATA.toplevel,'RptExpts',DATA.rptexpts);
@@ -4983,8 +5005,17 @@ end
 
 function CheckServo(a,b, fig, varargin);
     DATA = get(fig,'UserData');
+    X = [];
     if isfigure(DATA.servofig)
-        ServoDrive('readposition','quiet');
+        X = ServoDrive('readposition','quiet');
+    elseif strcmp(DATA.servoport,'mservo')
+        X = ServoDrive('readmservo');
+    end
+    if isfield(X,'position')
+        dx = DATA.binoc{1}.ed - X.position/1000;
+        if abs(dx) > 0.005
+            outprintf(DATA,'!seted=%.3f\n',X.position./1000);
+        end
     end
 
 function CheckInput(a,b, fig, varargin)
@@ -5592,6 +5623,9 @@ if ~isfigure(F) %if verg was close before servowindow
 end
 DATA = get(F, 'UserData');
 if strcmp(pos,'close') %Servo Contoller Closing
+    if isfigure(DATA.servofig)
+    X = get(DATA.servofig,'UserData');
+    end
     DATA.servofig = 0;
     if isfield(varargin{1},'alldepths')
         X = CheckDepthData(varargin{1});
@@ -5605,7 +5639,7 @@ if strcmp(pos,'close') %Servo Contoller Closing
         DATA.servodata = CheckDepthData(DATA.servodata);
         DATA.servodata.stepsize = X.stepsize;
     end
-    if isfield(DATA,'servotimer')
+    if isfield(DATA,'servotimer') && X.commode == 0
         stop(DATA.servotimer);
     end
 else
@@ -8664,8 +8698,10 @@ function DATA = PlotPsych(DATA, Expts)
                 eargs = {eargs{:} 'type' 'psyv'};
             end
         end
-        if isfield(DATA.matexpres,'types') && length(DATA.matexpres.types) > 1
-            eargs = {eargs{:} 'type2' DATA.matexpres.types{2}};
+        if isfield(DATA.matexpres,'types') && length(DATA.matexpres(end).types) > 1
+            if isfield(Expt.Trials,DATA.matexpres(end).types{2})
+                eargs = {eargs{:} 'type2' DATA.matexpres(end).types{2}};
+            end
         elseif ~strcmp(Expt.Stimvals.e2,'e0')
             eargs = {eargs{:} 'type2' Expt.Stimvals.e2};
         end

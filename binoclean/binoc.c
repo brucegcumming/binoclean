@@ -1734,12 +1734,30 @@ void CntrlDrag(vcoord *start, vcoord *end,  WindowEvent e)
     glFinish();
 }
 
+void DisplayPos(WindowEvent e)
+{
+    vcoord xy[2];
+    //    Expstim *es,*esp;
+    char s[BUFSIZ];
+    
+    xy[1] = e.mouseY-winsiz[1];
+    xy[0]  = e.mouseX-winsiz[0];
+    
+    sprintf(s,"At %.2f,%.2f deg",
+            pix2deg(xy[0]),
+            pix2deg(xy[1]));
+    glstatusline(s,0);
+
+}
+
 void ShiftDrag(vcoord *start, vcoord *end, WindowEvent e)
 {
-    vcoord mpos[2];
+    vcoord mpos[2],xy[2];
 //    Expstim *es,*esp;
     short *pl;
     int nstim;
+    char s[BUFSIZ];
+
     
 //    es = expt.plot->stims;
     mpos[0] = e.mouseX;
@@ -1757,6 +1775,11 @@ void ShiftDrag(vcoord *start, vcoord *end, WindowEvent e)
 //        StimLine(mpos,es,BOX_COLOR);
         start[0] = e.mouseX;
         start[1] = e.mouseY;
+        
+    }
+    if(eventstate & RBUTTON)
+    {
+        DisplayPos(e);
     }
 }
 
@@ -2016,9 +2039,10 @@ void ShiftButtonDown(vcoord *start, vcoord *end, WindowEvent e)
 
 void ShiftButtonRelease(vcoord *start, vcoord *end, WindowEvent e)
 {
-    vcoord mpos[2];
+    vcoord mpos[2],xpos[2];
 //    Expstim *es;
     short *pl;
+    char s[BUFSIZ];
     
 //    es = expt.plot->stims;
     mpos[0] = e.mouseX;
@@ -2046,6 +2070,11 @@ void ShiftButtonRelease(vcoord *start, vcoord *end, WindowEvent e)
 //        StimLine(start,es,expt.overlay_color);
 //        es->phasemark = StimLine(mpos,es,BOX_COLOR);
 //        es->flag |= PHASEMARKER_ON;
+        DisplayPos(e);
+    }
+    else if(e.mouseButton == Button3)
+    {
+        DisplayPos(e);
     }
     EndOverlay();
     glFinish();
@@ -2114,7 +2143,9 @@ int HandleMouse(WindowEvent e)
             }
             if(e.mouseButton == Button3)
                 eventstate |= RBUTTON;
-            if(e.modifierKey & ShiftMask)
+            if ((e.modifierKey & ShiftMask) && (e.modifierKey & ControlMask))
+                ; // doesn't work.  Control Mast winds
+            else if(e.modifierKey & ShiftMask)
                 ShiftButtonDown(start, endpt, e);
             else if(e.modifierKey & ControlMask)
                 CntrlButtonDown(start, endpt, e);
@@ -4704,6 +4735,14 @@ int SetStimulus(Stimulus *st, float val, int code, int *event)
         case BACK_ORI:
             if(st->next != NULL)
                 st->next->pos.angle = deg_rad(val);
+            break;
+        case BACK_X:
+            if(st->next != NULL)
+                st->next->pos.xy[0] = deg2pix(val);
+            break;
+        case BACK_Y:
+            if(st->next != NULL)
+                st->next->pos.xy[1] = deg2pix(val);
             break;
         case ORIENTATION_DIFF:
             st->ori_disp = deg_rad(val)/2;
@@ -9795,6 +9834,10 @@ float StimulusProperty(Stimulus *st, int code)
         case BACK_ORI:
             if(st->next)
                 value = st->next->pos.angle * 180.0/M_PI;
+            break;
+        case BACK_Y:
+            if(st->next)
+                value = pix2deg(st->next->pos.xy[1]);
             break;
         case BACK_TF:
             if(st->next)
