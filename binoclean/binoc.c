@@ -6681,7 +6681,7 @@ float SetFixColor(Expt expt)
         optionflag &= (~SQUARE_FIXATION);
     }
     else if (optionflags[SHOW_REWARD_BIAS] && !(option2flag & AFC) && stimstate == PREFIXATION){
-        expt.st->fixcolor = expt.st->fix.offcolor;
+        expt.st->fixcolor = expt.st->fix.prefixcolor;
     }
     else if (stimstate == INTERTRIAL)
         expt.st->fixcolor = expt.st->fixcolor;
@@ -10980,6 +10980,8 @@ char *TrimStimLine(char *stimline, int mode)
     if (mode == 1)
         return(s);
     else if (mode ==2 && t != NULL){
+        if (t - stimline >= strlen(stimline))
+            return(NULL);
         if (strlen(++t) > 1){
             return(t);
         }
@@ -11057,13 +11059,14 @@ int PrintPsychLine(int presult, int sign, FILE *fd)
         }
 
         if(expt.type3 != EXPTYPE_NONE)
-            fprintf(fd," %s=%.2f %s\n",serial_strings[expt.type3],expt.currentval[2],str);
+            fprintf(fd," %s=%.2f %s",serial_strings[expt.type3],expt.currentval[2],str);
         else if(expt.mode == TWOCYL_DISP)
-            fprintf(fd," %s=%.2f %s\n",serial_strings[DISP_X],expt.currentval[2],str);
+            fprintf(fd," %s=%.2f %s",serial_strings[DISP_X],expt.currentval[2],str);
         else if(expt.vals[ONETARGET_P] > 0)
-            fprintf(fd," %s=%.2f %s\n",serial_strings[TARGET_RATIO],expt.vals[TARGET_RATIO],str);
+            fprintf(fd," %s=%.2f %s",serial_strings[TARGET_RATIO],expt.vals[TARGET_RATIO],str);
         else            
-            fprintf(fd," %s %s=%d\n",str,serial_strings[STIMID],expt.allstimid);
+            fprintf(fd," %s %s=%d",str,serial_strings[STIMID],expt.allstimid);
+        fprintf(fd," %s=%.1f\n",serial_strings[TOTAL_REWARD],expt.vals[TOTAL_REWARD]);
         fflush(fd);
     }
 }

@@ -297,6 +297,7 @@ Stimulus *NewStimulus(Stimulus *st)
     {
         memset(new,0,sizeof(Stimulus));
     }
+    new->fix.prefixcolor = 0;
     new->stimversion = 0;
     new->next = NULL;
     new->prev = st;

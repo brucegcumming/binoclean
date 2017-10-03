@@ -8368,6 +8368,13 @@ void InitExpt()
         unrepeatn[i] = 0;
     SetTargets();
     PrepareExptStim(1,6);
+    val = GetProperty(&expt, expt.st, STIMULUS_DURATION_CODE)+GetProperty(&expt, expt.st, PREPERIOD_CODE);
+    val = val + GetProperty(&expt, expt.st, POSTPERIOD_CODE);
+    if (expt.stimpertrial > 0){
+        val = val * expt.stimpertrial;
+    }
+    sprintf(cbuf,"trialdur=%.2f\n",val);
+    SerialString(cbuf,0);
     stp = getexpval(0);
     if(optionflags[FAST_SEQUENCE]){
         /*
@@ -9102,7 +9109,7 @@ void SetSacVal(float stimval, int index)
         expt.vals[REWARD_SIZE] = expt.st->fix.rwsize;
         SerialSend(REWARD_SIZE);
     }
-    else if (optionflags[SHOW_REWARD_BIAS]){
+    else if (optionflags[SHOW_REWARD_BIAS]  && SACCREQD(afc_s)){
         expt.st->fix.rwsize = expt.vals[REWARD_SIZE3];
         expt.vals[REWARD_SIZE] = expt.st->fix.rwsize;
         SerialSend(REWARD_SIZE);
@@ -15615,6 +15622,8 @@ int InterpretLine(char *line, Expt *ex, int frompc)
             n = sscanf(s,"%f %f %f %f",&in[0],&in[1],&in[2],&in[3]);
                 for(i = 0; i < n; i++)
                     expt.st->fix.fixcolors[i] = in[i];
+            if (n > 0)
+                expt.st->fix.prefixcolor = in[0];
             break;
         case ELECTRODE_DEPTH:
             sscanf(s,"%f",&fval);

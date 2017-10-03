@@ -2577,7 +2577,7 @@ DATA.Expts = {};
 DATA.Trials = [];
 DATA.showxy = [1 1 1]; %XY R, L, Conjugate crosses
 DATA.currentstim = 1;  %foregr/backgre/Choice Targest
-DATA.xyfsdvals = [1 2 5 10 20 40];
+DATA.xyfsdvals = [1 2 5 10 15 20 40];
 DATA.optionflags.ts = 0;
 DATA.optionstrings.ts = 'Wurtz Task';
 DATA.optionflags.do = 0;
@@ -3303,7 +3303,7 @@ function DATA = InitInterface(DATA)
     subm = uimenu(hm,'Label','&Software Offset');
     uimenu(subm,'Label','&Null','Callback',{@SendStr, 'sonull'},'accelerator','E');
     uimenu(subm,'Label','Edit','Callback',{@SoftoffPopup, 'popup'});
-    uimenu(subm,'Label','Clear','Callback',{@SendStr, '\clearsoftoff'});
+    uimenu(subm,'Label','Clear','Callback',{@SendStr, 'so=0 0 0 0'});
     uimenu(hm,'Label','Run Sequence of expts','Callback',{@SequencePopup, 'popup'});
     uimenu(hm,'Label','Pause Expt','Callback',{@SendStr, '\pauseexpt'});
     uimenu(hm,'Label','Center stimulus','Callback',{@SendStr, 'centerstim'});
@@ -3592,6 +3592,7 @@ function DATA = RestartBinoc(DATA)
     
         
 function MenuHit(a,b, arg)
+    src = a;
     DATA = GetDataFromFig(a);
     if strcmp(arg,'bothclose')
         outprintf(DATA,'\\quit\n');
@@ -3638,16 +3639,21 @@ function MenuHit(a,b, arg)
             srcfile = GetValue(DATA,'daylog');
             if ~exist(srcfile)
                 vergwarning(sprintf('Cannot Start pipelog until Log exists. Come back after running a trial',srcfile));
+            else
+                 set(src,'checked','on');               
             end
             system([GetFilePath('perl') '/pipelog ' DATA.binoc{1}.monkey ' log &']);
         else
             if ~exist(srcfile)
                 vergwarning(sprintf('Cannot Start pipelog until %s exists. Come back after running a trial',srcfile));
+            else
+                 set(src,'checked','on');               
             end
             system([GetFilePath('perl') '/pipelog ' DATA.binoc{1}.monkey ' ' prefix ' &']);
         end
         DATA.pipelog = 1;
         DATA = AddTextToGui(DATA,['Pipelog ' prefix]);
+        SetData(DATA);
     elseif strcmp(arg,'setshake')
         outprintf(DATA,'usershake\n');
         
@@ -6637,8 +6643,10 @@ for j = line:length(str)
     nread = 1+j-line;
     rptstogo = DATA.rptexpts;
     DATA = InterpretLine(DATA,str{j},'fromseq');
-    DATA = uipause(DATA.pausetime,DATA.readpause,'Pause in sequence', DATA); %for pauses set in window
-    DATA.readpause = 0;
+    if DATA.readpause > 0
+        DATA = uipause(DATA.pausetime,DATA.readpause,'Pause in sequence', DATA); %for pauses set in window
+        DATA.readpause = 0;
+    end
     DATA.rptexpts = rptstogo; %don't let stimfiles change this
     if strncmp(str{j},'!expt',5)
         if DATA.inexpt

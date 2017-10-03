@@ -68,7 +68,7 @@ typedef struct LOCTN{
 
 
 typedef struct WURTZ{
-    float stimcolor,fixcolor,blankcolor,offcolor,size;
+    float stimcolor,fixcolor,prefixcolor,offcolor,size;
     int stimframes,fixframes,fixstims;
     int state;
     int stimvar;
