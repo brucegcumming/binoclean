@@ -9110,6 +9110,7 @@ void SetSacVal(float stimval, int index)
         SerialSend(REWARD_SIZE);
     }
     else if (optionflags[SHOW_REWARD_BIAS]  && SACCREQD(afc_s)){
+//don't mess with this if NOT psych
         expt.st->fix.rwsize = expt.vals[REWARD_SIZE3];
         expt.vals[REWARD_SIZE] = expt.st->fix.rwsize;
         SerialSend(REWARD_SIZE);
