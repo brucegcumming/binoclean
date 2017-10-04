@@ -14933,8 +14933,6 @@ int InterpretLine(char *line, Expt *ex, int frompc)
         }
         SerialString(line,0);
         SerialString("\n",0);
-        
-        
         if (psychfile != NULL)
             fprintf(psychfile,"R7 %s\n",line);
         if (todaylog != NULL)
