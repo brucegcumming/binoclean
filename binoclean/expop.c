@@ -14935,6 +14935,8 @@ int InterpretLine(char *line, Expt *ex, int frompc)
         SerialString("\n",0);
         if (psychfile != NULL)
             fprintf(psychfile,"R7 %s\n",line);
+        if (todaylog != NULL)
+            fprintf(todaylog,"R7 %s\n",line);
         return(-1);
     }
     else if(line[0] == '\\' || line[0] == '\!'){

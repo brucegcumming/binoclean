@@ -12298,7 +12298,7 @@ void Stim2PsychFile(int state, FILE *fd)
         fprintf(fd," 0 %.2f %.2f",
                 GetProperty(&expt,expt.st,BACK_ORI),
                 GetProperty(&expt,expt.st,BACK_SIZE));
-        fprintf(fd," %s=%.0f usenewdir=%d %s %s %s x=0\n",serial_strings[STIMULUS_MODE],GetProperty(&expt,expt.st,STIMULUS_MODE),usenewdirs,StimString(BACK_CORRELATION),StimString(BACK_HEIGHT),StimString(BACK_WIDTH));
+        fprintf(fd," %s=%.0f usenewdir=%d %s %s %s %s\n",serial_strings[STIMULUS_MODE],GetProperty(&expt,expt.st,STIMULUS_MODE),usenewdirs,StimString(BACK_CORRELATION),StimString(BACK_HEIGHT),StimString(BACK_WIDTH),StimString(EARLY_RWTIME));
         
         if(expt.st->next && expt.st->next->type != STIM_NONE){
             fprintf(fd,"R7 back%s=%.2f back%s=%.2f %s=%.2f",

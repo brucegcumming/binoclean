@@ -1954,12 +1954,14 @@ function line = CheckLineForBinoc(tline, DATA)
     
     
     
-function DATA = ReadSetupFile(DATA, name, varargin)
+function [DATA, nlines] = ReadSetupFile(DATA, name, varargin)
 fid = fopen(name,'r');
+nlines = 0;
 if fid > 0
     tline = fgets(fid);
     while ischar(tline)
-        id = strfind(tline,'=');
+        nlines = nlines+1;
+        id = strfind(tline,'=');        
         value = '';
         if ~isempty(id)
             value = tline(id+1:end);
@@ -2005,6 +2007,7 @@ if DATA.newexptdef == 0 && isfield(DATA.binoc{1},'ereset') && ~strcmp('NotSet',D
     outprintf(DATA,'newexpt\n');
     DATA = ReadStimFile(DATA, DATA.binoc{1}.ereset);
 end
+%Have to use //, not #, to get through http. Converted to # in binoc
 outprintf(DATA,'//qe%s\n',name);
 
 fid = fopen(name,'r');
